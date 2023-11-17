@@ -107,7 +107,7 @@ namespace SQLiteXM
 
         private static void applyCreateTableStatement(string key, Hashtable connectionMap, TableDefinition tableDefinition, Hashtable tableNamesMap)
         {
-            SxmConnection sxmConnection = null;
+            SxmConnection? sxmConnection = null;
 
             try
             {
@@ -395,13 +395,13 @@ namespace SQLiteXM
             string databaseName = parts[0];
             string databaseTable = parts[1];
 
-            TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
+            TableDefinition? tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
 
-            if (tableDefinition.CloudSynch != Defines.NO_CLOUD_SYNCH)
+            if (tableDefinition?.CloudSynch != Defines.NO_CLOUD_SYNCH)
             {
                 string tableSQL = String.Format("CREATE TRIGGER IF NOT EXISTS update{0} UPDATE ON {0} BEGIN INSERT INTO _systemCloudSynch (dbName, tableName, action, systemSynchID) VALUES ('{1}', '{0}', 'update', new.systemSynchID); END;", databaseTable, databaseName);
                 sxmTransaction.executeCreateTrigger(tableSQL);
-                if (tableDefinition.CloudSynch == Defines.CLOUD_SYNCH)
+                if (tableDefinition?.CloudSynch == Defines.CLOUD_SYNCH)
                 {
                     tableSQL = String.Format("CREATE TRIGGER IF NOT EXISTS delete{0} DELETE ON {0} BEGIN INSERT INTO _systemCloudSynch (dbName, tableName, action, systemSynchID) VALUES ('{1}', '{0}', 'delete', old.systemSynchID); END;", databaseTable, databaseName);
                     sxmTransaction.executeCreateTrigger(tableSQL);
