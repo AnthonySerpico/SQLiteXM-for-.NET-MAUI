@@ -236,7 +236,7 @@ namespace SQLiteXM
                         catch (SxmException ex)
                         #pragma warning restore 0168
                         {
-                            throw ex;
+                            throw;
                         }
                         catch (System.Exception ex)
                         {
