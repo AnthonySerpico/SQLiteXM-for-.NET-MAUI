@@ -102,7 +102,7 @@ namespace SQLiteXM
 			}
 			catch (SxmException ex)
 			{
-				throw ex;
+				throw;
 			}
 			catch (System.Exception ex)
 			{
@@ -131,7 +131,7 @@ namespace SQLiteXM
 			}
 			catch (SxmException ex)
 			{
-				throw ex;
+				throw;
 			}
 			catch (System.Exception ex) 
 			{
@@ -288,7 +288,7 @@ namespace SQLiteXM
 			}
 			catch (SxmException ex)
 			{
-				throw ex;
+				throw;
 			}
 			catch (System.Exception ex) 
 			{
@@ -317,7 +317,7 @@ namespace SQLiteXM
 			}
 			catch (SxmException ex)
 			{
-				throw ex;
+				throw;
 			}
 			catch (System.Exception ex) 
 			{

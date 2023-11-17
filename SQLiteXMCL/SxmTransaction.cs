@@ -25,7 +25,7 @@ namespace SQLiteXM
 			{
 				if (connection != null) 
 					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
-				throw ex;
+				throw;
 			}
 			catch(System.Exception ex)
 			{
@@ -54,7 +54,7 @@ namespace SQLiteXM
 					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
 					connection.releaseConnection ();
 				}
-				throw ex;
+				throw;
 			}
 			catch(System.Exception ex)
 			{
@@ -122,7 +122,7 @@ namespace SQLiteXM
 			}
 			catch (SxmException ex)
 			{
-				 throw ex;
+				 throw;
 			}
 			catch (System.Exception ex)
 			{
@@ -254,7 +254,7 @@ namespace SQLiteXM
 				}
 				catch (SxmException ex) 
 				{
-					throw ex;
+					throw;
 				}
 				catch (System.Exception ex) 
 				{
@@ -312,7 +312,7 @@ namespace SQLiteXM
 				}
 				catch (SxmException ex) 
 				{
-					throw ex;
+					throw;
 				}
 				catch (System.Exception ex) 
 				{
