@@ -18,9 +18,9 @@ namespace SQLiteXM
 			logPath = Path.Combine( Environment.GetFolderPath (logPathSpecialFolder), logFileName );
 		}
 
-		internal void log(System.Exception ex, string method, string logLevel = "Error")
+		internal void log(System.Exception ex, string? method, string logLevel = "Error")
 		{
-			if (!noLog) 
+			if (!noLog && !string.IsNullOrEmpty(method)) 
 			{
 				try
 				{

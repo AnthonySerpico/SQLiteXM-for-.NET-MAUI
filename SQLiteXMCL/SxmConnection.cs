@@ -100,9 +100,11 @@ namespace SQLiteXM
 				logfileMaxSize = databaseDescriptor.logfileMaxSize;
 				noLog = databaseDescriptor.noLog;
 			}
-			catch (SxmException ex)
-			{
-				throw;
+			#pragma warning disable 0168
+            catch (SxmException ex)
+			#pragma warning restore 0168
+            {
+                throw;
 			}
 			catch (System.Exception ex)
 			{
@@ -129,14 +131,16 @@ namespace SQLiteXM
                 //SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
 				dbConn.Open();
 			}
-			catch (SxmException ex)
-			{
-				throw;
+			#pragma warning disable 0168
+            catch (SxmException ex)
+			#pragma warning restore 0168
+            {
+                throw;
 			}
 			catch (System.Exception ex) 
 			{
 				destroyConnection ();
-				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 				throw new SxmException (ex);
 			}
 		}
@@ -220,7 +224,7 @@ namespace SQLiteXM
 				} 
 				catch (SqliteException ex) 
 				{
-					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 					//if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
 
 					if (commitFlag == SQLiteXM.Defines.commitTransaction)
@@ -230,7 +234,7 @@ namespace SQLiteXM
 				}
 				catch (System.Exception ex)
 				{
-					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 					throw new SxmException (ex);
 				}
 			}
@@ -286,13 +290,15 @@ namespace SQLiteXM
 				addCommandParameters (parameterValues);
 				connDataReader = connCommand.ExecuteReader ();
 			}
-			catch (SxmException ex)
+			#pragma warning disable 0168
+            catch (SxmException ex)
+			#pragma warning restore 0168
 			{
 				throw;
 			}
 			catch (System.Exception ex) 
 			{
-				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 				throw new SxmException (ex);
 			}
 		}
@@ -315,13 +321,15 @@ namespace SQLiteXM
 				addCommandParameters (parameterValues);
 				connCommand.ExecuteNonQuery ();
 			}
-			catch (SxmException ex)
-			{
-				throw;
+			#pragma warning disable 0168
+            catch (SxmException ex)
+			#pragma warning restore 0168
+            {
+                throw;
 			}
 			catch (System.Exception ex) 
 			{
-				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 				throw new SxmException (ex);
 			}
 		}
@@ -360,7 +368,7 @@ namespace SQLiteXM
 			{
 				if (ex.SqliteErrorCode == (int)SQLiteErrorCode.Busy) 
 				{
-					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 				} 
 				throw new SxmException (ex);
 			}

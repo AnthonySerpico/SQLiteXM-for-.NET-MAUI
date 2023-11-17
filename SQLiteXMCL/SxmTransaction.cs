@@ -24,13 +24,13 @@ namespace SQLiteXM
 			catch (SxmException ex)
 			{
 				if (connection != null) 
-					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 				throw;
 			}
 			catch(System.Exception ex)
 			{
 				if (connection != null) 
-					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 				throw new SxmException (ex);
 			}
 		}
@@ -51,7 +51,7 @@ namespace SQLiteXM
 			{
 				if (connection != null) 
 				{
-					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 					connection.releaseConnection ();
 				}
 				throw;
@@ -60,7 +60,7 @@ namespace SQLiteXM
 			{
 				if (connection != null) 
 				{
-					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod ().ToString ());
+					connection.logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 					connection.releaseConnection ();
 				}
 				throw new SxmException (ex);
@@ -120,9 +120,11 @@ namespace SQLiteXM
 					executeNonQuery (String.Format ("UPDATE _systemCloudSynch SET action='insert' WHERE systemSynchID = @p0 "), synchIDPV);
 				}
 			}
-			catch (SxmException ex)
-			{
-				 throw;
+			#pragma warning disable 0168
+            catch (SxmException ex)
+			#pragma warning restore 0168
+            {
+                throw;
 			}
 			catch (System.Exception ex)
 			{
@@ -252,9 +254,11 @@ namespace SQLiteXM
 					else
 						throw new SxmException (new ErrorMessage("noDatabaseExists", databaseName));
 				}
-				catch (SxmException ex) 
-				{
-					throw;
+				#pragma warning disable 0168
+                catch (SxmException ex)
+				#pragma warning restore 0168
+                {
+                    throw;
 				}
 				catch (System.Exception ex) 
 				{
@@ -310,9 +314,11 @@ namespace SQLiteXM
 					else
 						throw new SxmException (new ErrorMessage("noDatabaseExists", databaseName));
 				}
-				catch (SxmException ex) 
-				{
-					throw;
+				#pragma warning disable 0168
+                catch (SxmException ex)
+				#pragma warning restore 0168
+                {
+                    throw;
 				}
 				catch (System.Exception ex) 
 				{
@@ -350,7 +356,7 @@ namespace SQLiteXM
 			{
                 try
                 {
-                    connection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod().ToString());
+                    connection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 }
                 catch (Exception) { }
 			}

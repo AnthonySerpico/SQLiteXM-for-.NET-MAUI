@@ -49,7 +49,9 @@ namespace SQLiteXM
                         }
                     }
             }
+            #pragma warning disable 0168
             catch (SxmException ex)
+            #pragma warning restore 0168
             {
                 throw;
             }
@@ -123,14 +125,16 @@ namespace SQLiteXM
                 }
                 applyIndexTableStatements(key, connectionMap);
             }
+            #pragma warning disable 0168
             catch (SxmException ex)
+            #pragma warning restore 0168
             {
                 throw;
             }
             catch (System.Exception ex)
             {
                 if (sxmConnection != null)
-                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod().ToString());
+                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 
                 throw new SxmException(ex);
             }
@@ -152,14 +156,16 @@ namespace SQLiteXM
                     sxmTransaction.commitTransaction();
                 }
             }
+            #pragma warning disable 0168
             catch (SxmException ex)
+            #pragma warning restore 0168
             {
                 throw;
             }
             catch (System.Exception ex)
             {
                 if (sxmConnection != null)
-                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod().ToString());
+                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 
                 throw new SxmException(ex);
             }
@@ -226,13 +232,15 @@ namespace SQLiteXM
                                 sxmTransaction.commitTransaction();
                             }
                         }
+                        #pragma warning disable 0168
                         catch (SxmException ex)
+                        #pragma warning restore 0168
                         {
                             throw;
                         }
                         catch (System.Exception ex)
                         {
-                            sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod().ToString());
+                            sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                             throw new SxmException(ex);
                         }
                     }
@@ -310,13 +318,15 @@ namespace SQLiteXM
                                 sxmTransaction.commitTransaction();
                             }
                         }
+                        #pragma warning disable 0168
                         catch (SxmException ex)
+                        #pragma warning restore 0168
                         {
                             throw;
                         }
                         catch (System.Exception ex)
                         {
-                            sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod().ToString());
+                            sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                             throw new SxmException(ex);
                         }
                     }
