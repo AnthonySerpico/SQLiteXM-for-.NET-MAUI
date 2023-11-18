@@ -275,7 +275,7 @@ namespace SQLiteXM
 
 		public void executeQuery (string command, ArrayList parameterValues)
 		{
-			if (string.IsNullOrEmpty (command) == true)
+			if (string.IsNullOrEmpty (command))
 				throw new SxmException (ErrorMessages.error ["missingSQL"]);
 
 			try
@@ -305,7 +305,7 @@ namespace SQLiteXM
 
 		public void executeNonQuery (string command, ArrayList parameterValues)
 		{
-			if (string.IsNullOrEmpty (command) == true)
+			if (string.IsNullOrEmpty (command))
 				throw new SxmException (ErrorMessages.error ["missingSQL"]);
 
 			try

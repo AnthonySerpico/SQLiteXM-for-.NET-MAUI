@@ -19,7 +19,7 @@ namespace SQLiteXM
 				{
 					throw new SxmException (new ErrorMessage("lockDB", connection.DatabaseName));
 				}
-				this.connection = connection;
+				this.connection = connection; 
 			}
 			catch (SxmException ex)
 			{

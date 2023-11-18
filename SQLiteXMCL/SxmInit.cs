@@ -16,10 +16,15 @@ namespace SQLiteXM
 
         public static bool initDB(string SqlStatementsFileName)
         {
-            using Stream stream = FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).Result;
-            using StreamReader reader = new StreamReader(stream);
+            Stream stream;
+            using (stream = FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).Result)
+            {
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    ProcessSQLStatements.Parse(reader);
+                }
+            }
 
-            ProcessSQLStatements.Parse(reader);
             return SxmInit.initialize();
         }
 
@@ -49,9 +54,9 @@ namespace SQLiteXM
                         }
                     }
             }
-            #pragma warning disable 0168
+#pragma warning disable 0168
             catch (SxmException ex)
-            #pragma warning restore 0168
+#pragma warning restore 0168
             {
                 throw;
             }
@@ -125,9 +130,9 @@ namespace SQLiteXM
                 }
                 applyIndexTableStatements(key, connectionMap);
             }
-            #pragma warning disable 0168
+#pragma warning disable 0168
             catch (SxmException ex)
-            #pragma warning restore 0168
+#pragma warning restore 0168
             {
                 throw;
             }
@@ -156,9 +161,9 @@ namespace SQLiteXM
                     sxmTransaction.commitTransaction();
                 }
             }
-            #pragma warning disable 0168
+#pragma warning disable 0168
             catch (SxmException ex)
-            #pragma warning restore 0168
+#pragma warning restore 0168
             {
                 throw;
             }
@@ -191,57 +196,60 @@ namespace SQLiteXM
                 }
 
                 Hashtable columnNames = null;
-                sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", parts[1]), null);
-
-                if (alterStatementsList.Count > 1)
+                using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
                 {
-                    columnNames = new Hashtable();
-                    while (sxmConnection.nextRow() == true)
-                        columnNames.Add((string)sxmConnection.getValue("name"), new Object());
-                }
+                    sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", parts[1]), null);
 
-                foreach (AlterDefinition alterDefinition in alterStatementsList)
-                {
-                    bool columnFound = false;
-
-                    if (columnNames != null)
+                    if (alterStatementsList.Count > 1)
                     {
-                        if (columnNames[alterDefinition.ColumnName] != null)
-                            columnFound = true;
-                    }
-                    else
-                    {
+                        columnNames = new Hashtable();
                         while (sxmConnection.nextRow() == true)
-                        {
-                            string columnName = (string)sxmConnection.getValue("name");
-                            if (columnName.Equals(alterDefinition.ColumnName) == true)
-                            {
-                                columnFound = true;
-                                break;
-                            }
-                        }
+                            columnNames.Add((string)sxmConnection.getValue("name"), new Object());
                     }
 
-                    if (columnFound == false)
+                    foreach (AlterDefinition alterDefinition in alterStatementsList)
                     {
-                        try
+                        bool columnFound = false;
+
+                        if (columnNames != null)
                         {
-                            using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                            if (columnNames[alterDefinition.ColumnName] != null)
+                                columnFound = true;
+                        }
+                        else
+                        {
+                            while (sxmConnection.nextRow() == true)
                             {
-                                sxmTransaction.executeAlterTable(alterDefinition.AlterSQL);
-                                sxmTransaction.commitTransaction();
+                                string columnName = (string)sxmConnection.getValue("name");
+                                if (columnName.Equals(alterDefinition.ColumnName) == true)
+                                {
+                                    columnFound = true;
+                                    break;
+                                }
                             }
                         }
-                        #pragma warning disable 0168
-                        catch (SxmException ex)
-                        #pragma warning restore 0168
+
+                        if (columnFound == false)
                         {
-                            throw;
-                        }
-                        catch (System.Exception ex)
-                        {
-                            sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                            throw new SxmException(ex);
+                            try
+                            {
+                                using (SxmTransaction sxmTransaction1 = new SxmTransaction(sxmConnection))
+                                {
+                                    sxmTransaction1.executeAlterTable(alterDefinition.AlterSQL);
+                                    sxmTransaction1.commitTransaction();
+                                }
+                            }
+#pragma warning disable 0168
+                            catch (SxmException ex)
+#pragma warning restore 0168
+                            {
+                                throw;
+                            }
+                            catch (System.Exception ex)
+                            {
+                                sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                                throw new SxmException(ex);
+                            }
                         }
                     }
                 }
@@ -267,67 +275,70 @@ namespace SQLiteXM
 
 
                 Hashtable indexNames = null;
-                sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", parts[1]), null);
-
-                if (indexStatementsList.Count > 1)
+                using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
                 {
-                    indexNames = new Hashtable();
-                    while (sxmConnection.nextRow() == true)
-                        indexNames.Add((string)sxmConnection.getValue("name"), new Object());
-                }
+                    sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", parts[1]), null);
 
-                foreach (IndexDefinition indexDefinition in indexStatementsList)
-                {
-                    bool indexFound = false;
-                    bool runit = false;
-
-                    if (indexNames != null)
+                    if (indexStatementsList.Count > 1)
                     {
-                        if (indexNames[indexDefinition.IndexName] != null)
-                            indexFound = true;
-                    }
-                    else
-                    {
+                        indexNames = new Hashtable();
                         while (sxmConnection.nextRow() == true)
+                            indexNames.Add((string)sxmConnection.getValue("name"), new Object());
+                    }
+
+                    foreach (IndexDefinition indexDefinition in indexStatementsList)
+                    {
+                        bool indexFound = false;
+                        bool runit = false;
+
+                        if (indexNames != null)
                         {
-                            string indexName = (string)sxmConnection.getValue("name");
-                            if (indexName.Equals(indexDefinition.IndexName) == true)
-                            {
+                            if (indexNames[indexDefinition.IndexName] != null)
                                 indexFound = true;
-                                break;
-                            }
                         }
-                    }
-
-                    if (indexFound == false && indexDefinition.IndexSQL.StartsWith("CREATE ", true, null) == true)
-                    {
-                        if (dropExists(indexStatementsList, indexDefinition.IndexName) == false)
-                            runit = true;
-                    }
-                    else
-                        if (indexFound == true && indexDefinition.IndexSQL.StartsWith("DROP ", true, null) == true)
-                        runit = true;
-
-                    if (runit == true)
-                    {
-                        try
+                        else
                         {
-                            using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                            while (sxmConnection.nextRow() == true)
                             {
-                                sxmTransaction.executeIndex(indexDefinition.IndexSQL);
-                                sxmTransaction.commitTransaction();
+                                string indexName = (string)sxmConnection.getValue("name");
+                                if (indexName.Equals(indexDefinition.IndexName) == true)
+                                {
+                                    indexFound = true;
+                                    break;
+                                }
                             }
                         }
-                        #pragma warning disable 0168
-                        catch (SxmException ex)
-                        #pragma warning restore 0168
+
+                        if (indexFound == false && indexDefinition.IndexSQL.StartsWith("CREATE ", true, null) == true)
                         {
-                            throw;
+                            if (dropExists(indexStatementsList, indexDefinition.IndexName) == false)
+                                runit = true;
                         }
-                        catch (System.Exception ex)
+                        else
+                            if (indexFound == true && indexDefinition.IndexSQL.StartsWith("DROP ", true, null) == true)
+                            runit = true;
+
+                        if (runit == true)
                         {
-                            sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                            throw new SxmException(ex);
+                            try
+                            {
+                                using (SxmTransaction sxmTransaction1 = new SxmTransaction(sxmConnection))
+                                {
+                                    sxmTransaction1.executeIndex(indexDefinition.IndexSQL);
+                                    sxmTransaction1.commitTransaction();
+                                }
+                            }
+#pragma warning disable 0168
+                            catch (SxmException ex)
+#pragma warning restore 0168
+                            {
+                                throw;
+                            }
+                            catch (System.Exception ex)
+                            {
+                                sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                                throw new SxmException(ex);
+                            }
                         }
                     }
                 }

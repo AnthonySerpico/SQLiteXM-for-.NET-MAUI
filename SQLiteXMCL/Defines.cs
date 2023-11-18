@@ -24,8 +24,17 @@
 			processing
 		};
 
-		// Error message defines.
-		public enum SxmErrorCode{
+        // Database operation types. 
+        public enum DbOperationTypes
+        {
+            insert,
+            delete,
+            update,
+			select
+        };
+
+        // Error message defines.
+        public enum SxmErrorCode{
 		sqliteException,
 		innerException,
 		missingSQL,
