@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using Microsoft.Maui.Controls;
+using System;
+using System.Collections;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -7,7 +9,6 @@ namespace SQLiteXM
 	{
 		public string action;
 		public ArrayList parameterValues;
-		public DbOperationTypes dbOperationType;
     }
 
 	public class DbOperationResponse
@@ -23,26 +24,18 @@ namespace SQLiteXM
 
         public static async Task<List<DbOperationResponse>> performDbOperations(List<DbItem> dbItemList)
 		{
-            List<DbOperationResponse> dbOperationResponse = new List<DbOperationResponse>();
+            List<DbOperationResponse> dbOperationResponseList = new List<DbOperationResponse>();
 
             try
             {
                 using (SxmTransaction sxmTransaction = new SxmTransaction())
                 {
 					foreach (DbItem dbItem in dbItemList)
-					{
-						switch(dbItem.dbOperationType)
+                    {
+						switch(getDbOperationType(dbItem.action))
 						{
 							case DbOperationTypes.insert:
                                 InsertResponse ir = sxmTransaction.executeInsert(dbItem.action, dbItem.parameterValues);
-                                break;
-
-                            case DbOperationTypes.delete:
-                                sxmTransaction.executeDelete(dbItem.action, dbItem.parameterValues);
-                                break;
-
-                            case DbOperationTypes.update:
-                                sxmTransaction.executeUpdate(dbItem.action, dbItem.parameterValues);
                                 break;
 
                             case DbOperationTypes.select:
@@ -50,8 +43,15 @@ namespace SQLiteXM
                                 List<Hashtable> selectedRows = sxmTransaction.getAllRows();
                                 break;
 
-							default :
-								break;
+                            case DbOperationTypes.update:
+                                sxmTransaction.executeUpdate(dbItem.action, dbItem.parameterValues);
+                                break;
+
+                            case DbOperationTypes.delete:
+                                sxmTransaction.executeDelete(dbItem.action, dbItem.parameterValues);
+                                break;
+
+							default: break;
                         }
                     }
 
@@ -64,9 +64,25 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(dbOperationResponse);
+            return await Task.FromResult(dbOperationResponseList);
         }
 
+		private static DbOperationTypes getDbOperationType(string action)
+		{
+            if (SqlStatements.selectStatements[action] != default)
+                return DbOperationTypes.select;
+            
+			if (SqlStatements.insertStatements[action] != default)
+				return DbOperationTypes.insert;
+
+            if (SqlStatements.updateStatements[action] != default)
+                return DbOperationTypes.update;
+
+            if (SqlStatements.deleteStatements[action] != default)
+                return DbOperationTypes.delete;
+
+            return DbOperationTypes.unknown;
+        }
 
         public static async Task<InsertResponse> performInsert(string action, ArrayList parameterValues)
 		{

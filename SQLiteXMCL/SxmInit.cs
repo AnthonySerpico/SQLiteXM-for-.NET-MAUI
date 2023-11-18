@@ -14,18 +14,24 @@ namespace SQLiteXM
             return initialize(null);
         }
 
-        public static bool initDB(string SqlStatementsFileName)
+        public static async Task initDB(string dbName, string SqlStatementsFileName)
         {
-            Stream stream;
-            using (stream = FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).Result)
+            if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
             {
-                using (StreamReader reader = new StreamReader(stream))
+                Stream stream;
+                using (stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
                 {
-                    ProcessSQLStatements.Parse(reader);
+                    using (StreamReader reader = new StreamReader(stream))
+                    {
+                        ProcessSQLStatements.Parse(reader);
+                    }
                 }
             }
+            else
+                throw new FileNotFoundException(string.Format("The SQL statements file {0} could not be found.", SqlStatementsFileName));
 
-            return SxmInit.initialize();
+            new DatabaseDescriptor(dbName);
+            SxmInit.initialize();
         }
 
         private static bool initialize(string hrAppName)

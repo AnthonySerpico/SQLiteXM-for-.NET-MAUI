@@ -30,7 +30,8 @@
             insert,
             delete,
             update,
-			select
+			select,
+			unknown
         };
 
         // Error message defines.
