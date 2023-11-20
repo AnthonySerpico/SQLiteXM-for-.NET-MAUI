@@ -35,7 +35,7 @@ namespace SQLiteXM
 			}
 		}
 
-		public SxmTransaction (string databaseName = null)
+		public SxmTransaction (string? databaseName = null)
 		{
 			bool transient = true;
 

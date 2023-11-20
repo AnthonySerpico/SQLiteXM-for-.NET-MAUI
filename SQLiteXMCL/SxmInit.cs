@@ -9,11 +9,6 @@ namespace SQLiteXM
 
         private SxmInit() { }
 
-        public static bool initialize() // No synchronize.
-        {
-            return initialize(null);
-        }
-
         public static async Task initDB(string dbName, string SqlStatementsFileName)
         {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
@@ -32,6 +27,11 @@ namespace SQLiteXM
 
             new DatabaseDescriptor(dbName);
             SxmInit.initialize();
+        }
+
+        public static bool initialize() // No synchronize.
+        {
+            return initialize(null);
         }
 
         private static bool initialize(string hrAppName)

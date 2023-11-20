@@ -455,9 +455,13 @@ namespace SQLiteXM
 			{
 				row = new Hashtable ();
 				int numColumns = getColumnCount ();
-				for (int i=0; i<numColumns; i++) 
-					row.Add (connDataReader.GetName (i), connDataReader.GetValue (i));
-			}
+				for (int i = 0; i < numColumns; i++)
+				{
+					object columnValue = connDataReader.GetValue(i);
+					//Type type = columnValue.GetType();
+                    row.Add(connDataReader.GetName(i), columnValue == DBNull.Value ? default : columnValue);
+				}
+            }
 
 			return row;
 		}

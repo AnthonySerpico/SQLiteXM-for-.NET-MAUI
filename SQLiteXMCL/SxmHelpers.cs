@@ -1,14 +1,12 @@
-﻿using Microsoft.Maui.Controls;
-using System;
-using System.Collections;
+﻿using System.Collections;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
     public class DbItem
 	{
-		public string action;
-		public ArrayList parameterValues;
+		public string? sqlStatementName;
+		public ArrayList? parameterValues;
     }
 
 	public class DbOperationResponse
@@ -16,39 +14,56 @@ namespace SQLiteXM
 
 	}
 
-    public class DBAccessCore
+    public class SxmHelpers
     {
-        private DBAccessCore()
+        private SxmHelpers()
         {
         }
 
-        public static async Task<List<DbOperationResponse>> performDbOperations(List<DbItem> dbItemList)
+        public static void populateTable<T>(Hashtable dbRow, ref T userObject)
+        {
+            ICollection ic = dbRow.Keys;
+            foreach (string key in ic)  // Process each entry (column) in the Hashtable.
+            {
+                try
+                {
+                    userObject?.GetType().GetProperty(key)?.SetValue(userObject, dbRow[key]);
+                    System.Reflection.PropertyInfo[] pi = userObject?.GetType().GetProperties();
+                }
+                catch (System.ArgumentException)
+                {
+                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' {1} to the provided table property '{2}' {3}", key, dbRow[key]?.GetType().ToString(), key, userObject?.GetType()?.GetProperty(key)?.PropertyType.ToString()));
+                }
+            }
+        }
+
+        public static async Task<List<DbOperationResponse>> performDbOperations(List<DbItem> dbItemList, string? dbName = default)
 		{
             List<DbOperationResponse> dbOperationResponseList = new List<DbOperationResponse>();
 
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction())
+                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
                 {
 					foreach (DbItem dbItem in dbItemList)
                     {
-						switch(getDbOperationType(dbItem.action))
+						switch(getDbOperationType(dbItem.sqlStatementName))
 						{
 							case DbOperationTypes.insert:
-                                InsertResponse ir = sxmTransaction.executeInsert(dbItem.action, dbItem.parameterValues);
+                                InsertResponse ir = sxmTransaction.executeInsert(dbItem.sqlStatementName, dbItem.parameterValues);
                                 break;
 
                             case DbOperationTypes.select:
-                                sxmTransaction.executeQuery(dbItem.action, dbItem.parameterValues);
+                                sxmTransaction.executeQuery(dbItem.sqlStatementName, dbItem.parameterValues);
                                 List<Hashtable> selectedRows = sxmTransaction.getAllRows();
                                 break;
 
                             case DbOperationTypes.update:
-                                sxmTransaction.executeUpdate(dbItem.action, dbItem.parameterValues);
+                                sxmTransaction.executeUpdate(dbItem.sqlStatementName, dbItem.parameterValues);
                                 break;
 
                             case DbOperationTypes.delete:
-                                sxmTransaction.executeDelete(dbItem.action, dbItem.parameterValues);
+                                sxmTransaction.executeDelete(dbItem.sqlStatementName, dbItem.parameterValues);
                                 break;
 
 							default: break;
@@ -84,15 +99,15 @@ namespace SQLiteXM
             return DbOperationTypes.unknown;
         }
 
-        public static async Task<InsertResponse> performInsert(string action, ArrayList parameterValues)
+        public static async Task<InsertResponse> performInsert(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			InsertResponse ir;
 
             try
 			{
-				using (SxmTransaction sxmTransaction = new SxmTransaction())
+				using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
 				{
-                    ir = sxmTransaction.executeInsert(action, parameterValues);
+                    ir = sxmTransaction.executeInsert(sqlStatementName, parameterValues);
 					sxmTransaction.commitTransaction();
 				}
 			}
@@ -105,13 +120,13 @@ namespace SQLiteXM
 			return await Task.FromResult(ir);
         }
  
-        public static async Task performDelete(string action, ArrayList parameterValues)
+        public static async Task performDelete(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			try
 			{
-				using (SxmTransaction sxmTransaction = new SxmTransaction())
+				using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
 				{
-					sxmTransaction.executeDelete(action, parameterValues);
+					sxmTransaction.executeDelete(sqlStatementName, parameterValues);
 					sxmTransaction.commitTransaction();
 				}
 			}
@@ -124,13 +139,13 @@ namespace SQLiteXM
 			await Task.CompletedTask;
 		}
 
-		public static async Task performUpdate(string action, ArrayList parameterValues)
+		public static async Task performUpdate(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			try
 			{
-				using (SxmTransaction sxmTransaction = new SxmTransaction())
+				using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
 				{
-					sxmTransaction.executeUpdate(action, parameterValues);
+					sxmTransaction.executeUpdate(sqlStatementName, parameterValues);
 					sxmTransaction.commitTransaction();
 				}
 			}
@@ -143,15 +158,15 @@ namespace SQLiteXM
 			await Task.CompletedTask;
 		}
 
-		public static async Task<List<Hashtable>> performSelect(string action, ArrayList parameterValues)
+		public static async Task<List<Hashtable>> performSelect(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			List<Hashtable> selectedRows;
 
 			try
 			{
-				using (SxmTransaction sxmTransaction = new SxmTransaction())
+				using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
 				{
-					sxmTransaction.executeQuery(action, parameterValues);
+					sxmTransaction.executeQuery(sqlStatementName, parameterValues);
 					selectedRows = sxmTransaction.getAllRows();
 				}
 			}
