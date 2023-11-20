@@ -28,7 +28,6 @@ namespace SQLiteXM
                 try
                 {
                     userObject?.GetType().GetProperty(key)?.SetValue(userObject, dbRow[key]);
-                    System.Reflection.PropertyInfo[] pi = userObject?.GetType().GetProperties();
                 }
                 catch (System.ArgumentException)
                 {
@@ -97,6 +96,11 @@ namespace SQLiteXM
                 return DbOperationTypes.delete;
 
             return DbOperationTypes.unknown;
+        }
+
+        public static Tuple<string, object> createNP(string columnName, object columnValue)
+        {
+            return Tuple.Create<string, object>(columnName, columnValue);
         }
 
         public static async Task<InsertResponse> performInsert(string sqlStatementName, ArrayList parameterValues, string? dbName = default)

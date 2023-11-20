@@ -41,470 +41,567 @@ namespace SQLiteXM
     }
 
     public class SxmConnection
-	{
-		public Logging logger;
-		private bool transient;
-		public bool Transient
-		{
-			get { return transient; }
-		}
-		private string databaseName;
-		public string DatabaseName
-		{
-			get { return databaseName; }
-		}
-		private DbCommand connCommand;
-		private SqliteConnection dbConn;
-		private string databaseFolderPath;
-		private DbDataReader connDataReader;
-		private SqliteTransaction dbConnTransaction;
+    {
+        public Logging logger;
+        private bool transient;
+        public bool Transient
+        {
+            get { return transient; }
+        }
+        private string databaseName;
+        public string DatabaseName
+        {
+            get { return databaseName; }
+        }
+        private DbCommand connCommand;
+        private SqliteConnection dbConn;
+        private string databaseFolderPath;
+        private DbDataReader connDataReader;
+        private SqliteTransaction dbConnTransaction;
 
-		static private string implicitDatabaseName;
+        static private string implicitDatabaseName;
+        private enum DbParametersDataType { arrayList, tuple, twoDArray, oneDArray, hashTable }
 
-		public SxmConnection (string databaseName, bool transient = false)
-		{
-			Environment.SpecialFolder logfileFolder;
-			string logfileName;
-			int logfileMaxSize;
-			bool noLog;
+        public SxmConnection(string databaseName, bool transient = false)
+        {
+            Environment.SpecialFolder logfileFolder;
+            string logfileName;
+            int logfileMaxSize;
+            bool noLog;
 
-			if (databaseName == null)
-			{
-				if (SxmConnection.implicitDatabaseName == null) 
-				{
-					ArrayList dbNames = DatabaseDescriptor.getDatabaseNames ();
-					if (dbNames.Count != 1) // There must be only one descriptor in order to use implicit database naming.
-						throw new SxmException (ErrorMessages.error["noImplicitDBDescriptorExists"]);
-					else
-						SxmConnection.implicitDatabaseName = dbNames [0] as string;
-				} 
+            if (databaseName == null)
+            {
+                if (SxmConnection.implicitDatabaseName == null)
+                {
+                    ArrayList dbNames = DatabaseDescriptor.getDatabaseNames();
+                    if (dbNames.Count != 1) // There must be only one descriptor in order to use implicit database naming.
+                        throw new SxmException(ErrorMessages.error["noImplicitDBDescriptorExists"]);
+                    else
+                        SxmConnection.implicitDatabaseName = dbNames[0] as string;
+                }
 
-				databaseName = SxmConnection.implicitDatabaseName;
-			}
+                databaseName = SxmConnection.implicitDatabaseName;
+            }
 
-			DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.getDescriptor (databaseName);
-			if (databaseDescriptor == null) 
-			{
-				throw new SxmException (new ErrorMessage("noDBDescriptorExists", databaseName));
-			}
+            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName);
+            if (databaseDescriptor == null)
+            {
+                throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName));
+            }
 
-			this.transient = transient;
-			this.databaseName = databaseName;
-			databaseFolderPath = Environment.GetFolderPath (databaseDescriptor.DatabaseFolder);
-			try  // We use a try-catch for the finally block. The unlock must happen.
-			{
-				// The descriptor is locked in order to guarantee that it is not in an indeterminate state.
-				databaseDescriptor.lockDescriptor ();
-				logfileName = databaseDescriptor.logfileName;
-				logfileFolder = databaseDescriptor.logfileFolder;
-				logfileMaxSize = databaseDescriptor.logfileMaxSize;
-				noLog = databaseDescriptor.noLog;
-			}
-			#pragma warning disable 0168
+            this.transient = transient;
+            this.databaseName = databaseName;
+            databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+            try  // We use a try-catch for the finally block. The unlock must happen.
+            {
+                // The descriptor is locked in order to guarantee that it is not in an indeterminate state.
+                databaseDescriptor.lockDescriptor();
+                logfileName = databaseDescriptor.logfileName;
+                logfileFolder = databaseDescriptor.logfileFolder;
+                logfileMaxSize = databaseDescriptor.logfileMaxSize;
+                noLog = databaseDescriptor.noLog;
+            }
+#pragma warning disable 0168
             catch (SxmException ex)
-			#pragma warning restore 0168
+#pragma warning restore 0168
             {
                 throw;
-			}
-			catch (System.Exception ex)
-			{
-				throw new SxmException (ex);
-			}
-			finally
-			{
-				// Unlock the descriptor as soon as possible.
-				databaseDescriptor.unlockDescriptor ();
-			}
+            }
+            catch (System.Exception ex)
+            {
+                throw new SxmException(ex);
+            }
+            finally
+            {
+                // Unlock the descriptor as soon as possible.
+                databaseDescriptor.unlockDescriptor();
+            }
 
-			logger = new Logging (logfileName, logfileFolder, logfileMaxSize, noLog );
-			createNewConnection ();
-		}
+            logger = new Logging(logfileName, logfileFolder, logfileMaxSize, noLog);
+            createNewConnection();
+        }
 
-		private void createNewConnection ()
-		{
-			try
-			{
-				string pathToDatabase = Path.Combine( databaseFolderPath, databaseName );
-				string connectionString = String.Format("Data Source={0}", pathToDatabase);
-				dbConn = new SqliteConnection (connectionString);
+        private void createNewConnection()
+        {
+            try
+            {
+                string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
+                string connectionString = String.Format("Data Source={0}", pathToDatabase);
+                dbConn = new SqliteConnection(connectionString);
                 SQLitePCL.Batteries.Init();
                 //SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
-				dbConn.Open();
-			}
-			#pragma warning disable 0168
+                dbConn.Open();
+            }
+#pragma warning disable 0168
             catch (SxmException ex)
-			#pragma warning restore 0168
+#pragma warning restore 0168
             {
                 throw;
-			}
-			catch (System.Exception ex) 
-			{
-				destroyConnection ();
-				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-				throw new SxmException (ex);
-			}
-		}
+            }
+            catch (System.Exception ex)
+            {
+                destroyConnection();
+                logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                throw new SxmException(ex);
+            }
+        }
 
-		public bool lockConnection (int wait = 100)
-		{
-			if (dbConn != null)
-				if (Monitor.TryEnter (dbConn, wait) == true) 
-				{
-					if (dbConn.State == System.Data.ConnectionState.Broken) 
-					{
-						dbConn.Close ();
-						dbConn.Open ();
-					}
+        public bool lockConnection(int wait = 100)
+        {
+            if (dbConn != null)
+                if (Monitor.TryEnter(dbConn, wait) == true)
+                {
+                    if (dbConn.State == System.Data.ConnectionState.Broken)
+                    {
+                        dbConn.Close();
+                        dbConn.Open();
+                    }
 
-					return true;
-				} 
+                    return true;
+                }
 
-			return false;
-		}
+            return false;
+        }
 
-		// Returns error code for SqliteException, otherwise throw the exception.
-		public SQLiteErrorCode finishTransaction (bool commitFlag)
-		{
-			SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok; 
+        // Returns error code for SqliteException, otherwise throw the exception.
+        public SQLiteErrorCode finishTransaction(bool commitFlag)
+        {
+            SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
-			if (dbConn != null)
-				if (dbConnTransaction != null) 
-					sqLiteErrorCode = doCommit (commitFlag);
+            if (dbConn != null)
+                if (dbConnTransaction != null)
+                    sqLiteErrorCode = doCommit(commitFlag);
 
-			return sqLiteErrorCode;
-		}
+            return sqLiteErrorCode;
+        }
 
-		// No-throw guarantee. Makes every effort to perform clean-up.
-		public void releaseConnection (bool destroy = false)
-		{
-			if (dbConn != null)
-			{
-				try
-				{
-					if (dbConnTransaction != null) 
-						doCommit (SQLiteXM.Defines.rollbackTransaction);
-				}
-				#pragma warning disable 0168
-				catch( System.Exception notUsed) {} // Within a handled exception a finally is guaranteed to run. 
-				#pragma warning restore 0168        // https://msdn.microsoft.com/en-us/library/zwc8s4fz.aspx   
-				finally
-				{
-					try
-					{
-						if (Monitor.IsEntered (dbConn) == true)
-							Monitor.Exit (dbConn);
+        // No-throw guarantee. Makes every effort to perform clean-up.
+        public void releaseConnection(bool destroy = false)
+        {
+            if (dbConn != null)
+            {
+                try
+                {
+                    if (dbConnTransaction != null)
+                        doCommit(SQLiteXM.Defines.rollbackTransaction);
+                }
+#pragma warning disable 0168
+                catch (System.Exception notUsed) { } // Within a handled exception a finally is guaranteed to run. 
+#pragma warning restore 0168        // https://msdn.microsoft.com/en-us/library/zwc8s4fz.aspx   
+                finally
+                {
+                    try
+                    {
+                        if (Monitor.IsEntered(dbConn) == true)
+                            Monitor.Exit(dbConn);
 
-						if (transient == true || destroy == true)
-							destroyConnection ();
-						else
-							releaseConnectionResources ();
-					}
-					#pragma warning disable 0168
-					catch( System.Exception notUsed) {}
-					#pragma warning restore 0168
-				}
-			}
-		}
+                        if (transient == true || destroy == true)
+                            destroyConnection();
+                        else
+                            releaseConnectionResources();
+                    }
+#pragma warning disable 0168
+                    catch (System.Exception notUsed) { }
+#pragma warning restore 0168
+                }
+            }
+        }
 
-		// Returns error code for SqliteException, otherwise throw the exception.
-		private SQLiteErrorCode doCommit (bool commitFlag)
-		{
-			SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
+        // Returns error code for SqliteException, otherwise throw the exception.
+        private SQLiteErrorCode doCommit(bool commitFlag)
+        {
+            SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
-			if (dbConnTransaction != null) 
-			{
-				try 
-				{
-					if (commitFlag == SQLiteXM.Defines.commitTransaction)
-						dbConnTransaction.Commit ();
-					else
-						dbConnTransaction.Rollback ();
+            if (dbConnTransaction != null)
+            {
+                try
+                {
+                    if (commitFlag == SQLiteXM.Defines.commitTransaction)
+                        dbConnTransaction.Commit();
+                    else
+                        dbConnTransaction.Rollback();
 
-					dbConnTransaction = null;
-				} 
-				catch (SqliteException ex) 
-				{
-					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-					//if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
+                    dbConnTransaction = null;
+                }
+                catch (SqliteException ex)
+                {
+                    logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    //if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
 
-					if (commitFlag == SQLiteXM.Defines.commitTransaction)
-						sqLiteErrorCode = (SQLiteErrorCode)ex.SqliteErrorCode;
-					else
-						throw new SxmException (ex);
-				}
-				catch (System.Exception ex)
-				{
-					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-					throw new SxmException (ex);
-				}
-			}
+                    if (commitFlag == SQLiteXM.Defines.commitTransaction)
+                        sqLiteErrorCode = (SQLiteErrorCode)ex.SqliteErrorCode;
+                    else
+                        throw new SxmException(ex);
+                }
+                catch (System.Exception ex)
+                {
+                    logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    throw new SxmException(ex);
+                }
+            }
 
-			return sqLiteErrorCode;
-		}
+            return sqLiteErrorCode;
+        }
 
-		public void destroyConnection ()
-		{
-			if (dbConn != null) 
-			{
-				releaseConnectionResources ();
+        public void destroyConnection()
+        {
+            if (dbConn != null)
+            {
+                releaseConnectionResources();
 
-                dbConn.Close ();
-                dbConn.Dispose ();
-				dbConn = null;
-			}
-		}
+                dbConn.Close();
+                dbConn.Dispose();
+                dbConn = null;
+            }
+        }
 
-		private void releaseConnectionResources ()
-		{
-			if (connCommand != null) 
-			{
-				releaseDataReader ();
-                connCommand.Dispose ();
-				connCommand = null;
-			}
-		}
+        private void releaseConnectionResources()
+        {
+            if (connCommand != null)
+            {
+                releaseDataReader();
+                connCommand.Dispose();
+                connCommand = null;
+            }
+        }
 
-		private void releaseDataReader ()
-		{
-			if (connDataReader != null && connDataReader.IsClosed == false) 
-			{
-                connDataReader.Close ();
+        private void releaseDataReader()
+        {
+            if (connDataReader != null && connDataReader.IsClosed == false)
+            {
+                connDataReader.Close();
                 connDataReader = null;
-			}
-		}
+            }
+        }
 
-		public void executeQuery (string command, ArrayList parameterValues)
-		{
-			if (string.IsNullOrEmpty (command))
-				throw new SxmException (ErrorMessages.error ["missingSQL"]);
+        public void executeQuery(string command, ArrayList parameterValues)
+        {
+            if (string.IsNullOrEmpty(command))
+                throw new SxmException(ErrorMessages.error["missingSQL"]);
 
-			try
-			{
-				if (connCommand == null)
-					connCommand = dbConn.CreateCommand ();
-				else
-					releaseDataReader();
+            try
+            {
+                if (connCommand == null)
+                    connCommand = dbConn.CreateCommand();
+                else
+                    releaseDataReader();
 
-				connCommand.CommandText = command;
-				connCommand.CommandType = System.Data.CommandType.Text;
-				addCommandParameters (parameterValues);
-				connDataReader = connCommand.ExecuteReader ();
-			}
-			#pragma warning disable 0168
+                connCommand.CommandText = command;
+                connCommand.CommandType = System.Data.CommandType.Text;
+                addCommandParameters(parameterValues);
+                connDataReader = connCommand.ExecuteReader();
+            }
+#pragma warning disable 0168
             catch (SxmException ex)
-			#pragma warning restore 0168
-			{
-				throw;
-			}
-			catch (System.Exception ex) 
-			{
-				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-				throw new SxmException (ex);
-			}
-		}
-
-		public void executeNonQuery (string command, ArrayList parameterValues)
-		{
-			if (string.IsNullOrEmpty (command))
-				throw new SxmException (ErrorMessages.error ["missingSQL"]);
-
-			try
-			{
-				if (connCommand == null)
-					connCommand = dbConn.CreateCommand ();
-				else
-					if( command.StartsWith("DELETE FROM companyReg WHERE companyRegPK") == false)
-						releaseDataReader();
-
-				connCommand.CommandText = command;
-				connCommand.CommandType = System.Data.CommandType.Text;
-				addCommandParameters (parameterValues);
-				connCommand.ExecuteNonQuery ();
-			}
-			#pragma warning disable 0168
-            catch (SxmException ex)
-			#pragma warning restore 0168
+#pragma warning restore 0168
             {
                 throw;
-			}
-			catch (System.Exception ex) 
-			{
-				logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-				throw new SxmException (ex);
-			}
-		}
+            }
+            catch (System.Exception ex)
+            {
+                logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                throw new SxmException(ex);
+            }
+        }
 
-		private void addCommandParameters (ArrayList parameterValues)
-		{
-			int cntr = 0;
+        public void executeNonQuery(string command, ArrayList parameterValues)
+        {
+            if (string.IsNullOrEmpty(command))
+                throw new SxmException(ErrorMessages.error["missingSQL"]);
 
-            connCommand.Parameters.Clear ();
-			if (parameterValues != null)
-				foreach (Object parameterValue in parameterValues) 
-				{
-					DbParameter dbParameter = connCommand.CreateParameter ();
-					dbParameter.Value = parameterValue;
-					dbParameter.ParameterName = "@p" + cntr.ToString();
+            try
+            {
+                if (connCommand == null)
+                    connCommand = dbConn.CreateCommand();
+                else
+                    if (command.StartsWith("DELETE FROM companyReg WHERE companyRegPK") == false)
+                    releaseDataReader();
 
-                    connCommand.Parameters.Add (dbParameter);
-					++cntr;
-				}
-		}
+                connCommand.CommandText = command;
+                connCommand.CommandType = System.Data.CommandType.Text;
+                addCommandParameters(parameterValues);
+                connCommand.ExecuteNonQuery();
+            }
+#pragma warning disable 0168
+            catch (SxmException ex)
+#pragma warning restore 0168
+            {
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                throw new SxmException(ex);
+            }
+        }
 
-		public void beginTransaction ()
-		{
-			try
-			{
-				if (dbConnTransaction == null)
-				{
-					dbConnTransaction = dbConn.BeginTransaction();
+        private void addCommandParameters(ArrayList parameterValues)
+        {
+            connCommand.Parameters.Clear();
+
+            if (parameterValues != null)
+            {
+                DbParametersDataType dbParametersDataType = getDbParameterType(ref parameterValues);
+
+                if (dbParametersDataType == DbParametersDataType.hashTable)
+                {
+                    Hashtable? ht = (Hashtable?)parameterValues[0];
+                    if (ht != default)
+                    {
+                        ICollection ic = ht.Keys;
+                        foreach (object key in ic)
+                        {
+                            DbParameter dbParameter = connCommand.CreateParameter();
+
+                            dbParameter.ParameterName = (string)key;
+                            dbParameter.Value = ht[key];
+
+                            connCommand.Parameters.Add(dbParameter);
+                        }
+                    }
+
+                    return;
+                }
+
+                if (dbParametersDataType == DbParametersDataType.twoDArray)
+                {
+                    object[,] objectList = (object[,])parameterValues[0];
+                    if (objectList != default)
+                    {
+                        int numArrayEntries = objectList.GetLength(0);
+
+                        for (int i = 0; i < numArrayEntries; i++)
+                        {
+                            DbParameter dbParameter = connCommand.CreateParameter();
+
+                            dbParameter.ParameterName = (string)objectList[i, 0];
+                            dbParameter.Value = (object)objectList[i, 1];
+
+                            connCommand.Parameters.Add(dbParameter);
+                        }
+                    }
+
+                    return;
+                }
+
+                if (dbParametersDataType != DbParametersDataType.twoDArray && dbParametersDataType != DbParametersDataType.hashTable)
+                {
+                    int cntr = 0;
+
+                    foreach (Object parameterValue in parameterValues)
+                    {
+                        DbParameter dbParameter = connCommand.CreateParameter();
+
+                        if (dbParametersDataType == DbParametersDataType.arrayList)
+                        {
+                            dbParameter.Value = parameterValue;
+                            dbParameter.ParameterName = "@p" + cntr.ToString();
+                        }
+                        if (dbParametersDataType == DbParametersDataType.tuple)
+                        {
+                            dbParameter.ParameterName = ((Tuple<string, object>)parameterValue).Item1;
+                            dbParameter.Value = ((Tuple<string, object>)parameterValue).Item2;
+                        }
+                        if (dbParametersDataType == DbParametersDataType.oneDArray)
+                        {
+                            object[] pvArray = (object[])parameterValue;
+                            dbParameter.ParameterName = (string)pvArray[0];
+                            dbParameter.Value = pvArray[1];
+                        }
+                        connCommand.Parameters.Add(dbParameter);
+                    }
+
+                    ++cntr;
+                }
+            }
+        }
+
+        private DbParametersDataType getDbParameterType(ref ArrayList parameterValues)
+        {
+            if (parameterValues[0]?.GetType() == typeof(Tuple<string, object>))
+                return DbParametersDataType.tuple;
+
+            if (parameterValues[0]?.GetType() == typeof(object[,]))
+            {
+                object[,] objectList = (object[,])parameterValues[0];
+                parameterValues.Clear();
+
+                if (objectList != default)
+                {
+                    int numArrayEntries = objectList.GetLength(0);
+
+                    for (int i = 0; i < numArrayEntries; i++)
+                    {
+                        object[] p = { (object)objectList[i, 0], (object)objectList[i, 1] };
+                        parameterValues.Add(p);
+                    }
+                }
+                return DbParametersDataType.twoDArray;
+            }
+
+            if (parameterValues[0]?.GetType() == typeof(object[]))
+                return DbParametersDataType.oneDArray;
+
+            if (parameterValues[0]?.GetType() == typeof(Hashtable))
+                return DbParametersDataType.hashTable;
+
+            return DbParametersDataType.arrayList;
+        }
+
+        public void beginTransaction()
+        {
+            try
+            {
+                if (dbConnTransaction == null)
+                {
+                    dbConnTransaction = dbConn.BeginTransaction();
                     if (connCommand == null)
                         connCommand = dbConn.CreateCommand();
                     connCommand.Transaction = dbConnTransaction;
-				}
+                }
 
             }
-			catch (SqliteException ex) 
-			{
-				if (ex.SqliteErrorCode == (int)SQLiteErrorCode.Busy) 
-				{
-					logger.log (ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-				} 
-				throw new SxmException (ex);
-			}
-		}
+            catch (SqliteException ex)
+            {
+                if (ex.SqliteErrorCode == (int)SQLiteErrorCode.Busy)
+                {
+                    logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                }
+                throw new SxmException(ex);
+            }
+        }
 
-		public bool hasRows ()
-		{
-			if (connDataReader != null) 
-				return connDataReader.HasRows;
+        public bool hasRows()
+        {
+            if (connDataReader != null)
+                return connDataReader.HasRows;
 
-			return false;
-		}
+            return false;
+        }
 
-		public object getValue (string fieldName)
-		{
-			try
-			{
-				if (hasRows () == true) 
-				{
-					int ordinal = connDataReader.GetOrdinal (fieldName);
-					if (ordinal != -1)
-						return connDataReader.GetValue (ordinal);
-				}
-			}
-			catch (System.Exception ex) 
-			{
-				throw new SxmException (ex);
-			}
+        public object getValue(string fieldName)
+        {
+            try
+            {
+                if (hasRows() == true)
+                {
+                    int ordinal = connDataReader.GetOrdinal(fieldName);
+                    if (ordinal != -1)
+                        return connDataReader.GetValue(ordinal);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                throw new SxmException(ex);
+            }
 
-			return null;
-		}
+            return null;
+        }
 
-		public object getValue (int fieldOrdinal)
-		{
-			try
-			{
-				if (hasRows () == true) 
-					return connDataReader.GetValue (fieldOrdinal);
-			}
-			catch (System.Exception ex) 
-			{
-				throw new SxmException (ex);
-			}
+        public object getValue(int fieldOrdinal)
+        {
+            try
+            {
+                if (hasRows() == true)
+                    return connDataReader.GetValue(fieldOrdinal);
+            }
+            catch (System.Exception ex)
+            {
+                throw new SxmException(ex);
+            }
 
-			return null;
-		}
+            return null;
+        }
 
-		public string getFieldName (int fieldOrdinal)
-		{
-			try
-			{
-				if (hasRows () == true) 
-					return connDataReader.GetName (fieldOrdinal);
-			}
-			catch (System.Exception ex) 
-			{
-				throw new SxmException (ex);
-			}
+        public string getFieldName(int fieldOrdinal)
+        {
+            try
+            {
+                if (hasRows() == true)
+                    return connDataReader.GetName(fieldOrdinal);
+            }
+            catch (System.Exception ex)
+            {
+                throw new SxmException(ex);
+            }
 
-			return null;
-		}
+            return null;
+        }
 
-		public string[] getFieldNames ()
-		{
-			string[] fieldNames;
+        public string[] getFieldNames()
+        {
+            string[] fieldNames;
 
-			if (hasRows () == true) 
-			{
-				fieldNames = new string[connDataReader.FieldCount];
-				for (int i=0; i<connDataReader.FieldCount; i++)
-					fieldNames[i] = connDataReader.GetName (i);
-			}
-			else
-				fieldNames = new string[0];
+            if (hasRows() == true)
+            {
+                fieldNames = new string[connDataReader.FieldCount];
+                for (int i = 0; i < connDataReader.FieldCount; i++)
+                    fieldNames[i] = connDataReader.GetName(i);
+            }
+            else
+                fieldNames = new string[0];
 
-			return fieldNames;
-		}
+            return fieldNames;
+        }
 
-		public Hashtable getNextRow ()
-		{
-			Hashtable row = null;
+        public Hashtable getNextRow()
+        {
+            Hashtable row = null;
 
-			if (nextRow () == true) 
-			{
-				row = new Hashtable ();
-				int numColumns = getColumnCount ();
-				for (int i = 0; i < numColumns; i++)
-				{
-					object columnValue = connDataReader.GetValue(i);
-					//Type type = columnValue.GetType();
+            if (nextRow() == true)
+            {
+                row = new Hashtable();
+                int numColumns = getColumnCount();
+                for (int i = 0; i < numColumns; i++)
+                {
+                    object columnValue = connDataReader.GetValue(i);
+                    //Type type = columnValue.GetType();
                     row.Add(connDataReader.GetName(i), columnValue == DBNull.Value ? default : columnValue);
-				}
+                }
             }
 
-			return row;
-		}
+            return row;
+        }
 
-		public int getColumnCount ()
-		{
-			if (hasRows () == true) 
-				return connDataReader.FieldCount;
+        public int getColumnCount()
+        {
+            if (hasRows() == true)
+                return connDataReader.FieldCount;
 
-			return 0;
-		}
+            return 0;
+        }
 
-		public bool nextRow ()
-		{
-			bool anotherRow = false;
+        public bool nextRow()
+        {
+            bool anotherRow = false;
 
-			if (hasRows () == true) 
-			{
-				anotherRow = connDataReader.Read ();
-				if (anotherRow == false)
-					releaseDataReader ();
-			}
+            if (hasRows() == true)
+            {
+                anotherRow = connDataReader.Read();
+                if (anotherRow == false)
+                    releaseDataReader();
+            }
 
-			return anotherRow;
-		}
+            return anotherRow;
+        }
 
-		public Type getType (string fieldName)
-		{
-			try
-			{
-				if (hasRows () == true) 
-				{
-					int ordinal = connDataReader.GetOrdinal (fieldName);
-					return connDataReader.GetFieldType (ordinal);
-				}
-			}
-			catch (System.Exception ex) 
-			{
-				throw new SxmException (ex);
-			}
+        public Type getType(string fieldName)
+        {
+            try
+            {
+                if (hasRows() == true)
+                {
+                    int ordinal = connDataReader.GetOrdinal(fieldName);
+                    return connDataReader.GetFieldType(ordinal);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                throw new SxmException(ex);
+            }
 
-			return null;
-		}
-	}
+            return null;
+        }
+    }
 }
 
