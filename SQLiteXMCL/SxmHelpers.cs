@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -103,6 +104,19 @@ namespace SQLiteXM
             return Tuple.Create<string, object>(columnName, columnValue);
         }
 
+        public static async Task<InsertResponse> performInsert(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        {
+            return await performInsert(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task<InsertResponse> performInsert(string sqlStatementName, object[,] parameterValues, string? dbName = default)
+        {
+            return await performInsert(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task<InsertResponse> performInsert(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
+        {
+            return await performInsert(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+
         public static async Task<InsertResponse> performInsert(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			InsertResponse ir;
@@ -123,7 +137,20 @@ namespace SQLiteXM
 
 			return await Task.FromResult(ir);
         }
- 
+
+        public static async Task performDelete(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        {
+            await performDelete(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task performDelete(string sqlStatementName, object[,] parameterValues, string? dbName = default)
+        {
+            await performDelete(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task performDelete(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
+        {
+            await performDelete(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+
         public static async Task performDelete(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			try
@@ -143,7 +170,19 @@ namespace SQLiteXM
 			await Task.CompletedTask;
 		}
 
-		public static async Task performUpdate(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
+        public static async Task performUpdate(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        {
+            await performUpdate(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task performUpdate(string sqlStatementName, object[,] parameterValues, string? dbName = default)
+        {
+            await performUpdate(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task performUpdate(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
+        {
+            await performUpdate(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task performUpdate(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			try
 			{
@@ -162,7 +201,19 @@ namespace SQLiteXM
 			await Task.CompletedTask;
 		}
 
-		public static async Task<List<Hashtable>> performSelect(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
+        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        {
+            return await performSelect(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, object[,] parameterValues, string? dbName = default)
+        {
+            return await performSelect(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
+        {
+            return await performSelect(sqlStatementName, new ArrayList() { parameterValues }, dbName);
+        }
+        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, ArrayList parameterValues, string? dbName = default)
 		{
 			List<Hashtable> selectedRows;
 

@@ -250,7 +250,7 @@ namespace SQLiteXM
 					string dbFullyQualifiedPath = Path.Combine (databaseFolderPath, databaseName);
 
 					if (File.Exists (dbFullyQualifiedPath) == true)
-						connection.executeNonQuery (String.Format ("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null);
+						connection.executeNonQuery (String.Format ("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as ArrayList);
 					else
 						throw new SxmException (new ErrorMessage("noDatabaseExists", databaseName));
 				}
@@ -272,7 +272,7 @@ namespace SQLiteXM
 		{
 			try
 			{
-				connection.executeQuery ("PRAGMA database_list", null);
+				connection.executeQuery ("PRAGMA database_list", null as ArrayList);
 
 				while (nextRow () == true) 
 				{
@@ -310,7 +310,7 @@ namespace SQLiteXM
 					string databaseFolderPath = Environment.GetFolderPath (databaseDescriptor.DatabaseFolder);
 					string dbFullyQualifiedPath = Path.Combine (databaseFolderPath, databaseName);
 					if (File.Exists (dbFullyQualifiedPath) == true)
-						connection.executeNonQuery (String.Format ("DETACH DATABASE '{0}'", databaseName), null);
+						connection.executeNonQuery (String.Format ("DETACH DATABASE '{0}'", databaseName), null as ArrayList);
 					else
 						throw new SxmException (new ErrorMessage("noDatabaseExists", databaseName));
 				}

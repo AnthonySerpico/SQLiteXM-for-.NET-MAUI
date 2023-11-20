@@ -60,7 +60,7 @@ namespace SQLiteXM
         private SqliteTransaction dbConnTransaction;
 
         static private string implicitDatabaseName;
-        private enum DbParametersDataType { arrayList, tuple, twoDArray, oneDArray, hashTable }
+        private enum DbParametersDataType { arrayList, tuple, twoDArray, oneDArray, hashTable, dictionary }
 
         public SxmConnection(string databaseName, bool transient = false)
         {
@@ -273,6 +273,22 @@ namespace SQLiteXM
                 connDataReader = null;
             }
         }
+        public void executeQuery(string command, Dictionary<string,object> parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
+        }
+        public void executeQuery(string command, object[] parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
+        }
+        public void executeQuery(string command, object[,] parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
+        }
+        public void executeQuery(string command, Hashtable parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
+        }
 
         public void executeQuery(string command, ArrayList parameterValues)
         {
@@ -302,6 +318,23 @@ namespace SQLiteXM
                 logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw new SxmException(ex);
             }
+        }
+
+        public void executeNonQuery(string command, Dictionary<string, object> parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
+        }
+        public void executeNonQuery(string command, object[] parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
+        }
+        public void executeNonQuery(string command, object[,] parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
+        }
+        public void executeNonQuery(string command, Hashtable parameterValues)
+        {
+            executeQuery(command, new ArrayList() { parameterValues });
         }
 
         public void executeNonQuery(string command, ArrayList parameterValues)
@@ -363,6 +396,25 @@ namespace SQLiteXM
                     return;
                 }
 
+                if (dbParametersDataType == DbParametersDataType.dictionary)
+                {
+                    Dictionary<string, object>? dict = (Dictionary<string, object>?)parameterValues[0];
+                    if (dict != default)
+                    {
+                        foreach (KeyValuePair<string, object> kvp in dict)
+                        {
+                            DbParameter dbParameter = connCommand.CreateParameter();
+
+                            dbParameter.ParameterName = kvp.Key;
+                            dbParameter.Value = kvp.Value;
+
+                            connCommand.Parameters.Add(dbParameter);
+                        }
+                    }
+
+                    return;
+                }
+
                 if (dbParametersDataType == DbParametersDataType.twoDArray)
                 {
                     object[,] objectList = (object[,])parameterValues[0];
@@ -384,7 +436,7 @@ namespace SQLiteXM
                     return;
                 }
 
-                if (dbParametersDataType != DbParametersDataType.twoDArray && dbParametersDataType != DbParametersDataType.hashTable)
+                if (dbParametersDataType == DbParametersDataType.arrayList && dbParametersDataType != DbParametersDataType.tuple || dbParametersDataType == DbParametersDataType.oneDArray)
                 {
                     int cntr = 0;
 
@@ -418,32 +470,22 @@ namespace SQLiteXM
 
         private DbParametersDataType getDbParameterType(ref ArrayList parameterValues)
         {
-            if (parameterValues[0]?.GetType() == typeof(Tuple<string, object>))
+            Type? pvt = parameterValues[0]?.GetType();
+
+            if (pvt == typeof(Tuple<string, object>))
                 return DbParametersDataType.tuple;
 
-            if (parameterValues[0]?.GetType() == typeof(object[,]))
-            {
-                object[,] objectList = (object[,])parameterValues[0];
-                parameterValues.Clear();
-
-                if (objectList != default)
-                {
-                    int numArrayEntries = objectList.GetLength(0);
-
-                    for (int i = 0; i < numArrayEntries; i++)
-                    {
-                        object[] p = { (object)objectList[i, 0], (object)objectList[i, 1] };
-                        parameterValues.Add(p);
-                    }
-                }
-                return DbParametersDataType.twoDArray;
-            }
-
-            if (parameterValues[0]?.GetType() == typeof(object[]))
+            if (pvt == typeof(object[]))
                 return DbParametersDataType.oneDArray;
 
-            if (parameterValues[0]?.GetType() == typeof(Hashtable))
+            if (pvt == typeof(object[,]))
+                return DbParametersDataType.twoDArray;
+
+            if (pvt == typeof(Hashtable))
                 return DbParametersDataType.hashTable;
+
+            if (pvt == typeof(Dictionary<string, object>))
+                return DbParametersDataType.dictionary;
 
             return DbParametersDataType.arrayList;
         }
