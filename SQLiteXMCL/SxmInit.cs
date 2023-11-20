@@ -204,7 +204,7 @@ namespace SQLiteXM
                 Hashtable columnNames = null;
                 using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
                 {
-                    sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", parts[1]), null as ArrayList);
+                    sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", parts[1]), null as List<object>);
 
                     if (alterStatementsList.Count > 1)
                     {
@@ -283,7 +283,7 @@ namespace SQLiteXM
                 Hashtable indexNames = null;
                 using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
                 {
-                    sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", parts[1]), null as ArrayList);
+                    sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", parts[1]), null as List<object>);
 
                     if (indexStatementsList.Count > 1)
                     {
@@ -384,7 +384,7 @@ namespace SQLiteXM
             }
 
             TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
-            ArrayList parameterValues = new ArrayList();
+            List<object> parameterValues = new List<object>();
             parameterValues.Add(databaseName);
             parameterValues.Add(parts[1]);
             parameterValues.Add(tableDefinition.CloudSynch);
@@ -444,7 +444,7 @@ namespace SQLiteXM
                     sxmConnection = new SxmConnection(databaseName);
                     connectionList.Add(databaseName, sxmConnection);
 
-                    sxmConnection.executeQuery("SELECT name FROM sqlite_master WHERE type='table'", null as ArrayList);
+                    sxmConnection.executeQuery("SELECT name FROM sqlite_master WHERE type='table'", null as List<object>);
 
                     ArrayList tableNames = new ArrayList();
                     if (sxmConnection.hasRows() == true)

@@ -89,7 +89,7 @@ namespace SQLiteXM
 			Dispose (false); // Called from runtime.
 		}
 
-		public InsertResponse executeInsert (string command, ArrayList ParameterValues)
+		public InsertResponse executeInsert (string command, List<object> ParameterValues)
 		{
 			long recordID = -1;
 			string synchID = null;
@@ -109,9 +109,9 @@ namespace SQLiteXM
 					synchID = getSynchID (insertDefinition.TableName, recordID);
 
 					if (synchID == null || synchID.Length == 0)
-						synchID = Guid.NewGuid ().ToString ();						
-							
-					ArrayList synchIDPV = new ArrayList ();
+						synchID = Guid.NewGuid ().ToString ();
+
+                    List<object> synchIDPV = new List<object>();
 					synchIDPV.Add (synchID);
 					synchIDPV.Add (recordID);
 					executeNonQuery (String.Format ("UPDATE {0} SET systemSynchID = @p0 WHERE id = @p1", insertDefinition.TableName), synchIDPV);
@@ -141,7 +141,7 @@ namespace SQLiteXM
 
 			try
 			{
-				ArrayList parameterList = new ArrayList ();
+                List<object> parameterList = new List<object>();
 				parameterList.Add (recordID);
 
 				executeQueryDirect (String.Format ("SELECT systemSynchID FROM {0} WHERE id = @p0 LIMIT 1", tableName), parameterList);
@@ -159,37 +159,37 @@ namespace SQLiteXM
 			return systemSynchID;
 		}
 
-		public void executeQueryDirect (string sqlStatement, ArrayList ParameterValues)
+		public void executeQueryDirect (string sqlStatement, List<object> ParameterValues)
 		{
 			connection.executeQuery (sqlStatement, ParameterValues);
 		}
 
-		public void executeQuery (string command, ArrayList ParameterValues)
+		public void executeQuery (string command, List<object> ParameterValues)
 		{
 			connection.executeQuery (SqlStatements.selectStatements [command], ParameterValues);
 		}
 
-		public void executeUpdateDirect (string sqlStatement, ArrayList ParameterValues)
+		public void executeUpdateDirect (string sqlStatement, List<object> ParameterValues)
 		{
 			executeNonQuery (sqlStatement, ParameterValues);
 		}
 
-		public void executeUpdate (string command, ArrayList ParameterValues)
+		public void executeUpdate (string command, List<object> ParameterValues)
 		{
 			executeNonQuery (SqlStatements.updateStatements [command], ParameterValues);
 		}
 
-		public void executeDeleteDirect (string sqlStatement, ArrayList ParameterValues)
+		public void executeDeleteDirect (string sqlStatement, List<object> ParameterValues)
 		{
 			executeNonQuery (sqlStatement, ParameterValues);
 		}
 
-		public void executeDelete (string command, ArrayList ParameterValues)
+		public void executeDelete (string command, List<object> ParameterValues)
 		{
 			executeNonQuery (SqlStatements.deleteStatements [command], ParameterValues);
 		}
 
-		public void executeSystemUpdateDirect (string sqlStatement, ArrayList ParameterValues)
+		public void executeSystemUpdateDirect (string sqlStatement, List<object> ParameterValues)
 		{
 			executeNonQueryTrans (sqlStatement, ParameterValues);
 		}
@@ -214,14 +214,14 @@ namespace SQLiteXM
 			executeNonQueryTrans (sqlStatement);
 		}
 
-		public void executeNonQuery (string sqlStatement, ArrayList ParameterValues = null)
+		public void executeNonQuery (string sqlStatement, List<object> ParameterValues = null)
 		{
 			executeNonQueryTrans (sqlStatement, ParameterValues);
 			interruptSynchronize = true;
 //			SxmInit.interruptSynchronize (connection.DatabaseName);
 		}
 
-		public void executeNonQueryTrans (string sqlStatement, ArrayList ParameterValues = null)
+		public void executeNonQueryTrans (string sqlStatement, List<object> ParameterValues = null)
 		{
 			connection.beginTransaction ();
 			connection.executeNonQuery (sqlStatement, ParameterValues);
@@ -250,7 +250,7 @@ namespace SQLiteXM
 					string dbFullyQualifiedPath = Path.Combine (databaseFolderPath, databaseName);
 
 					if (File.Exists (dbFullyQualifiedPath) == true)
-						connection.executeNonQuery (String.Format ("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as ArrayList);
+						connection.executeNonQuery (String.Format ("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>);
 					else
 						throw new SxmException (new ErrorMessage("noDatabaseExists", databaseName));
 				}
@@ -272,7 +272,7 @@ namespace SQLiteXM
 		{
 			try
 			{
-				connection.executeQuery ("PRAGMA database_list", null as ArrayList);
+				connection.executeQuery ("PRAGMA database_list", null as List<object>);
 
 				while (nextRow () == true) 
 				{
@@ -310,7 +310,7 @@ namespace SQLiteXM
 					string databaseFolderPath = Environment.GetFolderPath (databaseDescriptor.DatabaseFolder);
 					string dbFullyQualifiedPath = Path.Combine (databaseFolderPath, databaseName);
 					if (File.Exists (dbFullyQualifiedPath) == true)
-						connection.executeNonQuery (String.Format ("DETACH DATABASE '{0}'", databaseName), null as ArrayList);
+						connection.executeNonQuery (String.Format ("DETACH DATABASE '{0}'", databaseName), null as List<object>);
 					else
 						throw new SxmException (new ErrorMessage("noDatabaseExists", databaseName));
 				}

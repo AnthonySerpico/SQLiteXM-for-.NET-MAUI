@@ -275,22 +275,22 @@ namespace SQLiteXM
         }
         public void executeQuery(string command, Dictionary<string,object> parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
         public void executeQuery(string command, object[] parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
         public void executeQuery(string command, object[,] parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
         public void executeQuery(string command, Hashtable parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
 
-        public void executeQuery(string command, ArrayList parameterValues)
+        public void executeQuery(string command, List<object> parameterValues)
         {
             if (string.IsNullOrEmpty(command))
                 throw new SxmException(ErrorMessages.error["missingSQL"]);
@@ -322,22 +322,22 @@ namespace SQLiteXM
 
         public void executeNonQuery(string command, Dictionary<string, object> parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
         public void executeNonQuery(string command, object[] parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
         public void executeNonQuery(string command, object[,] parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
         public void executeNonQuery(string command, Hashtable parameterValues)
         {
-            executeQuery(command, new ArrayList() { parameterValues });
+            executeQuery(command, new List<object>() { parameterValues });
         }
 
-        public void executeNonQuery(string command, ArrayList parameterValues)
+        public void executeNonQuery(string command, List<object> parameterValues)
         {
             if (string.IsNullOrEmpty(command))
                 throw new SxmException(ErrorMessages.error["missingSQL"]);
@@ -368,7 +368,7 @@ namespace SQLiteXM
             }
         }
 
-        private void addCommandParameters(ArrayList parameterValues)
+        private void addCommandParameters(List<object> parameterValues)
         {
             connCommand.Parameters.Clear();
 
@@ -436,7 +436,7 @@ namespace SQLiteXM
                     return;
                 }
 
-                if (dbParametersDataType == DbParametersDataType.arrayList && dbParametersDataType != DbParametersDataType.tuple || dbParametersDataType == DbParametersDataType.oneDArray)
+                if (dbParametersDataType == DbParametersDataType.arrayList || dbParametersDataType == DbParametersDataType.tuple || dbParametersDataType == DbParametersDataType.oneDArray)
                 {
                     int cntr = 0;
 
@@ -468,7 +468,7 @@ namespace SQLiteXM
             }
         }
 
-        private DbParametersDataType getDbParameterType(ref ArrayList parameterValues)
+        private DbParametersDataType getDbParameterType(ref List<object> parameterValues)
         {
             Type? pvt = parameterValues[0]?.GetType();
 
