@@ -273,23 +273,6 @@ namespace SQLiteXM
                 connDataReader = null;
             }
         }
-        public void executeQuery(string command, Dictionary<string,object> parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
-        }
-        public void executeQuery(string command, object[] parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
-        }
-        public void executeQuery(string command, object[,] parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
-        }
-        public void executeQuery(string command, Hashtable parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
-        }
-
         public void executeQuery(string command, List<object> parameterValues)
         {
             if (string.IsNullOrEmpty(command))
@@ -318,23 +301,6 @@ namespace SQLiteXM
                 logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw new SxmException(ex);
             }
-        }
-
-        public void executeNonQuery(string command, Dictionary<string, object> parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
-        }
-        public void executeNonQuery(string command, object[] parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
-        }
-        public void executeNonQuery(string command, object[,] parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
-        }
-        public void executeNonQuery(string command, Hashtable parameterValues)
-        {
-            executeQuery(command, new List<object>() { parameterValues });
         }
 
         public void executeNonQuery(string command, List<object> parameterValues)
