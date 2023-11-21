@@ -60,7 +60,7 @@ namespace SQLiteXM
         private SqliteTransaction dbConnTransaction;
 
         static private string implicitDatabaseName;
-        private enum DbParametersDataType { arrayList, tuple, twoDArray, oneDArray, hashTable, dictionary }
+        private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
         public SxmConnection(string databaseName, bool transient = false)
         {
@@ -436,7 +436,7 @@ namespace SQLiteXM
                     return;
                 }
 
-                if (dbParametersDataType == DbParametersDataType.arrayList || dbParametersDataType == DbParametersDataType.tuple || dbParametersDataType == DbParametersDataType.oneDArray)
+                if (dbParametersDataType == DbParametersDataType.list || dbParametersDataType == DbParametersDataType.tupleList || dbParametersDataType == DbParametersDataType.oneDArray)
                 {
                     int cntr = 0;
 
@@ -444,12 +444,12 @@ namespace SQLiteXM
                     {
                         DbParameter dbParameter = connCommand.CreateParameter();
 
-                        if (dbParametersDataType == DbParametersDataType.arrayList)
+                        if (dbParametersDataType == DbParametersDataType.list)
                         {
                             dbParameter.Value = parameterValue;
                             dbParameter.ParameterName = "@p" + cntr.ToString();
                         }
-                        if (dbParametersDataType == DbParametersDataType.tuple)
+                        if (dbParametersDataType == DbParametersDataType.tupleList)
                         {
                             dbParameter.ParameterName = ((Tuple<string, object>)parameterValue).Item1;
                             dbParameter.Value = ((Tuple<string, object>)parameterValue).Item2;
@@ -473,7 +473,7 @@ namespace SQLiteXM
             Type? pvt = parameterValues[0]?.GetType();
 
             if (pvt == typeof(Tuple<string, object>))
-                return DbParametersDataType.tuple;
+                return DbParametersDataType.tupleList;
 
             if (pvt == typeof(object[]))
                 return DbParametersDataType.oneDArray;
@@ -487,7 +487,7 @@ namespace SQLiteXM
             if (pvt == typeof(Dictionary<string, object>))
                 return DbParametersDataType.dictionary;
 
-            return DbParametersDataType.arrayList;
+            return DbParametersDataType.list;
         }
 
         public void beginTransaction()
