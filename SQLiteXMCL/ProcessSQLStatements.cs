@@ -1,12 +1,15 @@
 ﻿using System.IO;
+using System.Reflection.PortableExecutable;
 
 namespace SQLiteXM
 {
-    public class ProcessSQLStatements
+	public class ProcessSQLStatements
 	{
-		private ProcessSQLStatements ()	{}
+		private ProcessSQLStatements() { }
+		private static double versionNumber = 0;
+		public static double getSqlStatementsVersionNumber{ get => versionNumber; }
 
-		public static bool Parse (StreamReader sqlStatementAssets)
+        public static bool Parse (StreamReader sqlStatementAssets)
 		{
 			string sqlStatements = sqlStatementAssets.ReadToEnd ();
 			return Parse (sqlStatements);
@@ -48,7 +51,11 @@ namespace SQLiteXM
 
 			switch (header) 
 			{
-				case "table":
+                case "version":
+					index = getVersionNumber(index, sqlStatements);
+                    break;
+
+                case "table":
 					index = processTableStatements (index, sqlStatements);
 					break;
 
@@ -77,7 +84,34 @@ namespace SQLiteXM
 			return index;
 		}
 
-		private static int processTableStatements(int index, string sqlStatements)
+        private static int getVersionNumber(int index, string versionStatement)
+        {
+            CommandReturn commandReturn = null;
+			string version = string.Empty;
+
+            do
+            {
+                commandReturn = getCommand(index, versionStatement);
+                index = commandReturn.index;
+                if (commandReturn.command.Length == 0) // Were finished processing the version statement.
+                    break;
+
+                version = commandReturn.command;
+            } while (true);
+
+			try
+			{
+				if (!string.IsNullOrEmpty(versionStatement))
+					versionNumber = Convert.ToDouble(version);
+            }
+			catch(System.FormatException)
+			{ 
+				throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
+			}
+            return index;
+        }
+
+        private static int processTableStatements(int index, string sqlStatements)
 		{
 			CommandReturn commandReturn = null;
 			string sqlStatement;

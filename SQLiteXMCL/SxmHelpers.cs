@@ -21,10 +21,10 @@ namespace SQLiteXM
         {
         }
 
-        public static void populateTable<T>(Hashtable dbRow, ref T userObject)
+        public static void populateTable<T>(Dictionary<string, object> dbRow, ref T userObject) where T : class
         {
             ICollection ic = dbRow.Keys;
-            foreach (string key in ic)  // Process each entry (column) in the Hashtable.
+            foreach (string key in ic)  // Process each entry (column) in the Dictionary.
             {
                 try
                 {
@@ -55,7 +55,7 @@ namespace SQLiteXM
 
                             case DbOperationTypes.select:
                                 sxmTransaction.executeQuery(dbItem.sqlStatementName, dbItem.parameterValues);
-                                List<Hashtable> selectedRows = sxmTransaction.getAllRows();
+                                List<Dictionary<string, object?>> selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                                 break;
 
                             case DbOperationTypes.update:
@@ -75,7 +75,6 @@ namespace SQLiteXM
             }
             catch (System.Exception)
             {
-                // It is assumed that processing on the local database wil be successful. If not, all bets are off.
                 throw;
             }
 
@@ -130,7 +129,6 @@ namespace SQLiteXM
 			}
 			catch (System.Exception)
 			{
-				// It is assumed that processing on the local database wil be successful. If not, all bets are off.
 				throw;
 			}
 
@@ -161,7 +159,6 @@ namespace SQLiteXM
 			}
 			catch (System.Exception)
 			{
-				// It is assumed that processing on the local database will be successful. If not, all bets are off.
 				throw;
 			}
 
@@ -192,40 +189,38 @@ namespace SQLiteXM
 			}
 			catch (System.Exception)
 			{
-				// It is assumed that processing on the local database wil be successful. If not, all bets are off.
 				throw;
 			}
 
 			await Task.CompletedTask;
 		}
 
-        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
         {
             return await performSelect(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }
-        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, object[,] parameterValues, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, object[,] parameterValues, string? dbName = default)
         {
             return await performSelect(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }
-        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
         {
             return await performSelect(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }
-        public static async Task<List<Hashtable>> performSelect(string sqlStatementName, List<object> parameterValues, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, List<object> parameterValues, string? dbName = default)
 		{
-			List<Hashtable> selectedRows;
+			List<Dictionary<string, object?>> selectedRows;
 
 			try
 			{
 				using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
 				{
 					sxmTransaction.executeQuery(sqlStatementName, parameterValues);
-					selectedRows = sxmTransaction.getAllRows();
+                    selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>> ();
 				}
 			}
 			catch (System.Exception)
 			{
-				// It is assumed that processing on the local database wil be successful. If not, all bets are off.
 				throw;
 			}
 

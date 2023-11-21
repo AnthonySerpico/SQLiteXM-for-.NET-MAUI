@@ -48,8 +48,11 @@ namespace SQLiteXM
 			error.Add ("threadLockError", new ErrorMessage ("The current thread already has an active instance of SxmSTransaction.", 
 				Defines.SxmErrorCode.threadLockError)); 
 			error.Add ("sxmSTransactionTimeout", new ErrorMessage ("Timeout trying to acquire the SxmSTransaction lock.", 
-				Defines.SxmErrorCode.sxmSTransactionTimeout)); 
-		}
+				Defines.SxmErrorCode.sxmSTransactionTimeout));
+			error.Add("improperlyFormattedVersionNumber", new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double.",
+				Defines.SxmErrorCode.dbVersionFormatError));
+
+        }
 
 		public static string getErrorText (string errorName)
 		{

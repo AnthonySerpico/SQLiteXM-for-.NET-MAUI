@@ -551,14 +551,13 @@ namespace SQLiteXM
 
             return fieldNames;
         }
-
-        public Hashtable getNextRow()
+        public T? getNextRow<T>() where T : IDictionary<string, object?>, new()
         {
-            Hashtable row = null;
+            T? row = default(T);
 
             if (nextRow() == true)
             {
-                row = new Hashtable();
+                row = new T();
                 int numColumns = getColumnCount();
                 for (int i = 0; i < numColumns; i++)
                 {

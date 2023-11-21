@@ -55,8 +55,9 @@
 		invalidDBName,
 		userDefined,
 		threadLockError,
-		sxmSTransactionTimeout
-		};
+		sxmSTransactionTimeout,
+        dbVersionFormatError
+        };
 
 		private Defines () {}
 	}

@@ -41,24 +41,39 @@ namespace SQLiteXM
 
             try
             {
-                foreach (string key in SqlStatements.tableCreateStatements.Keys)
-                    if (doesTableExist(key, connectionMap, tableNamesMap) == false)
+                double currentDbVersionNumber = -1;
+                double sqlStatementsFileDbVersion = ProcessSQLStatements.getSqlStatementsVersionNumber;
+                if(sqlStatementsFileDbVersion > 0)
+                    currentDbVersionNumber = getCurrentDbVersionNumber();
+
+                if (sqlStatementsFileDbVersion > currentDbVersionNumber)
+                {
+                    foreach (string key in SqlStatements.tableCreateStatements.Keys)
                     {
-                        TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
-                        if (tableDefinition.TableSQL.StartsWith("CREATE ", true, null) == true)
-                            applyCreateTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
-                    }
-                    else
-                    {
-                        TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
-                        if (tableDefinition.TableSQL.StartsWith("DROP ", true, null) == true)
-                            applyDropTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
+                        if (doesTableExist(key, connectionMap, tableNamesMap) == false)
+                        {
+                            TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
+                            if (tableDefinition.TableSQL.StartsWith("CREATE ", true, null) == true)
+                                applyCreateTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
+                        }
                         else
                         {
-                            applyAlterTableStatements(key, connectionMap);
-                            applyIndexTableStatements(key, connectionMap);
+                            TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
+                            if (tableDefinition.TableSQL.StartsWith("DROP ", true, null) == true)
+                                applyDropTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
+                            else
+                            {
+                                applyAlterTableStatements(key, connectionMap);
+                                applyIndexTableStatements(key, connectionMap);
+                            }
                         }
                     }
+
+                    if(sqlStatementsFileDbVersion > 0)
+                        writeSqlStatementsVersionNumber(sqlStatementsFileDbVersion);
+                    else
+                        deleteCurrentDbVersionNumber();
+                }
             }
 #pragma warning disable 0168
             catch (SxmException ex)
@@ -115,6 +130,48 @@ namespace SQLiteXM
                 }
         */
 
+        public static double getCurrentDbVersionNumber()
+        {
+            double versionNumber = -1;
+
+            try
+            {
+                string targetFile = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
+                using FileStream InputStream = System.IO.File.OpenRead(targetFile);
+                using StreamReader reader = new StreamReader(InputStream);
+
+                string vNum = reader.ReadToEnd();
+                if (!string.IsNullOrEmpty(vNum))
+                    versionNumber = Convert.ToDouble(vNum);
+            }
+            catch (System.Exception) { }
+
+            return versionNumber;
+        }
+
+        public static void deleteCurrentDbVersionNumber()
+        {
+            try
+            {
+                string filepath = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
+                if(System.IO.File.Exists(filepath))
+                    System.IO.File.Delete(filepath);
+            }
+            catch (System.Exception) { }
+        }
+
+        private static void writeSqlStatementsVersionNumber(double versionNumber)
+        {
+            try
+            {
+                string targetFile = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
+                using StreamWriter writer = new StreamWriter(targetFile, append : false);
+
+                writer.Write(versionNumber);
+                writer.Close();
+            }
+            catch (System.Exception) { }
+        }
 
         private static void applyCreateTableStatement(string key, Hashtable connectionMap, TableDefinition tableDefinition, Hashtable tableNamesMap)
         {

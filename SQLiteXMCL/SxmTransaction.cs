@@ -1,7 +1,5 @@
-﻿using System;
-using System.IO;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
+using System.Xml.Linq;
 
 namespace SQLiteXM
 {
@@ -92,11 +90,12 @@ namespace SQLiteXM
 		public InsertResponse executeInsert (string command, List<object> ParameterValues)
 		{
 			long recordID = -1;
-			string synchID = null;
+			string? synchID = default(string);
 
-			InsertDefinition insertDefinition = SqlStatements.insertStatements [command] as InsertDefinition;
+			InsertDefinition? insertDefinition = SqlStatements.insertStatements [command] as InsertDefinition;
 			if (insertDefinition == null)
 				throw new SxmException ( new ErrorMessage("unknownSQLStatement", command));
+
 			executeNonQueryTrans (insertDefinition.InsertSQL, ParameterValues);
 
 			try
@@ -104,9 +103,14 @@ namespace SQLiteXM
 				if (insertDefinition.TableName.Length != 0) 
 				{
 					executeQueryDirect ("select last_insert_rowid() as rowID", null);
-					Hashtable nextRow = connection.getNextRow ();
-					recordID = (long)nextRow ["rowID"];
-					synchID = getSynchID (insertDefinition.TableName, recordID);
+                    Dictionary<string, object?>? nextRow = connection.getNextRow<Dictionary<string, object?>> ();
+
+					if (nextRow != default && nextRow.Count > 0)
+						if (nextRow.ContainsKey("rowID") == true)
+						{
+							recordID = (long)nextRow["rowID"];
+							synchID = getSynchID(insertDefinition.TableName, recordID);
+						}
 
 					if (synchID == null || synchID.Length == 0)
 						synchID = Guid.NewGuid ().ToString ();
@@ -134,10 +138,9 @@ namespace SQLiteXM
 			return new InsertResponse (recordID, synchID);
 		}
 
-		private string getSynchID (string tableName, long recordID)
+		private string? getSynchID (string tableName, long recordID)
 		{
-			Hashtable row = null;
-			string systemSynchID = null;
+			string? systemSynchID = default(string);
 
 			try
 			{
@@ -145,11 +148,11 @@ namespace SQLiteXM
 				parameterList.Add (recordID);
 
 				executeQueryDirect (String.Format ("SELECT systemSynchID FROM {0} WHERE id = @p0 LIMIT 1", tableName), parameterList);
-				row = connection.getNextRow ();
+                Dictionary<string, object?>? row = connection.getNextRow<Dictionary<string, object?>> ();
 
 				if (row != null && row.Count > 0) 
 					if (row.ContainsKey ("systemSynchID") == true)
-						systemSynchID = (string)row ["systemSynchID"];
+						systemSynchID = (string?)row ["systemSynchID"];
 
 			}
 			#pragma warning disable 0168
@@ -159,7 +162,7 @@ namespace SQLiteXM
 			return systemSynchID;
 		}
 
-		public void executeQueryDirect (string sqlStatement, List<object> ParameterValues)
+        public void executeQueryDirect (string sqlStatement, List<object> ParameterValues)
 		{
 			connection.executeQuery (sqlStatement, ParameterValues);
 		}
@@ -391,17 +394,17 @@ namespace SQLiteXM
 			return connection.getFieldNames ();
 		}
 
-		public Hashtable getNextRow ()
-		{
-			return connection.getNextRow ();
+		public T? getNextRow<T> () where T : IDictionary<string, object?>, new()
+        {
+			return connection.getNextRow<T> ();
 		}
 
-		public List<Hashtable> getAllRows()
+		public List<T> getAllRows<T>() where T : IDictionary<string, object?>, new()
 		{
-			List<Hashtable> allRows = new List<Hashtable> ();
-			Hashtable row;
+			List<T> allRows = new List<T> ();
+			T? row;
 
-			while ((row = getNextRow ()) != null)
+			while ((row = getNextRow<T> ()) != null)
 				allRows.Add (row);
 
 			return allRows;
