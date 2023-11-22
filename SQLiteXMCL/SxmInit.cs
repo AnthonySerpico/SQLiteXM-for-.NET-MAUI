@@ -41,12 +41,10 @@ namespace SQLiteXM
 
             try
             {
-                double currentDbVersionNumber = -1;
-                double sqlStatementsFileDbVersion = ProcessSQLStatements.getSqlStatementsVersionNumber;
-                if(sqlStatementsFileDbVersion > 0)
-                    currentDbVersionNumber = getCurrentDbVersionNumber();
+                double sqlStatementsVersionNumber = ProcessSQLStatements.getSqlStatementsVersionNumber;  // The value in the current SQL statements file.
+                double currentDbVersionNumber     = getDbVersionNumber();
 
-                if (sqlStatementsFileDbVersion > currentDbVersionNumber)
+                if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
                     foreach (string key in SqlStatements.tableCreateStatements.Keys)
                     {
@@ -69,10 +67,7 @@ namespace SQLiteXM
                         }
                     }
 
-                    if(sqlStatementsFileDbVersion > 0)
-                        writeSqlStatementsVersionNumber(sqlStatementsFileDbVersion);
-                    else
-                        deleteCurrentDbVersionNumber();
+                    storeDbVersionNumber(sqlStatementsVersionNumber);
                 }
             }
 #pragma warning disable 0168
@@ -130,7 +125,7 @@ namespace SQLiteXM
                 }
         */
 
-        public static double getCurrentDbVersionNumber()
+        public static double getDbVersionNumber()
         {
             double versionNumber = -1;
 
@@ -149,7 +144,7 @@ namespace SQLiteXM
             return versionNumber;
         }
 
-        public static void deleteCurrentDbVersionNumber()
+        public static void deleteDbVersionNumber()
         {
             try
             {
@@ -160,7 +155,7 @@ namespace SQLiteXM
             catch (System.Exception) { }
         }
 
-        private static void writeSqlStatementsVersionNumber(double versionNumber)
+        private static void storeDbVersionNumber(double versionNumber)
         {
             try
             {
