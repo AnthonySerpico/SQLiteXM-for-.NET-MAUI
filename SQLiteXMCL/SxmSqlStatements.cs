@@ -1,15 +1,40 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Specialized;
 using System.Text.Json;
 
 namespace SQLiteXM
 {
-    public class SxmSqlStatements
+    public class SxmSqlStatements : SqlStatements
     {
-        private SxmSqlStatements() 
+        public  new Hashtable? alterStatements { get; set; }
+        public  new Hashtable? indexStatements { get; set; }
+        public  new Hashtable insertStatements { get; set; }
+        public  new Hashtable? tableCreateStatements { get; set; }
+        public  new NameValueCollection selectStatements { get; set; }
+        public  new NameValueCollection updateStatements { get; set; }
+        public  new NameValueCollection deleteStatements { get; set; }
+
+        private SxmSqlStatements() { }
+
+        public static string generateJson()
         {
-            //string strJson = JsonSerializer.Serialize<SqlStatements>(SqlStatements);
-            //Console.WriteLine(strJson);
+            SxmSqlStatements sxmSqlStatements = new SxmSqlStatements();
+
+            sxmSqlStatements.alterStatements = SqlStatements.alterStatements;
+            sxmSqlStatements.indexStatements = SqlStatements.indexStatements;
+            sxmSqlStatements.insertStatements = SqlStatements.insertStatements;
+            sxmSqlStatements.tableCreateStatements = SqlStatements.tableCreateStatements;
+            sxmSqlStatements.selectStatements = SqlStatements.selectStatements;
+            sxmSqlStatements.updateStatements = SqlStatements.updateStatements;
+            sxmSqlStatements.deleteStatements = SqlStatements.deleteStatements;
+
+            addInsertDefinition("insertNewUser", "userTable", "INSERT INTO userTable (fname, lname, recordingNumber, recordingLength, memberId, activatedDateTicks) VALUES(@p0, @p1, @p2, @p3)");
+            string strJson = JsonSerializer.Serialize<SxmSqlStatements>(sxmSqlStatements);
+
+            Console.WriteLine(strJson);
+            return strJson;
+
         }
 
         public static void setVersionNumber(double version)
@@ -60,6 +85,6 @@ namespace SQLiteXM
         {
             SqlStatements.addAlterDefinition(dbAndTableName, columnName, sqlStatement);
         }
-     }
+    }
 }
 

@@ -5,13 +5,13 @@ namespace SQLiteXM
 {
     public class SqlStatements
 	{
-		internal static Hashtable? alterStatements { get; set; } = default(Hashtable);
-		internal static Hashtable? indexStatements { get; set; } = default(Hashtable);
-		internal static Hashtable insertStatements { get; set; } = new Hashtable();
-		internal static Hashtable? tableCreateStatements { get; set; } = new Hashtable();
-		internal static NameValueCollection selectStatements { get; set; } = new NameValueCollection ();
-		internal static NameValueCollection updateStatements { get; set; } = new NameValueCollection ();
-		internal static NameValueCollection deleteStatements { get; set; } = new NameValueCollection ();
+		internal static Hashtable? alterStatements = default(Hashtable);
+		internal static Hashtable? indexStatements = default(Hashtable);
+		internal static Hashtable insertStatements = new Hashtable();
+		internal static Hashtable? tableCreateStatements = new Hashtable();
+		internal static NameValueCollection selectStatements = new NameValueCollection ();
+		internal static NameValueCollection updateStatements = new NameValueCollection ();
+		internal static NameValueCollection deleteStatements = new NameValueCollection ();
 
 		internal static void addInsertDefinition (string insertName, string tableName, string insertSQL)
 		{
@@ -93,7 +93,7 @@ namespace SQLiteXM
 			}
 		}
 
-		private SqlStatements () {}
+		internal SqlStatements () {}
 	}
 }
 
