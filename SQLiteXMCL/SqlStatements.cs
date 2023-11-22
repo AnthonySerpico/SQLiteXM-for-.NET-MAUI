@@ -67,7 +67,12 @@ namespace SQLiteXM
 			alterStatementsList.Add ( new AlterDefinition (columnName, sqlStatement));
 		}
 
-		internal static void addTableDefinition (string tableName, string tableSQL, int cloudPush)
+        internal static void addTableDefinition(string tableName, string tableSQL)
+        {
+            addTableDefinition(tableName, tableSQL, Defines.NO_CLOUD_SYNCH);
+        }
+
+        internal static void addTableDefinition (string tableName, string tableSQL, int cloudPush)
 		{
 			if (tableCreateStatements == null)
 				tableCreateStatements = new Hashtable();
