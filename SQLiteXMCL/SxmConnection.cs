@@ -57,12 +57,12 @@ namespace SQLiteXM
         private SqliteConnection dbConn;
         private string databaseFolderPath;
         private DbDataReader connDataReader;
-        private SqliteTransaction dbConnTransaction;
+        private SqliteTransaction? dbConnTransaction;
 
-        static private string implicitDatabaseName;
+        static private string? implicitDatabaseName;
         private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
-        public SxmConnection(string databaseName, bool transient = false)
+        public SxmConnection(string? databaseName, bool transient = false)
         {
             Environment.SpecialFolder logfileFolder;
             string logfileName;
@@ -83,14 +83,14 @@ namespace SQLiteXM
                 databaseName = SxmConnection.implicitDatabaseName;
             }
 
-            DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName);
+            DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
             if (databaseDescriptor == null)
             {
-                throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName));
+                throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName!));
             }
 
             this.transient = transient;
-            this.databaseName = databaseName;
+            this.databaseName = databaseName!;
             databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
             try  // We use a try-catch for the finally block. The unlock must happen.
             {
@@ -221,7 +221,7 @@ namespace SQLiteXM
                     else
                         dbConnTransaction.Rollback();
 
-                    dbConnTransaction = null;
+                    dbConnTransaction = default(SqliteTransaction);
                 }
                 catch (SqliteException ex)
                 {
@@ -251,7 +251,7 @@ namespace SQLiteXM
 
                 dbConn.Close();
                 dbConn.Dispose();
-                dbConn = null;
+                dbConn = default(SqliteConnection);
             }
         }
 
@@ -261,7 +261,7 @@ namespace SQLiteXM
             {
                 releaseDataReader();
                 connCommand.Dispose();
-                connCommand = null;
+                connCommand = default(DbCommand);
             }
         }
 
@@ -270,7 +270,7 @@ namespace SQLiteXM
             if (connDataReader != null && connDataReader.IsClosed == false)
             {
                 connDataReader.Close();
-                connDataReader = null;
+                connDataReader = default(DbDataReader);
             }
         }
         public void executeQuery(string command, List<object> parameterValues)
@@ -487,7 +487,7 @@ namespace SQLiteXM
             return false;
         }
 
-        public object getValue(string fieldName)
+        public object? getValue(string fieldName)
         {
             try
             {
@@ -503,10 +503,10 @@ namespace SQLiteXM
                 throw new SxmException(ex);
             }
 
-            return null;
+            return default;
         }
 
-        public object getValue(int fieldOrdinal)
+        public object? getValue(int fieldOrdinal)
         {
             try
             {
@@ -518,10 +518,10 @@ namespace SQLiteXM
                 throw new SxmException(ex);
             }
 
-            return null;
+            return default;
         }
 
-        public string getFieldName(int fieldOrdinal)
+        public string? getFieldName(int fieldOrdinal)
         {
             try
             {
@@ -533,7 +533,7 @@ namespace SQLiteXM
                 throw new SxmException(ex);
             }
 
-            return null;
+            return default;
         }
 
         public string[] getFieldNames()
@@ -592,7 +592,7 @@ namespace SQLiteXM
             return anotherRow;
         }
 
-        public Type getType(string fieldName)
+        public Type? getType(string fieldName)
         {
             try
             {
@@ -607,7 +607,7 @@ namespace SQLiteXM
                 throw new SxmException(ex);
             }
 
-            return null;
+            return default;
         }
     }
 }

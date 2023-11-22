@@ -243,7 +243,7 @@ namespace SQLiteXM
 		{
 			if (connection.DatabaseName.Equals (databaseName) == false) 
 			{
-				DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.getDescriptor (databaseName);
+				DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor (databaseName);
 				if (databaseDescriptor == null) 
 					throw new SxmException (new ErrorMessage("noDBDescriptorExists", databaseName));
 
@@ -304,7 +304,7 @@ namespace SQLiteXM
 		{
 			if (connection.DatabaseName.Equals (databaseName) == false) 
 			{
-				DatabaseDescriptor databaseDescriptor = DatabaseDescriptor.getDescriptor (databaseName);
+				DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor (databaseName);
 				if (databaseDescriptor == null)
 					throw new SxmException (new ErrorMessage("noDBDescriptorExists", databaseName));
 
@@ -374,17 +374,17 @@ namespace SQLiteXM
 			return connection.hasRows ();
 		}
 
-		public object getValue (string fieldName)
+		public object? getValue (string fieldName)
 		{
 			return connection.getValue (fieldName);
 		}
 
-		public object getValue (int fieldOrdinal)
+		public object? getValue (int fieldOrdinal)
 		{
 			return connection.getValue (fieldOrdinal);
 		}
 
-		public string getFieldName (int fieldOrdinal)
+		public string? getFieldName (int fieldOrdinal)
 		{
 			return connection.getFieldName (fieldOrdinal);
 		}
@@ -420,7 +420,7 @@ namespace SQLiteXM
 			return connection.nextRow ();
 		}
 
-		public Type getType (string fieldName)
+		public Type? getType (string fieldName)
 		{
 			return connection.getType (fieldName);
 		}

@@ -70,7 +70,7 @@ namespace SQLiteXM
 				File.Create (pathToDatabase);
 		}
 
-		public static DatabaseDescriptor getDescriptor (string dbName)
+		public static DatabaseDescriptor? getDescriptor (string dbName)
 		{
 			lock (dbDescriptors.SyncRoot) 
 			{

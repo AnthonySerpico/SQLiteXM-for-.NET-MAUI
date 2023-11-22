@@ -9,6 +9,14 @@ namespace SQLiteXM
 
         private SxmInit() { }
 
+        public static void initDB(params string[] dbNames)
+        {
+            foreach (string dbName in dbNames)
+                new DatabaseDescriptor(dbName);
+
+            SxmInit.initialize(default(string?));
+        }
+
         public static async Task initDB(string SqlStatementsFileName, params string[] dbNames)
         {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
@@ -33,10 +41,10 @@ namespace SQLiteXM
 
         public static bool initialize() // No synchronize.
         {
-            return initialize(null);
+            return initialize(default(string?));
         }
 
-        private static bool initialize(string hrAppName)
+        private static bool initialize(string? hrAppName)
         {
             Hashtable connectionMap = new Hashtable();
             Hashtable tableNamesMap = new Hashtable();

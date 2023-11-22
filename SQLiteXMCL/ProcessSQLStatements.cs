@@ -8,6 +8,7 @@ namespace SQLiteXM
 		private ProcessSQLStatements() { }
 		private static double versionNumber = 0;
 		public static double getSqlStatementsVersionNumber{ get => versionNumber; }
+        internal static double setSqlStatementsVersionNumber { set { versionNumber = value; } get => versionNumber;  }
 
         public static bool Parse (StreamReader sqlStatementAssets)
 		{
@@ -105,9 +106,13 @@ namespace SQLiteXM
 					versionNumber = Convert.ToDouble(version);
             }
 			catch(System.FormatException)
-			{ 
-				throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
-			}
+			{
+
+				if (version != null)
+					version = "(is blank)";
+
+                throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
+            }
             return index;
         }
 

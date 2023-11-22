@@ -5,13 +5,13 @@ namespace SQLiteXM
 {
     public class SqlStatements
 	{
-		internal static Hashtable alterStatements = null;
-		internal static Hashtable indexStatements = null;
-		internal static Hashtable insertStatements = new Hashtable ();
-		internal static Hashtable tableCreateStatements = new Hashtable ();
-		internal static NameValueCollection selectStatements = new NameValueCollection ();
-		internal static NameValueCollection updateStatements = new NameValueCollection ();
-		internal static NameValueCollection deleteStatements = new NameValueCollection ();
+		internal static Hashtable? alterStatements { get; set; } = default(Hashtable);
+		internal static Hashtable? indexStatements { get; set; } = default(Hashtable);
+		internal static Hashtable insertStatements { get; set; } = new Hashtable();
+		internal static Hashtable? tableCreateStatements { get; set; } = new Hashtable();
+		internal static NameValueCollection selectStatements { get; set; } = new NameValueCollection ();
+		internal static NameValueCollection updateStatements { get; set; } = new NameValueCollection ();
+		internal static NameValueCollection deleteStatements { get; set; } = new NameValueCollection ();
 
 		internal static void addInsertDefinition (string insertName, string tableName, string insertSQL)
 		{
@@ -40,9 +40,9 @@ namespace SQLiteXM
 		internal static void addIndexDefinition (string dbAndTableName, string indexName, string sqlStatement)
 		{
 			if (indexStatements == null)
-				indexStatements = new Hashtable ();
+				indexStatements = new Hashtable();
 
-			ArrayList indexStatementsList = indexStatements [dbAndTableName] as ArrayList;
+			ArrayList? indexStatementsList = indexStatements [dbAndTableName] as ArrayList;
 			if (indexStatementsList == null) 
 			{
 				indexStatementsList = new ArrayList ();
@@ -55,9 +55,9 @@ namespace SQLiteXM
 		internal static void addAlterDefinition (string dbAndTableName, string columnName, string sqlStatement)
 		{
 			if (alterStatements == null)
-				alterStatements = new Hashtable ();
+				alterStatements = new Hashtable();
 
-			ArrayList alterStatementsList = alterStatements [dbAndTableName] as ArrayList;
+			ArrayList? alterStatementsList = alterStatements [dbAndTableName] as ArrayList;
 			if (alterStatementsList == null) 
 			{
 				alterStatementsList = new ArrayList ();
@@ -70,26 +70,26 @@ namespace SQLiteXM
 		internal static void addTableDefinition (string tableName, string tableSQL, int cloudPush)
 		{
 			if (tableCreateStatements == null)
-				tableCreateStatements = new Hashtable ();
+				tableCreateStatements = new Hashtable();
 
 			tableCreateStatements.Add( tableName, new TableDefinition (tableSQL, cloudPush));
 		}
 
 		internal static void clearStatementTables ()
 		{
-			if (alterStatements != null) 
+			if (alterStatements != default(Hashtable)) 
 			{
 				alterStatements.Clear ();
-				alterStatements = null;
+				alterStatements = default(Hashtable);
 			}
 
-			tableCreateStatements.Clear ();
-			tableCreateStatements = null;
+			tableCreateStatements?.Clear ();
+			tableCreateStatements = default(Hashtable);
 
-			if (indexStatements != null) 
+			if (indexStatements != default(Hashtable)) 
 			{
 				indexStatements.Clear ();
-				indexStatements = null;
+				indexStatements = default(Hashtable);
 			}
 		}
 
