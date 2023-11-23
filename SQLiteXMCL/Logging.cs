@@ -32,7 +32,7 @@ namespace SQLiteXM
 					lock (synchLock) 
 					{
 						File.AppendAllText (logPath, "******************************************************* " + logLevel + Environment.NewLine, Encoding.UTF8);
-						File.AppendAllText (logPath, "Time Stamp: " + DateTime.UtcNow.ToString ("MM/dd/yyyy hh:mm:ss.fff tt", System.Globalization.CultureInfo.CreateSpecificCulture ("en-US")) + Environment.NewLine, Encoding.UTF8);
+						File.AppendAllText (logPath, "Time Stamp: " + DateTime.UtcNow.ToString ("MM/dd/yyyy hh:mm:ss.fff tt", System.Globalization.CultureInfo.CreateSpecificCulture ("en-US")) + " (UTC)  " + DateTime.UtcNow.ToLocalTime().ToString("MM/dd/yyyy hh:mm:ss.fff tt", System.Globalization.CultureInfo.CreateSpecificCulture("en-US")) + " (Local Time)"+ Environment.NewLine, Encoding.UTF8);
 						File.AppendAllText (logPath, errorLogText.ToString () + Environment.NewLine, Encoding.UTF8);
 						File.AppendAllText (logPath, "*************************************************************" + Environment.NewLine + Environment.NewLine, Encoding.UTF8);
 
