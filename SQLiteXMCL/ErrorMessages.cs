@@ -31,7 +31,7 @@ namespace SQLiteXM
 				Defines.SxmErrorCode.unknownSynchCommand));
 			error.Add ("invalidSQLStatementDefinition", new ErrorMessage ("An '{0}' statement in the SQL statements properties file is improperly formatted.", 
 				Defines.SxmErrorCode.invalidSQLStatementDefinition));
-			error.Add ("noImplicitDBDescriptorExists", new ErrorMessage ("An implicit database descriptor could not be found.", 
+			error.Add ("noImplicitDBDescriptorExists", new ErrorMessage ("An implicit database descriptor could not be found. Did you define more than one database?", 
 				Defines.SxmErrorCode.noImplicitDBDescriptorExists));
 			error.Add ("unknownErrorName", new ErrorMessage ("The error '{0}' could not be fund.", 
 				Defines.SxmErrorCode.unknownErrorName));
@@ -51,7 +51,8 @@ namespace SQLiteXM
 				Defines.SxmErrorCode.sxmSTransactionTimeout));
 			error.Add("improperlyFormattedVersionNumber", new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double greater than 0.",
 				Defines.SxmErrorCode.dbVersionFormatError));
-
+            error.Add("missingDatabaseName", new ErrorMessage("The database name is missing or is in the wrong spot in the SQL statements file. The database name must be the first field in the SQL statementd file.",
+                Defines.SxmErrorCode.dbVersionFormatError));
         }
 
 		public static string getErrorText (string errorName)

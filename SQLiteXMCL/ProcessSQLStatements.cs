@@ -1,4 +1,7 @@
-﻿using System.IO;
+﻿using Microsoft.Maui.Controls.PlatformConfiguration;
+using Microsoft.Maui.Storage;
+using System;
+using System.IO;
 using System.Reflection.PortableExecutable;
 
 namespace SQLiteXM
@@ -7,8 +10,11 @@ namespace SQLiteXM
 	{
 		private ProcessSQLStatements() { }
 		private static double versionNumber = 0;
-		public static double getSqlStatementsVersionNumber{ get => versionNumber; }
-        internal static double setSqlStatementsVersionNumber { set { versionNumber = value; } get => versionNumber;  }
+		public static double getSqlStatementsVersionNumber { get => versionNumber; }
+		internal static double setSqlStatementsVersionNumber { set { versionNumber = value; } get => versionNumber; }
+
+		public static string retreiveDatabaseName { get => databaseName; }
+		private static string databaseName = string.Empty;
 
         public static bool Parse (StreamReader sqlStatementAssets)
 		{
@@ -48,34 +54,44 @@ namespace SQLiteXM
 
 		private static int parseHeader(string header, int index, string sqlStatements)
 		{
-			header = header.ToLower ();
+            header = header.ToLower ();
 
 			switch (header) 
 			{
+                case "database":
+                    index = getDatabaseName(index, sqlStatements,  ref databaseName);
+                    break;
+
                 case "version":
-					index = getVersionNumber(index, sqlStatements);
+					checkDatabaseName();
+                    index = getVersionNumber(index, sqlStatements);
                     break;
 
                 case "table":
-					index = processTableStatements (index, sqlStatements);
+                    checkDatabaseName();
+                    index = processTableStatements (index, sqlStatements);
 					break;
 
 				case "insert":
-					index = processInsertStatements (index, sqlStatements);
+                    checkDatabaseName();
+                    index = processInsertStatements (index, sqlStatements);
 					break;
 
 				case "alter":
-					index = processAlterStatements (index, sqlStatements);
+                    checkDatabaseName();
+                    index = processAlterStatements (index, sqlStatements);
 					break;
 
 				case "index":
-					index = processIndexStatements (index, sqlStatements);
+                    checkDatabaseName();
+                    index = processIndexStatements (index, sqlStatements);
 					break;
 
 				case "select":
 				case "update":
 				case "delete":
-					index = processStatement (index, header, sqlStatements);
+                    checkDatabaseName();
+                    index = processStatement (index, header, sqlStatements);
 					break;
 
 				default:
@@ -83,8 +99,35 @@ namespace SQLiteXM
 			}
 
 			return index;
-		}
+        }
 
+		private static void checkDatabaseName()
+		{
+			if(string.IsNullOrEmpty(databaseName))
+                throw new SxmException(new ErrorMessage("missingDatabaseName", databaseName));
+        }
+
+        private static int getDatabaseName(int index, string name, ref string databaseName)
+		{
+            CommandReturn? commandReturn = default(CommandReturn);
+
+            do
+            {
+                commandReturn = getCommand(index, name);
+                index = commandReturn.index;
+                if (commandReturn.command.Length == 0) // Were finished processing the version statement.
+                    break;
+
+                databaseName = commandReturn.command;
+            } while (true);
+			{
+                char[] pattern = Path.GetInvalidFileNameChars();
+                if(databaseName.Any(pattern.Contains) || string.IsNullOrEmpty(databaseName))
+                    throw new SxmException(new ErrorMessage("invalidDBName", databaseName));
+            }
+
+            return index;
+        }
         private static int getVersionNumber(int index, string versionStatement)
         {
             CommandReturn commandReturn = null;
@@ -150,7 +193,7 @@ namespace SQLiteXM
 				}
 				synch = parseSynchCommand (commandReturn.command.ToLower ());
 
-				SqlStatements.addTableDefinition (dbAndTableName, sqlStatement, synch);
+				SqlStatements.addTableDefinition (databaseName + "." + dbAndTableName, sqlStatement, synch);
 			} while (true);
 
 			return index;
@@ -214,7 +257,7 @@ namespace SQLiteXM
 				}
 				sqlStatement = commandReturn.command;
 
-				SqlStatements.addAlterDefinition (dbAndTableName, columnName, sqlStatement);
+				SqlStatements.addAlterDefinition (databaseName + "." + dbAndTableName, columnName, sqlStatement);
 			} while (true);
 
 			return index;
@@ -246,7 +289,7 @@ namespace SQLiteXM
 				}
 				sqlStatement = commandReturn.command;
 
-				SqlStatements.addIndexDefinition (dbAndTableName, indexName, sqlStatement);
+				SqlStatements.addIndexDefinition (databaseName + "." + dbAndTableName, indexName, sqlStatement);
 			} while (true);
 
 			return index;

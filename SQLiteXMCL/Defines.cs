@@ -56,7 +56,8 @@
 		userDefined,
 		threadLockError,
 		sxmSTransactionTimeout,
-        dbVersionFormatError
+        dbVersionFormatError,
+        missingDatabaseName
         };
 
 		private Defines () {}

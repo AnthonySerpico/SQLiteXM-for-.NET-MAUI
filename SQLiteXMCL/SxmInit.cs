@@ -11,9 +11,9 @@ namespace SQLiteXM
 
         public static void initDB()
         {
-            List<string> dbNames = ProcessSQLStatements.getAllDatabaseNames();
-            foreach (string dbName in dbNames)
-                new DatabaseDescriptor(dbName);
+            //List<string> dbNames = ProcessSQLStatements.getAllDatabaseNames();
+            //foreach (string dbName in dbNames)
+                new DatabaseDescriptor(ProcessSQLStatements.retreiveDatabaseName);
 
             SxmInit.initialize();
         }
@@ -34,9 +34,9 @@ namespace SQLiteXM
             else
                 throw new FileNotFoundException(string.Format("The SQL statements file {0} could not be found.", SqlStatementsFileName));
 
-            List<string> dbNames = ProcessSQLStatements.getAllDatabaseNames();
-            foreach (string dbName in dbNames)
-                new DatabaseDescriptor(dbName);
+            //List<string> dbNames = ProcessSQLStatements.getAllDatabaseNames();
+            //foreach (string dbName in dbNames)
+                new DatabaseDescriptor(ProcessSQLStatements.retreiveDatabaseName);
 
             SxmInit.initialize();
         }
