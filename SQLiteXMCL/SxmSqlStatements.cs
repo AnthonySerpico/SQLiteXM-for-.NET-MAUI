@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Specialized;
 using System.Text.Json;
 
@@ -6,40 +7,79 @@ namespace SQLiteXM
 {
     public class SxmSqlStatements : SqlStatements
     {
-        public double versionNumber { get; set; } = 0.0;
+        public double version { get; set; } = 0.0;
+        public string databaseName { get; set; }
 
         public new Hashtable? alterStatements { get; set; }
         public  new Hashtable? indexStatements { get; set; }
-        public  new Hashtable insertStatements { get; set; }
+        public  new Hashtable? insertStatements { get; set; }
         public  new Hashtable? tableCreateStatements { get; set; }
-        public  new NameValueCollection selectStatements { get; set; }
-        public  new NameValueCollection updateStatements { get; set; }
-        public  new NameValueCollection deleteStatements { get; set; }
+        public  new NameValueCollection? selectStatements { get; set; }
+        public  new NameValueCollection? updateStatements { get; set; }
+        public  new NameValueCollection? deleteStatements { get; set; }
 
-        private SxmSqlStatements() { }
-
-        public static string generateJson()
+        public SxmSqlStatements( string databaseName, double version ) 
         {
-            SxmSqlStatements sxmSqlStatements = new SxmSqlStatements();
-
-            sxmSqlStatements.alterStatements = SqlStatements.alterStatements;
-            sxmSqlStatements.indexStatements = SqlStatements.indexStatements;
-            sxmSqlStatements.insertStatements = SqlStatements.insertStatements;
-            sxmSqlStatements.tableCreateStatements = SqlStatements.tableCreateStatements;
-            sxmSqlStatements.selectStatements = SqlStatements.selectStatements;
-            sxmSqlStatements.updateStatements = SqlStatements.updateStatements;
-            sxmSqlStatements.deleteStatements = SqlStatements.deleteStatements;
-            sxmSqlStatements.versionNumber = ProcessSQLStatements.getSqlStatementsVersionNumber;
-
-            addInsertDefinition("insertNewUser", "userTable", "INSERT INTO userTable (fname, lname, recordingNumber, recordingLength, memberId, activatedDateTicks) VALUES(@p0, @p1, @p2, @p3)");
-            string strJson = JsonSerializer.Serialize<SxmSqlStatements>(sxmSqlStatements);
-            return strJson;
-
+            this.databaseName = databaseName;
+            this.version = setVersionNumber(version);
         }
 
-        public static void setVersionNumber(double version)
+        public string generateJson()
         {
+            alterStatements = SqlStatements.alterStatements;
+            indexStatements = SqlStatements.indexStatements;
+            insertStatements = SqlStatements.insertStatements;
+            tableCreateStatements = SqlStatements.tableCreateStatements;
+            selectStatements = SqlStatements.selectStatements;
+            updateStatements = SqlStatements.updateStatements;
+            deleteStatements = SqlStatements.deleteStatements;
+
+            string strJson = JsonSerializer.Serialize<SxmSqlStatements>(this);
+            return strJson;
+        }
+
+        new public void addInsertDefinition(string insertName, string tableName, string insertSQL)
+        {
+            SqlStatements.addInsertDefinition(insertName, tableName, insertSQL);
+        }
+
+        new public void addSelectDefinition(string selectName, string selectSQL)
+        {
+            SqlStatements.addSelectDefinition(selectName, selectSQL);
+        }
+
+        new public void addUpdateDefinition(string updateName, string updateSQL)
+        {
+            SqlStatements.addUpdateDefinition(updateName, updateSQL);
+        }
+
+        new public void addDeleteDefinition(string deleteName, string deleteSQL)
+        {
+            SqlStatements.addDeleteDefinition(deleteName, deleteSQL);
+        }
+
+        new public void addIndexDefinition(string tableName, string indexName, string sqlStatement)
+        {
+            SqlStatements.addIndexDefinition(databaseName + "." + tableName, indexName, sqlStatement);
+        }
+
+        new internal void addAlterDefinition(string tableName, string columnName, string sqlStatement)
+        {
+            SqlStatements.addAlterDefinition(databaseName + "." + tableName, columnName, sqlStatement);
+        }
+
+        new public void addTableDefinition(string tableName, string tableSQL)
+        {
+            SqlStatements.addTableDefinition(databaseName + "." + tableName, tableSQL);
+        }
+
+        private double setVersionNumber(double version)
+        {
+            if (version < 0)
+                throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
+
             ProcessSQLStatements.setSqlStatementsVersionNumber = version;
+            return version;
         }
 
         // Example: addTableDefinition( "testDatabase.userTable", "CREATE TABLE userTable (id INTEGER PRIMARY KEY AUTOINCREMENT, fname TEXT, lname TEXT, recordingNumber INTEGER, recordingLength INTEGER, memberId INTEGER, activatedDateTicks INTEGER, isRegistered BOOL)" );

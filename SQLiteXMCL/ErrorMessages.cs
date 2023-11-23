@@ -49,7 +49,7 @@ namespace SQLiteXM
 				Defines.SxmErrorCode.threadLockError)); 
 			error.Add ("sxmSTransactionTimeout", new ErrorMessage ("Timeout trying to acquire the SxmSTransaction lock.", 
 				Defines.SxmErrorCode.sxmSTransactionTimeout));
-			error.Add("improperlyFormattedVersionNumber", new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double.",
+			error.Add("improperlyFormattedVersionNumber", new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double greater than 0.",
 				Defines.SxmErrorCode.dbVersionFormatError));
 
         }

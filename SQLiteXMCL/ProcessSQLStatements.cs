@@ -103,7 +103,11 @@ namespace SQLiteXM
 			try
 			{
 				if (!string.IsNullOrEmpty(versionStatement))
+				{
 					versionNumber = Convert.ToDouble(version);
+					if(versionNumber < 0)
+                        throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
+                }
             }
 			catch(System.FormatException)
 			{
@@ -119,8 +123,8 @@ namespace SQLiteXM
         private static int processTableStatements(int index, string sqlStatements)
 		{
 			CommandReturn commandReturn = null;
-			string sqlStatement;
-			string dbName;
+            string dbAndTableName;
+            string sqlStatement;
 			int synch;
 
 			do {
@@ -128,7 +132,7 @@ namespace SQLiteXM
 				index = commandReturn.index;
 				if (commandReturn.command.Length == 0) // Were finished processing the table statements.
 					break;
-				dbName = commandReturn.command;
+				dbAndTableName = commandReturn.command;
 
 				commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
@@ -146,7 +150,7 @@ namespace SQLiteXM
 				}
 				synch = parseSynchCommand (commandReturn.command.ToLower ());
 
-				SqlStatements.addTableDefinition (dbName, sqlStatement, synch);
+				SqlStatements.addTableDefinition (dbAndTableName, sqlStatement, synch);
 			} while (true);
 
 			return index;
@@ -319,7 +323,12 @@ namespace SQLiteXM
 			throw new SxmException (new ErrorMessage("unknownSynchCommand", synchCommand));
 		}
 
-		class CommandReturn
+		internal static List<string> getAllDatabaseNames()
+		{
+			return SqlStatements.getAllDatabaseNames();
+        }
+
+        class CommandReturn
 		{
 			public int index; 
 			public string command;

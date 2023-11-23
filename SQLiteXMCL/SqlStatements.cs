@@ -67,18 +67,35 @@ namespace SQLiteXM
 			alterStatementsList.Add ( new AlterDefinition (columnName, sqlStatement));
 		}
 
-        internal static void addTableDefinition(string tableName, string tableSQL)
+        internal static void addTableDefinition(string dbAndTableName, string tableSQL)
         {
-            addTableDefinition(tableName, tableSQL, Defines.NO_CLOUD_SYNCH);
+            addTableDefinition(dbAndTableName, tableSQL, Defines.NO_CLOUD_SYNCH);
         }
 
-        internal static void addTableDefinition (string tableName, string tableSQL, int cloudPush)
+        internal static void addTableDefinition (string dbAndTableName, string tableSQL, int cloudPush)
 		{
 			if (tableCreateStatements == null)
 				tableCreateStatements = new Hashtable();
 
-			tableCreateStatements.Add( tableName, new TableDefinition (tableSQL, cloudPush));
+			tableCreateStatements.Add(dbAndTableName, new TableDefinition (tableSQL, cloudPush));
 		}
+
+		internal static List<string> getAllDatabaseNames()
+		{
+			List<string> databaseNames = new List<string>();
+			ICollection? icKeys = tableCreateStatements?.Keys;
+
+			if(icKeys != null )
+			{
+				foreach(string key in icKeys)
+				{
+                    string[] parts = key.Split('.');
+                    databaseNames.Add(parts[0]);
+                }
+            }
+
+            return databaseNames.Distinct().ToList();
+        }
 
 		internal static void clearStatementTables ()
 		{

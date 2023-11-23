@@ -9,15 +9,16 @@ namespace SQLiteXM
 
         private SxmInit() { }
 
-        public static void initDB(params string[] dbNames)
+        public static void initDB()
         {
+            List<string> dbNames = ProcessSQLStatements.getAllDatabaseNames();
             foreach (string dbName in dbNames)
                 new DatabaseDescriptor(dbName);
 
-            SxmInit.initialize(default(string?));
+            SxmInit.initialize();
         }
 
-        public static async Task initDB(string SqlStatementsFileName, params string[] dbNames)
+        public static async Task initDB(string SqlStatementsFileName)
         {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
             {
@@ -33,7 +34,8 @@ namespace SQLiteXM
             else
                 throw new FileNotFoundException(string.Format("The SQL statements file {0} could not be found.", SqlStatementsFileName));
 
-            foreach(string dbName in dbNames)
+            List<string> dbNames = ProcessSQLStatements.getAllDatabaseNames();
+            foreach (string dbName in dbNames)
                 new DatabaseDescriptor(dbName);
 
             SxmInit.initialize();
