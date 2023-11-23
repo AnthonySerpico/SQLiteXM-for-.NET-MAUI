@@ -48,11 +48,11 @@ namespace SQLiteXM
         // Example: addIndexDefinition( "testDatabase.userTable", "nameIDX", "CREATE INDEX nameIDX ON testDatabase(lname, fname)" );
         // Example: addIndexDefinition( "testDatabase.userTable", "lnameIDX", "DROP INDEX lnameIDX" );
 
-        // Example: addInsertDefinition("insertNewUser", "userTable", "INSERT INTO userTable (fname, lname, recordingNumber, recordingLength, memberId, activatedDateTicks) VALUES(@p0, @p1, @p2, @p3)" )
+        // Example: addInsertDefinition("insertNewUser", "userTable", "INSERT INTO userTable (fname, lname, recordingNumber, recordingLength, memberId, activatedDateTicks) VALUES(@p0, @p1, @p2, @p3)" );
 
         // Example: addSelectDefinition( "getUser", "SELECT * FROM userTable WHERE memberId = @p0 LIMIT 50" );
 
-        // Example: addUpdateDefinition( "updateUser", "UPDATE userTable SET recordingLength=@p0, WHERE memberId=@p1" )
+        // Example: addUpdateDefinition( "updateUser", "UPDATE userTable SET recordingLength=@p0, WHERE memberId=@p1" );
 
         // Example: addDeleteDefiniton( "deleteUser", "DELETE FROM userTable WHERE memberId = @p0" );
 

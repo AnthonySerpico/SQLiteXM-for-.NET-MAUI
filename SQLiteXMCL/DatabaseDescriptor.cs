@@ -66,8 +66,8 @@ namespace SQLiteXM
 				Directory.CreateDirectory (databaseFolderString);
 
 			string pathToDatabase = Path.Combine (databaseFolderString, databaseName);
-			if (File.Exists (pathToDatabase) == false)
-				File.Create (pathToDatabase);
+			if (File.Exists(pathToDatabase) == false)
+				using (File.Create(pathToDatabase)) { }
 		}
 
 		public static DatabaseDescriptor? getDescriptor (string dbName)
