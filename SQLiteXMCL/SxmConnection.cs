@@ -342,26 +342,6 @@ namespace SQLiteXM
             {
                 DbParametersDataType dbParametersDataType = getDbParameterType(ref parameterValues);
 
-                if (dbParametersDataType == DbParametersDataType.hashTable)
-                {
-                    Hashtable? ht = (Hashtable?)parameterValues[0];
-                    if (ht != default)
-                    {
-                        ICollection ic = ht.Keys;
-                        foreach (object key in ic)
-                        {
-                            DbParameter dbParameter = connCommand.CreateParameter();
-
-                            dbParameter.ParameterName = (string)key;
-                            dbParameter.Value = ht[key];
-
-                            connCommand.Parameters.Add(dbParameter);
-                        }
-                    }
-
-                    return;
-                }
-
                 if (dbParametersDataType == DbParametersDataType.dictionary)
                 {
                     Dictionary<string, object>? dict = (Dictionary<string, object>?)parameterValues[0];
@@ -381,28 +361,7 @@ namespace SQLiteXM
                     return;
                 }
 
-                if (dbParametersDataType == DbParametersDataType.twoDArray)
-                {
-                    object[,] objectList = (object[,])parameterValues[0];
-                    if (objectList != default)
-                    {
-                        int numArrayEntries = objectList.GetLength(0);
-
-                        for (int i = 0; i < numArrayEntries; i++)
-                        {
-                            DbParameter dbParameter = connCommand.CreateParameter();
-
-                            dbParameter.ParameterName = (string)objectList[i, 0];
-                            dbParameter.Value = (object)objectList[i, 1];
-
-                            connCommand.Parameters.Add(dbParameter);
-                        }
-                    }
-
-                    return;
-                }
-
-                if (dbParametersDataType == DbParametersDataType.list || dbParametersDataType == DbParametersDataType.tupleList || dbParametersDataType == DbParametersDataType.oneDArray)
+                if (dbParametersDataType == DbParametersDataType.list )
                 {
                     int cntr = 0;
 
@@ -410,26 +369,13 @@ namespace SQLiteXM
                     {
                         DbParameter dbParameter = connCommand.CreateParameter();
 
-                        if (dbParametersDataType == DbParametersDataType.list)
-                        {
-                            dbParameter.Value = parameterValue;
-                            dbParameter.ParameterName = "@p" + cntr.ToString();
-                        }
-                        if (dbParametersDataType == DbParametersDataType.tupleList)
-                        {
-                            dbParameter.ParameterName = ((Tuple<string, object>)parameterValue).Item1;
-                            dbParameter.Value = ((Tuple<string, object>)parameterValue).Item2;
-                        }
-                        if (dbParametersDataType == DbParametersDataType.oneDArray)
-                        {
-                            object[] pvArray = (object[])parameterValue;
-                            dbParameter.ParameterName = (string)pvArray[0];
-                            dbParameter.Value = pvArray[1];
-                        }
-                        connCommand.Parameters.Add(dbParameter);
-                    }
+                        dbParameter.Value = parameterValue;
+                        dbParameter.ParameterName = "@p" + cntr.ToString();
 
-                    ++cntr;
+                        connCommand.Parameters.Add(dbParameter);
+
+                        ++cntr;
+                    }
                 }
             }
         }

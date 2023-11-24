@@ -200,11 +200,11 @@ namespace SQLiteXM
 			await Task.CompletedTask;
 		}
 
-        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        public static async Task<List<Dictionary<string, object>>> performSelect(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
         {
             return await performSelect(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }
-        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, List<object> parameterValues, string? dbName = default)
+        public static async Task<List<Dictionary<string, object>>> performSelect(string sqlStatementName, List<object> parameterValues, string? dbName = default)
 		{
 			List<Dictionary<string, object?>> selectedRows;
 
