@@ -366,11 +366,6 @@ namespace SQLiteXM
 			throw new SxmException (new ErrorMessage("unknownSynchCommand", synchCommand));
 		}
 
-		internal static List<string> getAllDatabaseNames()
-		{
-			return SqlStatements.getAllDatabaseNames();
-        }
-
         class CommandReturn
 		{
 			public int index; 

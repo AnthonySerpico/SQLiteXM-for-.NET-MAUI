@@ -15,7 +15,7 @@ namespace SQLiteXM
 		{
 			get { return databaseName; }
 		}
-		private Environment.SpecialFolder databaseFolder; // Optional. Default: Environment.SpecialFolder.ApplicationData.
+		private Environment.SpecialFolder databaseFolder; // Optional. Default: Environment.SpecialFolder.MyDocuments.
 		public Environment.SpecialFolder DatabaseFolder
 		{
 			get { return databaseFolder; }
@@ -24,10 +24,10 @@ namespace SQLiteXM
 		// Logging settings.
 		public string logfileName; // Optional. Default: Same as database name with .log extension.
 		public int logfileMaxSize = 1024 * 1024; // Optional. Default: 1MB.
-		public Environment.SpecialFolder logfileFolder = Environment.SpecialFolder.Personal; // Optional. Default: Environment.SpecialFolder.Personal.
-		public bool noLog = false;
+		public Environment.SpecialFolder logfileFolder = Environment.SpecialFolder.MyDocuments; // Optional. Default: Environment.SpecialFolder.MyDocuments.
+        public bool noLog = false;
 
-		public DatabaseDescriptor (string databaseName, Environment.SpecialFolder databaseFolder = Environment.SpecialFolder.MyDocuments)
+		internal DatabaseDescriptor (string databaseName, Environment.SpecialFolder databaseFolder = Environment.SpecialFolder.MyDocuments)
 		{
 			try
 			{

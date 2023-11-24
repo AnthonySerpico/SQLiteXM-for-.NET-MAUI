@@ -6,11 +6,37 @@ namespace SQLiteXM
 {
     public class DbItem
 	{
-		public string? sqlStatementName;
-		public List<object>? parameterValues;
+        public string getSqlStatementName { get => sqlStatementName; }
+        private string sqlStatementName;
+        public List<object> getParameterValuesList { get => parameterValuesList; }
+        private List<object> parameterValuesList;
+
+        DbItem(string sqlStatementName, Dictionary<string, object> parameterValues)
+        {
+            this.sqlStatementName = sqlStatementName;
+            this.parameterValuesList = new List<object>();
+            this.parameterValuesList.Add(parameterValues);
+        }
+        DbItem(string sqlStatementName, object[,] parameterValues)
+        {
+            this.sqlStatementName = sqlStatementName;
+            this.parameterValuesList = new List<object>();
+            this.parameterValuesList.Add(parameterValues);
+        }
+        DbItem(string sqlStatementName, Hashtable parameterValues)
+        {
+            this.sqlStatementName = sqlStatementName;
+            this.parameterValuesList = new List<object>();
+            this.parameterValuesList.Add(parameterValues);
+        }
+        DbItem(string sqlStatementName, List<object> parameterValues)
+        {
+            this.sqlStatementName = sqlStatementName;
+            this.parameterValuesList = parameterValues;
+        }
     }
 
-	public class DbOperationResponse
+    public class DbOperationResponse
 	{
 
 	}
@@ -21,7 +47,7 @@ namespace SQLiteXM
         {
         }
 
-        public static void populateTable<T>(Dictionary<string, object> dbRow, ref T userObject) where T : class
+        public static void populateRecordObject<T>(Dictionary<string, object> dbRow, ref T userObject) where T : class
         {
             ICollection ic = dbRow.Keys;
             foreach (string key in ic)  // Process each entry (column) in the Dictionary.
@@ -32,7 +58,7 @@ namespace SQLiteXM
                 }
                 catch (System.ArgumentException)
                 {
-                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' {1} to the provided table property '{2}' {3}", key, dbRow[key]?.GetType().ToString(), key, userObject?.GetType()?.GetProperty(key)?.PropertyType.ToString()));
+                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' {1} to the provided object property '{2}' {3}", key, dbRow[key]?.GetType().ToString(), key, userObject?.GetType()?.GetProperty(key)?.PropertyType.ToString()));
                 }
             }
         }
@@ -47,23 +73,23 @@ namespace SQLiteXM
                 {
 					foreach (DbItem dbItem in dbItemList)
                     {
-						switch(getDbOperationType(dbItem.sqlStatementName))
+						switch(getDbOperationType(dbItem.getSqlStatementName))
 						{
 							case DbOperationTypes.insert:
-                                InsertResponse ir = sxmTransaction.executeInsert(dbItem.sqlStatementName, dbItem.parameterValues);
+                                InsertResponse ir = sxmTransaction.executeInsert(dbItem.getSqlStatementName, dbItem.getParameterValuesList);
                                 break;
 
                             case DbOperationTypes.select:
-                                sxmTransaction.executeQuery(dbItem.sqlStatementName, dbItem.parameterValues);
+                                sxmTransaction.executeQuery(dbItem.getSqlStatementName, dbItem.getParameterValuesList);
                                 List<Dictionary<string, object?>> selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                                 break;
 
                             case DbOperationTypes.update:
-                                sxmTransaction.executeUpdate(dbItem.sqlStatementName, dbItem.parameterValues);
+                                sxmTransaction.executeUpdate(dbItem.getSqlStatementName, dbItem.getParameterValuesList);
                                 break;
 
                             case DbOperationTypes.delete:
-                                sxmTransaction.executeDelete(dbItem.sqlStatementName, dbItem.parameterValues);
+                                sxmTransaction.executeDelete(dbItem.getSqlStatementName, dbItem.getParameterValuesList);
                                 break;
 
 							default: break;
@@ -81,8 +107,11 @@ namespace SQLiteXM
             return await Task.FromResult(dbOperationResponseList);
         }
 
-		private static DbOperationTypes getDbOperationType(string action)
+		private static DbOperationTypes getDbOperationType(string? action)
 		{
+            if(action == null)
+                return DbOperationTypes.unknown;
+
             if (SqlStatements.selectStatements[action] != default)
                 return DbOperationTypes.select;
             
@@ -104,14 +133,6 @@ namespace SQLiteXM
         }
 
         public static async Task<InsertResponse> performInsert(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
-        {
-            return await performInsert(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task<InsertResponse> performInsert(string sqlStatementName, object[,] parameterValues, string? dbName = default)
-        {
-            return await performInsert(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task<InsertResponse> performInsert(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
         {
             return await performInsert(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }
@@ -139,14 +160,6 @@ namespace SQLiteXM
         {
             await performDelete(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }
-        public static async Task performDelete(string sqlStatementName, object[,] parameterValues, string? dbName = default)
-        {
-            await performDelete(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task performDelete(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
-        {
-            await performDelete(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
         public static async Task performDelete(string sqlStatementName, List<object> parameterValues, string? dbName = default)
 		{
 			try
@@ -169,14 +182,6 @@ namespace SQLiteXM
         {
             await performUpdate(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }
-        public static async Task performUpdate(string sqlStatementName, object[,] parameterValues, string? dbName = default)
-        {
-            await performUpdate(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task performUpdate(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
-        {
-            await performUpdate(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
         public static async Task performUpdate(string sqlStatementName, List<object> parameterValues, string? dbName = default)
 		{
 			try
@@ -196,14 +201,6 @@ namespace SQLiteXM
 		}
 
         public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
-        {
-            return await performSelect(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, object[,] parameterValues, string? dbName = default)
-        {
-            return await performSelect(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Hashtable parameterValues, string? dbName = default)
         {
             return await performSelect(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
         }

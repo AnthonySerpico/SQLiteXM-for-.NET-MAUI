@@ -8,7 +8,7 @@ namespace SQLiteXM
 		internal static Hashtable? alterStatements = default(Hashtable);
 		internal static Hashtable? indexStatements = default(Hashtable);
 		internal static Hashtable insertStatements = new Hashtable();
-		internal static Hashtable? tableCreateStatements = new Hashtable();
+		internal static Hashtable tableCreateStatements = new Hashtable();
 		internal static NameValueCollection selectStatements = new NameValueCollection ();
 		internal static NameValueCollection updateStatements = new NameValueCollection ();
 		internal static NameValueCollection deleteStatements = new NameValueCollection ();
@@ -80,23 +80,6 @@ namespace SQLiteXM
 			tableCreateStatements.Add(dbAndTableName, new TableDefinition (tableSQL, cloudPush));
 		}
 
-		internal static List<string> getAllDatabaseNames()
-		{
-			List<string> databaseNames = new List<string>();
-			ICollection? icKeys = tableCreateStatements?.Keys;
-
-			if(icKeys != null )
-			{
-				foreach(string key in icKeys)
-				{
-                    string[] parts = key.Split('.');
-                    databaseNames.Add(parts[0]);
-                }
-            }
-
-            return databaseNames.Distinct().ToList();
-        }
-
 		internal static void clearStatementTables ()
 		{
 			if (alterStatements != default(Hashtable)) 
@@ -106,7 +89,7 @@ namespace SQLiteXM
 			}
 
 			tableCreateStatements?.Clear ();
-			tableCreateStatements = default(Hashtable);
+			tableCreateStatements = default(Hashtable)!;
 
 			if (indexStatements != default(Hashtable)) 
 			{
