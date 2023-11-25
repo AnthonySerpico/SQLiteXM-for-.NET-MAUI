@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace SQLiteXM
@@ -87,7 +88,7 @@ namespace SQLiteXM
 			Dispose (false); // Called from runtime.
 		}
 
-		public InsertResponse executeInsert (string command, List<object> ParameterValues)
+		public Dictionary<string, object?> executeInsert (string command, List<object> ParameterValues)
 		{
 			long recordID = -1;
 			string? synchID = default(string);
@@ -135,8 +136,12 @@ namespace SQLiteXM
 				throw new SxmException (ex);
 			}
 
-			return new InsertResponse (recordID, synchID);
-		}
+            Dictionary<string, object?> ir = new Dictionary<string, object?>();
+			ir.Add("recordId", recordID);
+            ir.Add("synchId", synchID);
+			return ir;
+
+        }
 
 		private string? getSynchID (string tableName, long recordID)
 		{
