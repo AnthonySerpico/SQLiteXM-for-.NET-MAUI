@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Reflection;
-using static CoreFoundation.DispatchSource;
+﻿using System.Collections;
+//using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -78,19 +74,18 @@ namespace SQLiteXM
             List<DbOperationResponse> defaultDbOperationResponseList = await runTransactionObject(transactionObject);
             List<DbOperationResponse<List<T>>> userDbOperationResponseList = new List<DbOperationResponse<List<T>>>();
 
-            for (int indexer = defaultDbOperationResponseList.Count-1; indexer >=0;  --indexer)
+            for (int indexer = defaultDbOperationResponseList.Count - 1; indexer >= 0; --indexer)
             {
                 DbOperationResponse dbOperationResponse = defaultDbOperationResponseList[indexer];
+                DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
                 if (dbOperationResponse.recordData != default)
                 {
                     List<T> userObject = populateRecordObject<T>(dbOperationResponse.recordData);
-
-                    DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
                     userDbOperationResponse.recordData = userObject;
-                    userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
-                    userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
-                    userDbOperationResponseList.Add(userDbOperationResponse);
                 }
+                userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
+                userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
+                userDbOperationResponseList.Add(userDbOperationResponse);
 
                 defaultDbOperationResponseList.RemoveAt(indexer);
             }
@@ -154,6 +149,29 @@ namespace SQLiteXM
             }
 
             return await Task.FromResult(dbOperationResponseList);
+        }
+
+        public async static Task<DbOperationResponse<List<T>>> runSqlStatement<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
+        {
+            DbOperationResponse dbOperationResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
+            return runSqlStatement<T>(dbOperationResponse);
+        }
+        public async static Task<DbOperationResponse<List<T>>> runSqlStatement<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
+        {
+            DbOperationResponse dbOperationResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
+            return runSqlStatement<T>(dbOperationResponse);
+        }
+        public static DbOperationResponse<List<T>> runSqlStatement<T>(DbOperationResponse dbOperationResponse) where T : class, new()
+        {
+            DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
+
+            if (dbOperationResponse.recordData != default)
+                userDbOperationResponse.recordData = populateRecordObject<T>(dbOperationResponse.recordData);
+
+            userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
+            userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
+
+            return userDbOperationResponse;
         }
 
         public static async Task<DbOperationResponse> runSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string))
@@ -336,7 +354,7 @@ namespace SQLiteXM
                 }
             }
         }
-
+        
         public static List<T> populateRecordObject<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
         {
             List<T> userObjectList = new List<T>();
