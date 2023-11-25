@@ -221,8 +221,6 @@ namespace SQLiteXM
 
                         default: break;
                     }
-
-                    sxmTransaction.commitTransaction();
                 }
             }
             catch (System.Exception)
