@@ -61,10 +61,42 @@ namespace SQLiteXM
         internal SqlStatementType sqlStatementType;
         internal string? sqlStatementName;
     }
+    public class DbOperationResponse<T> where T : class
+    {
+        internal T? recordData;
+        internal SqlStatementType sqlStatementType;
+        internal string? sqlStatementName;
+    }
 
     public class SxmHelpers
     {
         private SxmHelpers() { }
+
+        //List<DbOperationResponse<List<user1>>> hhh = await SxmHelpers.runTransactionObject<user1>(new TransactionObject());
+        public static async Task<List<DbOperationResponse<List<T>>>> runTransactionObject<T>(TransactionObject transactionObject) where T : class, new()
+        {
+            List<DbOperationResponse> defaultDbOperationResponseList = await runTransactionObject(transactionObject);
+            List<DbOperationResponse<List<T>>> userDbOperationResponseList = new List<DbOperationResponse<List<T>>>();
+
+            for (int indexer = defaultDbOperationResponseList.Count-1; indexer >=0;  --indexer)
+            {
+                DbOperationResponse dbOperationResponse = defaultDbOperationResponseList[indexer];
+                if (dbOperationResponse.recordData != default)
+                {
+                    List<T> userObject = populateRecordObject<T>(dbOperationResponse.recordData);
+
+                    DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
+                    userDbOperationResponse.recordData = userObject;
+                    userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
+                    userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
+                    userDbOperationResponseList.Add(userDbOperationResponse);
+                }
+
+                defaultDbOperationResponseList.RemoveAt(indexer);
+            }
+
+            return userDbOperationResponseList;
+        }
 
         public static async Task<List<DbOperationResponse>> runTransactionObject(TransactionObject transactionObject)
         {
@@ -305,7 +337,7 @@ namespace SQLiteXM
             }
         }
 
-        public static List<T> populateRecordObject<T>(List<Dictionary<string, object>> databaseRowsList) where T : class, new()
+        public static List<T> populateRecordObject<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
         {
             List<T> userObjectList = new List<T>();
 
