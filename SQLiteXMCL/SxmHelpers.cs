@@ -5,25 +5,6 @@ using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
-    public class TransactionItem
-    {
-        public string SqlStatementName { get => sqlStatementName; }
-        private string sqlStatementName;
-        public List<object> ParameterValuesList { get => parameterValuesList; }
-        private List<object> parameterValuesList;
-
-        internal TransactionItem(string sqlStatementName, Dictionary<string, object> parameterDictionary)
-        {
-            this.sqlStatementName = sqlStatementName;
-            this.parameterValuesList = new List<object>() { parameterDictionary };
-        }
-        internal TransactionItem(string sqlStatementName, List<object> parameterList)
-        {
-            this.sqlStatementName = sqlStatementName;
-            this.parameterValuesList = parameterList;
-        }
-    }
-
     public class TransactionObject
     {
         private List<object> transactionItems = new List<object>();
@@ -37,13 +18,33 @@ namespace SQLiteXM
             this.dbName = dbName;
         }
 
-        public void AddTransactionItem(string sqlStatementName, Dictionary<string, object> parameterDictionary)
+        // Each TransactionItem represents a single SQL statement that will be executed.
+        public void AddSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters)
         {
-            transactionItems.Add(new TransactionItem(sqlStatementName, parameterDictionary));
+            transactionItems.Add(new TransactionItem(sqlStatementName, sqlStatementParameters));
         }
-        public void AddTransactionItem(string sqlStatementName, List<object> parameterList)
+        public void AddSqlStatement(string sqlStatementName, List<object> sqlStatementParameters)
         {
-            transactionItems.Add(new TransactionItem(sqlStatementName, parameterList));
+            transactionItems.Add(new TransactionItem(sqlStatementName, sqlStatementParameters));
+        }
+    }
+
+    public class TransactionItem
+    {
+        public string SqlStatementName { get => sqlStatementName; }
+        private string sqlStatementName;
+        public List<object> SqlStatementParameters { get => sqlStatementParameters; }
+        private List<object> sqlStatementParameters;
+
+        internal TransactionItem(string sqlStatementName, Dictionary<string, object> sqlStatementParameters)
+        {
+            this.sqlStatementName = sqlStatementName;
+            this.sqlStatementParameters = new List<object>() { sqlStatementParameters };
+        }
+        internal TransactionItem(string sqlStatementName, List<object> sqlStatementParameters)
+        {
+            this.sqlStatementName = sqlStatementName;
+            this.sqlStatementParameters = sqlStatementParameters;
         }
     }
 
@@ -54,9 +55,7 @@ namespace SQLiteXM
 
     public class SxmHelpers
     {
-        private SxmHelpers()
-        {
-        }
+        private SxmHelpers() { }
 
         public static async Task<List<DbOperationResponse>> runTransactionObject(TransactionObject transactionObject)
         {
@@ -68,23 +67,23 @@ namespace SQLiteXM
                 {
                     foreach (TransactionItem transactionItem in transactionObject.TransactionItems)
                     {
-                        switch (getDbOperationType(transactionItem.SqlStatementName))
+                        switch (GetDatabaseStatementType(transactionItem.SqlStatementName))
                         {
-                            case DbOperationTypes.insert:
-                                InsertResponse ir = sxmTransaction.executeInsert(transactionItem.SqlStatementName, transactionItem.ParameterValuesList);
-                                break;
-
-                            case DbOperationTypes.select:
-                                sxmTransaction.executeQuery(transactionItem.SqlStatementName, transactionItem.ParameterValuesList);
+                            case DatabaseStatementType.select:
+                                sxmTransaction.executeQuery(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
                                 List<Dictionary<string, object?>> selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                                 break;
 
-                            case DbOperationTypes.update:
-                                sxmTransaction.executeUpdate(transactionItem.SqlStatementName, transactionItem.ParameterValuesList);
+                            case DatabaseStatementType.insert:
+                                InsertResponse ir = sxmTransaction.executeInsert(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
                                 break;
 
-                            case DbOperationTypes.delete:
-                                sxmTransaction.executeDelete(transactionItem.SqlStatementName, transactionItem.ParameterValuesList);
+                            case DatabaseStatementType.update:
+                                sxmTransaction.executeUpdate(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                break;
+
+                            case DatabaseStatementType.delete:
+                                sxmTransaction.executeDelete(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
                                 break;
 
                             default: break;
@@ -102,35 +101,35 @@ namespace SQLiteXM
             return await Task.FromResult(dbOperationResponseList);
         }
 
-        public static async Task<List<DbOperationResponse>> runSqlStatement(string sqlStatementName, Dictionary<string, object> statementParameters, string? dbName = default(string))
+        public static async Task<DbOperationResponse> runSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string))
         {
-            return await runSqlStatement(sqlStatementName, new List<object>(1) { statementParameters }, dbName);
+            return await runSqlStatement(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
-        public static async Task<List<DbOperationResponse>> runSqlStatement(string sqlStatementName, List<object> statementParameters, string? dbName = default(string))
+        public static async Task<DbOperationResponse> runSqlStatement(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string))
         {
-            List<DbOperationResponse> dbOperationResponseList = new List<DbOperationResponse>();
+            DbOperationResponse dbOperationResponse = new DbOperationResponse();
 
             try
             {
                 using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
                 {
-                    switch (getDbOperationType(sqlStatementName))
+                    switch (GetDatabaseStatementType(sqlStatementName))
                     {
-                        case DbOperationTypes.insert:
-                            InsertResponse ir = await performInsert(sqlStatementName, statementParameters, dbName);
-                            break;
-
-                        case DbOperationTypes.select:
-                            await performSelect(sqlStatementName, statementParameters, dbName);
+                        case DatabaseStatementType.select:
+                            await performSelect(sqlStatementName, sqlStatementParameters, dbName);
                             List<Dictionary<string, object?>> selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                             break;
 
-                        case DbOperationTypes.update:
-                            await performUpdate(sqlStatementName, statementParameters, dbName);
+                        case DatabaseStatementType.insert:
+                            InsertResponse ir = await performInsert(sqlStatementName, sqlStatementParameters, dbName);
                             break;
 
-                        case DbOperationTypes.delete:
-                            await performDelete(sqlStatementName, statementParameters, dbName);
+                        case DatabaseStatementType.update:
+                            await performUpdate(sqlStatementName, sqlStatementParameters, dbName);
+                            break;
+
+                        case DatabaseStatementType.delete:
+                            await performDelete(sqlStatementName, sqlStatementParameters, dbName);
                             break;
 
                         default: break;
@@ -144,95 +143,27 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(dbOperationResponseList);
+            return await Task.FromResult(dbOperationResponse);
         }
 
-        private static DbOperationTypes getDbOperationType(string? action)
+        private static DatabaseStatementType GetDatabaseStatementType(string? sqlStatementName)
         {
-            if (action == null)
-                return DbOperationTypes.unknown;
+            if (sqlStatementName == null)
+                throw new ArgumentException("A sql statement cannot be null.");
 
-            if (SqlStatements.selectStatements[action] != default)
-                return DbOperationTypes.select;
+            if (SqlStatements.selectStatements[sqlStatementName] != default)
+                return DatabaseStatementType.select;
 
-            if (SqlStatements.insertStatements[action] != default)
-                return DbOperationTypes.insert;
+            if (SqlStatements.insertStatements[sqlStatementName] != default)
+                return DatabaseStatementType.insert;
 
-            if (SqlStatements.updateStatements[action] != default)
-                return DbOperationTypes.update;
+            if (SqlStatements.updateStatements[sqlStatementName] != default)
+                return DatabaseStatementType.update;
 
-            if (SqlStatements.deleteStatements[action] != default)
-                return DbOperationTypes.delete;
+            if (SqlStatements.deleteStatements[sqlStatementName] != default)
+                return DatabaseStatementType.delete;
 
-            return DbOperationTypes.unknown;
-        }
-
-        public static async Task<InsertResponse> performInsert(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
-        {
-            return await performInsert(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task<InsertResponse> performInsert(string sqlStatementName, List<object> parameterValues, string? dbName = default)
-        {
-            InsertResponse ir;
-
-            try
-            {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
-                {
-                    ir = sxmTransaction.executeInsert(sqlStatementName, parameterValues);
-                    sxmTransaction.commitTransaction();
-                }
-            }
-            catch (System.Exception)
-            {
-                throw;
-            }
-
-            return await Task.FromResult(ir);
-        }
-
-        public static async Task performDelete(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
-        {
-            await performDelete(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task performDelete(string sqlStatementName, List<object> parameterValues, string? dbName = default)
-        {
-            try
-            {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
-                {
-                    sxmTransaction.executeDelete(sqlStatementName, parameterValues);
-                    sxmTransaction.commitTransaction();
-                }
-            }
-            catch (System.Exception)
-            {
-                throw;
-            }
-
-            await Task.CompletedTask;
-        }
-
-        public static async Task performUpdate(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
-        {
-            await performUpdate(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
-        }
-        public static async Task performUpdate(string sqlStatementName, List<object> parameterValues, string? dbName = default)
-        {
-            try
-            {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
-                {
-                    sxmTransaction.executeUpdate(sqlStatementName, parameterValues);
-                    sxmTransaction.commitTransaction();
-                }
-            }
-            catch (System.Exception)
-            {
-                throw;
-            }
-
-            await Task.CompletedTask;
+            throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
         }
 
         public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
@@ -259,6 +190,74 @@ namespace SQLiteXM
             return await Task.FromResult(selectedRows);
         }
 
+        public static async Task<InsertResponse> performInsert(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        {
+            return await performInsert(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
+        }
+        public static async Task<InsertResponse> performInsert(string sqlStatementName, List<object> parameterValues, string? dbName = default)
+        {
+            InsertResponse ir;
+
+            try
+            {
+                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                {
+                    ir = sxmTransaction.executeInsert(sqlStatementName, parameterValues);
+                    sxmTransaction.commitTransaction();
+                }
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+
+            return await Task.FromResult(ir);
+        }
+
+        public static async Task performUpdate(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        {
+            await performUpdate(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
+        }
+        public static async Task performUpdate(string sqlStatementName, List<object> parameterValues, string? dbName = default)
+        {
+            try
+            {
+                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                {
+                    sxmTransaction.executeUpdate(sqlStatementName, parameterValues);
+                    sxmTransaction.commitTransaction();
+                }
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+
+            await Task.CompletedTask;
+        }
+
+        public static async Task performDelete(string sqlStatementName, Dictionary<string, object> parameterValues, string? dbName = default)
+        {
+            await performDelete(sqlStatementName, new List<object>(1) { parameterValues }, dbName);
+        }
+        public static async Task performDelete(string sqlStatementName, List<object> parameterValues, string? dbName = default)
+        {
+            try
+            {
+                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                {
+                    sxmTransaction.executeDelete(sqlStatementName, parameterValues);
+                    sxmTransaction.commitTransaction();
+                }
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+
+            await Task.CompletedTask;
+        }
+
         public static void populateRecordObject<T>(Dictionary<string, object> dbRow, ref T userObject) where T : class
         {
             ICollection ic = dbRow.Keys;
@@ -270,7 +269,7 @@ namespace SQLiteXM
                 }
                 catch (System.ArgumentException)
                 {
-                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' {1} to the provided object property type '{2}' {3}", key, dbRow[key]?.GetType().ToString(), key, userObject?.GetType()?.GetProperty(key)?.PropertyType.ToString()));
+                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", key, dbRow[key]?.GetType().ToString(), key, userObject?.GetType()?.GetProperty(key)?.PropertyType.ToString()));
                 }
             }
         }

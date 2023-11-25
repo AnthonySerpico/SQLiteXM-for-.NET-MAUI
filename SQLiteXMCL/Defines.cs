@@ -25,7 +25,7 @@
 		};
 
         // Database operation types. 
-        public enum DbOperationTypes
+        public enum DatabaseStatementType
         {
             insert,
             delete,
