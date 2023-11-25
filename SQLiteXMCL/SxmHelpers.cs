@@ -53,15 +53,21 @@ namespace SQLiteXM
     // Each DbOperationResponse represents the results of a single SQL statement that was executed.
     public class DbOperationResponse
     {
-        internal List<Dictionary<string, object?>>? recordData;
-        internal SqlStatementType sqlStatementType;
-        internal string? sqlStatementName;
+        internal List<Dictionary<string, object?>>? recordData { get; set;  }
+        public List<Dictionary<string, object?>>? RecordData { get => recordData; }
+        internal SqlStatementType sqlStatementType { get; set; }
+        public SqlStatementType SqlStatementType { get => sqlStatementType; }
+        internal string? sqlStatementName { get; set; }
+        string? SqlStatementName { get => sqlStatementName; }
     }
     public class DbOperationResponse<T> where T : class
     {
-        internal T? recordData;
-        internal SqlStatementType sqlStatementType;
-        internal string? sqlStatementName;
+        internal T? recordData { get; set; }
+        public T? RecordData { get => recordData; }
+        internal SqlStatementType sqlStatementType { get; set; }
+        public SqlStatementType SqlStatementType { get => sqlStatementType;  }
+        internal string? sqlStatementName { get; set; }
+        string? SqlStatementName { get => sqlStatementName; }
     }
 
     public class SxmHelpers
@@ -359,7 +365,7 @@ namespace SQLiteXM
         {
             List<T> userObjectList = new List<T>();
 
-            foreach (Dictionary<string, object> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
+            foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
                 foreach (KeyValuePair<string, object> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
                 {
