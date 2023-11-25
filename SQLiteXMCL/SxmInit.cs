@@ -24,8 +24,7 @@ namespace SQLiteXM
          {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
             {
-                Stream stream;
-                using (stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
+                using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
                 {
                     using (StreamReader reader = new StreamReader(stream))
                     {
@@ -449,7 +448,7 @@ namespace SQLiteXM
             parameterValues.Add(databaseName);
             parameterValues.Add(parts[1]);
             parameterValues.Add(tableDefinition.CloudSynch);
-            sxmTransaction.executeSystemUpdateDirect("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
+            sxmTransaction.executeSystemUpdateDirect ("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
         }
 
         private static void createCloudSynchTable(string key, Hashtable tableNamesMap, SxmTransaction sxmTransaction)

@@ -1,10 +1,14 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Reflection;
+using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
+    // A Transaction object represents a series of SQL statements that will be executes as a single transaction.
     public class TransactionObject
     {
         private List<object> transactionItems = new List<object>();
@@ -18,17 +22,19 @@ namespace SQLiteXM
             this.dbName = dbName;
         }
 
-        // Each TransactionItem represents a single SQL statement that will be executed.
+        // For adding name/value parameters. 
         public void AddSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters)
         {
             transactionItems.Add(new TransactionItem(sqlStatementName, sqlStatementParameters));
         }
+        // For adding positional parameters.
         public void AddSqlStatement(string sqlStatementName, List<object> sqlStatementParameters)
         {
             transactionItems.Add(new TransactionItem(sqlStatementName, sqlStatementParameters));
         }
     }
 
+    // Each TransactionItem represents a single SQL statement that will be executed.
     public class TransactionItem
     {
         public string SqlStatementName { get => sqlStatementName; }
@@ -48,6 +54,7 @@ namespace SQLiteXM
         }
     }
 
+    // Each DbOperationResponse represents the results of a single SQL statement that was executed.
     public class DbOperationResponse
     {
         internal List<Dictionary<string, object?>>? recordData;
@@ -139,7 +146,7 @@ namespace SQLiteXM
 
                         case SqlStatementType.insert:
                             dbOperationResponse.recordData = new List<Dictionary<string, object?>>(1);
-                            dbOperationResponse.recordData.Add( await performInsert(sqlStatementName, sqlStatementParameters, dbName));
+                            dbOperationResponse.recordData.Add(await performInsert(sqlStatementName, sqlStatementParameters, dbName));
                             dbOperationResponse.sqlStatementType = SqlStatementType.insert;
                             dbOperationResponse.sqlStatementName = sqlStatementName;
                             break;
@@ -296,6 +303,30 @@ namespace SQLiteXM
                     throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", key, databaseRows[key]?.GetType().ToString(), key, userObject?.GetType()?.GetProperty(key)?.PropertyType.ToString()));
                 }
             }
+        }
+
+        public static List<T> populateRecordObject<T>(List<Dictionary<string, object>> databaseRowsList) where T : class, new()
+        {
+            List<T> userObjectList = new List<T>();
+
+            foreach (Dictionary<string, object> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
+            {
+                foreach (KeyValuePair<string, object> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
+                {
+                    T userObject = new T();
+                    try
+                    {
+                        userObject.GetType().GetProperty(kvp.Key)?.SetValue(userObject, kvp.Value);
+                        userObjectList.Add(userObject);
+                    }
+                    catch (System.ArgumentException)
+                    {
+                        throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", (kvp.Key, kvp.Value?.GetType().ToString(), kvp.Key, userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString())));
+                    }
+                }
+            }
+
+            return userObjectList;
         }
     }
 }
