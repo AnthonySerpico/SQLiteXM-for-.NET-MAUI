@@ -14,7 +14,7 @@ namespace SQLiteXM
         public  new Hashtable? indexStatements { get; set; }
         public  new Hashtable? insertStatements { get; set; }
         public  new Hashtable? tableCreateStatements { get; set; }
-        public  new NameValueCollection? selectStatements { get; set; }
+        public  new Dictionary<string, SelectDefinition> selectStatements { get; set; }
         public  new NameValueCollection? updateStatements { get; set; }
         public  new NameValueCollection? deleteStatements { get; set; }
 
@@ -43,9 +43,9 @@ namespace SQLiteXM
             SqlStatements.addInsertDefinition(insertName, tableName, insertSQL);
         }
 
-        new public void addSelectDefinition(string selectName, string selectSQL)
+        new public void addSelectDefinition(string selectName, string tableName, string insertSQL)
         {
-            SqlStatements.addSelectDefinition(selectName, selectSQL);
+            SqlStatements.addSelectDefinition(selectName, tableName, insertSQL);
         }
 
         new public void addUpdateDefinition(string updateName, string updateSQL)

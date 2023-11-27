@@ -174,7 +174,7 @@ namespace SQLiteXM
 
 		public void executeQuery (string command, List<object> ParameterValues)
 		{
-			connection.executeQuery (SqlStatements.selectStatements [command], ParameterValues);
+			connection.executeQuery (SqlStatements.selectStatements [command].SelectSQL, ParameterValues);
 		}
 
 		public void executeUpdateDirect (string sqlStatement, List<object> ParameterValues)

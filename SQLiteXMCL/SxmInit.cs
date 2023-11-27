@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Maui.Controls;
+using System;
 using System.Collections;
 
 namespace SQLiteXM
@@ -21,7 +22,7 @@ namespace SQLiteXM
         }
 
         private static async Task parseSqlStatementsFile(string SqlStatementsFileName)
-         {
+        {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
             {
                 using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
@@ -50,7 +51,7 @@ namespace SQLiteXM
             try
             {
                 double sqlStatementsVersionNumber = ProcessSQLStatements.getSqlStatementsVersionNumber;  // The value in the current SQL statements file.
-                double currentDbVersionNumber     = getDbVersionNumber();
+                double currentDbVersionNumber = getDbVersionNumber();
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
@@ -157,7 +158,7 @@ namespace SQLiteXM
             try
             {
                 string filepath = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
-                if(System.IO.File.Exists(filepath))
+                if (System.IO.File.Exists(filepath))
                     System.IO.File.Delete(filepath);
             }
             catch (System.Exception) { }
@@ -168,7 +169,7 @@ namespace SQLiteXM
             try
             {
                 string targetFile = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
-                using StreamWriter writer = new StreamWriter(targetFile, append : false);
+                using StreamWriter writer = new StreamWriter(targetFile, append: false);
 
                 writer.Write(versionNumber);
                 writer.Close();
@@ -322,6 +323,25 @@ namespace SQLiteXM
             }
         }
 
+        internal static List<string> getTableColumnNames(string? dbName, string queryName)
+        {
+            List<string> columnNames = new List<string>();
+            string tableName = SqlStatements.selectStatements[queryName].TableName;
+
+            SxmConnection sxmConnection = new SxmConnection(dbName);
+            using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+            {
+                sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", tableName), default(List<object>));
+
+                while (sxmConnection.nextRow() == true)
+                {
+                    columnNames.Add((string)sxmConnection.getValue("name"));
+                }
+            }
+
+            return columnNames;
+        }
+
         private static void applyIndexTableStatements(string key, Hashtable connectionMap)
         {
             ArrayList indexStatementsList = null;
@@ -448,7 +468,7 @@ namespace SQLiteXM
             parameterValues.Add(databaseName);
             parameterValues.Add(parts[1]);
             parameterValues.Add(tableDefinition.CloudSynch);
-            sxmTransaction.executeSystemUpdateDirect ("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
+            sxmTransaction.executeSystemUpdateDirect("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
         }
 
         private static void createCloudSynchTable(string key, Hashtable tableNamesMap, SxmTransaction sxmTransaction)

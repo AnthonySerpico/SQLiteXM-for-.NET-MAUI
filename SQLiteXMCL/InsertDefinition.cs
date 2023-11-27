@@ -19,5 +19,25 @@
 			this.insertSQL = insertSQL;
 		}
 	}
+
+    public class SelectDefinition
+    {
+        private string? tableName;
+        public string TableName
+        {
+            get { return tableName; }
+        }
+        private string selectSQL;
+        public string SelectSQL
+        {
+            get { return selectSQL; }
+        }
+
+        internal SelectDefinition(string? tableName, string selectSQL)
+        {
+            this.tableName = tableName;
+            this.selectSQL = selectSQL;
+        }
+    }
 }
 

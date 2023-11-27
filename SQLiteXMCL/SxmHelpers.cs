@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections;
+using System.Reflection;
+
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
@@ -232,7 +234,7 @@ namespace SQLiteXM
             if (sqlStatementName == null)
                 throw new ArgumentException("A sql statement cannot be null.");
 
-            if (SqlStatements.selectStatements[sqlStatementName] != default)
+            if (SqlStatements.selectStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.select;
 
             if (SqlStatements.insertStatements[sqlStatementName] != default)
@@ -247,15 +249,30 @@ namespace SQLiteXM
             throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
         }
 
+        public static async Task<List<Dictionary<string, object?>>> performSelect<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+        {
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
+            return await performSelect(sqlStatementName, selectParameterValues, dbName);
+        }
+        public static async Task<List<M>> performSelect<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+                                                                                                                                         where M : class, new()
+        {
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
+            List<Dictionary<string, object?>> select = await performSelect(sqlStatementName, selectParameterValues, dbName);
+            List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
+            return userRecordList;
+        }
         public static async Task<List<T>> performSelect<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
-            List<Dictionary<string, object?>> select = await SxmHelpers.performSelect("getUser", new List<object>() { 0 }, dbName);
+            List<Dictionary<string, object?>> select = await SxmHelpers.performSelect(sqlStatementName, sqlStatementParameters, dbName);
             List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
             return userRecordList;
         }
         public static async Task<List<T>> performSelect<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
-            List<Dictionary<string, object?>> select = await SxmHelpers.performSelect("getUser", new List<object>() { 0 }, dbName);
+            List<Dictionary<string, object?>> select = await SxmHelpers.performSelect(sqlStatementName, sqlStatementParameters, dbName);
             List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
             return userRecordList;
         }
@@ -283,16 +300,32 @@ namespace SQLiteXM
             return await Task.FromResult(selectedRows);
         }
 
+        public static async Task<M> performInsert<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+                                                                                                                                         where M : class, new()
+        {
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
+            Dictionary<string, object?> select = await performInsert(sqlStatementName, selectParameterValues, dbName);
+            
+            M userRecordList = SxmHelpers.loadDbValues<M>(select);
+            return userRecordList;
+        }
+        public static async Task<Dictionary<string, object?>> performInsert<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+        {
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
+            return await performInsert(sqlStatementName, selectParameterValues, dbName);
+        }
         public static async Task<T> performInsert<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
-            Dictionary<string, object?> select = await SxmHelpers.performInsert("getUser", new List<object>() { 0 }, dbName);
+            Dictionary<string, object?> select = await SxmHelpers.performInsert(sqlStatementName, sqlStatementParameters, dbName);
             T userRecord = SxmHelpers.loadDbValues<T>(select);
 
             return userRecord;
         }
         public static async Task<T> performInsert<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
-            Dictionary<string, object?> select = await SxmHelpers.performInsert("getUser", new List<object>() { 0 }, dbName);
+            Dictionary<string, object?> select = await SxmHelpers.performInsert(sqlStatementName, sqlStatementParameters, dbName);
             T userRecord = SxmHelpers.loadDbValues<T>(select); 
 
             return userRecord;
@@ -393,6 +426,25 @@ namespace SQLiteXM
                 }
             }
             return userObject;
+        }
+
+        public static Dictionary<string, object?> loadParamaterValues<T>(List<string> dbColumnNames, T userObject) where T : class, new()
+        {
+            Dictionary<string, object?> returnDictionary = new Dictionary<string, object> ();
+            foreach (string columnName in dbColumnNames)  // Process each entry (column) in the Dictionary.
+            {
+                try
+                {
+                    PropertyInfo? pi = userObject.GetType().GetProperty(columnName);  // If the column is in the user supplied object.
+                    if (pi != default)
+                        returnDictionary.Add(columnName, pi.GetValue(userObject));
+                }
+                catch (System.ArgumentException)
+                {
+                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' to the provided object property '{1}' type {2}", (columnName, columnName, userObject.GetType()?.GetProperty(columnName)?.PropertyType.ToString())));
+                }
+            }
+            return returnDictionary;
         }
     }
 }

@@ -298,8 +298,9 @@ namespace SQLiteXM
 		private static int processStatement(int index, string header, string sqlStatements)
 		{
 			CommandReturn commandReturn = null;
-			string sqlStatement;
-			string sqlName;
+            string tableName = default(string);
+            string sqlStatement;
+            string sqlName;
 
 			do {
 				commandReturn = getCommand (index, sqlStatements);
@@ -308,7 +309,14 @@ namespace SQLiteXM
 					break;
 				sqlName = commandReturn.command;
 
-				commandReturn = getCommand (index, sqlStatements);
+				if (header.Equals("select") == true)
+				{
+					commandReturn = getCommand(index, sqlStatements);
+					index = commandReturn.index;
+					tableName = commandReturn.command;
+				}
+
+                commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
 				if (commandReturn.command.Length == 0) // The SQL select statement cannot be empty.
 				{
@@ -317,7 +325,7 @@ namespace SQLiteXM
 				sqlStatement = commandReturn.command;
 
 				if( header.Equals ("select") == true)
-					SqlStatements.addSelectDefinition (sqlName, sqlStatement);
+					SqlStatements.addSelectDefinition (sqlName, tableName, sqlStatement);
 				if( header.Equals ("delete") == true)
 					SqlStatements.addDeleteDefinition (sqlName, sqlStatement);
 				if( header.Equals ("update") == true)

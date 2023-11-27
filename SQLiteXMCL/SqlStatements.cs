@@ -9,7 +9,7 @@ namespace SQLiteXM
 		internal static Hashtable? indexStatements = default(Hashtable);
 		internal static Hashtable insertStatements = new Hashtable();
 		internal static Hashtable tableCreateStatements = new Hashtable();
-		internal static NameValueCollection selectStatements = new NameValueCollection ();
+		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>( );
 		internal static NameValueCollection updateStatements = new NameValueCollection ();
 		internal static NameValueCollection deleteStatements = new NameValueCollection ();
 
@@ -19,10 +19,10 @@ namespace SQLiteXM
 				insertStatements.Add ( insertName, new InsertDefinition (tableName, insertSQL));
 		}
 
-		internal static void addSelectDefinition (string selectName, string selectSQL)
+		internal static void addSelectDefinition (string selectName, string? tableName, string selectSQL)
 		{
-			if (selectStatements [selectName] == null)
-				selectStatements.Add (selectName, selectSQL);
+			if (!selectStatements.ContainsKey(selectName))
+				selectStatements.Add (selectName, new SelectDefinition(tableName, selectSQL));
 		}
 
 		internal static void addUpdateDefinition (string updateName, string updateSQL)
