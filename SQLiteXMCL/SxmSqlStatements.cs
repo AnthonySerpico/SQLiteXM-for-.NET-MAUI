@@ -12,7 +12,7 @@ namespace SQLiteXM
 
         public new Hashtable? alterStatements { get; set; }
         public  new Hashtable? indexStatements { get; set; }
-        public  new Hashtable? insertStatements { get; set; }
+        public  new Dictionary<string, InsertDefinition> insertStatements { get; set; }
         public  new Hashtable? tableCreateStatements { get; set; }
         public  new Dictionary<string, SelectDefinition> selectStatements { get; set; }
         public  new NameValueCollection? updateStatements { get; set; }

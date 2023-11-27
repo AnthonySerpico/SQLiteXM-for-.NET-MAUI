@@ -158,33 +158,44 @@ namespace SQLiteXM
             return await Task.FromResult(dbOperationResponseList);
         }
 
-        public async static Task<DbOperationResponse<List<T>>> runSqlStatement<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
+        public static async Task<List<M>?> runSqlStatement<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+                                                                                                                                         where M : class, new()
         {
-            DbOperationResponse dbOperationResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
-            return loadUserResponseObject<T>(dbOperationResponse);
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
+            List<Dictionary<string, object?>>? select = await runSqlStatement(sqlStatementName, selectParameterValues, dbName);
+            List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
+            return userRecordList;
         }
-        public async static Task<DbOperationResponse<List<T>>> runSqlStatement<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
+        public async static Task<List<T>?> runSqlStatement<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
         {
-            DbOperationResponse dbOperationResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
-            return loadUserResponseObject<T>(dbOperationResponse);
-        }
+            List<Dictionary<string, object?>>? runSqlStatementResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
+            if (runSqlStatementResponse != default)
+                return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
 
-        private static DbOperationResponse<List<T>> loadUserResponseObject<T>(DbOperationResponse dbOperationResponse) where T : class, new()
+            return default(List<T>);
+        }
+        public static async Task<List<Dictionary<string, object?>>?> runSqlStatement<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
-            DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
-            if (dbOperationResponse.recordData != default)
-                userDbOperationResponse.recordData = populateUserRecord<T>(dbOperationResponse.recordData);
-
-            return userDbOperationResponse;
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
+            return await runSqlStatement(sqlStatementName, selectParameterValues, dbName);
         }
-
-        public static async Task<DbOperationResponse> runSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string))
+        public static async Task<List<Dictionary<string, object?>>?> runSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string))
         {
             return await runSqlStatement(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
-        public static async Task<DbOperationResponse> runSqlStatement(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string))
+        public async static Task<List<T>?> runSqlStatement<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
         {
-            DbOperationResponse dbOperationResponse = new DbOperationResponse();
+            List<Dictionary<string, object?>>? runSqlStatementResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
+            if (runSqlStatementResponse != default)
+                return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
+
+            return default(List<T>);
+        }
+        public static async Task<List<Dictionary<string, object?>>?> runSqlStatement(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string))
+        {
+            List<Dictionary<string, object?>>? recordData = default(List<Dictionary<string, object?>>);
 
             try
             {
@@ -193,28 +204,20 @@ namespace SQLiteXM
                     switch (GetDatabaseStatementType(sqlStatementName))
                     {
                         case SqlStatementType.select:
-                            dbOperationResponse.recordData = await performSelect(sqlStatementName, sqlStatementParameters, dbName);
-                            dbOperationResponse.sqlStatementType = SqlStatementType.select;
-                            dbOperationResponse.sqlStatementName = sqlStatementName;
+                            recordData = await performSelect(sqlStatementName, sqlStatementParameters, dbName);
                             break;
 
                         case SqlStatementType.insert:
-                            dbOperationResponse.recordData = new List<Dictionary<string, object?>>(1);
-                            dbOperationResponse.recordData.Add(await performInsert(sqlStatementName, sqlStatementParameters, dbName));
-                            dbOperationResponse.sqlStatementType = SqlStatementType.insert;
-                            dbOperationResponse.sqlStatementName = sqlStatementName;
+                            recordData = new List<Dictionary<string, object?>>(1);
+                            recordData.Add(await performInsert(sqlStatementName, sqlStatementParameters, dbName));
                             break;
 
                         case SqlStatementType.update:
                             await performUpdate(sqlStatementName, sqlStatementParameters, dbName);
-                            dbOperationResponse.sqlStatementType = SqlStatementType.update;
-                            dbOperationResponse.sqlStatementName = sqlStatementName;
                             break;
 
                         case SqlStatementType.delete:
                             await performDelete(sqlStatementName, sqlStatementParameters, dbName);
-                            dbOperationResponse.sqlStatementType = SqlStatementType.delete;
-                            dbOperationResponse.sqlStatementName = sqlStatementName;
                             break;
 
                         default: break;
@@ -226,8 +229,18 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(dbOperationResponse);
+            return await Task.FromResult(recordData);
         }
+
+        private static DbOperationResponse<List<T>> loadUserResponseObject<T>(DbOperationResponse dbOperationResponse) where T : class, new()
+        {
+            DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
+            if (dbOperationResponse.recordData != default)
+                userDbOperationResponse.recordData = populateUserRecord<T>(dbOperationResponse.recordData);
+
+            return userDbOperationResponse;
+        }
+
 
         private static SqlStatementType GetDatabaseStatementType(string? sqlStatementName)
         {
@@ -237,7 +250,7 @@ namespace SQLiteXM
             if (SqlStatements.selectStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.select;
 
-            if (SqlStatements.insertStatements[sqlStatementName] != default)
+            if (SqlStatements.insertStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.insert;
 
             if (SqlStatements.updateStatements[sqlStatementName] != default)
