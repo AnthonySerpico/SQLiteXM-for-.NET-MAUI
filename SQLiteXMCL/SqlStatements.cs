@@ -9,7 +9,7 @@ namespace SQLiteXM
 		internal static Hashtable? indexStatements = default(Hashtable);
 		internal static Dictionary<string, InsertDefinition> insertStatements = new Dictionary<string, InsertDefinition>();
 		internal static Hashtable tableCreateStatements = new Hashtable();
-		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>( );
+		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>();
 		internal static NameValueCollection updateStatements = new NameValueCollection ();
 		internal static NameValueCollection deleteStatements = new NameValueCollection ();
 
