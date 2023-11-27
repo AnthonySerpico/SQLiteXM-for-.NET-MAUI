@@ -5,10 +5,10 @@ namespace SQLiteXM
 {
     public class SqlStatements
 	{
-		internal static Hashtable? alterStatements = default(Hashtable);
+        internal static Hashtable? tableCreateStatements = new Hashtable();
+        internal static Hashtable? alterStatements = default(Hashtable);
 		internal static Hashtable? indexStatements = default(Hashtable);
 		internal static Dictionary<string, InsertDefinition> insertStatements = new Dictionary<string, InsertDefinition>();
-		internal static Hashtable tableCreateStatements = new Hashtable();
 		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>();
 		internal static Dictionary<string, UpdateDefinition> updateStatements = new Dictionary<string, UpdateDefinition>();
 		internal static Dictionary<string, DeleteDefinition> deleteStatements = new Dictionary<string, DeleteDefinition>();

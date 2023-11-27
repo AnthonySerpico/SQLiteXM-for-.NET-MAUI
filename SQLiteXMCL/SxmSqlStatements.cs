@@ -10,10 +10,10 @@ namespace SQLiteXM
         public double version { get; set; } = 0.0;
         public string databaseName { get; set; }
 
-        public new Hashtable? alterStatements { get; set; }
+        public  new Hashtable? tableCreateStatements { get; set; }
+        public  new Hashtable? alterStatements { get; set; }
         public  new Hashtable? indexStatements { get; set; }
         public  new Dictionary<string, InsertDefinition> insertStatements { get; set; }
-        public  new Hashtable? tableCreateStatements { get; set; }
         public  new Dictionary<string, SelectDefinition> selectStatements { get; set; }
         public  new Dictionary<string, UpdateDefinition> updateStatements { get; set; }
         public  new Dictionary<string, DeleteDefinition> deleteStatements { get; set; }

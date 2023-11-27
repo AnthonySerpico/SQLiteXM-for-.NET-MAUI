@@ -24,17 +24,21 @@ namespace SQLiteXM
         // For adding name/value parameters. 
         public void AddSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters)
         {
-            transactionItems.Add(new TransactionItem(sqlStatementName, sqlStatementParameters));
+            transactionItems.Add(new TransactionItem<Dictionary<string, object>>(sqlStatementName, sqlStatementParameters));
         }
         // For adding positional parameters.
         public void AddSqlStatement(string sqlStatementName, List<object> sqlStatementParameters)
         {
-            transactionItems.Add(new TransactionItem(sqlStatementName, sqlStatementParameters));
+            transactionItems.Add(new TransactionItem<List<object>>(sqlStatementName, sqlStatementParameters));
+        }
+        public void AddSqlStatement<T>(string sqlStatementName, T sqlStatementParameters)
+        {
+            transactionItems.Add(new TransactionItem<object>(DbName!, sqlStatementName, sqlStatementParameters));
         }
     }
 
     // Each TransactionItem represents a single SQL statement that will be executed.
-    public class TransactionItem
+    public class TransactionItem<T> where T : class, new()
     {
         public string SqlStatementName { get => sqlStatementName; }
         private string sqlStatementName;
@@ -50,6 +54,14 @@ namespace SQLiteXM
         {
             this.sqlStatementName = sqlStatementName;
             this.sqlStatementParameters = sqlStatementParameters;
+        }
+        internal TransactionItem(string dbName, string sqlStatementName, T userObjectParameters)
+        {
+            this.sqlStatementName = sqlStatementName;
+
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
+            this.sqlStatementParameters = new List<object>() { selectParameterValues };
         }
     }
 
@@ -92,7 +104,7 @@ namespace SQLiteXM
 
                 userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
                 userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
-                userDbOperationResponseList.Add(userDbOperationResponse);
+                userDbOperationResponseList.Insert(0, userDbOperationResponse);
 
                 defaultDbOperationResponseList.RemoveAt(indexer);
             }
@@ -108,7 +120,7 @@ namespace SQLiteXM
             {
                 using (SxmTransaction sxmTransaction = new SxmTransaction(transactionObject.DbName))
                 {
-                    foreach (TransactionItem transactionItem in transactionObject.TransactionItems)
+                    foreach (TransactionItem<object> transactionItem in transactionObject.TransactionItems)
                     {
                         DbOperationResponse responseObject = new DbOperationResponse();
                         switch (GetDatabaseStatementType(transactionItem.SqlStatementName))
@@ -241,8 +253,7 @@ namespace SQLiteXM
             return userDbOperationResponse;
         }
 
-
-        private static SqlStatementType GetDatabaseStatementType(string? sqlStatementName)
+        internal static SqlStatementType GetDatabaseStatementType(string? sqlStatementName)
         {
             if (sqlStatementName == null)
                 throw new ArgumentException("A sql statement cannot be null.");
