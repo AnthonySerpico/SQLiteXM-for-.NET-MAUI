@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
@@ -85,10 +86,8 @@ namespace SQLiteXM
                 DbOperationResponse dbOperationResponse = defaultDbOperationResponseList[indexer];
                 DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
                 if (dbOperationResponse.recordData != default)
-                {
-                    List<T> userObject = populateRecordObject<T>(dbOperationResponse.recordData);
-                    userDbOperationResponse.recordData = userObject;
-                }
+                    userDbOperationResponse.recordData = populateRecordObject<T>(dbOperationResponse.recordData);
+
                 userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
                 userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
                 userDbOperationResponseList.Add(userDbOperationResponse);
@@ -160,22 +159,19 @@ namespace SQLiteXM
         public async static Task<DbOperationResponse<List<T>>> runSqlStatement<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
         {
             DbOperationResponse dbOperationResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
-            return runSqlStatement<T>(dbOperationResponse);
+            return loadUserResponseObject<T>(dbOperationResponse);
         }
         public async static Task<DbOperationResponse<List<T>>> runSqlStatement<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
         {
             DbOperationResponse dbOperationResponse = await runSqlStatement(sqlStatementName, sqlStatementParameters, dbName);
-            return runSqlStatement<T>(dbOperationResponse);
+            return loadUserResponseObject<T>(dbOperationResponse);
         }
-        public static DbOperationResponse<List<T>> runSqlStatement<T>(DbOperationResponse dbOperationResponse) where T : class, new()
+
+        private static DbOperationResponse<List<T>> loadUserResponseObject<T>(DbOperationResponse dbOperationResponse) where T : class, new()
         {
             DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
-
             if (dbOperationResponse.recordData != default)
                 userDbOperationResponse.recordData = populateRecordObject<T>(dbOperationResponse.recordData);
-
-            userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
-            userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
 
             return userDbOperationResponse;
         }
@@ -251,6 +247,18 @@ namespace SQLiteXM
             throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
         }
 
+        public static async Task<List<T>> performSelect<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default) where T : class, new()
+        {
+            List<Dictionary<string, object?>> select = await SxmHelpers.performSelect("getUser", new List<object>() { 0 }, dbName);
+            List<T> userRecordList = SxmHelpers.populateRecordObject<T>(select);
+            return userRecordList;
+        }
+        public static async Task<List<T>> performSelect<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
+        {
+            List<Dictionary<string, object?>> select = await SxmHelpers.performSelect("getUser", new List<object>() { 0 }, dbName);
+            List<T> userRecordList = SxmHelpers.populateRecordObject<T>(select);
+            return userRecordList;
+        }
         public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default)
         {
             return await performSelect(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
@@ -275,6 +283,20 @@ namespace SQLiteXM
             return await Task.FromResult(selectedRows);
         }
 
+        public static async Task<T> performInsert<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default) where T : class, new()
+        {
+            Dictionary<string, object?> select = await SxmHelpers.performInsert("getUser", new List<object>() { 0 }, dbName);
+            T userRecord = SxmHelpers.loadDbValues<T>(select);
+
+            return userRecord;
+        }
+        public static async Task<T> performInsert<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
+        {
+            Dictionary<string, object?> select = await SxmHelpers.performInsert("getUser", new List<object>() { 0 }, dbName);
+            T userRecord = SxmHelpers.loadDbValues<T>(select); 
+
+            return userRecord;
+        }
         public static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default)
         {
             return await performInsert(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
@@ -343,44 +365,49 @@ namespace SQLiteXM
             await Task.CompletedTask;
         }
 
-        public static void populateRecordObject<T>(Dictionary<string, object> databaseRows, ref T userObject) where T : class
-        {
-            ICollection ic = databaseRows.Keys;
-            foreach (string key in ic)  // Process each entry (column) in the Dictionary.
-            {
-                try
-                {
-                    userObject?.GetType().GetProperty(key)?.SetValue(userObject, databaseRows[key]);
-                }
-                catch (System.ArgumentException)
-                {
-                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", key, databaseRows[key]?.GetType().ToString(), key, userObject?.GetType()?.GetProperty(key)?.PropertyType.ToString()));
-                }
-            }
-        }
-        
         public static List<T> populateRecordObject<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
         {
             List<T> userObjectList = new List<T>();
 
             foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
-                T userObject = new T();
-                foreach (KeyValuePair<string, object> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
-                {
-                    try
-                    {
-                        userObject.GetType().GetProperty(kvp.Key)?.SetValue(userObject, kvp.Value);
-                    }
-                    catch (System.ArgumentException)
-                    {
-                        throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", (kvp.Key, kvp.Value?.GetType().ToString(), kvp.Key, userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString())));
-                    }
-                }
+                T userObject = loadDbValues<T>(databaseRecord);
                 userObjectList.Add(userObject);
             }
 
             return userObjectList;
+        }
+
+        /*public static void loadDbValues<T>(Dictionary<string, object?> databaseRecord, ref T userObject) where T : class
+        {
+            foreach (KeyValuePair<string, object?> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
+            {
+                try
+                {
+                    userObject.GetType().GetProperty(kvp.Key)?.SetValue(userObject, kvp.Value);
+                }
+                catch (System.ArgumentException)
+                {
+                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", (kvp.Key, kvp.Value?.GetType().ToString(), kvp.Key, userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString())));
+                }
+            }
+        }*/
+
+        public static T loadDbValues<T>(Dictionary<string, object?> databaseRecord) where T : class, new()
+        {
+            T userObject = new T();
+            foreach (KeyValuePair<string, object?> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
+            {
+                try
+                {
+                    userObject.GetType().GetProperty(kvp.Key)?.SetValue(userObject, kvp.Value);
+                }
+                catch (System.ArgumentException)
+                {
+                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", (kvp.Key, kvp.Value?.GetType().ToString(), kvp.Key, userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString())));
+                }
+            }
+            return userObject;
         }
     }
 }
