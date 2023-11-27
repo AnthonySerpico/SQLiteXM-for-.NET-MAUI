@@ -10,8 +10,8 @@ namespace SQLiteXM
 		internal static Dictionary<string, InsertDefinition> insertStatements = new Dictionary<string, InsertDefinition>();
 		internal static Hashtable tableCreateStatements = new Hashtable();
 		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>();
-		internal static NameValueCollection updateStatements = new NameValueCollection ();
-		internal static NameValueCollection deleteStatements = new NameValueCollection ();
+		internal static Dictionary<string, UpdateDefinition> updateStatements = new Dictionary<string, UpdateDefinition>();
+		internal static Dictionary<string, DeleteDefinition> deleteStatements = new Dictionary<string, DeleteDefinition>();
 
 		internal static void addInsertDefinition (string insertName, string tableName, string insertSQL)
 		{
@@ -27,14 +27,14 @@ namespace SQLiteXM
 
 		internal static void addUpdateDefinition (string updateName, string updateSQL)
 		{
-			if (updateStatements [updateName] == null)
-				updateStatements.Add (updateName, updateSQL);
+			if (!updateStatements.ContainsKey(updateName))
+				updateStatements.Add (updateName, new UpdateDefinition(updateSQL));
 		}
 
 		internal static void addDeleteDefinition(string deleteName, string deleteSQL)
 		{
-			if (deleteStatements [deleteName] == null)
-				deleteStatements.Add (deleteName, deleteSQL);
+			if (!deleteStatements.ContainsKey(deleteName))
+				deleteStatements.Add (deleteName, new DeleteDefinition(deleteSQL));
 		}
 
 		internal static void addIndexDefinition (string dbAndTableName, string indexName, string sqlStatement)

@@ -273,7 +273,7 @@ namespace SQLiteXM
                 connDataReader = default(DbDataReader);
             }
         }
-        public void executeQuery(string command, List<object> parameterValues)
+        public void executeQuery(string command, List<object>? parameterValues)
         {
             if (string.IsNullOrEmpty(command))
                 throw new SxmException(ErrorMessages.error["missingSQL"]);
@@ -334,7 +334,7 @@ namespace SQLiteXM
             }
         }
 
-        private void addCommandParameters(List<object> parameterValues)
+        private void addCommandParameters(List<object>? parameterValues)
         {
             connCommand.Parameters.Clear();
 

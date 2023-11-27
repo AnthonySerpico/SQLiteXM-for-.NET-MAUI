@@ -15,8 +15,8 @@ namespace SQLiteXM
         public  new Dictionary<string, InsertDefinition> insertStatements { get; set; }
         public  new Hashtable? tableCreateStatements { get; set; }
         public  new Dictionary<string, SelectDefinition> selectStatements { get; set; }
-        public  new NameValueCollection? updateStatements { get; set; }
-        public  new NameValueCollection? deleteStatements { get; set; }
+        public  new Dictionary<string, UpdateDefinition> updateStatements { get; set; }
+        public  new Dictionary<string, DeleteDefinition> deleteStatements { get; set; }
 
         public SxmSqlStatements( string databaseName, double version ) 
         {

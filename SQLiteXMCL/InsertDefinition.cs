@@ -39,5 +39,33 @@
             this.selectSQL = selectSQL;
         }
     }
+
+    public class UpdateDefinition
+    {
+        private string updateSQL;
+        public string UpdateSQL
+        {
+            get { return updateSQL; }
+        }
+
+        internal UpdateDefinition(string updateSQL)
+        {
+            this.updateSQL = updateSQL;
+        }
+    }
+    public class DeleteDefinition
+    {
+        private string deleteSQL;
+        public string DeleteSQL
+        {
+            get { return deleteSQL; }
+        }
+
+        internal DeleteDefinition(string deleteSQL)
+        {
+            this.deleteSQL = deleteSQL;
+        }
+    }
+
 }
 

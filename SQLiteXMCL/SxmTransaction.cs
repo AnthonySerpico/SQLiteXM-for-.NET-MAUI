@@ -184,7 +184,7 @@ namespace SQLiteXM
 
 		public void executeUpdate (string command, List<object> ParameterValues)
 		{
-			executeNonQuery (SqlStatements.updateStatements [command], ParameterValues);
+			executeNonQuery (SqlStatements.updateStatements [command].UpdateSQL, ParameterValues);
 		}
 
 		public void executeDeleteDirect (string sqlStatement, List<object> ParameterValues)
@@ -194,7 +194,7 @@ namespace SQLiteXM
 
 		public void executeDelete (string command, List<object> ParameterValues)
 		{
-			executeNonQuery (SqlStatements.deleteStatements [command], ParameterValues);
+			executeNonQuery (SqlStatements.deleteStatements [command].DeleteSQL, ParameterValues);
 		}
 
 		public void executeSystemUpdateDirect (string sqlStatement, List<object> ParameterValues)

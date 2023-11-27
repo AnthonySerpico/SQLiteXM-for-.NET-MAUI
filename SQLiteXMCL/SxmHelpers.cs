@@ -253,10 +253,10 @@ namespace SQLiteXM
             if (SqlStatements.insertStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.insert;
 
-            if (SqlStatements.updateStatements[sqlStatementName] != default)
+            if (SqlStatements.updateStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.update;
 
-            if (SqlStatements.deleteStatements[sqlStatementName] != default)
+            if (SqlStatements.deleteStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.delete;
 
             throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
