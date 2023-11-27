@@ -264,7 +264,7 @@ namespace SQLiteXM
                 Hashtable columnNames = null;
                 using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
                 {
-                    sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", parts[1]), null as List<object>);
+                    sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", parts[1]), default(List<object>));
 
                     if (alterStatementsList.Count > 1)
                     {

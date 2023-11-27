@@ -86,7 +86,7 @@ namespace SQLiteXM
                 DbOperationResponse dbOperationResponse = defaultDbOperationResponseList[indexer];
                 DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
                 if (dbOperationResponse.recordData != default)
-                    userDbOperationResponse.recordData = populateRecordObject<T>(dbOperationResponse.recordData);
+                    userDbOperationResponse.recordData = populateUserRecord<T>(dbOperationResponse.recordData);
 
                 userDbOperationResponse.sqlStatementName = dbOperationResponse.sqlStatementName;
                 userDbOperationResponse.sqlStatementType = dbOperationResponse.sqlStatementType;
@@ -171,7 +171,7 @@ namespace SQLiteXM
         {
             DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
             if (dbOperationResponse.recordData != default)
-                userDbOperationResponse.recordData = populateRecordObject<T>(dbOperationResponse.recordData);
+                userDbOperationResponse.recordData = populateUserRecord<T>(dbOperationResponse.recordData);
 
             return userDbOperationResponse;
         }
@@ -250,13 +250,13 @@ namespace SQLiteXM
         public static async Task<List<T>> performSelect<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
             List<Dictionary<string, object?>> select = await SxmHelpers.performSelect("getUser", new List<object>() { 0 }, dbName);
-            List<T> userRecordList = SxmHelpers.populateRecordObject<T>(select);
+            List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
             return userRecordList;
         }
         public static async Task<List<T>> performSelect<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
             List<Dictionary<string, object?>> select = await SxmHelpers.performSelect("getUser", new List<object>() { 0 }, dbName);
-            List<T> userRecordList = SxmHelpers.populateRecordObject<T>(select);
+            List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
             return userRecordList;
         }
         public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default)
@@ -365,7 +365,7 @@ namespace SQLiteXM
             await Task.CompletedTask;
         }
 
-        public static List<T> populateRecordObject<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
+        public static List<T> populateUserRecord<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
         {
             List<T> userObjectList = new List<T>();
 
@@ -377,21 +377,6 @@ namespace SQLiteXM
 
             return userObjectList;
         }
-
-        /*public static void loadDbValues<T>(Dictionary<string, object?> databaseRecord, ref T userObject) where T : class
-        {
-            foreach (KeyValuePair<string, object?> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
-            {
-                try
-                {
-                    userObject.GetType().GetProperty(kvp.Key)?.SetValue(userObject, kvp.Value);
-                }
-                catch (System.ArgumentException)
-                {
-                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", (kvp.Key, kvp.Value?.GetType().ToString(), kvp.Key, userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString())));
-                }
-            }
-        }*/
 
         public static T loadDbValues<T>(Dictionary<string, object?> databaseRecord) where T : class, new()
         {
