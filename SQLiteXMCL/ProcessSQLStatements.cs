@@ -166,7 +166,7 @@ namespace SQLiteXM
         private static int processTableStatements(int index, string sqlStatements)
 		{
 			CommandReturn commandReturn = null;
-            string dbAndTableName;
+            string tableName;
             string sqlStatement;
 			int synch;
 
@@ -175,7 +175,7 @@ namespace SQLiteXM
 				index = commandReturn.index;
 				if (commandReturn.command.Length == 0) // Were finished processing the table statements.
 					break;
-				dbAndTableName = commandReturn.command;
+				tableName = commandReturn.command;
 
 				commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
@@ -193,7 +193,7 @@ namespace SQLiteXM
 				}
 				synch = parseSynchCommand (commandReturn.command.ToLower ());
 
-				SqlStatements.addTableDefinition (databaseName + "." + dbAndTableName, sqlStatement, synch);
+				SqlStatements.addTableDefinition (databaseName + "." + tableName, sqlStatement, synch);
 			} while (true);
 
 			return index;
@@ -234,7 +234,7 @@ namespace SQLiteXM
 		private static int processAlterStatements(int index, string sqlStatements)
 		{
 			CommandReturn commandReturn = null;
-			string dbAndTableName;
+			string tableName;
 			string sqlStatement;
 			string columnName;
 
@@ -243,7 +243,7 @@ namespace SQLiteXM
 				index = commandReturn.index;
 				if (commandReturn.command.Length == 0) // Were finished processing the alter statements.
 					break;
-				dbAndTableName = commandReturn.command;
+				tableName = commandReturn.command;
 
 				commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
@@ -257,7 +257,7 @@ namespace SQLiteXM
 				}
 				sqlStatement = commandReturn.command;
 
-				SqlStatements.addAlterDefinition (databaseName + "." + dbAndTableName, columnName, sqlStatement);
+				SqlStatements.addAlterDefinition (databaseName + "." + tableName, columnName, sqlStatement);
 			} while (true);
 
 			return index;
@@ -266,7 +266,7 @@ namespace SQLiteXM
 		private static int processIndexStatements(int index, string sqlStatements)
 		{
 			CommandReturn commandReturn = null;
-			string dbAndTableName;
+			string tableName;
 			string sqlStatement;
 			string indexName;
 
@@ -275,11 +275,11 @@ namespace SQLiteXM
 				index = commandReturn.index;
 				if (commandReturn.command.Length == 0) // Were finished processing the index statements.
 					break;
-				dbAndTableName = commandReturn.command;
+                indexName = commandReturn.command;
 
 				commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
-				indexName = commandReturn.command;
+                tableName = commandReturn.command;
 
 				commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
@@ -289,7 +289,7 @@ namespace SQLiteXM
 				}
 				sqlStatement = commandReturn.command;
 
-				SqlStatements.addIndexDefinition (databaseName + "." + dbAndTableName, indexName, sqlStatement);
+				SqlStatements.addIndexDefinition (databaseName + "." + tableName, indexName, sqlStatement);
 			} while (true);
 
 			return index;
@@ -309,12 +309,9 @@ namespace SQLiteXM
 					break;
 				sqlName = commandReturn.command;
 
-				if (header.Equals("select") == true)
-				{
-					commandReturn = getCommand(index, sqlStatements);
-					index = commandReturn.index;
-					tableName = commandReturn.command;
-				}
+				commandReturn = getCommand(index, sqlStatements);
+				index = commandReturn.index;
+				tableName = commandReturn.command;
 
                 commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
@@ -327,9 +324,9 @@ namespace SQLiteXM
 				if( header.Equals ("select") == true)
 					SqlStatements.addSelectDefinition (sqlName, tableName, sqlStatement);
 				if( header.Equals ("delete") == true)
-					SqlStatements.addDeleteDefinition (sqlName, sqlStatement);
+					SqlStatements.addDeleteDefinition (sqlName, tableName, sqlStatement);
 				if( header.Equals ("update") == true)
-					SqlStatements.addUpdateDefinition (sqlName, sqlStatement);
+					SqlStatements.addUpdateDefinition (sqlName, tableName, sqlStatement);
 			} while (true);
 
 			return index;

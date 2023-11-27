@@ -161,7 +161,7 @@ namespace SQLiteXM
         public static async Task<List<M>?> runSqlStatement<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
                                                                                                                                          where M : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
             List<Dictionary<string, object?>>? select = await runSqlStatement(sqlStatementName, selectParameterValues, dbName);
             List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
@@ -177,7 +177,7 @@ namespace SQLiteXM
         }
         public static async Task<List<Dictionary<string, object?>>?> runSqlStatement<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
             return await runSqlStatement(sqlStatementName, selectParameterValues, dbName);
         }
@@ -264,14 +264,14 @@ namespace SQLiteXM
 
         public static async Task<List<Dictionary<string, object?>>> performSelect<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
             return await performSelect(sqlStatementName, selectParameterValues, dbName);
         }
         public static async Task<List<M>> performSelect<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
                                                                                                                                          where M : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await performSelect(sqlStatementName, selectParameterValues, dbName);
             List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
@@ -316,7 +316,7 @@ namespace SQLiteXM
         public static async Task<M> performInsert<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
                                                                                                                                          where M : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
             Dictionary<string, object?> select = await performInsert(sqlStatementName, selectParameterValues, dbName);
             
@@ -325,7 +325,7 @@ namespace SQLiteXM
         }
         public static async Task<Dictionary<string, object?>> performInsert<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
             return await performInsert(sqlStatementName, selectParameterValues, dbName);
         }
@@ -389,6 +389,12 @@ namespace SQLiteXM
             await Task.CompletedTask;
         }
 
+/*        public static async Task performDelete<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+        {
+            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName);
+            Dictionary<string, object?> selectParameterValues = loadParamaterValues<T>(columnNames, userObjectParameters);
+            await performDelete(sqlStatementName, selectParameterValues, dbName);
+        }*/
         public static async Task performDelete(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default)
         {
             await performDelete(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);

@@ -22,7 +22,7 @@
 
     public class SelectDefinition
     {
-        private string? tableName;
+        private string tableName;
         public string TableName
         {
             get { return tableName; }
@@ -33,7 +33,7 @@
             get { return selectSQL; }
         }
 
-        internal SelectDefinition(string? tableName, string selectSQL)
+        internal SelectDefinition(string tableName, string selectSQL)
         {
             this.tableName = tableName;
             this.selectSQL = selectSQL;
@@ -42,30 +42,41 @@
 
     public class UpdateDefinition
     {
+        private string tableName;
+        public string TableName
+        {
+            get { return tableName; }
+        }
         private string updateSQL;
         public string UpdateSQL
         {
             get { return updateSQL; }
         }
 
-        internal UpdateDefinition(string updateSQL)
+        internal UpdateDefinition(string tableName, string updateSQL)
         {
+            this.tableName = tableName;
             this.updateSQL = updateSQL;
         }
     }
     public class DeleteDefinition
     {
+        private string tableName;
+        public string TableName
+        {
+            get { return tableName; }
+        }
         private string deleteSQL;
         public string DeleteSQL
         {
             get { return deleteSQL; }
         }
 
-        internal DeleteDefinition(string deleteSQL)
+        internal DeleteDefinition(string tableName, string deleteSQL)
         {
+            this.tableName = tableName;
             this.deleteSQL = deleteSQL;
         }
     }
-
 }
 

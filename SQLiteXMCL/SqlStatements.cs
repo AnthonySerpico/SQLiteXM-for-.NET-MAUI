@@ -19,22 +19,22 @@ namespace SQLiteXM
 				insertStatements.Add ( insertName, new InsertDefinition (tableName, insertSQL));
 		}
 
-		internal static void addSelectDefinition (string selectName, string? tableName, string selectSQL)
+		internal static void addSelectDefinition (string selectName, string tableName, string selectSQL)
 		{
 			if (!selectStatements.ContainsKey(selectName))
 				selectStatements.Add (selectName, new SelectDefinition(tableName, selectSQL));
 		}
 
-		internal static void addUpdateDefinition (string updateName, string updateSQL)
+		internal static void addUpdateDefinition (string updateName, string tableName, string updateSQL)
 		{
 			if (!updateStatements.ContainsKey(updateName))
-				updateStatements.Add (updateName, new UpdateDefinition(updateSQL));
+				updateStatements.Add (updateName, new UpdateDefinition(tableName, updateSQL));
 		}
 
-		internal static void addDeleteDefinition(string deleteName, string deleteSQL)
+		internal static void addDeleteDefinition(string deleteName, string tableName, string deleteSQL)
 		{
 			if (!deleteStatements.ContainsKey(deleteName))
-				deleteStatements.Add (deleteName, new DeleteDefinition(deleteSQL));
+				deleteStatements.Add (deleteName, new DeleteDefinition(tableName, deleteSQL));
 		}
 
 		internal static void addIndexDefinition (string dbAndTableName, string indexName, string sqlStatement)

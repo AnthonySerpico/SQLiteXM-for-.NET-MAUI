@@ -48,14 +48,14 @@ namespace SQLiteXM
             SqlStatements.addSelectDefinition(selectName, tableName, insertSQL);
         }
 
-        new public void addUpdateDefinition(string updateName, string updateSQL)
+        new public void addUpdateDefinition(string updateName, string tableName, string updateSQL)
         {
-            SqlStatements.addUpdateDefinition(updateName, updateSQL);
+            SqlStatements.addUpdateDefinition(updateName, tableName, updateSQL);
         }
 
-        new public void addDeleteDefinition(string deleteName, string deleteSQL)
+        new public void addDeleteDefinition(string deleteName, string tableName, string deleteSQL)
         {
-            SqlStatements.addDeleteDefinition(deleteName, deleteSQL);
+            SqlStatements.addDeleteDefinition(deleteName, tableName, deleteSQL);
         }
 
         new public void addIndexDefinition(string tableName, string indexName, string sqlStatement)

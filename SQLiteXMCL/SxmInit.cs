@@ -323,10 +323,21 @@ namespace SQLiteXM
             }
         }
 
-        internal static List<string> getTableColumnNames(string? dbName, string queryName)
+        internal static List<string> getTableColumnNames(string? dbName, string queryName, Defines.SqlStatementType sqlStatementType)
         {
+            string? tableName = default(string);
             List<string> columnNames = new List<string>();
-            string tableName = SqlStatements.selectStatements[queryName].TableName;
+
+            if(sqlStatementType == Defines.SqlStatementType.select)
+                tableName = SqlStatements.selectStatements[queryName].TableName;
+            if (sqlStatementType == Defines.SqlStatementType.insert)
+                tableName = SqlStatements.insertStatements[queryName].TableName;
+            if (sqlStatementType == Defines.SqlStatementType.update)
+                tableName = SqlStatements.updateStatements[queryName].TableName;
+            if (sqlStatementType == Defines.SqlStatementType.delete)
+                tableName = SqlStatements.deleteStatements[queryName].TableName;
+            if (sqlStatementType == Defines.SqlStatementType.unknown)
+                throw new SxmException(new ErrorMessage("unknownSQLStatement", queryName));
 
             SxmConnection sxmConnection = new SxmConnection(dbName);
             using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
