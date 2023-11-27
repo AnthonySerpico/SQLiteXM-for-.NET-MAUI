@@ -25,8 +25,7 @@
 		};
 
         // Database operation types. 
-        public enum SqlStatementType
-        {
+        public enum SqlStatementType{
             insert,
             delete,
             update,

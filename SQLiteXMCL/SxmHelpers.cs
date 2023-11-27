@@ -365,19 +365,19 @@ namespace SQLiteXM
 
             foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
+                T userObject = new T();
                 foreach (KeyValuePair<string, object> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
                 {
-                    T userObject = new T();
                     try
                     {
                         userObject.GetType().GetProperty(kvp.Key)?.SetValue(userObject, kvp.Value);
-                        userObjectList.Add(userObject);
                     }
                     catch (System.ArgumentException)
                     {
                         throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", (kvp.Key, kvp.Value?.GetType().ToString(), kvp.Key, userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString())));
                     }
                 }
+                userObjectList.Add(userObject);
             }
 
             return userObjectList;
