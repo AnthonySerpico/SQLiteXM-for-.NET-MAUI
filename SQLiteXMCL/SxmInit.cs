@@ -347,6 +347,7 @@ namespace SQLiteXM
                 while (sxmConnection.nextRow() == true)
                 {
                     columnNames.Add((string)sxmConnection.getValue("name"));
+                    string columnType = sxmConnection.getValue("type").GetType().ToString();
                 }
             }
 

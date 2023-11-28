@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Reflection;
+﻿using System.Reflection;
+
 
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
@@ -496,7 +495,9 @@ namespace SQLiteXM
                 }
                 catch (System.ArgumentException)
                 {
-                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", (kvp.Key, kvp.Value?.GetType().ToString(), kvp.Key, userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString())));
+                    string? userPropertyType = userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString();
+                    string? databasePropertyType = kvp.Value?.GetType().ToString();
+                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", kvp.Key, databasePropertyType, userObject.GetType().ToString() + "." + kvp.Key, userPropertyType));
                 }
             }
             return userObject;
@@ -515,7 +516,11 @@ namespace SQLiteXM
                 }
                 catch (System.ArgumentException)
                 {
-                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' to the provided object property '{1}' type {2}", (columnName, columnName, userObject.GetType()?.GetProperty(columnName)?.PropertyType.ToString())));
+                    throw;
+                }
+                catch (System.Exception)
+                {
+                    throw;
                 }
             }
             return returnDictionary;
