@@ -22,16 +22,16 @@ namespace SQLiteXM
         }
 
         // For adding name/value parameters. 
-        public void AddSqlStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters)
+        public void AddTransactionItem(string sqlStatementName, Dictionary<string, object> sqlStatementParameters)
         {
             transactionItems.Add(new TransactionItem<Dictionary<string, object>>(sqlStatementName, sqlStatementParameters));
         }
         // For adding positional parameters.
-        public void AddSqlStatement(string sqlStatementName, List<object> sqlStatementParameters)
+        public void AddTransactionItem(string sqlStatementName, List<object> sqlStatementParameters)
         {
             transactionItems.Add(new TransactionItem<List<object>>(sqlStatementName, sqlStatementParameters));
         }
-        public void AddSqlStatement<T>(string sqlStatementName, T sqlStatementParameters)
+        public void AddTransactionItem<T>(string sqlStatementName, T sqlStatementParameters)
         {
             transactionItems.Add(new TransactionItem<object>(DbName!, sqlStatementName, sqlStatementParameters));
         }
@@ -120,7 +120,7 @@ namespace SQLiteXM
             {
                 using (SxmTransaction sxmTransaction = new SxmTransaction(transactionObject.DbName))
                 {
-                    foreach (TransactionItem<object> transactionItem in transactionObject.TransactionItems)
+                    foreach (TransactionItem<Dictionary<string, object>> transactionItem in transactionObject.TransactionItems)
                     {
                         DbOperationResponse responseObject = new DbOperationResponse();
                         switch (GetDatabaseStatementType(transactionItem.SqlStatementName))
