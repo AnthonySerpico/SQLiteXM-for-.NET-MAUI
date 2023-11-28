@@ -120,42 +120,86 @@ namespace SQLiteXM
             {
                 using (SxmTransaction sxmTransaction = new SxmTransaction(transactionObject.DbName))
                 {
-                    foreach (TransactionItem<Dictionary<string, object>> transactionItem in transactionObject.TransactionItems)
+                    foreach (Object transObject in transactionObject.TransactionItems)
                     {
                         DbOperationResponse responseObject = new DbOperationResponse();
-                        switch (GetDatabaseStatementType(transactionItem.SqlStatementName))
+
+                        if(transObject.GetType() == typeof(TransactionItem<List<object>>))
+                        { 
+                            TransactionItem<List<object>> transactionItem = (TransactionItem<List<object>>)transObject;
+                            switch (GetDatabaseStatementType(transactionItem.SqlStatementName))
+                            {
+                                case SqlStatementType.select:
+                                    sxmTransaction.executeQuery(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    responseObject.recordData = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.select;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
+
+                                case SqlStatementType.insert:
+                                    responseObject.recordData = new List<Dictionary<string, object?>>(1);
+                                    responseObject.recordData.Add(sxmTransaction.executeInsert(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters));
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.insert;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
+
+                                case SqlStatementType.update:
+                                    sxmTransaction.executeUpdate(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.update;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
+
+                                case SqlStatementType.delete:
+                                    sxmTransaction.executeDelete(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.delete;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
+
+                                default: break;
+                            }
+                        }
+
+                        if (transObject.GetType() == typeof(TransactionItem<Dictionary<string, object>>))
                         {
-                            case SqlStatementType.select:
-                                sxmTransaction.executeQuery(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
-                                responseObject.recordData = sxmTransaction.getAllRows<Dictionary<string, object?>>();
-                                responseObject.sqlStatementName = transactionItem.SqlStatementName;
-                                responseObject.sqlStatementType = SqlStatementType.select;
-                                dbOperationResponseList.Add(responseObject);
-                                break;
+                            TransactionItem<Dictionary<string, object>> transactionItem = (TransactionItem<Dictionary<string, object>>)transObject;
+                            switch (GetDatabaseStatementType(transactionItem.SqlStatementName))
+                            {
+                                case SqlStatementType.select:
+                                    sxmTransaction.executeQuery(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    responseObject.recordData = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.select;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
 
-                            case SqlStatementType.insert:
-                                responseObject.recordData = new List<Dictionary<string, object?>>(1);
-                                responseObject.recordData.Add(sxmTransaction.executeInsert(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters));
-                                responseObject.sqlStatementName = transactionItem.SqlStatementName;
-                                responseObject.sqlStatementType = SqlStatementType.insert;
-                                dbOperationResponseList.Add(responseObject);
-                                break;
+                                case SqlStatementType.insert:
+                                    responseObject.recordData = new List<Dictionary<string, object?>>(1);
+                                    responseObject.recordData.Add(sxmTransaction.executeInsert(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters));
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.insert;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
 
-                            case SqlStatementType.update:
-                                sxmTransaction.executeUpdate(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
-                                responseObject.sqlStatementName = transactionItem.SqlStatementName;
-                                responseObject.sqlStatementType = SqlStatementType.update;
-                                dbOperationResponseList.Add(responseObject);
-                                break;
+                                case SqlStatementType.update:
+                                    sxmTransaction.executeUpdate(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.update;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
 
-                            case SqlStatementType.delete:
-                                sxmTransaction.executeDelete(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
-                                responseObject.sqlStatementName = transactionItem.SqlStatementName;
-                                responseObject.sqlStatementType = SqlStatementType.delete;
-                                dbOperationResponseList.Add(responseObject);
-                                break;
+                                case SqlStatementType.delete:
+                                    sxmTransaction.executeDelete(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    responseObject.sqlStatementName = transactionItem.SqlStatementName;
+                                    responseObject.sqlStatementType = SqlStatementType.delete;
+                                    dbOperationResponseList.Add(responseObject);
+                                    break;
 
-                            default: break;
+                                default: break;
+                            }
                         }
                     }
 
