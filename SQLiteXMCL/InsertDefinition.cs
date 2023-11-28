@@ -38,7 +38,7 @@
 			this.tableName = tableName;
 			this.insertSQL = insertSQL;
 		}
-	}
+    }
 
     public class UpdateDefinition
     {
@@ -59,6 +59,7 @@
             this.updateSQL = updateSQL;
         }
     }
+
     public class DeleteDefinition
     {
         private string tableName;
@@ -76,6 +77,26 @@
         {
             this.tableName = tableName;
             this.deleteSQL = deleteSQL;
+        }
+    }
+
+    public class IndexDefinition
+    {
+        private string indexName;
+        public string IndexName
+        {
+            get { return indexName; }
+        }
+        private string indexSQL;
+        public string IndexSQL
+        {
+            get { return indexSQL; }
+        }
+
+        internal IndexDefinition(string indexName, string indexSQL)
+        {
+            this.indexName = indexName;
+            this.indexSQL = indexSQL;
         }
     }
 }

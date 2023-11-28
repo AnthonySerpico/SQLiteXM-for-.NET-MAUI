@@ -243,11 +243,11 @@ namespace SQLiteXM
 				index = commandReturn.index;
 				if (commandReturn.command.Length == 0) // Were finished processing the alter statements.
 					break;
-				tableName = commandReturn.command;
+                columnName = commandReturn.command;
 
 				commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
-				columnName = commandReturn.command;
+                tableName = commandReturn.command;
 
 				commandReturn = getCommand (index, sqlStatements);
 				index = commandReturn.index;
