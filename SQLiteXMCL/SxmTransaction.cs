@@ -137,7 +137,7 @@ namespace SQLiteXM
 			}
 
             Dictionary<string, object?> ir = new Dictionary<string, object?>();
-			ir.Add("recordId", recordID);
+			ir.Add("id", recordID);
             ir.Add("synchId", synchID);
 			return ir;
 
