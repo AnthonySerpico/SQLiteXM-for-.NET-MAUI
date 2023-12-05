@@ -8,11 +8,11 @@ using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
-    public class SxmRunStatementTrans : SxmTransaction
+    public class SxmSqlTransaction : SxmTransaction
     {
         private string? dbName;
 
-        public SxmRunStatementTrans(string? dbName = default) : base(dbName)
+        public SxmSqlTransaction(string? dbName = default) : base(dbName)
         {
             this.dbName = dbName;
         }
