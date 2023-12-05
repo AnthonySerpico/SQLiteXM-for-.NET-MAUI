@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Threading;
-using System.Data.Common;
+﻿using System.Data.Common;
 using System.Collections;
 using Microsoft.Data.Sqlite;
 

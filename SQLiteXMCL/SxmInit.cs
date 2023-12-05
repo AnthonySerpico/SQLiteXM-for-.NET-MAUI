@@ -1,6 +1,4 @@
-﻿using Microsoft.Maui.Controls;
-using System;
-using System.Collections;
+﻿using System.Collections;
 
 namespace SQLiteXM
 {
