@@ -23,6 +23,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="SxmSqlStatements.cs" />
 	  <Compile Remove="SxmTransactionHelper.cs" />
 	</ItemGroup>
 

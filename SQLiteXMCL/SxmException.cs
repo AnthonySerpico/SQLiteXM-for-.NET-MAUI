@@ -32,7 +32,7 @@ namespace SQLiteXM
 		{
 			Exception iEX = ex;
 
-			while (iEX.InnerException != null) 
+			while (ex.InnerException != null) 
 				iEX = ex.InnerException;
 
 			return iEX;
