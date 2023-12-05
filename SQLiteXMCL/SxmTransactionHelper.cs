@@ -215,5 +215,15 @@ namespace SQLiteXM
 
             return await Task.FromResult(dbOperationResponseList);
         }
+
+        private static DbOperationResponse<List<T>> loadUserResponseObject<T>(DbOperationResponse dbOperationResponse) where T : class, new()
+        {
+            DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
+            if (dbOperationResponse.recordData != default)
+                userDbOperationResponse.recordData = SxmHelpers.populateUserRecord<T>(dbOperationResponse.recordData);
+
+            return userDbOperationResponse;
+        }
+
     }
 }

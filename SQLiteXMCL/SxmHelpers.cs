@@ -11,15 +11,6 @@ namespace SQLiteXM
     {
         private SxmHelpers() { }
 
-        private static DbOperationResponse<List<T>> loadUserResponseObject<T>(DbOperationResponse dbOperationResponse) where T : class, new()
-        {
-            DbOperationResponse<List<T>> userDbOperationResponse = new DbOperationResponse<List<T>>();
-            if (dbOperationResponse.recordData != default)
-                userDbOperationResponse.recordData = populateUserRecord<T>(dbOperationResponse.recordData);
-
-            return userDbOperationResponse;
-        }
-
         internal static SqlStatementType GetDatabaseStatementType(string? sqlStatementName)
         {
             if (sqlStatementName == null)
