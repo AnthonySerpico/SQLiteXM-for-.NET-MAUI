@@ -11,45 +11,45 @@ namespace SQLiteXM
     {
         private SxmRunStatement() { }
 
-        public static async Task<List<M>?> RunStatement<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+        public static async Task<List<M>> RunStatement<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
                                                                                                                                          where M : class, new()
         {
             List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
-            List<Dictionary<string, object?>>? select = await RunStatement(sqlStatementName, selectParameterValues, dbName);
+            List<Dictionary<string, object?>> select = await RunStatement(sqlStatementName, selectParameterValues, dbName);
             List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
 
             return userRecordList;
         }
-        public async static Task<List<T>?> RunStatement<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
+        public async static Task<List<T>> RunStatement<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
         {
-            List<Dictionary<string, object?>>? runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters, dbName);
+            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters, dbName);
             if (runSqlStatementResponse != default)
                 return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
 
-            return default(List<T>);
+            return new List<T>();
         }
-        public static async Task<List<Dictionary<string, object?>>?> RunStatement<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+        public static async Task<List<Dictionary<string, object?>>> RunStatement<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
             List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             return await RunStatement(sqlStatementName, selectParameterValues, dbName);
         }
-        public static async Task<List<Dictionary<string, object?>>?> RunStatement(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default(string))
+        public static async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default(string))
         {
             return await RunStatement(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
-        public async static Task<List<T>?> RunStatement<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
+        public async static Task<List<T>> RunStatement<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
         {
-            List<Dictionary<string, object?>>? runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters, dbName);
+            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters, dbName);
             if (runSqlStatementResponse != default)
                 return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
 
-            return default(List<T>);
+            return new List<T>();
         }
-        public static async Task<List<Dictionary<string, object?>>?> RunStatement(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string))
+        public static async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string))
         {
-            List<Dictionary<string, object?>>? recordData = default(List<Dictionary<string, object?>>);
+            List<Dictionary<string, object?>> recordData = default(List<Dictionary<string, object?>>)!;
 
             try
             {
@@ -82,6 +82,9 @@ namespace SQLiteXM
             {
                 throw;
             }
+
+            if (recordData == default(List<Dictionary<string, object?>>))
+                recordData = new List<Dictionary<string, object?>>();
 
             return await Task.FromResult(recordData);
         }

@@ -23,7 +23,7 @@ namespace SQLiteXM
             List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
             return userRecordList;
         }
-        public static async Task<List<T>> performSelect<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default) where T : class, new()
+        public static async Task<List<T>> performSelect<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
             List<Dictionary<string, object?>> select = await performSelect(sqlStatementName, sqlStatementParameters, dbName);
             List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
@@ -35,7 +35,7 @@ namespace SQLiteXM
             List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
             return userRecordList;
         }
-        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             return await performSelect(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }

@@ -14,7 +14,7 @@ namespace SQLiteXM
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             await performDelete(sqlStatementName, selectParameterValues, dbName);
         }
-        public static async Task performDelete(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default)
+        public static async Task performDelete(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             await performDelete(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
@@ -42,7 +42,6 @@ namespace SQLiteXM
             try
             {
                 sxmTransaction.executeDelete(sqlStatementName, sqlStatementParameters);
-                sxmTransaction.commitTransaction();
             }
             catch (System.Exception)
             {

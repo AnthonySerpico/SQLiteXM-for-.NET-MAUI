@@ -9,7 +9,7 @@ namespace SQLiteXM
     internal class SxmInsertHelpers
     {
         public static async Task<M> performInsert<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
-                                                                                                                                         where M : class, new()
+                                                                                                                                   where M : class, new()
         {
             List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
@@ -24,7 +24,7 @@ namespace SQLiteXM
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             return await performInsert(sqlStatementName, selectParameterValues, dbName);
         }
-        public static async Task<T> performInsert<T>(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default) where T : class, new()
+        public static async Task<T> performInsert<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
             Dictionary<string, object?> select = await performInsert(sqlStatementName, sqlStatementParameters, dbName);
             T userRecord = SxmHelpers.loadDbValues<T>(select);
@@ -38,7 +38,7 @@ namespace SQLiteXM
 
             return userRecord;
         }
-        public static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, Dictionary<string, object> sqlStatementParameters, string? dbName = default)
+        public static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             return await performInsert(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
@@ -70,7 +70,6 @@ namespace SQLiteXM
             try
             {
                 ir = sxmTransaction.executeInsert(sqlStatementName, sqlStatementParameters);
-                sxmTransaction.commitTransaction();
             }
             catch (System.Exception)
             {
