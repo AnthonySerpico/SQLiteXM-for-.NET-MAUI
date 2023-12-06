@@ -107,7 +107,7 @@ namespace SQLiteXM
 					if (nextRow != default && nextRow.Count > 0)
 						if (nextRow.ContainsKey("rowID") == true)
 						{
-							recordID = (long)nextRow["rowID"];
+							recordID = (long)nextRow["rowID"]!;
 							synchID = getSynchID(insertDefinition.TableName, recordID);
 						}
 

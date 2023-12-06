@@ -2,11 +2,11 @@
 
 namespace SQLiteXM
 {
-    public class SxmSqlTransaction : SxmTransaction
+    public class SxmRunTransaction : SxmTransaction
     {
         private string? dbName;
 
-        public SxmSqlTransaction(string? dbName = default) : base(dbName)
+        public SxmRunTransaction(string? dbName = default) : base(dbName)
         {
             this.dbName = dbName;
         }
