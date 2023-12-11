@@ -24,10 +24,7 @@ namespace SQLiteXM
         public async Task<List<T>> RunStatement<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where T : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters);
-            if (runSqlStatementResponse != default)
-                return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
-
-            return new List<T>();
+            return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
         }
         public async Task<List<Dictionary<string, object?>>> RunStatement<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
         {
