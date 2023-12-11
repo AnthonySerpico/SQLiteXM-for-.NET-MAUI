@@ -41,7 +41,10 @@ namespace SQLiteXM
 				connection = new SxmConnection(databaseName, transient);
 				if (connection.lockConnection () == false) 
 				{
-					throw new SxmException (new ErrorMessage("lockDB", databaseName));
+					if (databaseName == null)
+						databaseName = SxmConnection.ImplicitDatabaseName;
+
+                    throw new SxmException (new ErrorMessage("lockDB", databaseName!));
 				}
 			}
 			catch (SxmException ex)
@@ -165,34 +168,30 @@ namespace SQLiteXM
 			return systemSynchID;
 		}
 
-        public void executeQueryDirect (string sqlStatement, List<object> ParameterValues)
-		{
-			connection.executeQuery (sqlStatement, ParameterValues);
-		}
-
 		public void executeQuery (string command, List<object> ParameterValues)
 		{
 			connection.executeQuery (SqlStatements.selectStatements [command].SelectSQL, ParameterValues);
 		}
+        public void executeUpdate(string command, List<object> ParameterValues)
+        {
+            executeNonQuery(SqlStatements.updateStatements[command].UpdateSQL, ParameterValues);
+        }
+        public void executeDelete(string command, List<object> ParameterValues)
+        {
+            executeNonQuery(SqlStatements.deleteStatements[command].DeleteSQL, ParameterValues);
+        }
 
-		public void executeUpdateDirect (string sqlStatement, List<object> ParameterValues)
+        public void executeQueryDirect(string sqlStatement, List<object> ParameterValues)
+        {
+            connection.executeQuery(sqlStatement, ParameterValues);
+        }
+        public void executeUpdateDirect (string sqlStatement, List<object> ParameterValues)
 		{
 			executeNonQuery (sqlStatement, ParameterValues);
 		}
-
-		public void executeUpdate (string command, List<object> ParameterValues)
-		{
-			executeNonQuery (SqlStatements.updateStatements [command].UpdateSQL, ParameterValues);
-		}
-
 		public void executeDeleteDirect (string sqlStatement, List<object> ParameterValues)
 		{
 			executeNonQuery (sqlStatement, ParameterValues);
-		}
-
-		public void executeDelete (string command, List<object> ParameterValues)
-		{
-			executeNonQuery (SqlStatements.deleteStatements [command].DeleteSQL, ParameterValues);
 		}
 
 		public void executeSystemUpdateDirect (string sqlStatement, List<object> ParameterValues)
@@ -227,7 +226,7 @@ namespace SQLiteXM
 //			SxmInit.interruptSynchronize (connection.DatabaseName);
 		}
 
-		public void executeNonQueryTrans (string sqlStatement, List<object> ParameterValues = null)
+		public void executeNonQueryTrans (string sqlStatement, List<object>? ParameterValues = null)
 		{
 			connection.beginTransaction ();
 			connection.executeNonQuery (sqlStatement, ParameterValues);
@@ -284,8 +283,8 @@ namespace SQLiteXM
 				{
 					try
 					{
-						string dbName = (string)getValue ("name");
-						if (dbName.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
+						string? dbName = (string?)getValue ("name");
+						if (dbName?.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
 							detachDatabase (dbName);
 					}
 					#pragma warning disable 0168

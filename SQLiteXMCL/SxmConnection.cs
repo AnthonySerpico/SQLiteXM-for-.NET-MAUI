@@ -57,6 +57,10 @@ namespace SQLiteXM
         private SqliteTransaction? dbConnTransaction;
 
         static private string? implicitDatabaseName;
+        static internal string? ImplicitDatabaseName
+        {
+            get => implicitDatabaseName;
+        }
         private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
         public SxmConnection(string? databaseName, bool transient = false)
@@ -300,7 +304,7 @@ namespace SQLiteXM
             }
         }
 
-        public void executeNonQuery(string command, List<object> parameterValues)
+        public void executeNonQuery(string command, List<object>? parameterValues)
         {
             if (string.IsNullOrEmpty(command))
                 throw new SxmException(ErrorMessages.error["missingSQL"]);

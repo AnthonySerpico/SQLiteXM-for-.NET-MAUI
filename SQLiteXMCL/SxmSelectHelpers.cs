@@ -59,7 +59,6 @@ namespace SQLiteXM
 
             return await Task.FromResult(selectedRows);
         }
-
         public static async Task<List<Dictionary<string, object?>>> performSelectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
@@ -76,6 +75,5 @@ namespace SQLiteXM
 
             return await Task.FromResult(selectedRows);
         }
-
     }
 }

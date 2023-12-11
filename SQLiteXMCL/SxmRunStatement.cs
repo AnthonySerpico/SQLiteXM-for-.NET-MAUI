@@ -30,10 +30,6 @@ namespace SQLiteXM
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             return await RunStatement(sqlStatementName, selectParameterValues, dbName);
         }
-        public static async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default(string))
-        {
-            return await RunStatement(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
-        }
         public async static Task<List<T>> RunStatement<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string)) where T : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters, dbName);
@@ -41,6 +37,10 @@ namespace SQLiteXM
                 return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
 
             return new List<T>();
+        }
+        public static async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default(string))
+        {
+            return await RunStatement(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
         public static async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default(string))
         {

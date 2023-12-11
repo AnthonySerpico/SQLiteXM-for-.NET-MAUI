@@ -13,7 +13,7 @@ namespace SQLiteXM
         internal static SqlStatementType GetDatabaseStatementType(string? sqlStatementName)
         {
             if (sqlStatementName == null)
-                throw new ArgumentException("A sql statement cannot be null.");
+                throw new ArgumentException("A sql statement name cannot be null.");
 
             if (SqlStatements.selectStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.select;
