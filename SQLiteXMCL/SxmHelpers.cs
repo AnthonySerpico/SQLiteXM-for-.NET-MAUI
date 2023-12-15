@@ -73,7 +73,7 @@ namespace SQLiteXM
 
                             if (piType == typeof(bool).Name)
                             {
-                                if (kvp.Value.ToString().Equals("1"))
+                                if (kvp.Value.ToString()!.Equals("1"))
                                     pi.SetValue(userObject, true);
                                 else
                                     pi.SetValue(userObject, false);
@@ -83,7 +83,7 @@ namespace SQLiteXM
                             if (piType == typeof(DateTime).Name)
                             {
                                 if (kvp.Value.GetType().Name == typeof(string).Name)
-                                    pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()));
+                                    pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()!));
                                 if (kvp.Value.GetType().Name == typeof(double).Name)
                                     pi.SetValue(userObject, new DateTime((long)(double)kvp.Value));
                             }
@@ -108,26 +108,33 @@ namespace SQLiteXM
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
             foreach (KeyValuePair<string, string> kvp in dbColumnNameType)  // Process each entry (column) in the Dictionary.
             {
-                string columnName = kvp.Key;
                 try
                 {
-                    PropertyInfo? pi = userObject.GetType().GetProperty(columnName);  // If the column is in the user supplied object.
-                    if (pi != default)
-                    {
-                        string piType = pi.PropertyType.Name;
+                    string columnName = kvp.Key;
+                    PropertyInfo? userObjectPI = userObject.GetType().GetProperty(columnName);  // Get the property from the user supplied object that matches the column anme in the database.
 
-                        if (piType == typeof(DateTime).Name)
+                    if (userObjectPI != default)  // If the column is in the user supplied object.
+                    {
+                        object? userSuppliedObjectData = userObjectPI.GetValue(userObject);
+                        if (userSuppliedObjectData != null)  // If the value of the data for the column in the user supplied object is not null;
                         {
-                            if (kvp.Value.ToLower().Equals("text"))
-                                returnDictionary.Add(columnName, ((DateTime)pi.GetValue(userObject)).ToString("o"));
-                            else
+                            string userObjectType = userObjectPI.PropertyType.Name;  // Get the data type of the column in the user supplied object.
+
+                            if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
-                                if (kvp.Value.ToLower().Equals("double"))
-                                    returnDictionary.Add(columnName, ((DateTime)pi.GetValue(userObject)).Ticks);
+                                if (kvp.Value.ToLower().Equals("text"))
+                                    returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o"));
+                                else
+                                {
+                                    if (kvp.Value.ToLower().Equals("double"))
+                                        returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
+                                }
                             }
+                            else
+                                returnDictionary.Add(columnName, userObjectPI.GetValue(userObject));
                         }
                         else
-                            returnDictionary.Add(columnName, pi.GetValue(userObject));
+                            returnDictionary.Add(columnName, DBNull.Value);
                     }
                 }
                 catch (System.ArgumentException)
