@@ -10,7 +10,7 @@ namespace SQLiteXM
     {
         public static async Task performDelete<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             await performDelete(sqlStatementName, selectParameterValues, dbName);
         }

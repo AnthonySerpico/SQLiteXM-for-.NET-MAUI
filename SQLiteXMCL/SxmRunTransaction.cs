@@ -14,7 +14,7 @@ namespace SQLiteXM
         public async Task<List<M>> RunStatement<T, M>(string sqlStatementName, T userObjectParameters) where T : class, new()
                                                                                                        where M : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await RunStatement(sqlStatementName, selectParameterValues);
             List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
@@ -29,7 +29,7 @@ namespace SQLiteXM
         }
         public async Task<List<Dictionary<string, object?>>> RunStatement<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             
             return await RunStatement(sqlStatementName, selectParameterValues);

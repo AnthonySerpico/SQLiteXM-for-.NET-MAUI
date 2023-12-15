@@ -321,10 +321,10 @@ namespace SQLiteXM
             }
         }
 
-        internal static List<string> getTableColumnNames(string? dbName, string queryName, Defines.SqlStatementType sqlStatementType)
+        internal static Dictionary<string, string> getTableColumnNames(string? dbName, string queryName, Defines.SqlStatementType sqlStatementType)
         {
             string? tableName = default(string);
-            List<string> columnNames = new List<string>();
+            Dictionary<string, string> columnNames = new Dictionary<string, string>();
 
             if (sqlStatementType == Defines.SqlStatementType.select)
                 tableName = SqlStatements.selectStatements[queryName].TableName;
@@ -344,9 +344,10 @@ namespace SQLiteXM
 
                 while (sxmConnection.nextRow() == true)
                 {
-                    string name = (string)sxmConnection.getValue("name");
-                    columnNames.Add(name);
-                    string piType = (string)sxmConnection.getValue("type");
+                    string? columnName = (string?)sxmConnection.getValue("name");
+                    string? columnType = (string?)sxmConnection.getValue("type");
+                    if(columnName != null && columnType != null)
+                        columnNames.Add(columnName, columnType);
                 }
             }
 

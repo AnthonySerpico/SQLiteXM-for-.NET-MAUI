@@ -10,14 +10,14 @@ namespace SQLiteXM
     {
         public static async Task<List<Dictionary<string, object?>>> performSelect<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             return await performSelect(sqlStatementName, selectParameterValues, dbName);
         }
         public static async Task<List<M>> performSelect<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
                                                                                                                                          where M : class, new()
         {
-            List<string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await performSelect(sqlStatementName, selectParameterValues, dbName);
             List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);

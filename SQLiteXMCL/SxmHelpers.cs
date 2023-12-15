@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 
 
+
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
@@ -80,10 +81,15 @@ namespace SQLiteXM
                             if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
                             if (piType == typeof(DateTime).Name)
-                                pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()));
+                            {
+                                if(kvp.Value.GetType().Name == typeof(string).Name)
+                                    pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()));
+                                if (kvp.Value.GetType().Name == typeof(double).Name)
+                                    pi.SetValue(userObject, new DateTime((long)(double)kvp.Value));
+                            }
                         }
                         else
-                            pi.SetValue(userObject, default);
+                        pi.SetValue(userObject, default);
                     }
                 }
                 catch (System.ArgumentException)
@@ -97,11 +103,12 @@ namespace SQLiteXM
         }
 
         // Data to be written to the database.
-        public static Dictionary<string, object?> loadParamaterValues<T>(List<string> dbColumnNames, T userObject) where T : class, new()
+        public static Dictionary<string, object?> loadParamaterValues<T>(Dictionary<string, string> dbColumnNameType, T userObject) where T : class, new()
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?> ();
-            foreach (string columnName in dbColumnNames)  // Process each entry (column) in the Dictionary.
+            foreach (KeyValuePair<string, string> kvp in dbColumnNameType)  // Process each entry (column) in the Dictionary.
             {
+                string columnName = kvp.Key;
                 try
                 {
                     PropertyInfo? pi = userObject.GetType().GetProperty(columnName);  // If the column is in the user supplied object.
@@ -111,8 +118,13 @@ namespace SQLiteXM
 
                         if (piType == typeof(DateTime).Name)
                         {
-                            string dtString = ((DateTime)pi.GetValue(userObject)).ToString("o");
-                            returnDictionary.Add(columnName, dtString);
+                            if (kvp.Value.ToLower().Equals("text"))
+                                returnDictionary.Add(columnName, ((DateTime)pi.GetValue(userObject)).ToString("o"));
+                            else
+                            {
+                                if (kvp.Value.ToLower().Equals("double"))
+                                    returnDictionary.Add(columnName, ((DateTime)pi.GetValue(userObject)).Ticks);
+                            }
                         }
                         else
                             returnDictionary.Add(columnName, pi.GetValue(userObject));
