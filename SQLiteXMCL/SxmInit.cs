@@ -326,7 +326,7 @@ namespace SQLiteXM
             string? tableName = default(string);
             List<string> columnNames = new List<string>();
 
-            if(sqlStatementType == Defines.SqlStatementType.select)
+            if (sqlStatementType == Defines.SqlStatementType.select)
                 tableName = SqlStatements.selectStatements[queryName].TableName;
             if (sqlStatementType == Defines.SqlStatementType.insert)
                 tableName = SqlStatements.insertStatements[queryName].TableName;
@@ -344,8 +344,9 @@ namespace SQLiteXM
 
                 while (sxmConnection.nextRow() == true)
                 {
-                    columnNames.Add((string)sxmConnection.getValue("name"));
-                    string? columnType = sxmConnection.getValue("type")?.GetType()?.ToString();
+                    string name = (string)sxmConnection.getValue("name");
+                    columnNames.Add(name);
+                    string piType = (string)sxmConnection.getValue("type");
                 }
             }
 

@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 
+
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
@@ -43,6 +44,7 @@ namespace SQLiteXM
             return userObjectList;
         }
 
+        // Data being loaded into a user object; usualy after a select.
         public static T loadDbValues<T>(Dictionary<string, object?> databaseRecord) where T : class, new()
         {
             T userObject = new T();
@@ -50,7 +52,39 @@ namespace SQLiteXM
             {
                 try
                 {
-                    userObject.GetType().GetProperty(kvp.Key)?.SetValue(userObject, kvp.Value);
+                    PropertyInfo? pi = userObject.GetType().GetProperty(kvp.Key);
+                    if (pi != null)
+                    {
+                        if (kvp.Value != DBNull.Value && kvp.Value != null)
+                        {
+                            string piType = pi.PropertyType.Name;
+
+                            if (piType == typeof(int).Name)
+                                pi.SetValue(userObject, (int)(long)kvp.Value);
+                            if (piType == typeof(long).Name)
+                                pi.SetValue(userObject, (long)kvp.Value);
+                            if (piType == typeof(float).Name)
+                                pi.SetValue(userObject, (float)(double)kvp.Value);
+                            if (piType == typeof(double).Name)
+                                pi.SetValue(userObject, (double)kvp.Value);
+                            if (piType == typeof(decimal).Name)
+                                pi.SetValue(userObject, (decimal)(double)kvp.Value);
+
+                            if (piType == typeof(bool).Name)
+                            {
+                                if(kvp.Value.ToString().Equals("1"))
+                                    pi.SetValue(userObject, true);
+                                else
+                                    pi.SetValue(userObject, false);
+                            }
+                            if (piType == typeof(string).Name)
+                                pi.SetValue(userObject, kvp.Value.ToString());
+                            if (piType == typeof(DateTime).Name)
+                                pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()));
+                        }
+                        else
+                            pi.SetValue(userObject, default);
+                    }
                 }
                 catch (System.ArgumentException)
                 {
@@ -62,6 +96,7 @@ namespace SQLiteXM
             return userObject;
         }
 
+        // Data to be written to the database.
         public static Dictionary<string, object?> loadParamaterValues<T>(List<string> dbColumnNames, T userObject) where T : class, new()
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?> ();
@@ -71,7 +106,17 @@ namespace SQLiteXM
                 {
                     PropertyInfo? pi = userObject.GetType().GetProperty(columnName);  // If the column is in the user supplied object.
                     if (pi != default)
-                        returnDictionary.Add(columnName, pi.GetValue(userObject));
+                    {
+                        string piType = pi.PropertyType.Name;
+
+                        if (piType == typeof(DateTime).Name)
+                        {
+                            string dtString = ((DateTime)pi.GetValue(userObject)).ToString("o");
+                            returnDictionary.Add(columnName, dtString);
+                        }
+                        else
+                            returnDictionary.Add(columnName, pi.GetValue(userObject));
+                    }
                 }
                 catch (System.ArgumentException)
                 {
