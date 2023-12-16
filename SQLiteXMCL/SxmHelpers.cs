@@ -29,6 +29,15 @@ namespace SQLiteXM
             if (SqlStatements.deleteStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.delete;
 
+            if(sqlStatementName.ToLower().StartsWith("select "))
+                return SqlStatementType.selectDirect;
+
+            if (sqlStatementName.ToLower().StartsWith("delete "))
+                return SqlStatementType.deleteDirect;
+
+            if (sqlStatementName.ToLower().StartsWith("update "))
+                return SqlStatementType.updateDirect;
+
             throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
         }
 
@@ -102,7 +111,7 @@ namespace SQLiteXM
             return userObject;
         }
 
-        // Data to be written to the database.
+        // Data from the user supplied object loaded into a dictionary that is then to be written to the database.
         public static Dictionary<string, object?> loadParamaterValues<T>(Dictionary<string, string> dbColumnNameType, T userObject) where T : class, new()
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();

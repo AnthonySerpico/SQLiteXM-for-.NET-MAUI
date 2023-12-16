@@ -50,5 +50,36 @@ namespace SQLiteXM
 
             await Task.CompletedTask;
         }
+        public static async Task performDeleteDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        {
+            try
+            {
+                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                {
+                    sxmTransaction.executeDeleteDirect(sqlStatement, sqlStatementParameters);
+                    sxmTransaction.commitTransaction();
+                }
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+
+            await Task.CompletedTask;
+        }
+        public static async Task performDeleteTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        {
+            try
+            {
+                sxmTransaction.executeDeleteDirect(sqlStatement, sqlStatementParameters);
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+
+            await Task.CompletedTask;
+        }
+
     }
 }

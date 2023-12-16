@@ -75,5 +75,41 @@ namespace SQLiteXM
 
             return await Task.FromResult(selectedRows);
         }
+
+        public static async Task<List<Dictionary<string, object?>>> performSelectDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        {
+            List<Dictionary<string, object?>> selectedRows;
+
+            try
+            {
+                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                {
+                    sxmTransaction.executeQueryDirect(sqlStatement, sqlStatementParameters);
+                    selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+                }
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+
+            return await Task.FromResult(selectedRows);
+        }
+        public static async Task<List<Dictionary<string, object?>>> performSelectTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        {
+            List<Dictionary<string, object?>> selectedRows;
+
+            try
+            {
+                sxmTransaction.executeQueryDirect(sqlStatement, sqlStatementParameters);
+                selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+            }
+            catch (System.Exception)
+            {
+                throw;
+            }
+
+            return await Task.FromResult(selectedRows);
+        }
     }
 }

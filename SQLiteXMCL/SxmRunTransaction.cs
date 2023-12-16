@@ -1,4 +1,5 @@
-﻿using static SQLiteXM.Defines;
+﻿using System.Data;
+using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
@@ -14,7 +15,11 @@ namespace SQLiteXM
         public async Task<List<M>> RunStatement<T, M>(string sqlStatementName, T userObjectParameters) where T : class, new()
                                                                                                        where M : class, new()
         {
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
+                throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not allowed.");
+
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, statementType);
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await RunStatement(sqlStatementName, selectParameterValues);
             List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
@@ -29,7 +34,11 @@ namespace SQLiteXM
         }
         public async Task<List<Dictionary<string, object?>>> RunStatement<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
         {
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
+                throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not allowed.");
+
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, statementType);
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             
             return await RunStatement(sqlStatementName, selectParameterValues);
@@ -67,6 +76,18 @@ namespace SQLiteXM
 
                     case SqlStatementType.delete:
                         await SxmDeleteHelpers.performDeleteTrans(sqlStatementName, sqlStatementParameters, this);
+                        break;
+
+                    case SqlStatementType.selectDirect:
+                        recordData = await SxmSelectHelpers.performSelectTransDirect(sqlStatementName, sqlStatementParameters, this);
+                        break;
+
+                    case SqlStatementType.deleteDirect:
+                        await SxmDeleteHelpers.performDeleteTransDirect(sqlStatementName, sqlStatementParameters, this);
+                        break;
+
+                    case SqlStatementType.updateDirect:
+                        await SxmUpdateHelpers.performUpdateTransDirect(sqlStatementName, sqlStatementParameters, this);
                         break;
 
                     default: break;

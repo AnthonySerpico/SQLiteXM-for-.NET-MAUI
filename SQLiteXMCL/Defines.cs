@@ -30,7 +30,10 @@
             delete,
             update,
 			select,
-			unknown
+			selectDirect,
+            deleteDirect,
+            updateDirect,
+            unknown
         };
 
         // Error message defines.

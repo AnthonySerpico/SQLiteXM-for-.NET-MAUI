@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using SQLiteXM;
+using System.Collections;
+using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
@@ -12,7 +14,32 @@ namespace SQLiteXM
 		internal static Dictionary<string, UpdateDefinition> updateStatements = new Dictionary<string, UpdateDefinition>();
 		internal static Dictionary<string, DeleteDefinition> deleteStatements = new Dictionary<string, DeleteDefinition>();
 
-		internal static void addInsertDefinition (string insertName, string tableName, string insertSQL)
+        public static string GetSqlStatement(string sqlStatementName)
+        {
+            if (sqlStatementName == null)
+                throw new ArgumentException("A sql statement name cannot be null.");
+
+            switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
+            {
+                case SqlStatementType.select:
+                    return selectStatements[sqlStatementName].SelectSQL;
+
+                case SqlStatementType.insert:
+                    return insertStatements[sqlStatementName].InsertSQL;
+
+                case SqlStatementType.update:
+					return updateStatements[sqlStatementName].UpdateSQL;
+
+                case SqlStatementType.delete:
+                    return deleteStatements[sqlStatementName].DeleteSQL;
+
+                default: break;
+            }
+
+            throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
+        }
+
+        internal static void addInsertDefinition (string insertName, string tableName, string insertSQL)
 		{
 			if (!insertStatements.ContainsKey (insertName))
 				insertStatements.Add ( insertName, new InsertDefinition (tableName, insertSQL));
