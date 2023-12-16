@@ -8,7 +8,7 @@ namespace SQLiteXM
 {
     internal class SxmInsertHelpers
     {
-        public static async Task<M> performInsert<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+        private static async Task<M> performInsert<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
                                                                                                                                    where M : class, new()
         {
             Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
@@ -18,27 +18,27 @@ namespace SQLiteXM
             M userRecordList = SxmHelpers.loadDbValues<M>(select);
             return userRecordList;
         }
-        public static async Task<Dictionary<string, object?>> performInsert<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+        private static async Task<Dictionary<string, object?>> performInsert<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {
             Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             return await performInsert(sqlStatementName, selectParameterValues, dbName);
         }
-        public static async Task<T> performInsert<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where T : class, new()
+        private static async Task<T> performInsert<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
             Dictionary<string, object?> select = await performInsert(sqlStatementName, sqlStatementParameters, dbName);
             T userRecord = SxmHelpers.loadDbValues<T>(select);
 
             return userRecord;
         }
-        public static async Task<T> performInsert<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
+        private static async Task<T> performInsert<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
         {
             Dictionary<string, object?> select = await performInsert(sqlStatementName, sqlStatementParameters, dbName);
             T userRecord = SxmHelpers.loadDbValues<T>(select);
 
             return userRecord;
         }
-        public static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
+        private static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             return await performInsert(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
