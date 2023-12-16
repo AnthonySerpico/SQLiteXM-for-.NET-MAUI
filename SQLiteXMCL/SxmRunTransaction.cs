@@ -12,8 +12,8 @@ namespace SQLiteXM
             this.dbName = dbName;
         }
 
-        public async Task<List<M>> RunStatement<T, M>(string sqlStatementName, T userObjectParameters) where T : class, new()
-                                                                                                       where M : class, new()
+        public async Task<List<TResult>> RunStatement<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
+                                                                                                                   where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
@@ -22,15 +22,15 @@ namespace SQLiteXM
             Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, statementType);
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await RunStatement(sqlStatementName, selectParameterValues);
-            List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
+            List<TResult> userRecordList = SxmHelpers.populateUserRecord<TResult>(select);
 
             return userRecordList;
         }
-        public async Task<List<T>> RunStatement<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where T : class, new()
+        public async Task<List<TResult>> RunStatement<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters);
             
-            return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
+            return SxmHelpers.populateUserRecord<TResult>(runSqlStatementResponse);
         }
         public async Task<List<Dictionary<string, object?>>> RunStatement<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
         {
@@ -47,11 +47,11 @@ namespace SQLiteXM
         {
             return await RunStatement(sqlStatementName, new List<object>(1) { sqlStatementParameters });
         }
-        public async Task<List<T>> RunStatement<T>(string sqlStatementName, List<object> sqlStatementParameters) where T : class, new()
+        public async Task<List<TResult>> RunStatement<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters);
             
-            return SxmHelpers.populateUserRecord<T>(runSqlStatementResponse);
+            return SxmHelpers.populateUserRecord<TResult>(runSqlStatementResponse);
         }
         public async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName, List<object> sqlStatementParameters)
         {
