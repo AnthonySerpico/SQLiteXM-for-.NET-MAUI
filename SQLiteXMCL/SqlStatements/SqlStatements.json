@@ -1,0 +1,36 @@
+{
+  "database": "sqlitexmtest",
+  "version": 1,
+
+  "table": [
+    {
+      "Table Name": "user", "Statement": "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, stringg TEXT, datetimee TEXT)"
+    }
+  ],
+
+  "alter": [
+      { "Column Name": "datetime", "Table Name": "user", "Statement": "ALTER TABLE user ADD datetimee TEXT" }
+  ],
+
+  "index": [
+      { "Index Name": "memberIdIDX", "Table Name": "user", "Statement": "DROP INDEX memberIdIDX" },
+      { "Index Name": "flNameIDX",   "Table Name": "user", "Statement": "CREATE INDEX flNameIDX ON user (intt, longg)" }
+  ],
+  
+  "insert": [
+      { "Statement Name": "insertUser", "Table Name": "user", "Statement": "INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, stringg, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @stringg, @datetimee)" }
+  ],
+  
+  "select": [
+      { "Statement Name": "getUser",          "Table Name": "user", "Statement": "SELECT * FROM user WHERE doublee = @p0 LIMIT 50" },
+      { "Statement Name": "getUserNameValue", "Table Name": "user", "Statement": "SELECT * FROM user WHERE doublee = @doublee LIMIT 50" }
+  ],
+  
+  "update": [
+      { "Statement Name": "updateLastQuestionLocation", "Table Name": "user", "Statement": "UPDATE lastQuestionLocation SET topicQuestionId=@p0 WHERE memberId = @p1 AND topicID = @p2" }
+  ],
+  
+  "delete": [
+      { "Statement Name": "deleteUser", "Table Name": "user", "Statement": "DELETE FROM user WHERE doublee = @p0" }
+  ]
+}

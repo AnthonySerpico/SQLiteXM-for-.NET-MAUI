@@ -1,0 +1,37 @@
+﻿[DATABASE]
+[sqlitexmtest]
+[]
+
+[VERSION]
+[0]
+[]
+
+[TABLE]
+[user] [CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, stringg TEXT, datetimee TEXT)] [no_synch]
+[]
+
+[ALTER]
+[datetimee] [user] [ALTER TABLE user ADD datetimee TEXT]
+[]
+
+[INDEX]
+[memberIdIDX] [user] [DROP INDEX memberIdIDX]
+[flNameIDX] [user] [CREATE INDEX flNameIDX ON user (intt, longg)]
+[]
+
+[INSERT]
+[insertUser] [user] [INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, stringg, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @stringg, @datetimee)]
+[]
+
+[SELECT]
+[getUser] [user] [SELECT * FROM user WHERE doublee = @p0 LIMIT 50]
+[getUserNameValue] [user] [SELECT * FROM user WHERE doublee = @doublee LIMIT 50]
+[]
+
+[UPDATE]
+[updateLastQuestionLocation] [user] [UPDATE lastQuestionLocation SET topicQuestionId=@p0 WHERE memberId = @p1 AND topicID = @p2]
+[]
+
+[DELETE]
+[deleteUser] [user] [DELETE FROM user WHERE doublee = @p0]
+[]

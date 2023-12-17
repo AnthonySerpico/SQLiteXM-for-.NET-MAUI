@@ -23,11 +23,21 @@ namespace SQLiteXM
         {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
             {
-                using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
+                if (Path.GetExtension(SqlStatementsFileName).ToLower().Equals(".txt"))
                 {
-                    using (StreamReader reader = new StreamReader(stream))
+                    using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
                     {
-                        ProcessSQLStatements.Parse(reader);
+                        using (StreamReader reader = new StreamReader(stream))
+                        {
+                            ProcessSQLStatements.Parse(reader);
+                        }
+                    }
+                }
+                else
+                {
+                    using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
+                    {
+                        ProcessSQLStatements.Parse(stream);
                     }
                 }
             }
@@ -346,7 +356,7 @@ namespace SQLiteXM
                 {
                     string? columnName = (string?)sxmConnection.getValue("name");
                     string? columnType = (string?)sxmConnection.getValue("type");
-                    if(columnName != null && columnType != null)
+                    if (columnName != null && columnType != null)
                         columnNames.Add(columnName, columnType);
                 }
             }
@@ -480,7 +490,7 @@ namespace SQLiteXM
             parameterValues.Add(databaseName);
             parameterValues.Add(parts[1]);
             parameterValues.Add(tableDefinition.CloudSynch);
-            sxmTransaction.executeSystemUpdateDirect ("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
+            sxmTransaction.executeSystemUpdateDirect("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
         }
 
         private static void createCloudSynchTable(string key, Hashtable tableNamesMap, SxmTransaction sxmTransaction)
