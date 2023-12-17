@@ -29,13 +29,13 @@ namespace SQLiteXM
             if (SqlStatements.deleteStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.delete;
 
-            if(sqlStatementName.ToLower().StartsWith("select "))
+            if(sqlStatementName.StartsWith("SELECT ", true, null))
                 return SqlStatementType.selectDirect;
 
-            if (sqlStatementName.ToLower().StartsWith("delete "))
+            if (sqlStatementName.StartsWith("DELETE ", true, null))
                 return SqlStatementType.deleteDirect;
 
-            if (sqlStatementName.ToLower().StartsWith("update "))
+            if (sqlStatementName.StartsWith("UPDATE ", true, null))
                 return SqlStatementType.updateDirect;
 
             throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
