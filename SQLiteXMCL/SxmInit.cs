@@ -23,21 +23,28 @@ namespace SQLiteXM
         {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
             {
-                if (Path.GetExtension(SqlStatementsFileName).ToLower().Equals(".txt"))
+                using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
                 {
-                    using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
+                    string sqlStatemenstFileExtenzion = Path.GetExtension(SqlStatementsFileName).ToLower();
+
+                    if (sqlStatemenstFileExtenzion.Equals(".json"))
                     {
-                        using (StreamReader reader = new StreamReader(stream))
-                        {
-                            ProcessSQLStatements.Parse(reader);
-                        }
+                        ProcessSQLStatements.Parse(stream, Defines.SqlStatementsFileType.json);
                     }
-                }
-                else
-                {
-                    using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
+                    else
                     {
-                        ProcessSQLStatements.Parse(stream);
+                        if (sqlStatemenstFileExtenzion.Equals(".txt"))
+                        {
+                            using (StreamReader reader = new StreamReader(stream))
+                            {
+                                ProcessSQLStatements.Parse(reader);
+                            }
+                        }
+                        else
+                        {
+                            if (sqlStatemenstFileExtenzion.Equals(".xml"))
+                                ProcessSQLStatements.Parse(stream, Defines.SqlStatementsFileType.xml);
+                        }
                     }
                 }
             }

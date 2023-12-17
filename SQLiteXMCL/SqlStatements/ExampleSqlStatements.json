@@ -1,6 +1,6 @@
 {
   "database": "sqlitexmtest",
-  "version": 1,
+  "version": 0,
 
   "table": [
     {
@@ -9,7 +9,7 @@
   ],
 
   "alter": [
-      { "Column Name": "datetime", "Table Name": "user", "Statement": "ALTER TABLE user ADD datetimee TEXT" }
+      { "Column Name": "datetimee", "Table Name": "user", "Statement": "ALTER TABLE user ADD datetimee TEXT" }
   ],
 
   "index": [

@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<root>
+	<database>sqlitexmtest</database>
+	<version>0</version>
+	<table>
+		<TableName>user</TableName>
+		<Statement>CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, stringg TEXT, datetimee TEXT)</Statement>
+	</table>
+	<alter>
+		<ColumnName>datetimee</ColumnName>
+		<TableName>user</TableName>
+		<Statement>ALTER TABLE user ADD datetimee TEXT</Statement>
+	</alter>
+	<index>
+		<IndexName>memberIdIDX</IndexName>
+		<TableName>user</TableName>
+		<Statement>DROP INDEX memberIdIDX</Statement>
+	</index>
+	<index>
+		<IndexName>flNameIDX</IndexName>
+		<TableName>user</TableName>
+		<Statement>CREATE INDEX flNameIDX ON user (intt, longg)</Statement>
+	</index>
+	<insert>
+		<StatementName>insertUser</StatementName>
+		<TableName>user</TableName>
+		<Statement>INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, stringg, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @stringg, @datetimee)</Statement>
+	</insert>
+	<select>
+		<StatementName>getUser</StatementName>
+		<TableName>user</TableName>
+		<Statement>SELECT * FROM user WHERE doublee = @p0 LIMIT 50</Statement>
+	</select>
+	<select>
+		<StatementName>getUserNameValue</StatementName>
+		<TableName>user</TableName>
+		<Statement>SELECT * FROM user WHERE doublee = @doublee LIMIT 50</Statement>
+	</select>
+	<update>
+		<StatementName>updateLastQuestionLocation</StatementName>
+		<TableName>user</TableName>
+		<Statement>UPDATE lastQuestionLocation SET topicQuestionId=@p0 WHERE memberId = @p1 AND topicID = @p2</Statement>
+	</update>
+	<delete>
+		<StatementName>deleteUser</StatementName>
+		<TableName>user</TableName>
+		<Statement>DELETE FROM user WHERE doublee = @p0</Statement>
+	</delete>
+</root>

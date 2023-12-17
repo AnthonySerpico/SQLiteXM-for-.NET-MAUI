@@ -36,6 +36,13 @@
             unknown
         };
 
+		public enum SqlStatementsFileType
+		{
+			txt,
+			json,
+			xml
+		}
+
         // Error message defines.
         public enum SxmErrorCode{
 		sqliteException,

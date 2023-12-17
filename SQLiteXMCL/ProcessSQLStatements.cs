@@ -5,9 +5,144 @@ using System.IO;
 using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using System.Xml.Linq;
+using System.Xml.Serialization;
 
 namespace SQLiteXM
 {
+    // using System.Xml.Serialization;
+    // XmlSerializer serializer = new XmlSerializer(typeof(Root));
+    // using (StringReader reader = new StringReader(xml))
+    // {
+    //    var test = (Root)serializer.Deserialize(reader);
+    // }
+
+    [XmlRoot(ElementName = "table")]
+    public class Table
+    {
+
+        [XmlElement(ElementName = "TableName")]
+        public string TableName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
+    [XmlRoot(ElementName = "alter")]
+    public class Alter
+    {
+
+        [XmlElement(ElementName = "ColumnName")]
+        public string ColumnName { get; set; }
+
+        [XmlElement(ElementName = "TableName")]
+        public string TableName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
+    [XmlRoot(ElementName = "index")]
+    public class Index
+    {
+
+        [XmlElement(ElementName = "IndexName")]
+        public string IndexName { get; set; }
+
+        [XmlElement(ElementName = "TableName")]
+        public string TableName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
+    [XmlRoot(ElementName = "insert")]
+    public class Insert
+    {
+
+        [XmlElement(ElementName = "StatementName")]
+        public string StatementName { get; set; }
+
+        [XmlElement(ElementName = "TableName")]
+        public string TableName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
+    [XmlRoot(ElementName = "select")]
+    public class Select
+    {
+
+        [XmlElement(ElementName = "StatementName")]
+        public string StatementName { get; set; }
+
+        [XmlElement(ElementName = "TableName")]
+        public string TableName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
+    [XmlRoot(ElementName = "update")]
+    public class Update
+    {
+
+        [XmlElement(ElementName = "StatementName")]
+        public string StatementName { get; set; }
+
+        [XmlElement(ElementName = "TableName")]
+        public string TableName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
+    [XmlRoot(ElementName = "delete")]
+    public class Delete
+    {
+
+        [XmlElement(ElementName = "StatementName")]
+        public string StatementName { get; set; }
+
+        [XmlElement(ElementName = "TableName")]
+        public string TableName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
+    [XmlRoot(ElementName = "rootxml")]
+    public class RootXml
+    {
+
+        [XmlElement(ElementName = "database")]
+        public string Database { get; set; }
+
+        [XmlElement(ElementName = "version")]
+        public int Version { get; set; }
+
+        [XmlElement(ElementName = "table")]
+        public List<Table> Table { get; set; }
+
+        [XmlElement(ElementName = "alter")]
+        public List<Alter> Alter { get; set; }
+
+        [XmlElement(ElementName = "index")]
+        public List<Index> Index { get; set; }
+
+        [XmlElement(ElementName = "insert")]
+        public List<Insert> Insert { get; set; }
+
+        [XmlElement(ElementName = "select")]
+        public List<Select> Select { get; set; }
+
+        [XmlElement(ElementName = "update")]
+        public List<Update> Update { get; set; }
+
+        [XmlElement(ElementName = "delete")]
+        public List<Delete> Delete { get; set; }
+    }
+
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
     public class RootJson
     {
@@ -32,14 +167,76 @@ namespace SQLiteXM
         public static string retreiveDatabaseName { get => databaseName; }
         private static string databaseName = string.Empty;
 
-        public static bool Parse(Stream sqlStatementAssets)
+        public static bool Parse(StreamReader sqlStatementAssets)
+        {
+            string sqlStatements = sqlStatementAssets.ReadToEnd();
+            return Parse(sqlStatements);
+        }
+
+        public static bool Parse(Stream sqlStatementAssets, Defines.SqlStatementsFileType sqlStatementsFileType)
         {
             JsonSerializerOptions options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,  // Set camelCase
             };
-            RootJson rootJson = JsonSerializer.Deserialize<RootJson>(sqlStatementAssets, options);
 
+            if (sqlStatementsFileType == Defines.SqlStatementsFileType.json)
+            {
+                RootJson? rootJson = JsonSerializer.Deserialize<RootJson>(sqlStatementAssets, options);
+                processJson(rootJson);
+            }
+            else
+            {
+                if (sqlStatementsFileType == Defines.SqlStatementsFileType.xml)
+                {
+                    RootXml? rootXml = (RootXml?)(new XmlSerializer(typeof(RootXml))).Deserialize(sqlStatementAssets);
+                    processXml(rootXml);
+                }
+            }
+
+            return true;
+        }
+        private static void processXml(RootXml? rootXml)
+        {
+            if (rootXml != default)
+            {
+                databaseName = rootXml.Database;
+                checkValidDatabaseName();
+
+                setVersionNumber(rootXml.Version);
+
+                if (rootXml?.Table != default)
+                    foreach (Table tableEntry in rootXml.Table)
+                        SqlStatements.addTableDefinition(databaseName + "." + tableEntry.TableName, tableEntry.Statement);
+
+                if (rootXml?.Index != default)
+                    foreach (Index indexEntry in rootXml.Index)
+                        SqlStatements.addIndexDefinition(databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
+
+                if (rootXml?.Alter != default)
+                    foreach (Alter alterEntry in rootXml.Alter)
+                        SqlStatements.addAlterDefinition(databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
+
+                if (rootXml?.Delete != default)
+                    foreach (Delete deleteEntry in rootXml.Delete)
+                        SqlStatements.addDeleteDefinition(deleteEntry.StatementName, deleteEntry.TableName, deleteEntry.Statement);
+
+                if (rootXml?.Update != default)
+                    foreach (Update updateEntry in rootXml.Update)
+                        SqlStatements.addUpdateDefinition(updateEntry.StatementName, updateEntry.TableName, updateEntry.Statement);
+
+                if (rootXml?.Select != default)
+                    foreach (Select selectEntry in rootXml.Select)
+                        SqlStatements.addSelectDefinition(selectEntry.StatementName, selectEntry.TableName, selectEntry.Statement);
+
+                if (rootXml?.Insert != default)
+                    foreach (Insert insertEntry in rootXml.Insert)
+                        SqlStatements.addInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
+            }
+        }
+
+            private static void processJson(RootJson? rootJson)
+        {
             if (rootJson != default)
             {
                 databaseName = rootJson.database;
@@ -75,8 +272,6 @@ namespace SQLiteXM
                     foreach (Dictionary<string, string> insertEntry in rootJson.Insert)
                         SqlStatements.addInsertDefinition(insertEntry["Statement Name"], insertEntry["Table Name"], insertEntry["Statement"]);
             }
-
-            return true;
         }
 
         private static double setVersionNumber(double version)
@@ -86,12 +281,6 @@ namespace SQLiteXM
 
             ProcessSQLStatements.setSqlStatementsVersionNumber = version;
             return version;
-        }
-
-        public static bool Parse(StreamReader sqlStatementAssets)
-        {
-            string sqlStatements = sqlStatementAssets.ReadToEnd();
-            return Parse(sqlStatements);
         }
 
         public static bool Parse(string sqlStatements)
