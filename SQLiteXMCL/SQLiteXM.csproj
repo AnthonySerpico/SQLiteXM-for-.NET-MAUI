@@ -28,8 +28,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Remove="SqlStatements\SqlStatements.json" />
-	  <None Remove="SqlStatements\SqlStatements.txt" />
+	  <None Remove="SqlStatements\ExampleSqlStatements.json" />
+	  <None Remove="SqlStatements\ExampleSqlStatements.txt" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -39,10 +39,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiAsset Include="SqlStatements\SqlStatements.json">
+	  <MauiAsset Include="SqlStatements\ExampleSqlStatements.json">
 	    <LogicalName>%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
 	  </MauiAsset>
-	  <MauiAsset Include="SqlStatements\SqlStatements.txt">
+	  <MauiAsset Include="SqlStatements\ExampleSqlStatements.txt">
 	    <LogicalName>%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
 	  </MauiAsset>
 	</ItemGroup>
