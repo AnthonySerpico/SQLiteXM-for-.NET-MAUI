@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace SQLiteXM
@@ -6,6 +7,7 @@ namespace SQLiteXM
     public class SxmInit
     {
         //private static Dictionary<string, Synchronize> synchronized = new Dictionary<string, Synchronize>();
+        private static Dictionary<string, Dictionary<string, string>> columnNameTpyes = new Dictionary<string, Dictionary<string, string>>();
 
         private SxmInit() { }
 
@@ -359,7 +361,6 @@ namespace SQLiteXM
         internal static Dictionary<string, string> getTableColumnNames(string? dbName, string queryName, Defines.SqlStatementType sqlStatementType)
         {
             string? tableName = default(string);
-            Dictionary<string, string> columnNames = new Dictionary<string, string>();
 
             if (sqlStatementType == Defines.SqlStatementType.select)
                 tableName = SqlStatements.selectStatements[queryName].TableName;
@@ -371,6 +372,11 @@ namespace SQLiteXM
                 tableName = SqlStatements.deleteStatements[queryName].TableName;
             if (sqlStatementType == Defines.SqlStatementType.unknown)
                 throw new SxmException(new ErrorMessage("unknownSQLStatement", queryName));
+
+            if (columnNameTpyes.ContainsKey(tableName))
+                return columnNameTpyes[tableName];
+
+            Dictionary<string, string> columnNames = new Dictionary<string, string>();
 
             SxmConnection sxmConnection = new SxmConnection(dbName);
             using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
@@ -386,6 +392,7 @@ namespace SQLiteXM
                 }
             }
 
+            columnNameTpyes.Add(tableName, columnNames);
             return columnNames;
         }
 

@@ -71,31 +71,33 @@ namespace SQLiteXM
 
                             if (piType == typeof(int).Name)
                                 pi.SetValue(userObject, (int)(long)kvp.Value);
-                            if (piType == typeof(long).Name)
+                            else if (piType == typeof(long).Name)
                                 pi.SetValue(userObject, (long)kvp.Value);
-                            if (piType == typeof(float).Name)
+                            else if (piType == typeof(float).Name)
                                 pi.SetValue(userObject, (float)(double)kvp.Value);
-                            if (piType == typeof(double).Name)
+                            else if (piType == typeof(double).Name)
                                 pi.SetValue(userObject, (double)kvp.Value);
-                            if (piType == typeof(decimal).Name)
+                            else if (piType == typeof(decimal).Name)
                                 pi.SetValue(userObject, (decimal)(double)kvp.Value);
-
-                            if (piType == typeof(bool).Name)
+                            else if (piType == typeof(string).Name)
+                                pi.SetValue(userObject, kvp.Value.ToString());
+                            else if (piType == typeof(bool).Name)
                             {
                                 if (kvp.Value.ToString()!.Equals("1"))
                                     pi.SetValue(userObject, true);
                                 else
                                     pi.SetValue(userObject, false);
                             }
-                            if (piType == typeof(string).Name)
-                                pi.SetValue(userObject, kvp.Value.ToString());
-                            if (piType == typeof(DateTime).Name)
+                            else if (piType == typeof(DateTime).Name)
                             {
                                 if (kvp.Value.GetType().Name == typeof(string).Name)
                                     pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()!));
                                 if (kvp.Value.GetType().Name == typeof(double).Name)
                                     pi.SetValue(userObject, new DateTime((long)(double)kvp.Value));
                             }
+                            else
+                                pi.SetValue(userObject, kvp.Value);
+
                         }
                         else
                             pi.SetValue(userObject, default);
