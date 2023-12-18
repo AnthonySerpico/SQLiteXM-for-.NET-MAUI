@@ -130,7 +130,7 @@ namespace SQLiteXM
         public string Database { get; set; }
 
         [XmlElement(ElementName = "version")]
-        public int Version { get; set; }
+        public double Version { get; set; }
 
         [XmlElement(ElementName = "table")]
         public List<Table> Table { get; set; }
@@ -161,7 +161,7 @@ namespace SQLiteXM
     public class RootJson
     {
         public string database { get; set; }
-        public int version { get; set; }
+        public double version { get; set; }
         public List<Dictionary<string, string>> Table { get; set; }
         public List<Dictionary<string, string>> Alter { get; set; }
         public List<Dictionary<string, string>> Index { get; set; }

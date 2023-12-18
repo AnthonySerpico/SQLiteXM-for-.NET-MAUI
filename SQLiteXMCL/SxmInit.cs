@@ -313,7 +313,23 @@ namespace SQLiteXM
                             }
                         }
 
-                        if (columnFound == false)
+                        bool runit = false;
+                        if (!columnFound)
+                        {
+                            if (alterDefinition.AlterSQL.ToLower().IndexOf(" add ") != -1)
+                                runit = true;
+                        }
+                        else
+                        {
+                            if (columnFound)
+                            {
+                                string lowerSqlStatement = alterDefinition.AlterSQL.ToLower();
+                                if(lowerSqlStatement.IndexOf(" drop ") != -1 || lowerSqlStatement.IndexOf(" rename ") != -1)
+                                    runit = true;
+                            }
+                        }
+
+                        if (runit)
                         {
                             try
                             {
