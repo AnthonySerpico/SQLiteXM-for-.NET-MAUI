@@ -394,8 +394,16 @@ namespace SQLiteXM
                             {
                                 foreach (TriggerDefinition td in triggerStatementsList)
                                 {
-                                    if (!installedTriggers.Contains(td.TriggerName) || td.TriggerSQL.StartsWith("drop ", true, null))
-                                        sxmTransaction.executeCreateTrigger(td.TriggerSQL);
+                                    if (td.TriggerSQL.StartsWith("drop ", true, null))
+                                    {
+                                        if (installedTriggers.Contains(td.TriggerName))
+                                            sxmTransaction.executeCreateTrigger(td.TriggerSQL);
+                                    }
+                                    else
+                                    {
+                                        if (!installedTriggers.Contains(td.TriggerName))
+                                            sxmTransaction.executeCreateTrigger(td.TriggerSQL);
+                                    }
 
                                 }
                                 sxmTransaction.commitTransaction();
