@@ -17,6 +17,10 @@
       { "Index Name": "flNameIDX",   "Table Name": "user", "Statement": "CREATE INDEX flNameIDX ON user (intt, longg)" }
   ],
   
+  "trigger": [
+      { "Trigger Name": "updateCustomer", "Statement": "CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;" }
+  ],
+
   "insert": [
       { "Statement Name": "insertUser", "Table Name": "user", "Statement": "INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, stringg, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @stringg, @datetimee)" }
   ],

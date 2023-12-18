@@ -111,6 +111,17 @@ namespace SQLiteXM
         public string Statement { get; set; }
     }
 
+    [XmlRoot(ElementName = "trigger")]
+    public class Trigger
+    {
+
+        [XmlElement(ElementName = "TriggerName")]
+        public string TriggerName { get; set; }
+
+        [XmlElement(ElementName = "Statement")]
+        public string Statement { get; set; }
+    }
+
     [XmlRoot(ElementName = "rootxml")]
     public class RootXml
     {
@@ -141,6 +152,9 @@ namespace SQLiteXM
 
         [XmlElement(ElementName = "delete")]
         public List<Delete> Delete { get; set; }
+
+        [XmlElement(ElementName = "trigger")]
+        public List<Trigger> Trigger { get; set; }
     }
 
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
@@ -155,6 +169,7 @@ namespace SQLiteXM
         public List<Dictionary<string, string>> Select { get; set; }
         public List<Dictionary<string, string>> Update { get; set; }
         public List<Dictionary<string, string>> Delete { get; set; }
+        public List<Dictionary<string, string>> Trigger { get; set; }
     }
 
     public class ProcessSQLStatements
@@ -232,6 +247,10 @@ namespace SQLiteXM
                 if (rootXml?.Insert != default)
                     foreach (Insert insertEntry in rootXml.Insert)
                         SqlStatements.addInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
+
+                if (rootXml?.Trigger != default)
+                    foreach (Trigger triggerEntry in rootXml.Trigger)
+                        SqlStatements.addTriggerDefinition(databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
             }
         }
 
@@ -271,6 +290,10 @@ namespace SQLiteXM
                 if (rootJson?.Insert != default)
                     foreach (Dictionary<string, string> insertEntry in rootJson.Insert)
                         SqlStatements.addInsertDefinition(insertEntry["Statement Name"], insertEntry["Table Name"], insertEntry["Statement"]);
+
+                if (rootJson?.Trigger != default)
+                    foreach (Dictionary<string, string> triggerEntry in rootJson.Trigger)
+                        SqlStatements.addTriggerDefinition(databaseName, triggerEntry["Trigger Name"], triggerEntry["Statement"]);
             }
         }
 
@@ -331,6 +354,11 @@ namespace SQLiteXM
                 case "table":
                     checkDatabaseName();
                     index = processTableStatements(index, sqlStatements);
+                    break;
+
+                case "trigger":
+                    checkDatabaseName();
+                    index = processTriggerStatements(index, sqlStatements);
                     break;
 
                 case "insert":
@@ -524,6 +552,34 @@ namespace SQLiteXM
                 sqlStatement = commandReturn.command;
 
                 SqlStatements.addAlterDefinition(databaseName + "." + tableName, columnName, sqlStatement);
+            } while (true);
+
+            return index;
+        }
+
+        private static int processTriggerStatements(int index, string sqlStatements)
+        {
+            CommandReturn commandReturn = null;
+            string sqlStatement;
+            string triggerName;
+
+            do
+            {
+                commandReturn = getCommand(index, sqlStatements);
+                index = commandReturn.index;
+                if (commandReturn.command.Length == 0) // Were finished processing the trigger statements.
+                    break;
+                triggerName = commandReturn.command;
+
+                commandReturn = getCommand(index, sqlStatements);
+                index = commandReturn.index;
+                if (commandReturn.command.Length == 0) // The SQL trigger statement cannot be empty.
+                {
+                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", "TRIGGER"));
+                }
+                sqlStatement = commandReturn.command;
+
+                SqlStatements.addTriggerDefinition(databaseName, triggerName, sqlStatement);
             } while (true);
 
             return index;

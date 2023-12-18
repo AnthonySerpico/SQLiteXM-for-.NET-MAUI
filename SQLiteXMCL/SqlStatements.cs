@@ -9,7 +9,8 @@ namespace SQLiteXM
         internal static Hashtable? tableCreateStatements = new Hashtable();
         internal static Hashtable? alterStatements = default(Hashtable);
 		internal static Hashtable? indexStatements = default(Hashtable);
-		internal static Dictionary<string, InsertDefinition> insertStatements = new Dictionary<string, InsertDefinition>();
+        internal static Hashtable? triggerStatements = default(Hashtable);
+        internal static Dictionary<string, InsertDefinition> insertStatements = new Dictionary<string, InsertDefinition>();
 		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>();
 		internal static Dictionary<string, UpdateDefinition> updateStatements = new Dictionary<string, UpdateDefinition>();
 		internal static Dictionary<string, DeleteDefinition> deleteStatements = new Dictionary<string, DeleteDefinition>();
@@ -78,7 +79,22 @@ namespace SQLiteXM
 			indexStatementsList.Add ( new IndexDefinition (indexName, sqlStatement));
 		}
 
-		internal static void addAlterDefinition (string dbAndTableName, string columnName, string sqlStatement)
+        internal static void addTriggerDefinition(string dbName, string triggerName, string sqlStatement)
+        {
+            if (triggerStatements == null)
+                triggerStatements = new Hashtable();
+
+            ArrayList? triggerStatementsList = triggerStatements[dbName] as ArrayList;
+            if (triggerStatementsList == null)
+            {
+                triggerStatementsList = new ArrayList();
+                triggerStatements.Add(dbName, triggerStatementsList);
+            }
+
+            triggerStatementsList.Add(new TriggerDefinition(triggerName, sqlStatement));
+        }
+
+        internal static void addAlterDefinition (string dbAndTableName, string columnName, string sqlStatement)
 		{
 			if (alterStatements == null)
 				alterStatements = new Hashtable();

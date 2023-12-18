@@ -120,6 +120,26 @@
         }
     }
 
+    public class TriggerDefinition
+    {
+        private string triggerName;
+        public string TriggerName
+        {
+            get { return triggerName; }
+        }
+        private string triggerSQL;
+        public string TriggerSQL
+        {
+            get { return triggerSQL; }
+        }
+
+        internal TriggerDefinition(string triggerName, string triggerSQL)
+        {
+            this.triggerName = triggerName;
+            this.triggerSQL = triggerSQL;
+        }
+    }
+
     public class AlterDefinition
     {
         private string columnName;

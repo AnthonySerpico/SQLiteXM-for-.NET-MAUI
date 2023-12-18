@@ -21,6 +21,10 @@
 		<TableName>user</TableName>
 		<Statement>CREATE INDEX flNameIDX ON user (intt, longg)</Statement>
 	</index>
+	<trigger>
+		<TriggerName>updateCustomer</TriggerName>
+		<Statement>CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;</Statement>
+	</trigger>
 	<insert>
 		<StatementName>insertUser</StatementName>
 		<TableName>user</TableName>

@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Xml.Linq;
 
 namespace SQLiteXM
 {
@@ -91,6 +92,7 @@ namespace SQLiteXM
                         }
                     }
 
+                    applyTriggerTableStatements(connectionMap);
                     storeDbVersionNumber(sqlStatementsVersionNumber);
                 }
             }
@@ -371,6 +373,39 @@ namespace SQLiteXM
             return columnNames;
         }
 
+        private static void applyTriggerTableStatements(Hashtable connectionMap)
+        {
+            ArrayList? triggerStatementsList = null;
+
+            if (SqlStatements.triggerStatements != null)
+            {
+                ICollection triggerStatementKeys = SqlStatements.triggerStatements.Keys;
+                foreach (string dbName in triggerStatementKeys)
+                {
+                    SxmConnection? sxmConnection = (SxmConnection?)connectionMap[dbName];
+                    if (sxmConnection != null)
+                    {
+                        List<string> installedTriggers = getAllTriggers(sxmConnection);
+                        triggerStatementsList = SqlStatements.triggerStatements[dbName] as ArrayList;
+
+                        if (triggerStatementsList != null)
+                        {
+                            using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                            {
+                                foreach (TriggerDefinition td in triggerStatementsList)
+                                {
+                                    if (!installedTriggers.Contains(td.TriggerName) || td.TriggerSQL.StartsWith("drop ", true, null))
+                                        sxmTransaction.executeCreateTrigger(td.TriggerSQL);
+
+                                }
+                                sxmTransaction.commitTransaction();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         private static void applyIndexTableStatements(string key, Hashtable connectionMap)
         {
             ArrayList indexStatementsList = null;
@@ -590,6 +625,28 @@ namespace SQLiteXM
             }
 
             return false;
+        }
+
+        private static List<string> getAllTriggers(SxmConnection? sxmConnection)
+        {
+            List<string> triggerNames = new List<string>();
+
+            if (sxmConnection != null)
+            {
+                sxmConnection.executeQuery("SELECT name FROM sqlite_master WHERE type='trigger'", null as List<object>);
+
+                if (sxmConnection.hasRows() == true)
+                {
+                    string[] fieldNames = sxmConnection.getFieldNames();
+                    while (sxmConnection.nextRow() == true)
+                    {
+                        foreach (string fieldName in fieldNames)
+                            triggerNames.Add(sxmConnection.getValue(fieldName).ToString());
+                    }
+                }
+            }
+
+            return triggerNames;
         }
     }
 }

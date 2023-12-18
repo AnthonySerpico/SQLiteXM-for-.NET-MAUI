@@ -19,6 +19,10 @@
 [flNameIDX] [user] [CREATE INDEX flNameIDX ON user (intt, longg)]
 []
 
+[TRIGGER]
+[updateCustomer] [CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;]
+[]
+
 [INSERT]
 [insertUser] [user] [INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, stringg, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @stringg, @datetimee)]
 []
