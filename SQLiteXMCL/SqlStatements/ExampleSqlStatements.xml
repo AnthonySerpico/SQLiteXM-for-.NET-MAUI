@@ -1,10 +1,14 @@
 ﻿<?xml version="1.0" encoding="UTF-8" ?>
-<root>
+<rootxml>
 	<database>sqlitexmtest</database>
 	<version>0</version>
 	<table>
 		<TableName>user</TableName>
-		<Statement>CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, stringg TEXT, datetimee TEXT)</Statement>
+		<Statement>CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, address TEXT, name TEXT, datetimee TEXT)</Statement>
+	</table>
+	<table>
+		<TableName>customer</TableName>
+		<Statement>CREATE TABLE customer (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT)</Statement>
 	</table>
 	<alter>
 		<ColumnName>datetimee</ColumnName>
@@ -28,7 +32,7 @@
 	<insert>
 		<StatementName>insertUser</StatementName>
 		<TableName>user</TableName>
-		<Statement>INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, stringg, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @stringg, @datetimee)</Statement>
+		<Statement>INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, address, name, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @address, @name, @datetimee)</Statement>
 	</insert>
 	<select>
 		<StatementName>getUser</StatementName>
@@ -40,6 +44,11 @@
 		<TableName>user</TableName>
 		<Statement>SELECT * FROM user WHERE doublee = @doublee LIMIT 50</Statement>
 	</select>
+	<select>
+		<StatementName>getCustomer</StatementName>
+		<TableName>customer</TableName>
+		<Statement>SELECT * FROM customer LIMIT 50</Statement>
+	</select>
 	<update>
 		<StatementName>updateLastQuestionLocation</StatementName>
 		<TableName>user</TableName>
@@ -50,4 +59,4 @@
 		<TableName>user</TableName>
 		<Statement>DELETE FROM user WHERE doublee = @p0</Statement>
 	</delete>
-</root>
+</rootxml>

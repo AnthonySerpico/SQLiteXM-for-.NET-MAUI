@@ -7,7 +7,8 @@
 []
 
 [TABLE]
-[user] [CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, stringg TEXT, datetimee TEXT)] [no_synch]
+[user] [CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, address TEXT, name TEXT, datetimee TEXT)] [no_synch]
+[customer] [CREATE TABLE customer (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT)] [no_synch]
 []
 
 [ALTER]
@@ -24,12 +25,13 @@
 []
 
 [INSERT]
-[insertUser] [user] [INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, stringg, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @stringg, @datetimee)]
+[insertUser] [user] [INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, address, name, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @address, @name, @datetimee)]
 []
 
 [SELECT]
 [getUser] [user] [SELECT * FROM user WHERE doublee = @p0 LIMIT 50]
 [getUserNameValue] [user] [SELECT * FROM user WHERE doublee = @doublee LIMIT 50]
+[getCustomer] [customer] [SELECT * FROM customer LIMIT 50]
 []
 
 [UPDATE]
