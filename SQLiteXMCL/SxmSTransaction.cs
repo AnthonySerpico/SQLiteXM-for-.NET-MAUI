@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace SQLiteXM
 {
-    public class SxmSTransaction : SxmTransaction
+    public class SxmSTransaction : SxmUTransaction
 	{
 		private static Object serialLock = new Object ();
 		bool disposed = false;

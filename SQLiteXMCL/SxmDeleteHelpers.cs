@@ -19,11 +19,11 @@ namespace SQLiteXM
             await performDelete(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
 
-        public static async Task performDelete(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task performDelete(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     sxmTransaction.executeDelete(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
@@ -37,7 +37,7 @@ namespace SQLiteXM
             await Task.CompletedTask;
         }
 
-        public static async Task performDeleteTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        internal static async Task performDeleteTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {
@@ -50,11 +50,11 @@ namespace SQLiteXM
 
             await Task.CompletedTask;
         }
-        public static async Task performDeleteDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task performDeleteDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     sxmTransaction.executeDeleteDirect(sqlStatement, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
@@ -67,7 +67,7 @@ namespace SQLiteXM
 
             await Task.CompletedTask;
         }
-        public static async Task performDeleteTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        internal static async Task performDeleteTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {

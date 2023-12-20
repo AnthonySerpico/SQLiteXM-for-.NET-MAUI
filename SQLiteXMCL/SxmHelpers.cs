@@ -41,7 +41,7 @@ namespace SQLiteXM
             throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
         }
 
-        public static List<T> populateUserRecord<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
+        internal static List<T> populateUserRecord<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
         {
             List<T> userObjectList = new List<T>();
 
@@ -55,7 +55,7 @@ namespace SQLiteXM
         }
 
         // Data being loaded into a user object; usualy after a select.
-        public static T loadDbValues<T>(Dictionary<string, object?> databaseRecord) where T : class, new()
+        internal static T loadDbValues<T>(Dictionary<string, object?> databaseRecord) where T : class, new()
         {
             T userObject = new T();
             foreach (KeyValuePair<string, object?> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
@@ -114,7 +114,7 @@ namespace SQLiteXM
         }
 
         // Data from the user supplied object loaded into a dictionary that is then to be written to the database.
-        public static Dictionary<string, object?> loadParamaterValues<T>(Dictionary<string, string> dbColumnNameType, T userObject) where T : class, new()
+        internal static Dictionary<string, object?> loadParamaterValues<T>(Dictionary<string, string> dbColumnNameType, T userObject) where T : class, new()
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
             foreach (KeyValuePair<string, string> kvp in dbColumnNameType)  // Process each entry (column) in the Dictionary.

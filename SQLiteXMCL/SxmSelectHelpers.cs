@@ -40,13 +40,13 @@ namespace SQLiteXM
             return await performSelect(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
 
-        public static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
 
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     sxmTransaction.executeQuery(sqlStatementName, sqlStatementParameters);
                     selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
@@ -59,7 +59,7 @@ namespace SQLiteXM
 
             return await Task.FromResult(selectedRows);
         }
-        public static async Task<List<Dictionary<string, object?>>> performSelectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> performSelectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 
@@ -76,13 +76,13 @@ namespace SQLiteXM
             return await Task.FromResult(selectedRows);
         }
 
-        public static async Task<List<Dictionary<string, object?>>> performSelectDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> performSelectDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
 
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     sxmTransaction.executeQueryDirect(sqlStatement, sqlStatementParameters);
                     selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
@@ -95,7 +95,7 @@ namespace SQLiteXM
 
             return await Task.FromResult(selectedRows);
         }
-        public static async Task<List<Dictionary<string, object?>>> performSelectTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> performSelectTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 

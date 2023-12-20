@@ -19,11 +19,11 @@ namespace SQLiteXM
             await performUpdate(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
 
-        public static async Task performUpdate(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task performUpdate(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     sxmTransaction.executeUpdate(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
@@ -37,7 +37,7 @@ namespace SQLiteXM
             await Task.CompletedTask;
         }
 
-        public static async Task performUpdateTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        internal static async Task performUpdateTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {
@@ -51,11 +51,11 @@ namespace SQLiteXM
             await Task.CompletedTask;
         }
 
-        public static async Task performUpdateDirect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task performUpdateDirect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     sxmTransaction.executeUpdateDirect(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
@@ -69,7 +69,7 @@ namespace SQLiteXM
             await Task.CompletedTask;
         }
 
-        public static async Task performUpdateTransDirect(string sqlStatementName, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        internal static async Task performUpdateTransDirect(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {

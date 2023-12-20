@@ -204,7 +204,7 @@ namespace SQLiteXM
             {
                 string[] parts = key.Split('.');
                 sxmConnection = connectionMap[parts[0]] as SxmConnection;
-                using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
                 {
                     sxmTransaction.executeTableStatement(tableDefinition.TableSQL);
                     addSynchID(parts, sxmTransaction);
@@ -239,7 +239,7 @@ namespace SQLiteXM
             {
                 string[] parts = key.Split('.');
                 sxmConnection = connectionMap[parts[0]] as SxmConnection;
-                using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
                 {
                     sxmTransaction.executeTableStatement(tableDefinition.TableSQL);
                     sxmTransaction.executeTableStatement(string.Format("DROP TRIGGER IF EXISTS update{0}", parts[1]));
@@ -262,6 +262,7 @@ namespace SQLiteXM
             }
         }
 
+        // Alter works with 'add', 'drop' and 'rename' column. Don't rename the table.
         private static void applyAlterTableStatements(string key, Hashtable connectionMap)
         {
             SxmConnection sxmConnection = null;
@@ -282,7 +283,7 @@ namespace SQLiteXM
                 }
 
                 Hashtable columnNames = null;
-                using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
                 {
                     sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", parts[1]), default(List<object>));
 
@@ -335,7 +336,7 @@ namespace SQLiteXM
                         {
                             try
                             {
-                                using (SxmTransaction sxmTransaction1 = new SxmTransaction(sxmConnection))
+                                using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
                                 {
                                     sxmTransaction1.executeAlterTable(alterDefinition.AlterSQL);
                                     sxmTransaction1.commitTransaction();
@@ -379,7 +380,7 @@ namespace SQLiteXM
             Dictionary<string, string> columnNames = new Dictionary<string, string>();
 
             SxmConnection sxmConnection = new SxmConnection(dbName);
-            using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+            using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
             {
                 sxmConnection.executeQuery(String.Format("PRAGMA table_info({0})", tableName), default(List<object>));
 
@@ -413,7 +414,7 @@ namespace SQLiteXM
 
                         if (triggerStatementsList != null)
                         {
-                            using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                            using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
                             {
                                 foreach (TriggerDefinition td in triggerStatementsList)
                                 {
@@ -456,7 +457,7 @@ namespace SQLiteXM
 
 
                 Hashtable indexNames = null;
-                using (SxmTransaction sxmTransaction = new SxmTransaction(sxmConnection))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
                 {
                     sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", parts[1]), null as List<object>);
 
@@ -503,7 +504,7 @@ namespace SQLiteXM
                         {
                             try
                             {
-                                using (SxmTransaction sxmTransaction1 = new SxmTransaction(sxmConnection))
+                                using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
                                 {
                                     sxmTransaction1.executeIndex(indexDefinition.IndexSQL);
                                     sxmTransaction1.commitTransaction();
@@ -538,13 +539,13 @@ namespace SQLiteXM
             return false;
         }
 
-        private static void addSynchID(string[] parts, SxmTransaction sxmTransaction)
+        private static void addSynchID(string[] parts, SxmUTransaction sxmTransaction)
         {
             string alterSQL = String.Format("ALTER TABLE {0} ADD COLUMN systemSynchID TEXT NOT NULL DEFAULT ''", parts[1]);
             sxmTransaction.executeAlterTable(alterSQL);
         }
 
-        private static void addCloudSynchDescriptor(string key, Hashtable tableNamesMap, SxmTransaction sxmTransaction)
+        private static void addCloudSynchDescriptor(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];
@@ -566,7 +567,7 @@ namespace SQLiteXM
             sxmTransaction.executeSystemUpdateDirect("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
         }
 
-        private static void createCloudSynchTable(string key, Hashtable tableNamesMap, SxmTransaction sxmTransaction)
+        private static void createCloudSynchTable(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];
@@ -581,7 +582,7 @@ namespace SQLiteXM
             }
         }
 
-        private static void createCloudSynchTriggers(string key, Hashtable tableNamesMap, SxmTransaction sxmTransaction)
+        private static void createCloudSynchTriggers(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];

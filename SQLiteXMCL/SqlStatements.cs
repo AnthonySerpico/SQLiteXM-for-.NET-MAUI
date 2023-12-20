@@ -138,9 +138,15 @@ namespace SQLiteXM
 				indexStatements.Clear ();
 				indexStatements = default(Hashtable);
 			}
-		}
 
-		internal SqlStatements () {}
+            if (triggerStatements != default(Hashtable))
+            {
+                triggerStatements.Clear();
+                triggerStatements = default(Hashtable);
+            }
+        }
+
+        internal SqlStatements () {}
 	}
 }
 

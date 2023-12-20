@@ -43,13 +43,13 @@ namespace SQLiteXM
             return await performInsert(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
         }
 
-        public static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             Dictionary<string, object?> ir;
 
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     ir = sxmTransaction.executeInsert(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
@@ -63,7 +63,7 @@ namespace SQLiteXM
             return await Task.FromResult(ir);
         }
 
-        public static async Task<Dictionary<string, object?>> performInsertTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmTransaction sxmTransaction)
+        internal static async Task<Dictionary<string, object?>> performInsertTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             Dictionary<string, object?> ir;
 

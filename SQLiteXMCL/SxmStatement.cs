@@ -3,9 +3,29 @@ using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
-    public class SxmRunStatement
+    public class RunORMStatement
     {
-        private SxmRunStatement() { }
+        private string? dbName = default;
+
+        public RunORMStatement(string dbName) { this.dbName = dbName;  }
+        public RunORMStatement() { }
+
+        public virtual async Task<List<TResult>> RunStatement<TResult>(string sqlStatementName) where TResult : class, new()
+
+        {
+            return await SxmStatement.RunStatement<RunORMStatement, TResult>(sqlStatementName, this, dbName);
+        }
+
+        public virtual async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName)
+
+        {
+            return await SxmStatement.RunStatement<RunORMStatement>(sqlStatementName, this, dbName);
+        }
+    }
+
+    public class SxmStatement
+    {
+        public SxmStatement() { }
 
         public static async Task<List<TResult>> RunStatement<T, TResult>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
                                                                                                                                                     where TResult : class, new()
@@ -54,7 +74,7 @@ namespace SQLiteXM
 
             try
             {
-                using (SxmTransaction sxmTransaction = new SxmTransaction(dbName))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
                 {
                     switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
                     {
