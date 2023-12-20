@@ -29,7 +29,8 @@ namespace SQLiteXM
             if (SqlStatements.deleteStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.delete;
 
-            if(sqlStatementName.StartsWith("SELECT ", true, null))
+            // Direct SQL statement queries are processed here.
+            if (sqlStatementName.StartsWith("SELECT ", true, null))
                 return SqlStatementType.selectDirect;
 
             if (sqlStatementName.StartsWith("DELETE ", true, null))
@@ -38,7 +39,7 @@ namespace SQLiteXM
             if (sqlStatementName.StartsWith("UPDATE ", true, null))
                 return SqlStatementType.updateDirect;
 
-            throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
+            throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName.Length > 30 ? (sqlStatementName.Substring(0,29) + "...") : sqlStatementName));
         }
 
         internal static List<T> populateUserRecord<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()

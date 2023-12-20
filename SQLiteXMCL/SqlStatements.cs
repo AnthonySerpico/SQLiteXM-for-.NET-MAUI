@@ -23,16 +23,16 @@ namespace SQLiteXM
             switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
             {
                 case SqlStatementType.select:
-                    return selectStatements[sqlStatementName].SelectSQL;
+                    return selectStatements[sqlStatementName].SelectSQL.Trim();
 
                 case SqlStatementType.insert:
-                    return insertStatements[sqlStatementName].InsertSQL;
+                    return insertStatements[sqlStatementName].InsertSQL.Trim();
 
                 case SqlStatementType.update:
-					return updateStatements[sqlStatementName].UpdateSQL;
+					return updateStatements[sqlStatementName].UpdateSQL.Trim();
 
                 case SqlStatementType.delete:
-                    return deleteStatements[sqlStatementName].DeleteSQL;
+                    return deleteStatements[sqlStatementName].DeleteSQL.Trim();
 
                 default: break;
             }
