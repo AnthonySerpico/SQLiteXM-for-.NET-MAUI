@@ -215,7 +215,7 @@ namespace SQLiteXM
         {
             if (rootXml != default)
             {
-                databaseName = rootXml.Database;
+                databaseName = rootXml.Database.Trim();
                 checkValidDatabaseName();
 
                 setVersionNumber(rootXml.Version);
@@ -258,7 +258,7 @@ namespace SQLiteXM
         {
             if (rootJson != default)
             {
-                databaseName = rootJson.database;
+                databaseName = rootJson.database.Trim();
                 checkValidDatabaseName();
 
                 setVersionNumber(rootJson.version);
@@ -407,7 +407,7 @@ namespace SQLiteXM
                 if (commandReturn.command.Length == 0) // Were finished processing the version statement.
                     break;
 
-                databaseName = commandReturn.command;
+                databaseName = commandReturn.command.Trim();
             } while (true);
 
             checkValidDatabaseName();

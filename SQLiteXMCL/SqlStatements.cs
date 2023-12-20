@@ -20,19 +20,20 @@ namespace SQLiteXM
             if (sqlStatementName == null)
                 throw new ArgumentException("A sql statement name cannot be null.");
 
+            sqlStatementName = sqlStatementName.Trim();
             switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
             {
                 case SqlStatementType.select:
-                    return selectStatements[sqlStatementName].SelectSQL.Trim();
+                    return selectStatements[sqlStatementName].SelectSQL;
 
                 case SqlStatementType.insert:
-                    return insertStatements[sqlStatementName].InsertSQL.Trim();
+                    return insertStatements[sqlStatementName].InsertSQL;
 
                 case SqlStatementType.update:
-					return updateStatements[sqlStatementName].UpdateSQL.Trim();
+					return updateStatements[sqlStatementName].UpdateSQL;
 
                 case SqlStatementType.delete:
-                    return deleteStatements[sqlStatementName].DeleteSQL.Trim();
+                    return deleteStatements[sqlStatementName].DeleteSQL;
 
                 default: break;
             }
@@ -42,31 +43,43 @@ namespace SQLiteXM
 
         internal static void addInsertDefinition (string insertName, string tableName, string insertSQL)
 		{
-			if (!insertStatements.ContainsKey (insertName))
-				insertStatements.Add ( insertName, new InsertDefinition (tableName, insertSQL));
+            insertName = insertName.Trim();
+
+            if (!insertStatements.ContainsKey (insertName))
+				insertStatements.Add ( insertName, new InsertDefinition (tableName.Trim(), insertSQL.Trim()));
 		}
 
 		internal static void addSelectDefinition (string selectName, string tableName, string selectSQL)
 		{
-			if (!selectStatements.ContainsKey(selectName))
-				selectStatements.Add (selectName, new SelectDefinition(tableName, selectSQL));
+            selectName = selectName.Trim();
+
+            if (!selectStatements.ContainsKey(selectName))
+				selectStatements.Add (selectName, new SelectDefinition(tableName.Trim(), selectSQL.Trim()));
 		}
 
 		internal static void addUpdateDefinition (string updateName, string tableName, string updateSQL)
 		{
-			if (!updateStatements.ContainsKey(updateName))
-				updateStatements.Add (updateName, new UpdateDefinition(tableName, updateSQL));
+            updateName = updateName.Trim();
+
+            if (!updateStatements.ContainsKey(updateName))
+				updateStatements.Add (updateName, new UpdateDefinition(tableName.Trim(), updateSQL.Trim()));
 		}
 
 		internal static void addDeleteDefinition(string deleteName, string tableName, string deleteSQL)
 		{
-			if (!deleteStatements.ContainsKey(deleteName))
-				deleteStatements.Add (deleteName, new DeleteDefinition(tableName, deleteSQL));
+            deleteName = deleteName.Trim();
+
+            if (!deleteStatements.ContainsKey(deleteName))
+				deleteStatements.Add (deleteName, new DeleteDefinition(tableName.Trim(), deleteSQL.Trim()));
 		}
 
 		internal static void addIndexDefinition (string dbAndTableName, string indexName, string sqlStatement)
 		{
-			if (indexStatements == null)
+            dbAndTableName = dbAndTableName.Trim();
+            sqlStatement = sqlStatement.Trim();
+            indexName = indexName.Trim();
+
+            if (indexStatements == null)
 				indexStatements = new Hashtable();
 
 			ArrayList? indexStatementsList = indexStatements [dbAndTableName] as ArrayList;
@@ -81,6 +94,10 @@ namespace SQLiteXM
 
         internal static void addTriggerDefinition(string dbName, string triggerName, string sqlStatement)
         {
+            sqlStatement = sqlStatement.Trim();
+            triggerName = triggerName.Trim();
+            dbName = dbName.Trim();
+
             if (triggerStatements == null)
                 triggerStatements = new Hashtable();
 
@@ -96,7 +113,11 @@ namespace SQLiteXM
 
         internal static void addAlterDefinition (string dbAndTableName, string columnName, string sqlStatement)
 		{
-			if (alterStatements == null)
+            dbAndTableName = dbAndTableName.Trim();
+            sqlStatement = sqlStatement.Trim();
+            columnName = columnName.Trim();
+
+            if (alterStatements == null)
 				alterStatements = new Hashtable();
 
 			ArrayList? alterStatementsList = alterStatements [dbAndTableName] as ArrayList;
@@ -111,12 +132,18 @@ namespace SQLiteXM
 
         internal static void addTableDefinition(string dbAndTableName, string tableSQL)
         {
+            dbAndTableName = dbAndTableName.Trim();
+            tableSQL = tableSQL.Trim();
+
             addTableDefinition(dbAndTableName, tableSQL, Defines.NO_CLOUD_SYNCH);
         }
 
         internal static void addTableDefinition (string dbAndTableName, string tableSQL, int cloudPush)
 		{
-			if (tableCreateStatements == null)
+            dbAndTableName = dbAndTableName.Trim();
+            tableSQL = tableSQL.Trim();
+
+            if (tableCreateStatements == null)
 				tableCreateStatements = new Hashtable();
 
 			tableCreateStatements.Add(dbAndTableName, new TableDefinition (tableSQL, cloudPush));
