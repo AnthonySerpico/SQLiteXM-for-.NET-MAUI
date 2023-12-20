@@ -1,6 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
-using System.Xml.Linq;
 
 namespace SQLiteXM
 {
@@ -57,7 +55,7 @@ namespace SQLiteXM
 
         private static bool initialize() // No synchronize.
         {
-            new DatabaseDescriptor(ProcessSQLStatements.retreiveDatabaseName);
+            new DatabaseDescriptor();
             return initialize(default(string?));
         }
 
@@ -68,8 +66,8 @@ namespace SQLiteXM
 
             try
             {
-                double sqlStatementsVersionNumber = ProcessSQLStatements.getSqlStatementsVersionNumber;  // The value in the current SQL statements file.
-                double currentDbVersionNumber = getDbVersionNumber();
+                long sqlStatementsVersionNumber = ProcessSQLStatements.getSqlStatementsVersionNumber;  // The value in the current SQL statements file.
+                long currentDbVersionNumber = getDbVersionNumber();
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
@@ -153,47 +151,73 @@ namespace SQLiteXM
                 }
         */
 
-        public static double getDbVersionNumber()
+        public static long getDbVersionNumber()
         {
-            double versionNumber = -1;
+            long versionNumber = -1;
+
+            SxmConnection? sxmConnection = default;
 
             try
             {
-                string targetFile = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
-                using FileStream InputStream = System.IO.File.OpenRead(targetFile);
-                using StreamReader reader = new StreamReader(InputStream);
+                sxmConnection = new SxmConnection(ProcessSQLStatements.retreiveDatabaseName);
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                {
+                    sxmConnection.executeQuery("PRAGMA user_version", default(List<object>));
 
-                string vNum = reader.ReadToEnd();
-                if (!string.IsNullOrEmpty(vNum))
-                    versionNumber = Convert.ToDouble(vNum);
+                    if (sxmConnection.nextRow() == true)
+                    {
+                        versionNumber = (long)sxmConnection.getValue("user_version");
+                    }
+                }
             }
             catch (System.Exception) { }
+            finally
+            {
+                if (sxmConnection != default)
+                    sxmConnection.destroyConnection();
+            }
 
             return versionNumber;
         }
 
         public static void deleteDbVersionNumber()
         {
+            SxmConnection? sxmConnection = default;
+
             try
             {
-                string filepath = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
-                if (System.IO.File.Exists(filepath))
-                    System.IO.File.Delete(filepath);
+                sxmConnection = new SxmConnection(ProcessSQLStatements.retreiveDatabaseName);
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                {
+                    sxmConnection.executeQuery("PRAGMA user_version = 0", default(List<object>));
+                }
             }
             catch (System.Exception) { }
+            finally
+            {
+                if (sxmConnection != default)
+                    sxmConnection.destroyConnection();
+            }
         }
 
-        private static void storeDbVersionNumber(double versionNumber)
+        private static void storeDbVersionNumber(long versionNumber)
         {
+            SxmConnection? sxmConnection = default;
+
             try
             {
-                string targetFile = System.IO.Path.Combine(FileSystem.Current.AppDataDirectory, "currentSxmDbVersionNumber.txt");
-                using StreamWriter writer = new StreamWriter(targetFile, append: false);
-
-                writer.Write(versionNumber);
-                writer.Close();
+                sxmConnection = new SxmConnection(ProcessSQLStatements.retreiveDatabaseName);
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                {
+                    sxmConnection.executeQuery(String.Format("PRAGMA user_version = {0}", versionNumber), default(List<object>));
+                }
             }
             catch (System.Exception) { }
+            finally
+            {
+                if (sxmConnection != default)
+                    sxmConnection.destroyConnection();
+            }
         }
 
         private static void applyCreateTableStatement(string key, Hashtable connectionMap, TableDefinition tableDefinition, Hashtable tableNamesMap)

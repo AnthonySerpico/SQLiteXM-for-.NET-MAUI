@@ -130,7 +130,7 @@ namespace SQLiteXM
         public string Database { get; set; }
 
         [XmlElement(ElementName = "version")]
-        public double Version { get; set; }
+        public long Version { get; set; }
 
         [XmlElement(ElementName = "table")]
         public List<Table> Table { get; set; }
@@ -161,7 +161,7 @@ namespace SQLiteXM
     public class RootJson
     {
         public string database { get; set; }
-        public double version { get; set; }
+        public long version { get; set; }
         public List<Dictionary<string, string>> Table { get; set; }
         public List<Dictionary<string, string>> Alter { get; set; }
         public List<Dictionary<string, string>> Index { get; set; }
@@ -175,9 +175,9 @@ namespace SQLiteXM
     public class ProcessSQLStatements
     {
         private ProcessSQLStatements() { }
-        private static double versionNumber = 0;
-        public static double getSqlStatementsVersionNumber { get => versionNumber; }
-        internal static double setSqlStatementsVersionNumber { set { versionNumber = value; } get => versionNumber; }
+        private static long versionNumber = 0;
+        public static long getSqlStatementsVersionNumber { get => versionNumber; }
+        internal static long setSqlStatementsVersionNumber { set { versionNumber = value; } get => versionNumber; }
 
         public static string retreiveDatabaseName { get => databaseName; }
         private static string databaseName = string.Empty;
@@ -297,7 +297,7 @@ namespace SQLiteXM
             }
         }
 
-        private static double setVersionNumber(double version)
+        private static long setVersionNumber(long version)
         {
             if (version < 0)
                 throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
@@ -438,7 +438,7 @@ namespace SQLiteXM
             {
                 if (!string.IsNullOrEmpty(versionStatement))
                 {
-                    versionNumber = Convert.ToDouble(version);
+                    versionNumber = Convert.ToInt32(version);
                     if (versionNumber < 0)
                         throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
                 }

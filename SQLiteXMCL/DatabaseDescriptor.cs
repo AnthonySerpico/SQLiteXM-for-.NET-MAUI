@@ -27,9 +27,12 @@ namespace SQLiteXM
 		public Environment.SpecialFolder logfileFolder = Environment.SpecialFolder.MyDocuments; // Optional. Default: Environment.SpecialFolder.MyDocuments.
         public bool noLog = false;
 
-		internal DatabaseDescriptor (string databaseName, Environment.SpecialFolder databaseFolder = Environment.SpecialFolder.MyDocuments)
+		internal DatabaseDescriptor (Environment.SpecialFolder databaseFolder = Environment.SpecialFolder.MyDocuments)
 		{
-			try
+			string databaseName = ProcessSQLStatements.retreiveDatabaseName;
+
+
+            try
 			{
 				lock (dbDescriptors.SyncRoot) 
 				{
