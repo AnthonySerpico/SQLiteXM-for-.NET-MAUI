@@ -16,7 +16,7 @@ namespace SQLiteXM
             Dictionary<string, object?> select = await performInsert(sqlStatementName, selectParameterValues, dbName);
 
             M userRecordList = new M(); 
-            SxmHelpers.loadDbValues<M>(select, ref userRecordList);
+            SxmHelpers.loadDbValues(select, ref userRecordList);
             return userRecordList;
         }
         private static async Task<Dictionary<string, object?>> performInsert<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
@@ -29,7 +29,7 @@ namespace SQLiteXM
         {
             Dictionary<string, object?> select = await performInsert(sqlStatementName, sqlStatementParameters, dbName);
             T userRecord = new T();
-            SxmHelpers.loadDbValues<T>(select, ref userRecord);
+            SxmHelpers.loadDbValues(select, ref userRecord);
 
             return userRecord;
         }
@@ -37,7 +37,7 @@ namespace SQLiteXM
         {
             Dictionary<string, object?> select = await performInsert(sqlStatementName, sqlStatementParameters, dbName);
             T userRecord = new T();
-            SxmHelpers.loadDbValues<T>(select, ref userRecord);
+            SxmHelpers.loadDbValues(select, ref userRecord);
 
             return userRecord;
         }

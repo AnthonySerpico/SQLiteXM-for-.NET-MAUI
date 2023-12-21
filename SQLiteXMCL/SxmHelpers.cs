@@ -49,7 +49,7 @@ namespace SQLiteXM
             foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
                 T userObject = new T();
-                loadDbValues<T>(databaseRecord, ref userObject);
+                loadDbValues(databaseRecord, ref userObject);
                 userObjectList.Add(userObject);
             }
 
