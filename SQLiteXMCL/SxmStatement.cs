@@ -4,6 +4,34 @@ using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
+    public class SxmData
+    {
+        private string? databaseName = default;
+
+        public SxmData(string? dbName) { this.databaseName = dbName;  }
+        public SxmData() { }
+
+        public virtual async Task<List<TResult>> RunStatement<TResult>(string sqlStatementName) where TResult : class, new()
+
+        {
+            return await SxmStatement.RunStatement<SxmData, TResult>(sqlStatementName, this, databaseName);
+        }
+
+        public virtual async Task<List<Dictionary<string, object?>>> RunStatement(string sqlStatementName)
+
+        {
+            List<Dictionary<string, object?>> result = await SxmStatement.RunStatement<SxmData>(sqlStatementName, this, databaseName);
+
+            /*new(this.GetType()alues<SxmData>((Dictionary<string, object?>)result[0], ref this);
+
+            PropertyInfo? userObjectPI = this.GetType().GetProperty("id");
+            if (userObjectPI != default)
+                userObjectPI.SetValue(this, ((Dictionary<string, object?>)result[0])["id"]);*/
+
+            return result;
+        }
+    }
+
     public class SxmStatement
     {
         private SxmStatement() { }

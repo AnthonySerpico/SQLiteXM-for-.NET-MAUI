@@ -48,7 +48,8 @@ namespace SQLiteXM
 
             foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
-                T userObject = loadDbValues<T>(databaseRecord);
+                T userObject = new T();
+                loadDbValues<T>(databaseRecord, ref userObject);
                 userObjectList.Add(userObject);
             }
 
@@ -56,9 +57,8 @@ namespace SQLiteXM
         }
 
         // Data being loaded into a user object; usualy after a select.
-        internal static T loadDbValues<T>(Dictionary<string, object?> databaseRecord) where T : class, new()
+        internal static void loadDbValues<T>(Dictionary<string, object?> databaseRecord, ref T userObject) where T : class
         {
-            T userObject = new T();
             foreach (KeyValuePair<string, object?> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
             {
                 try
@@ -111,7 +111,6 @@ namespace SQLiteXM
                     throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", kvp.Key, databasePropertyType, userObject.GetType().ToString() + "." + kvp.Key, userPropertyType));
                 }
             }
-            return userObject;
         }
 
         // Data from the user supplied object loaded into a dictionary that is then to be written to the database.
