@@ -5,11 +5,14 @@ namespace SQLiteXM
 {
     public class SxmTransaction : SxmUTransaction
     {
-        private string? dbName;
+        private string? databaseName = default;
 
-        public SxmTransaction(string? dbName = default) : base(dbName)
+        public SxmTransaction(string? databaseName) : base(databaseName)
         {
-            this.dbName = dbName;
+            this.databaseName = databaseName;
+        }
+        public SxmTransaction() : base()
+        {
         }
 
         public async Task<List<TResult>> RunStatement<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
@@ -19,7 +22,7 @@ namespace SQLiteXM
             if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not allowed.");
 
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, statementType);
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await RunStatement(sqlStatementName, selectParameterValues);
             List<TResult> userRecordList = SxmHelpers.populateUserRecord<TResult>(select);
@@ -38,7 +41,7 @@ namespace SQLiteXM
             if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not allowed.");
 
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, statementType);
+            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
             
             return await RunStatement(sqlStatementName, selectParameterValues);
