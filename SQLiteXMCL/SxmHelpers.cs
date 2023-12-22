@@ -87,21 +87,50 @@ namespace SQLiteXM
 
                             if (piType == typeof(int).Name)
                                 pi.SetValue(userObject, (int)(long)kvp.Value);
+
                             else if (piType == typeof(long).Name)
                                 pi.SetValue(userObject, (long)kvp.Value);
+
+                            else if (piType == typeof(ulong).Name)    // Large values will overflow.
+                                pi.SetValue(userObject, (ulong)(long)kvp.Value);
+
                             else if (piType == typeof(float).Name)
                                 pi.SetValue(userObject, (float)(double)kvp.Value);
+
+                            else if (piType == typeof(short).Name)
+                                pi.SetValue(userObject, (short)(long)kvp.Value);
+
+                            else if (piType == typeof(ushort).Name)
+                                pi.SetValue(userObject, (ushort)(long)kvp.Value);
+
+                            else if (piType == typeof(uint).Name)
+                                pi.SetValue(userObject, (uint)(long)kvp.Value);
+
+                            else if (piType == typeof(sbyte).Name)
+                                pi.SetValue(userObject, (sbyte)(long)kvp.Value);
+
+                            else if (piType == typeof(byte).Name)
+                                pi.SetValue(userObject, (byte)(long)kvp.Value);
+
                             else if (piType == typeof(double).Name)
                                 pi.SetValue(userObject, (double)kvp.Value);
+
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
+
                             else if (piType == typeof(decimal).Name)    // Can be either text or double. Double will lose precision
                             {
-                                if (kvp.Value.GetType().Name == typeof(string).Name)
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(string).Name)
                                     pi.SetValue(userObject, Decimal.Parse(kvp.Value.ToString()!));
-                                else
+
+                                else if (typeName == typeof(long).Name)
+                                    pi.SetValue(userObject, (decimal)(long)kvp.Value);   // Will lose precision.
+
+                                else if (typeName == typeof(double).Name)
                                     pi.SetValue(userObject, (decimal)(double)kvp.Value);   // Will lose precision.
                             }
+
                             else if (piType == typeof(bool).Name)
                             {
                                 if (kvp.Value.ToString()!.Equals("1"))
@@ -109,26 +138,44 @@ namespace SQLiteXM
                                 else
                                     pi.SetValue(userObject, false);
                             }
+
                             else if (piType == typeof(DateTime).Name)  // Can be either text or double for saving ticks.
                             {
-                                if (kvp.Value.GetType().Name == typeof(string).Name)
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(userObject, new DateTime((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
                                     pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()!));
-                                if (kvp.Value.GetType().Name == typeof(double).Name)
-                                    pi.SetValue(userObject, new DateTime((long)(double)kvp.Value));
                             }
+
                             else if (piType == typeof(DateOnly).Name)  // Must be text.
                             {
-                                pi.SetValue(userObject, DateOnly.Parse(kvp.Value.ToString()!));
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(userObject, DateOnly.FromDayNumber((int)(long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(userObject, DateOnly.Parse(kvp.Value.ToString()!));
+
+                                else if (typeName == typeof(int).Name)
+                                    pi.SetValue(userObject, DateOnly.FromDayNumber((int)kvp.Value));
                             }
+
                             else if (piType == typeof(TimeOnly).Name)    // Can be either text or double for saving ticks.
                             {
-                                if (kvp.Value.GetType().Name == typeof(string).Name)
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(userObject, new TimeOnly((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
                                     pi.SetValue(userObject, TimeOnly.Parse(kvp.Value.ToString()!));
-                                if (kvp.Value.GetType().Name == typeof(double).Name)
-                                    pi.SetValue(userObject, new TimeOnly((long)(double)kvp.Value));
                             }
+
                             else
+                            {
                                 pi.SetValue(userObject, kvp.Value);
+                            }
 
                         }
                         else
@@ -164,35 +211,40 @@ namespace SQLiteXM
 
                             if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
-                                if (kvp.Value.ToLower().Equals("text") || kvp.Value.ToLower().Equals("datetime"))
+                                if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o"));
-                                else
-                                {
-                                    if (kvp.Value.ToLower().Equals("double"))
-                                        returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
-                                }
+
+                                else if (kvp.Value.ToLower().Equals("datetime"))
+                                    returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
                             }
+
                             else if (userObjectType == typeof(DateOnly).Name)  // Is the data type for the column in the user object a DateOnly?
                             {
-                                returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("o"));
+                                if (kvp.Value.ToLower().Equals("text"))
+                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("o"));
+
+                                else if (kvp.Value.ToLower().Equals("dateonly"))
+                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).DayNumber);
                             }
+
                             else if (userObjectType == typeof(decimal).Name)  // Is the data type for the column in the user object a decimal?
                             {
-                                if (kvp.Value.ToLower().Equals("text")|| kvp.Value.ToLower().Equals("decimal"))
+                                if (kvp.Value.ToLower().Equals("decimal"))
+                                    returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData));  // Will lose precision. Converts to a numeric which is either a double or a long.
+
+                                else if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData).ToString());
-                                else
-                                    returnDictionary.Add(columnName, userObjectPI.GetValue(userObject));
                             }
+
                             else if (userObjectType == typeof(TimeOnly).Name)  // Is the data type for the column in the user object a decimal?
                             {
-                                if (kvp.Value.ToLower().Equals("text") || kvp.Value.ToLower().Equals("timeonly"))
+                                if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).ToString("o"));
-                                else
-                                {
-                                    if (kvp.Value.ToLower().Equals("double"))
-                                        returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).Ticks);
-                                }
+
+                                else if (kvp.Value.ToLower().Equals("timeonly"))
+                                    returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).Ticks);
                             }
+
                             else
                             {
                                 returnDictionary.Add(columnName, userObjectPI.GetValue(userObject));
