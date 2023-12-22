@@ -149,6 +149,26 @@ namespace SQLiteXM
                                     pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()!));
                             }
 
+                            else if (piType == typeof(DateTimeOffset).Name)  // Can be either text or DATETIMEOFFSET.
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(userObject, DateTimeOffset.FromUnixTimeSeconds((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(userObject, DateTimeOffset.Parse(kvp.Value.ToString()!));
+                            }
+
+                            else if (piType == typeof(TimeSpan).Name)  // Can be either text or TIMESPAN.
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(userObject, TimeSpan.FromTicks((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(userObject, TimeSpan.Parse(kvp.Value.ToString()!));
+                            }
+
                             else if (piType == typeof(DateOnly).Name)  // Must be text.
                             {
                                 string typeName = kvp.Value.GetType().Name;
@@ -234,6 +254,24 @@ namespace SQLiteXM
 
                                 else if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData).ToString());
+                            }
+
+                            else if (userObjectType == typeof(DateTimeOffset).Name)  // Is the data type for the column in the user object a decimal?
+                            {
+                                if (kvp.Value.ToLower().Equals("text"))
+                                    returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToString("o"));
+
+                                else if (kvp.Value.ToLower().Equals("datetimeoffset"))
+                                    returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToUnixTimeSeconds());
+                            }
+
+                            else if (userObjectType == typeof(TimeSpan).Name)  // Is the data type for the column in the user object a decimal?
+                            {
+                                if (kvp.Value.ToLower().Equals("text"))
+                                    returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).ToString());
+
+                                else if (kvp.Value.ToLower().Equals("timespan"))
+                                    returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).Ticks);
                             }
 
                             else if (userObjectType == typeof(TimeOnly).Name)  // Is the data type for the column in the user object a decimal?
