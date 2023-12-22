@@ -12,6 +12,21 @@ namespace SQLiteXM
     {
         private SxmHelpers() { }
 
+        internal static string  GetDatabaseStatementTypeName(SqlStatementType statementType)
+        {
+
+            if (statementType == SqlStatementType.select || statementType == SqlStatementType.selectDirect)
+                return "SELECT";
+            if (statementType == SqlStatementType.insert)
+                return "INSERT";
+            if (statementType == SqlStatementType.delete || statementType == SqlStatementType.deleteDirect)
+                return "DELETE";
+            if (statementType == SqlStatementType.update || statementType == SqlStatementType.updateDirect)
+                return "UPDATE";
+
+            throw new ArgumentException("The sql statement type could not be found.");
+        }
+
         internal static SqlStatementType GetDatabaseStatementType(string? sqlStatementName)
         {
             if (sqlStatementName == null)

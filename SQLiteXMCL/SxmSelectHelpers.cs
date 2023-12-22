@@ -8,38 +8,6 @@ namespace SQLiteXM
 {
     internal class SxmSelectHelpers
     {
-        private static async Task<List<Dictionary<string, object?>>> performSelect<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
-        {
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
-            Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
-            return await performSelect(sqlStatementName, selectParameterValues, dbName);
-        }
-        private static async Task<List<M>> performSelect<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
-                                                                                                                                         where M : class, new()
-        {
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(dbName, sqlStatementName, SxmHelpers.GetDatabaseStatementType(sqlStatementName));
-            Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues<T>(columnNames, userObjectParameters);
-            List<Dictionary<string, object?>> select = await performSelect(sqlStatementName, selectParameterValues, dbName);
-            List<M> userRecordList = SxmHelpers.populateUserRecord<M>(select);
-            return userRecordList;
-        }
-        private static async Task<List<T>> performSelect<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where T : class, new()
-        {
-            List<Dictionary<string, object?>> select = await performSelect(sqlStatementName, sqlStatementParameters, dbName);
-            List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
-            return userRecordList;
-        }
-        private static async Task<List<T>> performSelect<T>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where T : class, new()
-        {
-            List<Dictionary<string, object?>> select = await performSelect(sqlStatementName, sqlStatementParameters, dbName);
-            List<T> userRecordList = SxmHelpers.populateUserRecord<T>(select);
-            return userRecordList;
-        }
-        private static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
-        {
-            return await performSelect(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName);
-        }
-
         internal static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
