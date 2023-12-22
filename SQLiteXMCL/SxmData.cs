@@ -30,7 +30,6 @@ namespace SQLiteXM
             await SxmStatement.PerformDelete<SxmData>(sqlStatementName, this, databaseName);
         }
 
-
         private void loadDbValues(Dictionary<string, object?> databaseRecord)
         {
             foreach (KeyValuePair<string, object?> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
@@ -46,16 +45,50 @@ namespace SQLiteXM
 
                             if (piType == typeof(int).Name)
                                 pi.SetValue(this, (int)(long)kvp.Value);
+
                             else if (piType == typeof(long).Name)
                                 pi.SetValue(this, (long)kvp.Value);
+
+                            else if (piType == typeof(ulong).Name)    // Large values will overflow.
+                                pi.SetValue(this, (ulong)(long)kvp.Value);
+
                             else if (piType == typeof(float).Name)
                                 pi.SetValue(this, (float)(double)kvp.Value);
+
+                            else if (piType == typeof(short).Name)
+                                pi.SetValue(this, (short)(long)kvp.Value);
+
+                            else if (piType == typeof(ushort).Name)
+                                pi.SetValue(this, (ushort)(long)kvp.Value);
+
+                            else if (piType == typeof(uint).Name)
+                                pi.SetValue(this, (uint)(long)kvp.Value);
+
+                            else if (piType == typeof(sbyte).Name)
+                                pi.SetValue(this, (sbyte)(long)kvp.Value);
+
+                            else if (piType == typeof(byte).Name)
+                                pi.SetValue(this, (byte)(long)kvp.Value);
+
                             else if (piType == typeof(double).Name)
                                 pi.SetValue(this, (double)kvp.Value);
-                            else if (piType == typeof(decimal).Name)
-                                pi.SetValue(this, (decimal)(double)kvp.Value);
+
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(this, kvp.Value.ToString());
+
+                            else if (piType == typeof(decimal).Name)    // Can be either text or double. Double will lose precision
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(string).Name)
+                                    pi.SetValue(this, Decimal.Parse(kvp.Value.ToString()!));
+
+                                else if (typeName == typeof(long).Name)
+                                    pi.SetValue(this, (decimal)(long)kvp.Value);   // Will lose precision.
+
+                                else if (typeName == typeof(double).Name)
+                                    pi.SetValue(this, (decimal)(double)kvp.Value);   // Will lose precision.
+                            }
+
                             else if (piType == typeof(bool).Name)
                             {
                                 if (kvp.Value.ToString()!.Equals("1"))
@@ -63,15 +96,64 @@ namespace SQLiteXM
                                 else
                                     pi.SetValue(this, false);
                             }
-                            else if (piType == typeof(DateTime).Name)
+
+                            else if (piType == typeof(DateTime).Name)  // Can be either text or double for saving ticks.
                             {
-                                if (kvp.Value.GetType().Name == typeof(string).Name)
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(this, new DateTime((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
                                     pi.SetValue(this, DateTime.Parse(kvp.Value.ToString()!));
-                                if (kvp.Value.GetType().Name == typeof(double).Name)
-                                    pi.SetValue(this, new DateTime((long)(double)kvp.Value));
                             }
+
+                            else if (piType == typeof(DateTimeOffset).Name)  // Can be either text or DATETIMEOFFSET.
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(this, DateTimeOffset.FromUnixTimeSeconds((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(this, DateTimeOffset.Parse(kvp.Value.ToString()!));
+                            }
+
+                            else if (piType == typeof(TimeSpan).Name)  // Can be either text or TIMESPAN.
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(this, TimeSpan.FromTicks((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(this, TimeSpan.Parse(kvp.Value.ToString()!));
+                            }
+
+                            else if (piType == typeof(DateOnly).Name)  // Must be text.
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(this, DateOnly.FromDayNumber((int)(long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(this, DateOnly.Parse(kvp.Value.ToString()!));
+
+                                else if (typeName == typeof(int).Name)
+                                    pi.SetValue(this, DateOnly.FromDayNumber((int)kvp.Value));
+                            }
+
+                            else if (piType == typeof(TimeOnly).Name)    // Can be either text or double for saving ticks.
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(long).Name)
+                                    pi.SetValue(this, new TimeOnly((long)kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(this, TimeOnly.Parse(kvp.Value.ToString()!));
+                            }
+
                             else
+                            {
                                 pi.SetValue(this, kvp.Value);
+                            }
 
                         }
                         else
@@ -87,5 +169,4 @@ namespace SQLiteXM
             }
         }
     }
-
 }
