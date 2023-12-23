@@ -153,7 +153,7 @@ namespace SQLiteXM
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(long).Name)
-                                    pi.SetValue(userObject, DateTimeOffset.FromUnixTimeSeconds((long)kvp.Value));
+                                    pi.SetValue(userObject, DateTimeOffset.FromUnixTimeMilliseconds((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
                                     pi.SetValue(userObject, DateTimeOffset.Parse(kvp.Value.ToString()!));
@@ -262,7 +262,7 @@ namespace SQLiteXM
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToString("o"));
 
                                 else if (kvp.Value.ToLower().Equals("datetimeoffset"))
-                                    returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToUnixTimeSeconds());
+                                    returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToUnixTimeMilliseconds());
                             }
 
                             else if (userObjectType == typeof(TimeSpan).Name)  // Is the data type for the column in the user object a decimal?
