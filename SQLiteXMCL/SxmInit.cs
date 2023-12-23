@@ -255,6 +255,76 @@ namespace SQLiteXM
             }
         }
 
+        internal static void createTable(string databaseName, string tableName)
+        {
+            string[] parts = { databaseName, tableName };
+            string key = string.Format("{0}.{1}", databaseName, tableName);
+
+            SxmConnection? sxmConnection = default(SxmConnection);
+
+            try
+            {
+                sxmConnection = new SxmConnection(databaseName);
+                if (!doesTableExist(tableName, sxmConnection))
+                {
+                    Hashtable tableNamesMap = new Hashtable();
+                    TableDefinition? tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
+
+                    using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                    {
+                        sxmTransaction.executeTableStatement(tableDefinition.TableSQL);
+                        SxmInit.addSynchID(parts, sxmTransaction);
+
+                        if (!doesTableExist("_systemCloudSynchDescriptor", sxmConnection))
+                            SxmInit.addCloudSynchDescriptor(key, tableNamesMap, sxmTransaction);
+
+                        SxmInit.insertIntoSystemCloudSyncDescriptor(key, databaseName, parts[1], sxmTransaction);
+
+                        if (!doesTableExist("_systemCloudSynch", sxmConnection))
+                            SxmInit.createCloudSynchTable(key, tableNamesMap, sxmTransaction);
+
+                        SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
+
+                        sxmTransaction.commitTransaction();
+                    }
+                }
+            }
+#pragma warning disable 0168
+            catch (SxmException ex)
+#pragma warning restore 0168
+            {
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                if (sxmConnection != null)
+                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+
+                throw new SxmException(ex);
+            }
+            finally
+            {
+                if (sxmConnection != null)
+                    sxmConnection.destroyConnection();
+            }
+        }
+
+        private static bool doesTableExist(string dbName, SxmConnection sxmConnection)
+        {
+            try
+            {
+                string sqlSelect = string.Format("SELECT name FROM sqlite_master WHERE type='table' AND name='{0}'", dbName);
+                sxmConnection.executeQuery(sqlSelect, default(List<object>));
+                if (sxmConnection.hasRows() == true)
+                    return true;
+            }
+            catch (Exception)
+            {
+            }
+
+            return false;
+        }
+
         private static void applyDropTableStatement(string key, Hashtable connectionMap, TableDefinition tableDefinition, Hashtable tableNamesMap)
         {
             SxmConnection sxmConnection = null;
@@ -398,6 +468,11 @@ namespace SQLiteXM
             if (sqlStatementType == Defines.SqlStatementType.unknown)
                 throw new SxmException(new ErrorMessage("unknownSQLStatement", queryName));
 
+            return getTableColumnNames(dbName, tableName);
+        }
+
+        internal static Dictionary<string, string> getTableColumnNames(string? dbName, string? tableName)
+        {
             if (columnNameTpyes.ContainsKey(tableName))
                 return columnNameTpyes[tableName];
 
@@ -419,6 +494,7 @@ namespace SQLiteXM
 
             columnNameTpyes.Add(tableName, columnNames);
             return columnNames;
+
         }
 
         private static void applyTriggerTableStatements(Hashtable connectionMap)
@@ -563,13 +639,13 @@ namespace SQLiteXM
             return false;
         }
 
-        private static void addSynchID(string[] parts, SxmUTransaction sxmTransaction)
+        internal static void addSynchID(string[] parts, SxmUTransaction sxmTransaction)
         {
             string alterSQL = String.Format("ALTER TABLE {0} ADD COLUMN systemSynchID TEXT NOT NULL DEFAULT ''", parts[1]);
             sxmTransaction.executeAlterTable(alterSQL);
         }
 
-        private static void addCloudSynchDescriptor(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
+        internal static void addCloudSynchDescriptor(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];
@@ -583,15 +659,21 @@ namespace SQLiteXM
                 dbTableNames.Add(databaseTable);
             }
 
+            insertIntoSystemCloudSyncDescriptor(key, databaseName, parts[1], sxmTransaction);
+        }
+
+        internal static void insertIntoSystemCloudSyncDescriptor(string key, string databaseName, string tableName, SxmUTransaction sxmTransaction)
+        {
             TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
             List<object> parameterValues = new List<object>();
             parameterValues.Add(databaseName);
-            parameterValues.Add(parts[1]);
+            parameterValues.Add(tableName);
             parameterValues.Add(tableDefinition.CloudSynch);
             sxmTransaction.executeSystemUpdateDirect("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
         }
 
-        private static void createCloudSynchTable(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
+
+        internal static void createCloudSynchTable(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];
@@ -606,7 +688,7 @@ namespace SQLiteXM
             }
         }
 
-        private static void createCloudSynchTriggers(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
+        internal static void createCloudSynchTriggers(string key, Hashtable tableNamesMap, SxmUTransaction sxmTransaction)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];
