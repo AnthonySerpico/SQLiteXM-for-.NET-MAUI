@@ -41,6 +41,22 @@ namespace SQLiteXM
             }
         }
 
+        public async Task SaveOrUpdate()
+        {
+            if (!doesRecordExist())
+                await Save();
+            else
+                await Update();
+        }
+
+        public async Task SaveOrUpdate(SxmTransaction sxmTrans)
+        {
+            if (!doesRecordExist())
+                await Save(sxmTrans);
+            else
+                await Update(sxmTrans);
+        }
+
         public async Task Save(string sqlStatementName)
         {
             if (!doesRecordExist())
@@ -307,7 +323,7 @@ namespace SQLiteXM
                     if (piType == typeof(int).Name)
                         columnNameAndType.Add(piName, "int");
 
-                    else if (piType == typeof(string).Name)    // Can be either text or double for saving ticks.
+                    else if (piType == typeof(string).Name) 
                         columnNameAndType.Add(piName, "text");
 
                     else if (piType == typeof(long).Name)
