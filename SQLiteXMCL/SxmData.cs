@@ -49,20 +49,76 @@ namespace SQLiteXM
                 loadDbValues(result);
             }
         }
+        public async Task Save(string sqlStatementName, SxmTransaction sxmTrans)
+        {
+            if (!doesRecordExist())
+            {
+                Dictionary<string, object?> result = await sxmTrans.PerformInsert<SxmData>(sqlStatementName, this);
+                loadDbValues(result);
+            }
+        }
 
         public async Task Update(string sqlStatementName)
         {
-            await SxmStatement.PerformUpdate<SxmData>(sqlStatementName, this, databaseName);
+            if (doesRecordExist())
+                await SxmStatement.PerformUpdate<SxmData>(sqlStatementName, this, databaseName);
+        }
+
+        public async Task Update(string sqlStatementName, SxmTransaction sxmTrans)
+        {
+            if (doesRecordExist())
+                await sxmTrans.PerformUpdate<SxmData>(sqlStatementName, this);
         }
 
         public async Task Delete(string sqlStatementName)
         {
-            await SxmStatement.PerformDelete<SxmData>(sqlStatementName, this, databaseName);
+            if (doesRecordExist())
+                await SxmStatement.PerformDelete<SxmData>(sqlStatementName, this, databaseName);
+        }
+        public async Task Delete(string sqlStatementName, SxmTransaction sxmTrans)
+        {
+            if (doesRecordExist())
+                await sxmTrans.PerformDelete<SxmData>(sqlStatementName, this);
         }
 
         public async Task Save()
         {
+            buildSaveSql();
+            await Save(insertGuid);
+        }
 
+        public async Task Save(SxmTransaction sxmTrans)
+        {
+            buildSaveSql();
+            await Save(insertGuid, sxmTrans);
+        }
+
+        public async Task Update()
+        {
+            buildUpdateSql();
+            await Update(updateGuid);
+        }
+
+        public async Task Update(SxmTransaction sxmTrans)
+        {
+            buildUpdateSql();
+            await Update(updateGuid, sxmTrans);
+        }
+
+        public async Task Delete()
+        {
+            buildDeleteSql();
+            await Delete(deleteGuid);
+        }
+
+        public async Task Delete(SxmTransaction sxmTrans)
+        {
+            buildDeleteSql();
+            await Delete(deleteGuid, sxmTrans);
+        }
+
+        private void buildSaveSql()
+        {
             if (insertGuid == default(string))
             {
                 string insertColumns = string.Empty;
@@ -91,10 +147,9 @@ namespace SQLiteXM
                 insertGuid = Guid.NewGuid().ToString();
                 SqlStatements.addInsertDefinition(insertGuid, this.GetType().Name, insertStatement);
             }
-            await Save(insertGuid);
         }
 
-        public async Task Update()
+        private void buildUpdateSql()
         {
             if (updateGuid == default(string))
             {
@@ -118,10 +173,9 @@ namespace SQLiteXM
                 updateGuid = Guid.NewGuid().ToString();
                 SqlStatements.addUpdateDefinition(updateGuid, this.GetType().Name, updateStatement);
             }
-            await Update(updateGuid);
         }
 
-        public async Task Delete()
+        private void buildDeleteSql()
         {
             if (deleteGuid == default(string))
             {
@@ -129,7 +183,6 @@ namespace SQLiteXM
                 deleteGuid = Guid.NewGuid().ToString();
                 SqlStatements.addDeleteDefinition(deleteGuid, this.GetType().Name, updateStatement);
             }
-            await Delete(deleteGuid);
         }
 
         private void reconcile()
