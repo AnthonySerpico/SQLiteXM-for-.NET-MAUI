@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using SQLitePCL;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -9,10 +8,14 @@ namespace SQLiteXM
     {
         private bool mustReconcile = true;
         private static object lockObject = new object();
+        private static string? insertGuid = default(string);
+        private static string? updateGuid = default(string);
+        private static string? deleteGuid = default(string);
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private static Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
 
         public virtual long id { get; set; }
+        public virtual string synchId { get; set; }
 
         public SxmData(string? databaseName)
         {
@@ -28,7 +31,7 @@ namespace SQLiteXM
         {
             lock (lockObject)
             {
-                ensureDatabaseName();
+                dbNameValidation();
 
                 if (columnNameAndType.Count == 0)
                 {
@@ -38,27 +41,102 @@ namespace SQLiteXM
             }
         }
 
-        public virtual async Task PerformInsert(string sqlStatementName)
+        public async Task Save(string sqlStatementName)
         {
-            Dictionary<string, object?> result = await SxmStatement.PerformInsert<SxmData>(sqlStatementName, this, databaseName);
-            loadDbValues(result);
+            if (!doesRecordExist())
+            {
+                Dictionary<string, object?> result = await SxmStatement.PerformInsert<SxmData>(sqlStatementName, this, databaseName);
+                loadDbValues(result);
+            }
         }
 
-        public virtual async Task PerformUpdate(string sqlStatementName)
+        public async Task Update(string sqlStatementName)
         {
             await SxmStatement.PerformUpdate<SxmData>(sqlStatementName, this, databaseName);
         }
 
-        public virtual async Task PerformDelete(string sqlStatementName)
+        public async Task Delete(string sqlStatementName)
         {
             await SxmStatement.PerformDelete<SxmData>(sqlStatementName, this, databaseName);
+        }
+
+        public async Task Save()
+        {
+
+            if (insertGuid == default(string))
+            {
+                string insertColumns = string.Empty;
+                string insertValues = string.Empty;
+
+                int i = 0;
+                foreach (KeyValuePair<string, string> kvp in columnNameAndType)
+                {
+                    if (!kvp.Key.Equals("synchId") && !kvp.Key.Equals("id"))
+                    {
+                        if (i > 0)
+                        {
+                            insertColumns += string.Format(", {0}", kvp.Key);
+                            insertValues += string.Format(", @{0}", kvp.Key);
+                        }
+                        else
+                        {
+                            insertColumns += string.Format("{0}", kvp.Key);
+                            insertValues += string.Format("@{0}", kvp.Key);
+                        }
+                        ++i;
+                    }
+                }
+
+                string insertStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2})", this.GetType().Name, insertColumns, insertValues);
+                insertGuid = Guid.NewGuid().ToString();
+                SqlStatements.addInsertDefinition(insertGuid, this.GetType().Name, insertStatement);
+            }
+            await Save(insertGuid);
+        }
+
+        public async Task Update()
+        {
+            if (updateGuid == default(string))
+            {
+                string insertColumns = string.Empty;
+
+                int i = 0;
+                foreach (KeyValuePair<string, string> kvp in columnNameAndType)
+                {
+                    if (!kvp.Key.Equals("synchId") && !kvp.Key.Equals("id"))
+                    {
+                        if (i > 0)
+                            insertColumns += string.Format(", {0}=@{1}", kvp.Key, kvp.Key);
+                        else
+                            insertColumns += string.Format("{0}=@{1}", kvp.Key, kvp.Key);
+
+                        ++i;
+                    }
+                }
+
+                string updateStatement = string.Format("UPDATE {0} SET {1} WHERE id=@id", this.GetType().Name, insertColumns);
+                updateGuid = Guid.NewGuid().ToString();
+                SqlStatements.addUpdateDefinition(updateGuid, this.GetType().Name, updateStatement);
+            }
+            await Update(updateGuid);
+        }
+
+        public async Task Delete()
+        {
+            if (deleteGuid == default(string))
+            {
+                string updateStatement = string.Format("DELETE FROM {0} WHERE id=@id", this.GetType().Name);
+                deleteGuid = Guid.NewGuid().ToString();
+                SqlStatements.addDeleteDefinition(deleteGuid, this.GetType().Name, updateStatement);
+            }
+            await Delete(deleteGuid);
         }
 
         private void reconcile()
         {
             Dictionary<string, string> dbTableColumnNameAndType = SxmInit.getTableColumnNames(databaseName, this.GetType().Name);
 
-            SxmConnection sxmConnection = new SxmConnection(databaseName);  // Creates an implicit database name.
+            SxmConnection sxmConnection = new SxmConnection(databaseName);
             try
             {
                 foreach (KeyValuePair<string, string> kvp in columnNameAndType)
@@ -95,7 +173,33 @@ namespace SQLiteXM
             }
         }
 
-        private void ensureDatabaseName()
+        private bool doesRecordExist()
+        {
+            SxmConnection? sxmConnection = null;
+            try
+            {
+                if (id > 0)
+                {
+                    sxmConnection = new SxmConnection(databaseName);  // Creates an implicit database name.
+                    string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = {1}", this.GetType().Name, id);
+                    sxmConnection.executeQuery(sqlSelect, default(List<object>));
+                    if (sxmConnection.hasRows() == true)
+                        return true;
+                }
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                if (sxmConnection != null)
+                    sxmConnection.destroyConnection();
+            }
+
+            return false;
+        }
+
+        private void dbNameValidation()
         {
             if (this.databaseName == null)
             {
@@ -156,7 +260,7 @@ namespace SQLiteXM
                     else if (piType == typeof(long).Name)
                         columnNameAndType.Add(piName, "long");
 
-                    else if (piType == typeof(ulong).Name)    // Large values will overflow.
+                    else if (piType == typeof(ulong).Name)     // Large values will overflow.
                         columnNameAndType.Add(piName, "ulong");
 
                     else if (piType == typeof(float).Name)

@@ -48,8 +48,15 @@ namespace SQLiteXM
             if (!insertStatements.ContainsKey (insertName))
 				insertStatements.Add ( insertName, new InsertDefinition (tableName.Trim(), insertSQL.Trim()));
 		}
+        internal static void removeInsertDefinition(string insertName)
+        {
+            insertName = insertName.Trim();
 
-		internal static void addSelectDefinition (string selectName, string tableName, string selectSQL)
+            if (!insertStatements.ContainsKey(insertName))
+                insertStatements.Remove(insertName);
+        }
+
+        internal static void addSelectDefinition (string selectName, string tableName, string selectSQL)
 		{
             selectName = selectName.Trim();
 
