@@ -48,13 +48,6 @@ namespace SQLiteXM
             if (!insertStatements.ContainsKey (insertName))
 				insertStatements.Add ( insertName, new InsertDefinition (tableName.Trim(), insertSQL.Trim()));
 		}
-        internal static void removeInsertDefinition(string insertName)
-        {
-            insertName = insertName.Trim();
-
-            if (!insertStatements.ContainsKey(insertName))
-                insertStatements.Remove(insertName);
-        }
 
         internal static void addSelectDefinition (string selectName, string tableName, string selectSQL)
 		{
@@ -98,6 +91,15 @@ namespace SQLiteXM
 
 			indexStatementsList.Add ( new IndexDefinition (indexName, sqlStatement));
 		}
+
+        internal static void removeIndexDefinitions()
+        {
+            if (indexStatements != default(Hashtable))
+            {
+                indexStatements.Clear();
+                indexStatements = default(Hashtable);
+            }
+        }
 
         internal static void addTriggerDefinition(string dbName, string triggerName, string sqlStatement)
         {

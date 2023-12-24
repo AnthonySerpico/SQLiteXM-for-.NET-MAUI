@@ -1,9 +1,21 @@
 ﻿using SQLitePCL;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace SQLiteXM
 {
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public class CreateIndex : Attribute
+    {
+        public string[] indexFields { get; set; }
+        public string indexName { get; set; }
+
+        public CreateIndex(string[] indexFields, string indexName)
+        {
+            this.indexFields = indexFields;
+            this.indexName = indexName;
+        }
+    }
+
     public class SxmData
     {
         private bool mustReconcile = true;
@@ -37,6 +49,7 @@ namespace SQLiteXM
                 {
                     createTable();
                     reconcile();
+                    processIndexAttributes();
                 }
             }
         }
@@ -198,6 +211,50 @@ namespace SQLiteXM
                 string updateStatement = string.Format("DELETE FROM {0} WHERE id=@id", this.GetType().Name);
                 deleteGuid = Guid.NewGuid().ToString();
                 SqlStatements.addDeleteDefinition(deleteGuid, this.GetType().Name, updateStatement);
+            }
+        }
+
+        private void processIndexAttributes()
+        {
+            System.Collections.Hashtable? connectionMap = default(System.Collections.Hashtable);
+            string dbAndTableName = string.Format("{0}.{1}", this.databaseName, this.GetType().Name);
+
+            var customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
+            try 
+            {
+                if (customAttributes != null && customAttributes.Length > 0)
+                {
+                    foreach (var myAttribute in customAttributes)
+                    {
+                        string[] indexes = myAttribute.indexFields;
+
+                        string indexFields = string.Empty;
+                        int i = 0;
+                        foreach (string indexField in indexes)
+                        {
+                            if (i == 0)
+                                indexFields = indexField;
+                            else
+                                indexFields = "," + indexField;
+                        }
+
+                        string sqlStatement = string.Format("CREATE INDEX {0} ON {1} ({2})", myAttribute.indexName, this.GetType().Name, indexFields);
+                        SqlStatements.addIndexDefinition(dbAndTableName, myAttribute.indexName, sqlStatement);
+                    }
+
+                    connectionMap = new System.Collections.Hashtable();
+                    SxmInit.applyIndexTableStatements(dbAndTableName, connectionMap);
+                }
+            }
+            catch (Exception ex) { }
+            finally
+            {
+                if(connectionMap != null && connectionMap.Count > 0)
+                {
+                    ((SxmConnection)connectionMap[0]).destroyConnection();
+                }
+
+                SqlStatements.removeIndexDefinitions();
             }
         }
 

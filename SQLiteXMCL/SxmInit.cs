@@ -538,7 +538,7 @@ namespace SQLiteXM
             }
         }
 
-        private static void applyIndexTableStatements(string key, Hashtable connectionMap)
+        internal static void applyIndexTableStatements(string key, Hashtable connectionMap)
         {
             ArrayList indexStatementsList = null;
 
