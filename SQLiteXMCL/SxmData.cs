@@ -294,12 +294,21 @@ namespace SQLiteXM
             List<string> indexNames = new List<string>();
             SxmConnection sxmConnection = new SxmConnection(databaseName);
 
-            using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+            try
             {
-                sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", this.GetType().Name), null as List<object>);
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                {
+                    sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", this.GetType().Name), null as List<object>);
 
-                while (sxmConnection.nextRow() == true)
-                    indexNames.Add((string)sxmConnection.getValue("name"));
+                    while (sxmConnection.nextRow() == true)
+                        indexNames.Add((string)sxmConnection.getValue("name"));
+                }
+            }
+            catch (Exception ex) { }
+            finally
+            {
+                if (sxmConnection != null)
+                    sxmConnection.destroyConnection();
             }
 
             return indexNames;
