@@ -1,5 +1,6 @@
 ﻿using SQLitePCL;
 using System.Collections;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace SQLiteXM
@@ -14,6 +15,16 @@ namespace SQLiteXM
         {
             this.indexFields = indexFields;
             this.indexName = indexName;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    public class Exclude : Attribute
+    {
+        public bool exclude { get; set; } = true;
+
+        public Exclude()
+        {
         }
     }
 
@@ -218,13 +229,11 @@ namespace SQLiteXM
         private void processIndexAttributes()
         {
             List<string> indexSqlStatements = new List<string>();
-            SxmConnection sxmConnection = default(SxmConnection);
-            string dbAndTableName = string.Format("{0}.{1}", this.databaseName, this.GetType().Name);
+            SxmConnection? sxmConnection = default(SxmConnection);
 
             var customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
             try
             {
-                string? sqlStatement = default(string);
                 List<string> existingIndexes = getIndexTableStatements();
 
                 if (customAttributes != null && customAttributes.Length > 0)
@@ -430,64 +439,66 @@ namespace SQLiteXM
             {
                 string piType = pi.PropertyType.Name;
                 string piName = pi.Name;
+                Dictionary<string, object> excludeDict =  pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
+                //object[] attrs = pi.GetCustomAttributes(true);
 
                 if (!piName.Equals("id"))
                 {
-                    if (piType == typeof(int).Name)
+                    if (piType == typeof(int).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "int");
 
-                    else if (piType == typeof(string).Name)
+                    else if (piType == typeof(string).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "text");
 
-                    else if (piType == typeof(long).Name)
+                    else if (piType == typeof(long).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "long");
 
-                    else if (piType == typeof(ulong).Name)     // Large values will overflow.
-                        columnNameAndType.Add(piName, "ulong");
-
-                    else if (piType == typeof(float).Name)
-                        columnNameAndType.Add(piName, "float");
-
-                    else if (piType == typeof(short).Name)
-                        columnNameAndType.Add(piName, "short");
-
-                    else if (piType == typeof(ushort).Name)
-                        columnNameAndType.Add(piName, "ushort");
-
-                    else if (piType == typeof(uint).Name)
-                        columnNameAndType.Add(piName, "uint");
-
-                    else if (piType == typeof(sbyte).Name)
-                        columnNameAndType.Add(piName, "sbyte");
-
-                    else if (piType == typeof(byte).Name)
-                        columnNameAndType.Add(piName, "byte");
-
-                    else if (piType == typeof(double).Name)
-                        columnNameAndType.Add(piName, "double");
-
-                    else if (piType == typeof(string).Name)
-                        columnNameAndType.Add(piName, "string");
-
-                    else if (piType == typeof(decimal).Name)
+                    else if (piType == typeof(ulong).Name && !excludeDict.ContainsKey("Exclude"))  // Large values will overflow unless thiss is defined as text.
                         columnNameAndType.Add(piName, "text");
 
-                    else if (piType == typeof(bool).Name)
+                    else if (piType == typeof(float).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "float");
+
+                    else if (piType == typeof(short).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "short");
+
+                    else if (piType == typeof(ushort).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "ushort");
+
+                    else if (piType == typeof(uint).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "uint");
+
+                    else if (piType == typeof(sbyte).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "sbyte");
+
+                    else if (piType == typeof(byte).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "byte");
+
+                    else if (piType == typeof(double).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "double");
+
+                    else if (piType == typeof(string).Name && !excludeDict.ContainsKey("Exclude"))
+                        columnNameAndType.Add(piName, "string");
+
+                    else if (piType == typeof(decimal).Name && !excludeDict.ContainsKey("Exclude"))  // Large values will overflow unless thiss is defined as text.
+                        columnNameAndType.Add(piName, "text");
+
+                    else if (piType == typeof(bool).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "bool");
 
-                    else if (piType == typeof(DateTime).Name)
+                    else if (piType == typeof(DateTime).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "DateTime");
 
-                    else if (piType == typeof(DateTimeOffset).Name)
+                    else if (piType == typeof(DateTimeOffset).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "DateTimeOffset");
 
-                    else if (piType == typeof(TimeSpan).Name)
+                    else if (piType == typeof(TimeSpan).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "TimeSpan");
 
-                    else if (piType == typeof(DateOnly).Name)
+                    else if (piType == typeof(DateOnly).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "DateOnly");
 
-                    else if (piType == typeof(TimeOnly).Name)
+                    else if (piType == typeof(TimeOnly).Name && !excludeDict.ContainsKey("Exclude"))
                         columnNameAndType.Add(piName, "TimeOnly");
                 }
             }
