@@ -1,4 +1,5 @@
 ﻿using SQLitePCL;
+using System.Collections;
 using System.Reflection;
 
 namespace SQLiteXM
@@ -216,46 +217,92 @@ namespace SQLiteXM
 
         private void processIndexAttributes()
         {
-            System.Collections.Hashtable? connectionMap = default(System.Collections.Hashtable);
+            List<string> indexSqlStatements = new List<string>();
+            SxmConnection sxmConnection = default(SxmConnection);
             string dbAndTableName = string.Format("{0}.{1}", this.databaseName, this.GetType().Name);
 
             var customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
-            try 
+            try
             {
+                string? sqlStatement = default(string);
+                List<string> existingIndexes = getIndexTableStatements();
+
                 if (customAttributes != null && customAttributes.Length > 0)
                 {
                     foreach (var myAttribute in customAttributes)
                     {
-                        string[] indexes = myAttribute.indexFields;
-
-                        string indexFields = string.Empty;
-                        int i = 0;
-                        foreach (string indexField in indexes)
+                        if (!existingIndexes.Contains(myAttribute.indexName))
                         {
-                            if (i == 0)
-                                indexFields = indexField;
-                            else
-                                indexFields = "," + indexField;
-                        }
+                            string[] indexes = myAttribute.indexFields;
+                            string indexFields = string.Empty;
+                            int i = 0;
+                            foreach (string indexField in indexes)
+                            {
+                                if (i == 0)
+                                    indexFields += indexField;
+                                else
+                                    indexFields += ", " + indexField;
+                                ++i;
+                            }
 
-                        string sqlStatement = string.Format("CREATE INDEX {0} ON {1} ({2})", myAttribute.indexName, this.GetType().Name, indexFields);
-                        SqlStatements.addIndexDefinition(dbAndTableName, myAttribute.indexName, sqlStatement);
+                            indexSqlStatements.Add(string.Format("CREATE INDEX {0} ON {1} ({2})", myAttribute.indexName, this.GetType().Name, indexFields));
+                        }
                     }
 
-                    connectionMap = new System.Collections.Hashtable();
-                    SxmInit.applyIndexTableStatements(dbAndTableName, connectionMap);
+                    foreach (string indexName in existingIndexes)
+                    {
+                        bool found = false;
+
+                        foreach (var myAttribute in customAttributes)
+                        {
+                            if (myAttribute.indexName.Equals(indexName))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found == false)
+                        {
+                            indexSqlStatements.Add(string.Format("DROP INDEX {0}", indexName));
+                        }
+                    }
+
+                    if(indexSqlStatements.Count > 0)
+                    {
+                        sxmConnection = new SxmConnection(databaseName);
+                        using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
+                        {
+                            foreach (string indexStatement in indexSqlStatements)
+                                sxmTransaction1.executeIndex(indexStatement);
+
+                            sxmTransaction1.commitTransaction();
+                        }
+                    }
                 }
             }
             catch (Exception ex) { }
             finally
             {
-                if(connectionMap != null && connectionMap.Count > 0)
-                {
-                    ((SxmConnection)connectionMap[0]).destroyConnection();
-                }
-
-                SqlStatements.removeIndexDefinitions();
+                if (sxmConnection != null)
+                    sxmConnection.destroyConnection();
             }
+        }
+
+        private List<string> getIndexTableStatements()
+        {
+            List<string> indexNames = new List<string>();
+            SxmConnection sxmConnection = new SxmConnection(databaseName);
+
+            using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+            {
+                sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", this.GetType().Name), null as List<object>);
+
+                while (sxmConnection.nextRow() == true)
+                    indexNames.Add((string)sxmConnection.getValue("name"));
+            }
+
+            return indexNames;
         }
 
         private void reconcile()
@@ -380,7 +427,7 @@ namespace SQLiteXM
                     if (piType == typeof(int).Name)
                         columnNameAndType.Add(piName, "int");
 
-                    else if (piType == typeof(string).Name) 
+                    else if (piType == typeof(string).Name)
                         columnNameAndType.Add(piName, "text");
 
                     else if (piType == typeof(long).Name)
