@@ -24,6 +24,12 @@
 			processing
 		};
 
+		public enum IndexType
+        {
+			standard,
+			unique
+		}
+
         // Database operation types. 
         public enum SqlStatementType{
             insert,

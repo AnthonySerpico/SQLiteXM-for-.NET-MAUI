@@ -71,23 +71,26 @@ namespace SQLiteXM
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
-                    foreach (string key in SqlStatements.tableCreateStatements.Keys)
+                    if (SqlStatements.tableCreateStatements != default(Hashtable))
                     {
-                        if (doesTableExist(key, connectionMap, tableNamesMap) == false)
+                        foreach (string key in SqlStatements.tableCreateStatements.Keys)
                         {
-                            TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
-                            if (tableDefinition.TableSQL.StartsWith("CREATE ", true, null) == true)
-                                applyCreateTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
-                        }
-                        else
-                        {
-                            TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
-                            if (tableDefinition.TableSQL.StartsWith("DROP ", true, null) == true)
-                                applyDropTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
+                            if (doesTableExist(key, connectionMap, tableNamesMap) == false)
+                            {
+                                TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
+                                if (tableDefinition.TableSQL.StartsWith("CREATE ", true, null) == true)
+                                    applyCreateTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
+                            }
                             else
                             {
-                                applyAlterTableStatements(key, connectionMap);
-                                applyIndexTableStatements(key, connectionMap);
+                                TableDefinition tableDefinition = SqlStatements.tableCreateStatements[key] as TableDefinition;
+                                if (tableDefinition.TableSQL.StartsWith("DROP ", true, null) == true)
+                                    applyDropTableStatement(key, connectionMap, tableDefinition, tableNamesMap);
+                                else
+                                {
+                                    applyAlterTableStatements(key, connectionMap);
+                                    applyIndexTableStatements(key, connectionMap);
+                                }
                             }
                         }
                     }
@@ -233,8 +236,10 @@ namespace SQLiteXM
                     sxmTransaction.executeTableStatement(tableDefinition.TableSQL);
                     addSynchID(parts, sxmTransaction);
 
-                    addCloudSynchDescriptor(key, tableNamesMap, sxmTransaction);
-                    createCloudSynchTable(key, tableNamesMap, sxmTransaction);
+                    if (!doesTableExist("_systemCloudSynchDescriptor", sxmConnection))
+                        addCloudSynchDescriptor(key, tableNamesMap, sxmTransaction);
+                    if (!doesTableExist("_systemCloudSynch", sxmConnection))
+                        createCloudSynchTable(key, tableNamesMap, sxmTransaction);
                     createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
                     sxmTransaction.commitTransaction();
                 }
@@ -283,7 +288,7 @@ namespace SQLiteXM
                         if (!doesTableExist("_systemCloudSynch", sxmConnection))
                             SxmInit.createCloudSynchTable(key, tableNamesMap, sxmTransaction);
 
-                        SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
+                        //SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
 
                         sxmTransaction.commitTransaction();
                     }
@@ -309,11 +314,18 @@ namespace SQLiteXM
             }
         }
 
-        private static bool doesTableExist(string dbName, SxmConnection sxmConnection)
+        private static bool doesTableExist(string tableName, SxmConnection sxmConnection)
         {
+            bool connectionCreated = false;
             try
             {
-                string sqlSelect = string.Format("SELECT name FROM sqlite_master WHERE type='table' AND name='{0}'", dbName);
+                if (sxmConnection == default(SxmConnection))
+                {
+                    sxmConnection = new SxmConnection(ProcessSQLStatements.retreiveDatabaseName);
+                    connectionCreated = true;
+                }
+
+                string sqlSelect = string.Format("SELECT name FROM sqlite_master WHERE type='table' AND name='{0}'", tableName);
                 sxmConnection.executeQuery(sqlSelect, default(List<object>));
                 if (sxmConnection.hasRows() == true)
                     return true;
@@ -321,6 +333,11 @@ namespace SQLiteXM
             catch (Exception)
             {
             }
+            finally 
+            {
+                if (connectionCreated)
+                    sxmConnection.destroyConnection();
+             }
 
             return false;
         }
@@ -497,7 +514,7 @@ namespace SQLiteXM
 
         }
 
-        private static void applyTriggerTableStatements(Hashtable connectionMap)
+        internal static void applyTriggerTableStatements(Hashtable? connectionMap)
         {
             ArrayList? triggerStatementsList = null;
 
@@ -506,6 +523,11 @@ namespace SQLiteXM
                 ICollection triggerStatementKeys = SqlStatements.triggerStatements.Keys;
                 foreach (string dbName in triggerStatementKeys)
                 {
+                    if(connectionMap == default(Hashtable))
+                        connectionMap = new Hashtable();
+                    if (connectionMap.Count == 0)
+                        connectionMap.Add(dbName, new SxmConnection(dbName));
+
                     SxmConnection? sxmConnection = (SxmConnection?)connectionMap[dbName];
                     if (sxmConnection != null)
                     {
@@ -651,12 +673,13 @@ namespace SQLiteXM
             string databaseName = parts[0];
             string databaseTable = "_systemCloudSynchDescriptor";
 
-            if (isTableInMap(databaseName, databaseTable, tableNamesMap) == false)
+            //if (isTableInMap(databaseName, databaseTable, tableNamesMap) == false)
             {
                 string tableSQL = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT, dbName TEXT, tableName TEXT, cloudSynchFlag INTEGER)", databaseTable);
                 sxmTransaction.executeTableStatement(tableSQL);
                 ArrayList dbTableNames = tableNamesMap[databaseName] as ArrayList;
-                dbTableNames.Add(databaseTable);
+                if(dbTableNames != default(ArrayList))
+                    dbTableNames.Add(databaseTable);
             }
 
             insertIntoSystemCloudSyncDescriptor(key, databaseName, parts[1], sxmTransaction);
@@ -679,12 +702,13 @@ namespace SQLiteXM
             string databaseName = parts[0];
             string databaseTable = "_systemCloudSynch";
 
-            if (isTableInMap(databaseName, databaseTable, tableNamesMap) == false)
+            //if (isTableInMap(databaseName, databaseTable, tableNamesMap) == false)
             {
                 string tableSQL = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT, dbName TEXT, tableName TEXT, action TEXT, systemSynchID TEXT)", databaseTable);
                 sxmTransaction.executeTableStatement(tableSQL);
                 ArrayList dbTableNames = tableNamesMap[databaseName] as ArrayList;
-                dbTableNames.Add(databaseTable);
+                if (dbTableNames != default(ArrayList))
+                    dbTableNames.Add(databaseTable);
             }
         }
 

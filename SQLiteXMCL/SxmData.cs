@@ -1,20 +1,48 @@
-﻿using SQLitePCL;
-using System.Collections;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection;
+﻿using System.Reflection;
+using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
+    interface IIndexVars
+    {
+        public string[] indexFields { get; set; }
+        public string indexName { get; set; }
+    }
+
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    public class CreateIndex : Attribute
+    public class CreateIndex : Attribute, IIndexVars
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
 
-        public CreateIndex(string[] indexFields, string indexName)
+        public CreateIndex(string[] indexFields)
         {
             this.indexFields = indexFields;
-            this.indexName = indexName;
+
+            this.indexName = "IDX";
+            foreach (string field in indexFields)
+            {
+                this.indexName += "_" + field;
+            }
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public class Unique : Attribute, IIndexVars
+    {
+        public string[] indexFields { get; set; }
+        public string indexName { get; set; }
+
+
+        public Unique(string[] indexFields)
+        {
+            this.indexFields = indexFields;
+
+            this.indexName = "IDXU";
+            foreach (string field in indexFields)
+            {
+                this.indexName += "_" + field;
+            }
         }
     }
 
@@ -61,7 +89,8 @@ namespace SQLiteXM
                 {
                     createTable();
                     reconcile();
-                    processIndexAttributes();
+                    processIndexAttributes(IndexType.standard);
+                    processIndexAttributes(IndexType.unique);
                 }
             }
         }
@@ -226,15 +255,31 @@ namespace SQLiteXM
             }
         }
 
-        private void processIndexAttributes()
+        protected void CreateTrigger(string triggerName, string triggerSql)
+        {
+            SqlStatements.addTriggerDefinition(databaseName, triggerName, triggerSql);
+            SxmInit.applyTriggerTableStatements(default(System.Collections.Hashtable));
+            SqlStatements.removeTriggerDefinitions();
+        }
+
+        private void processIndexAttributes(IndexType indexType)
         {
             List<string> indexSqlStatements = new List<string>();
             SxmConnection? sxmConnection = default(SxmConnection);
+            string extra = string.Empty;
+            IIndexVars[]? customAttributes = default(IIndexVars[]);
 
-            var customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
+            if (indexType == IndexType.unique)
+            {
+                customAttributes = (Unique[])this.GetType().GetCustomAttributes(typeof(Unique), true);
+                extra = "UNIQUE";
+            }
+            else
+                customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
+
             try
             {
-                List<string> existingIndexes = getIndexTableStatements();
+                List<string> existingIndexes = getIndexTableStatements(indexType);
 
                 if (customAttributes != null && customAttributes.Length > 0)
                 {
@@ -254,7 +299,7 @@ namespace SQLiteXM
                                 ++i;
                             }
 
-                            indexSqlStatements.Add(string.Format("CREATE INDEX {0} ON {1} ({2})", myAttribute.indexName, this.GetType().Name, indexFields));
+                            indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", extra, myAttribute.indexName, this.GetType().Name, indexFields));
                         }
                     }
 
@@ -277,7 +322,7 @@ namespace SQLiteXM
                         }
                     }
 
-                    if(indexSqlStatements.Count > 0)
+                    if (indexSqlStatements.Count > 0)
                     {
                         sxmConnection = new SxmConnection(databaseName);
                         using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
@@ -298,7 +343,7 @@ namespace SQLiteXM
             }
         }
 
-        private List<string> getIndexTableStatements()
+        private List<string> getIndexTableStatements(IndexType indexType)
         {
             List<string> indexNames = new List<string>();
             SxmConnection sxmConnection = new SxmConnection(databaseName);
@@ -310,7 +355,18 @@ namespace SQLiteXM
                     sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", this.GetType().Name), null as List<object>);
 
                     while (sxmConnection.nextRow() == true)
-                        indexNames.Add((string)sxmConnection.getValue("name"));
+                    {
+                        if (indexType == IndexType.unique)
+                        {
+                            if ((long)sxmConnection.getValue("unique") == 1)
+                                indexNames.Add((string)sxmConnection.getValue("name"));
+                        }
+                        if (indexType == IndexType.standard)
+                        {
+                            if ((long)sxmConnection.getValue("unique") == 0)
+                                indexNames.Add((string)sxmConnection.getValue("name"));
+                        }
+                    }
                 }
             }
             catch (Exception ex) { }
@@ -429,6 +485,7 @@ namespace SQLiteXM
 
             SqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, this.GetType().Name), tableStatement);
             SxmInit.createTable(this.databaseName, this.GetType().Name);
+            SqlStatements.removeTableDefinitions();
         }
 
         private void getColumnNamesAndDataTypes()
@@ -439,66 +496,75 @@ namespace SQLiteXM
             {
                 string piType = pi.PropertyType.Name;
                 string piName = pi.Name;
-                Dictionary<string, object> excludeDict =  pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
+                Dictionary<string, object> excludeDict = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
+
+                string notNull = string.Empty;
+                string? columnType = default(string);
 
                 if (!piName.Equals("id") && !piName.Equals("synchId") && !excludeDict.ContainsKey("Exclude"))
                 {
+                    if (excludeDict.ContainsKey("RequiredAttribute"))
+                        notNull = " not null";
+
                     if (piType == typeof(int).Name)
-                        columnNameAndType.Add(piName, "int");
+                        columnType = "int";
 
                     else if (piType == typeof(string).Name)
-                        columnNameAndType.Add(piName, "text");
+                        columnType = "text";
 
                     else if (piType == typeof(long).Name)
-                        columnNameAndType.Add(piName, "long");
+                        columnType = "long";
 
                     else if (piType == typeof(ulong).Name)  // Large values will overflow unless this is defined as text.
-                        columnNameAndType.Add(piName, "text");
+                        columnType = "text";
 
                     else if (piType == typeof(float).Name)
-                        columnNameAndType.Add(piName, "float");
+                        columnType = "float";
 
                     else if (piType == typeof(short).Name)
-                        columnNameAndType.Add(piName, "short");
+                        columnType = "short";
 
                     else if (piType == typeof(ushort).Name)
-                        columnNameAndType.Add(piName, "ushort");
+                        columnType = "ushort";
 
                     else if (piType == typeof(uint).Name)
-                        columnNameAndType.Add(piName, "uint");
+                        columnType = "uint";
 
                     else if (piType == typeof(sbyte).Name)
-                        columnNameAndType.Add(piName, "sbyte");
+                        columnType = "sbyte";
 
                     else if (piType == typeof(byte).Name)
-                        columnNameAndType.Add(piName, "byte");
+                        columnType = "byte";
 
                     else if (piType == typeof(double).Name)
-                        columnNameAndType.Add(piName, "double");
+                        columnType = "double";
 
                     else if (piType == typeof(string).Name)
-                        columnNameAndType.Add(piName, "string");
+                        columnType = "string";
 
-                    else if (piType == typeof(decimal).Name)  // Large values will overflow unless thiss is defined as text.
-                        columnNameAndType.Add(piName, "text");
+                    else if (piType == typeof(decimal).Name)  // Large values will overflow unless this is defined as text.
+                        columnType = "text";
 
                     else if (piType == typeof(bool).Name)
-                        columnNameAndType.Add(piName, "bool");
+                        columnType = "bool";
 
                     else if (piType == typeof(DateTime).Name)
-                        columnNameAndType.Add(piName, "DateTime");
+                        columnType = "DateTime";
 
                     else if (piType == typeof(DateTimeOffset).Name)
-                        columnNameAndType.Add(piName, "DateTimeOffset");
+                        columnType = "DateTimeOffset";
 
                     else if (piType == typeof(TimeSpan).Name)
-                        columnNameAndType.Add(piName, "TimeSpan");
+                        columnType = "TimeSpan";
 
                     else if (piType == typeof(DateOnly).Name)
-                        columnNameAndType.Add(piName, "DateOnly");
+                        columnType = "DateOnly";
 
                     else if (piType == typeof(TimeOnly).Name)
-                        columnNameAndType.Add(piName, "TimeOnly");
+                        columnType = "TimeOnly";
+
+                    if(columnType != null)
+                        columnNameAndType.Add(piName, columnType + notNull);
                 }
             }
         }

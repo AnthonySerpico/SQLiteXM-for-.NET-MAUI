@@ -120,6 +120,15 @@ namespace SQLiteXM
             triggerStatementsList.Add(new TriggerDefinition(triggerName, sqlStatement));
         }
 
+        internal static void removeTriggerDefinitions()
+        {
+            if (triggerStatements != default(Hashtable))
+            {
+                triggerStatements.Clear();
+                triggerStatements = default(Hashtable);
+            }
+        }
+
         internal static void addAlterDefinition (string dbAndTableName, string columnName, string sqlStatement)
 		{
             dbAndTableName = dbAndTableName.Trim();
@@ -158,7 +167,16 @@ namespace SQLiteXM
 			tableCreateStatements.Add(dbAndTableName, new TableDefinition (tableSQL, cloudPush));
 		}
 
-		internal static void clearStatementTables ()
+        internal static void removeTableDefinitions()
+        {
+            if (tableCreateStatements != default(Hashtable))
+            {
+                tableCreateStatements.Clear();
+                tableCreateStatements = default(Hashtable);
+            }
+        }
+        
+        internal static void clearStatementTables ()
 		{
 			if (alterStatements != default(Hashtable)) 
 			{
