@@ -314,7 +314,7 @@ namespace SQLiteXM
             }
         }
 
-        private static bool doesTableExist(string tableName, SxmConnection sxmConnection)
+        internal static bool doesTableExist(string tableName, SxmConnection? sxmConnection)
         {
             bool connectionCreated = false;
             try

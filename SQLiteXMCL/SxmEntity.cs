@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -103,6 +104,16 @@ namespace SQLiteXM
         }
     }
 
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    public class RequiredNotNull : Attribute
+    {
+        public object? defaultValue { get; set; } = default(object?);
+
+        public RequiredNotNull()
+        {
+        }
+    }
+
     public class SxmEntity
     {
         private bool mustReconcile = true;
@@ -110,8 +121,8 @@ namespace SQLiteXM
         private static string? insertGuid = default(string);
         private static string? updateGuid = default(string);
         private static string? deleteGuid = default(string);
-        private static List<IndexPropertyAttributes>? standardIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
-        private static List<IndexPropertyAttributes>? uniqueIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
+        private static List<IndexPropertyAttributes>? standardIndexPropertyAttributesList;
+        private static List<IndexPropertyAttributes>? uniqueIndexPropertyAttributesList;
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private static Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
 
@@ -494,14 +505,20 @@ namespace SQLiteXM
 
                 if (indexType == IndexType.standardAttribute)
                 {
-                    standardIndexPropertyAttributesList?.Clear();
-                    standardIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                    if (standardIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
+                    {
+                        standardIndexPropertyAttributesList?.Clear();
+                        standardIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                    }
                 }
 
                 if (indexType == IndexType.uniqueAttribute)
                 {
-                    uniqueIndexPropertyAttributesList?.Clear();
-                    uniqueIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                    if (uniqueIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
+                    {
+                        uniqueIndexPropertyAttributesList?.Clear();
+                        uniqueIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                    }
                 }
             }
         }
@@ -639,16 +656,20 @@ namespace SQLiteXM
         private void createTable()
         {
             getColumnNamesAndDataTypes();
-            string tableStatement = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT", this.GetType().Name);
 
-            foreach (KeyValuePair<string, string> kvp in columnNameAndType)
-                tableStatement += string.Format(", {0} {1}", kvp.Key, kvp.Value);
+            if (!SxmInit.doesTableExist(this.GetType().Name, default(SxmConnection)))
+            {
+                string tableStatement = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT", this.GetType().Name);
 
-            tableStatement += ")";
+                foreach (KeyValuePair<string, string> kvp in columnNameAndType)
+                    tableStatement += string.Format(", {0} {1}", kvp.Key, kvp.Value);
 
-            SqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, this.GetType().Name), tableStatement);
-            SxmInit.createTable(this.databaseName, this.GetType().Name);
-            SqlStatements.removeTableDefinitions();
+                tableStatement += ")";
+
+                SqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, this.GetType().Name), tableStatement);
+                SxmInit.createTable(this.databaseName, this.GetType().Name);
+                SqlStatements.removeTableDefinitions();
+            }
         }
 
         private void getColumnNamesAndDataTypes()
@@ -666,14 +687,34 @@ namespace SQLiteXM
 
                 if (!piName.Equals("id") && !piName.Equals("synchId") && !propertyAttribute.ContainsKey("Exclude"))
                 {
-                    if (propertyAttribute.ContainsKey("RequiredAttribute"))
-                        notNull = " not null";
+                    if (propertyAttribute.ContainsKey("RequiredNotNull"))
+                    {
+                        RequiredNotNull nn = (RequiredNotNull)propertyAttribute["RequiredNotNull"];
+                        if(nn.defaultValue != null)
+                            notNull = $" not null default {nn.defaultValue}";
+                        else
+                            notNull = " not null";
+                    }
 
                     if (propertyAttribute.ContainsKey("CreateIndex"))
-                        standardIndexPropertyAttributesList.Add(new IndexPropertyAttributes(piName));
+                    {
+                        if (standardIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
+                            standardIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
+                        standardIndexPropertyAttributesList?.Add(new IndexPropertyAttributes(piName));
+                    }
 
                     if (propertyAttribute.ContainsKey("CreateUNique"))
-                        uniqueIndexPropertyAttributesList.Add(new IndexPropertyAttributes(piName));
+                    {
+                        if (uniqueIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
+                            uniqueIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
+                        uniqueIndexPropertyAttributesList?.Add(new IndexPropertyAttributes(piName));
+                    }
+
+                    Type? underlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
+                    if(underlyingType != null)
+                    {
+                        piType = underlyingType.Name;
+                    }
 
                     if (piType == typeof(int).Name)
                         columnType = "int";
