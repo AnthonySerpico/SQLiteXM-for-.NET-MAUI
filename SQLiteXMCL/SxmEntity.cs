@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -10,7 +9,7 @@ namespace SQLiteXM
         public string indexName { get; set; }
     }
 
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
     public class CreateIndex : Attribute, IIndexVars
     {
         public string[] indexFields { get; set; }
@@ -22,6 +21,38 @@ namespace SQLiteXM
 
             this.indexName = "IDX";
             foreach (string field in indexFields)
+            {
+                this.indexName += "_" + field;
+            }
+        }
+
+        public CreateIndex(string indexField)
+        {
+            this.indexFields = new string[] { indexField };
+
+            this.indexName = "IDX";
+            foreach (string field in this.indexFields)
+            {
+                this.indexName += "_" + field;
+            }
+        }
+
+        public CreateIndex()
+        {
+        }
+    }
+
+    public class IndexPropertyAttributes : IIndexVars
+    {
+        public string[] indexFields { get; set; }
+        public string indexName { get; set; }
+
+        public IndexPropertyAttributes(string indexField)
+        {
+            this.indexFields = new string[] { indexField };
+
+            this.indexName = "IDX";
+            foreach (string field in this.indexFields)
             {
                 this.indexName += "_" + field;
             }
@@ -75,6 +106,7 @@ namespace SQLiteXM
         private static string? insertGuid = default(string);
         private static string? updateGuid = default(string);
         private static string? deleteGuid = default(string);
+        private static List<IndexPropertyAttributes> IndexPropertyAttributesList = new List<IndexPropertyAttributes>();
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private static Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
 
@@ -102,6 +134,7 @@ namespace SQLiteXM
                     createTable();
                     reconcile();
                     processIndexAttributes(IndexType.standard);
+                    processIndexAttributes(IndexType.standardAttribute);
                     processIndexAttributes(IndexType.unique);
                     processtriggerAttributes();
                 }
@@ -379,8 +412,10 @@ namespace SQLiteXM
                 customAttributes = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
                 extra = "UNIQUE";
             }
-            else
+            if (indexType == IndexType.standard)
                 customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
+            if (indexType == IndexType.standardAttribute)
+                customAttributes = IndexPropertyAttributesList.ToArray();
 
             try
             {
@@ -466,7 +501,7 @@ namespace SQLiteXM
                             if ((long)sxmConnection.getValue("unique") == 1)
                                 indexNames.Add((string)sxmConnection.getValue("name"));
                         }
-                        if (indexType == IndexType.standard)
+                        if (indexType == IndexType.standard || indexType == IndexType.standardAttribute)
                         {
                             if ((long)sxmConnection.getValue("unique") == 0)
                                 indexNames.Add((string)sxmConnection.getValue("name"));
@@ -601,15 +636,18 @@ namespace SQLiteXM
             {
                 string piType = pi.PropertyType.Name;
                 string piName = pi.Name;
-                Dictionary<string, object> excludeDict = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
+                Dictionary<string, object> propertyAttribute = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
 
                 string notNull = string.Empty;
                 string? columnType = default(string);
 
-                if (!piName.Equals("id") && !piName.Equals("synchId") && !excludeDict.ContainsKey("Exclude"))
+                if (!piName.Equals("id") && !piName.Equals("synchId") && !propertyAttribute.ContainsKey("Exclude"))
                 {
-                    if (excludeDict.ContainsKey("RequiredAttribute"))
+                    if (propertyAttribute.ContainsKey("RequiredAttribute"))
                         notNull = " not null";
+
+                    if (propertyAttribute.ContainsKey("CreateIndex"))
+                        IndexPropertyAttributesList.Add(new IndexPropertyAttributes(piName));
 
                     if (piType == typeof(int).Name)
                         columnType = "int";

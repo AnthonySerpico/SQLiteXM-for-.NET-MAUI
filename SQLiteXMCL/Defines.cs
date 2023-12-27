@@ -27,7 +27,8 @@
 		public enum IndexType
         {
 			standard,
-			unique
+            standardAttribute,
+            unique
 		}
 
         // Database operation types. 
