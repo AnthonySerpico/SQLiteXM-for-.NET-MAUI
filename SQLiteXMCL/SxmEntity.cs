@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Linq;
+using System.Reflection;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -28,13 +29,13 @@ namespace SQLiteXM
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    public class Unique : Attribute, IIndexVars
+    public class CreateUnique : Attribute, IIndexVars
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
 
 
-        public Unique(string[] indexFields)
+        public CreateUnique(string[] indexFields)
         {
             this.indexFields = indexFields;
 
@@ -43,6 +44,17 @@ namespace SQLiteXM
             {
                 this.indexName += "_" + field;
             }
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public class CreateTrigger : Attribute
+    {
+        public string triggerSql { get; set; }
+
+        public CreateTrigger(string triggerSql)
+        {
+            this.triggerSql = triggerSql;
         }
     }
 
@@ -56,7 +68,7 @@ namespace SQLiteXM
         }
     }
 
-    public class SxmData
+    public class SxmEntity
     {
         private bool mustReconcile = true;
         private static object lockObject = new object();
@@ -69,12 +81,12 @@ namespace SQLiteXM
         public virtual long id { get; set; }
         public virtual string synchId { get; set; }
 
-        public SxmData(string? databaseName)
+        public SxmEntity(string? databaseName)
         {
             this.databaseName = databaseName;
             initialize();
         }
-        public SxmData()
+        public SxmEntity()
         {
             initialize();
         }
@@ -91,6 +103,7 @@ namespace SQLiteXM
                     reconcile();
                     processIndexAttributes(IndexType.standard);
                     processIndexAttributes(IndexType.unique);
+                    processtriggerAttributes();
                 }
             }
         }
@@ -115,7 +128,7 @@ namespace SQLiteXM
         {
             if (!doesRecordExist())
             {
-                Dictionary<string, object?> result = await SxmStatement.PerformInsert<SxmData>(sqlStatementName, this, databaseName);
+                Dictionary<string, object?> result = await SxmStatement.PerformInsert<SxmEntity>(sqlStatementName, this, databaseName);
                 loadDbValues(result);
             }
         }
@@ -123,7 +136,7 @@ namespace SQLiteXM
         {
             if (!doesRecordExist())
             {
-                Dictionary<string, object?> result = await sxmTrans.PerformInsert<SxmData>(sqlStatementName, this);
+                Dictionary<string, object?> result = await sxmTrans.PerformInsert<SxmEntity>(sqlStatementName, this);
                 loadDbValues(result);
             }
         }
@@ -131,24 +144,24 @@ namespace SQLiteXM
         public async Task Update(string sqlStatementName)
         {
             if (doesRecordExist())
-                await SxmStatement.PerformUpdate<SxmData>(sqlStatementName, this, databaseName);
+                await SxmStatement.PerformUpdate<SxmEntity>(sqlStatementName, this, databaseName);
         }
 
         public async Task Update(string sqlStatementName, SxmTransaction sxmTrans)
         {
             if (doesRecordExist())
-                await sxmTrans.PerformUpdate<SxmData>(sqlStatementName, this);
+                await sxmTrans.PerformUpdate<SxmEntity>(sqlStatementName, this);
         }
 
         public async Task Delete(string sqlStatementName)
         {
             if (doesRecordExist())
-                await SxmStatement.PerformDelete<SxmData>(sqlStatementName, this, databaseName);
+                await SxmStatement.PerformDelete<SxmEntity>(sqlStatementName, this, databaseName);
         }
         public async Task Delete(string sqlStatementName, SxmTransaction sxmTrans)
         {
             if (doesRecordExist())
-                await sxmTrans.PerformDelete<SxmData>(sqlStatementName, this);
+                await sxmTrans.PerformDelete<SxmEntity>(sqlStatementName, this);
         }
 
         public async Task Save()
@@ -255,11 +268,103 @@ namespace SQLiteXM
             }
         }
 
-        protected void CreateTrigger(string triggerName, string triggerSql)
+        protected void processtriggerAttributes()
         {
-            SqlStatements.addTriggerDefinition(databaseName, triggerName, triggerSql);
-            SxmInit.applyTriggerTableStatements(default(System.Collections.Hashtable));
-            SqlStatements.removeTriggerDefinitions();
+            int conditionOffset = 0;
+            string? triggerName = default(string);
+            List<string> triggerNameList = new List<string>();
+
+            var customAttributes = (CreateTrigger[])this.GetType().GetCustomAttributes(typeof(CreateTrigger), true);
+
+            if (customAttributes != null && customAttributes.Length > 0)
+            {
+                foreach (var myAttribute in customAttributes)
+                {
+                    string? triggerSql = myAttribute.triggerSql;
+
+
+                    if ((conditionOffset = triggerSql.IndexOf(" before ", StringComparison.OrdinalIgnoreCase)) == -1)
+                    {
+                        if ((conditionOffset = triggerSql.IndexOf(" after ", StringComparison.OrdinalIgnoreCase)) == -1)
+                        {
+                            conditionOffset = triggerSql.IndexOf(" instead ", StringComparison.OrdinalIgnoreCase);
+                        }
+                    }
+                    if (conditionOffset == -1)
+                        return;
+
+                    int schemaDivider = triggerSql.IndexOf('.');
+                    if (schemaDivider != -1 && schemaDivider < conditionOffset)
+                    {
+                        int endTableName = triggerSql.IndexOf(' ', schemaDivider);
+                        ++schemaDivider;
+                        if (triggerSql[endTableName - 1].Equals("'"))
+                            --endTableName;
+
+                        triggerName = triggerSql.Substring(schemaDivider, endTableName - schemaDivider);
+                    }
+                    else
+                    {
+                        --conditionOffset;
+                        while (triggerSql[conditionOffset] == ' ')
+                            --conditionOffset;
+
+                        int startTableName = conditionOffset;
+                        if (!triggerSql[conditionOffset].Equals("'"))
+                            ++conditionOffset;
+
+                        while (triggerSql[startTableName] != ' ')
+                            --startTableName;
+                        ++startTableName;
+
+                        if (triggerSql[startTableName].Equals("'"))
+                            ++startTableName;
+
+                        triggerName = triggerSql.Substring(startTableName, conditionOffset - startTableName);
+                    }
+
+                    if (triggerName == default(string))
+                        return;
+
+                    triggerNameList.Add(triggerName);
+                    SxmConnection? sxmConnection = new SxmConnection(databaseName);
+                    try
+                    {
+                        List<string> triggerList = SxmInit.getAllTriggers(sxmConnection);
+                        if (!triggerList.Contains(triggerName))
+                        {
+                            using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                            {
+                                sxmTransaction.executeCreateTrigger(triggerSql);
+
+                                foreach (var triggerAttribute in customAttributes)
+                                {
+                                    if (!triggerNameList.Contains(triggerAttribute.triggerSql))
+                                    {
+                                        sxmTransaction.executeCreateTrigger(string.Format("DROP TRIGGER {0}", triggerAttribute.triggerSql));
+                                    }
+                                }
+
+                                sxmTransaction.commitTransaction();
+                            }
+                        }
+
+                        foreach (var triggerAttribute in customAttributes)
+                        {
+                            if(!triggerNameList.Contains(triggerAttribute.triggerSql))
+                            {
+
+                            }
+                        }
+                    }
+                    catch (Exception ex) { }
+                    finally
+                    {
+                        if (sxmConnection != null)
+                            sxmConnection.destroyConnection();
+                    }
+                }
+            }
         }
 
         private void processIndexAttributes(IndexType indexType)
@@ -271,7 +376,7 @@ namespace SQLiteXM
 
             if (indexType == IndexType.unique)
             {
-                customAttributes = (Unique[])this.GetType().GetCustomAttributes(typeof(Unique), true);
+                customAttributes = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
                 extra = "UNIQUE";
             }
             else
@@ -540,7 +645,10 @@ namespace SQLiteXM
                         columnType = "double";
 
                     else if (piType == typeof(string).Name)
-                        columnType = "string";
+                        columnType = "text";
+
+                    else if (piType == typeof(Guid).Name)
+                        columnType = "text";
 
                     else if (piType == typeof(decimal).Name)  // Large values will overflow unless this is defined as text.
                         columnType = "text";
@@ -563,7 +671,7 @@ namespace SQLiteXM
                     else if (piType == typeof(TimeOnly).Name)
                         columnType = "TimeOnly";
 
-                    if(columnType != null)
+                    if (columnType != null)
                         columnNameAndType.Add(piName, columnType + notNull);
                 }
             }
@@ -611,6 +719,9 @@ namespace SQLiteXM
 
                             else if (piType == typeof(double).Name)
                                 pi.SetValue(this, (double)kvp.Value);
+
+                            else if (piType == typeof(Guid).Name)
+                                pi.SetValue(this, Guid.Parse((string)kvp.Value));
 
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(this, kvp.Value.ToString());

@@ -789,7 +789,7 @@ namespace SQLiteXM
             return false;
         }
 
-        private static List<string> getAllTriggers(SxmConnection? sxmConnection)
+        internal static List<string> getAllTriggers(SxmConnection? sxmConnection)
         {
             List<string> triggerNames = new List<string>();
 
