@@ -28,8 +28,9 @@
         {
 			standard,
             standardAttribute,
-            unique
-		}
+            unique,
+            uniqueAttribute,
+        }
 
         // Database operation types. 
         public enum SqlStatementType{

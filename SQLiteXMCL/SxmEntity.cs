@@ -59,7 +59,7 @@ namespace SQLiteXM
         }
     }
 
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
     public class CreateUnique : Attribute, IIndexVars
     {
         public string[] indexFields { get; set; }
@@ -75,6 +75,10 @@ namespace SQLiteXM
             {
                 this.indexName += "_" + field;
             }
+        }
+
+        public CreateUnique()
+        {
         }
     }
 
@@ -106,7 +110,8 @@ namespace SQLiteXM
         private static string? insertGuid = default(string);
         private static string? updateGuid = default(string);
         private static string? deleteGuid = default(string);
-        private static List<IndexPropertyAttributes> IndexPropertyAttributesList = new List<IndexPropertyAttributes>();
+        private static List<IndexPropertyAttributes>? standardIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
+        private static List<IndexPropertyAttributes>? uniqueIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private static Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
 
@@ -136,6 +141,7 @@ namespace SQLiteXM
                     processIndexAttributes(IndexType.standard);
                     processIndexAttributes(IndexType.standardAttribute);
                     processIndexAttributes(IndexType.unique);
+                    processIndexAttributes(IndexType.uniqueAttribute);
                     processtriggerAttributes();
                 }
             }
@@ -415,7 +421,12 @@ namespace SQLiteXM
             if (indexType == IndexType.standard)
                 customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
             if (indexType == IndexType.standardAttribute)
-                customAttributes = IndexPropertyAttributesList.ToArray();
+                customAttributes = standardIndexPropertyAttributesList?.ToArray();
+            if (indexType == IndexType.uniqueAttribute)
+            {
+                customAttributes = uniqueIndexPropertyAttributesList?.ToArray();
+                extra = "UNIQUE";
+            }
 
             try
             {
@@ -480,6 +491,18 @@ namespace SQLiteXM
             {
                 if (sxmConnection != null)
                     sxmConnection.destroyConnection();
+
+                if (indexType == IndexType.standardAttribute)
+                {
+                    standardIndexPropertyAttributesList?.Clear();
+                    standardIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                }
+
+                if (indexType == IndexType.uniqueAttribute)
+                {
+                    uniqueIndexPropertyAttributesList?.Clear();
+                    uniqueIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                }
             }
         }
 
@@ -647,7 +670,10 @@ namespace SQLiteXM
                         notNull = " not null";
 
                     if (propertyAttribute.ContainsKey("CreateIndex"))
-                        IndexPropertyAttributesList.Add(new IndexPropertyAttributes(piName));
+                        standardIndexPropertyAttributesList.Add(new IndexPropertyAttributes(piName));
+
+                    if (propertyAttribute.ContainsKey("CreateUNique"))
+                        uniqueIndexPropertyAttributesList.Add(new IndexPropertyAttributes(piName));
 
                     if (piType == typeof(int).Name)
                         columnType = "int";
