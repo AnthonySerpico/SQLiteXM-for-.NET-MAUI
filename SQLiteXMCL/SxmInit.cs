@@ -488,6 +488,28 @@ namespace SQLiteXM
             return getTableColumnNames(dbName, tableName);
         }
 
+        internal static void addColumnNameType(string tableName, string columnName, string columnType)
+        {
+            Dictionary<string, string>? columnNameType = default(Dictionary<string, string>);
+
+            if (columnNameTpyes.ContainsKey(tableName))
+            {
+                columnNameType = columnNameTpyes[tableName];
+                columnNameType.Add(columnName, columnType); 
+            }
+        }
+
+        internal static void removeColumnNameType(string tableName, string columnName)
+        {
+            Dictionary<string, string>? columnNameType = default(Dictionary<string, string>);
+
+            if (columnNameTpyes.ContainsKey(tableName))
+            {
+                columnNameType = columnNameTpyes[tableName];
+                columnNameType.Remove(columnName);
+            }
+        }
+
         internal static Dictionary<string, string> getTableColumnNames(string? dbName, string? tableName)
         {
             if (columnNameTpyes.ContainsKey(tableName))

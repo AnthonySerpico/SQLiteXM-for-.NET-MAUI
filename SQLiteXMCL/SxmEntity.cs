@@ -576,6 +576,15 @@ namespace SQLiteXM
                             sxmTransaction1.executeAlterTable(alterDefinition);
                             sxmTransaction1.commitTransaction();
                         }
+
+                        int offset = 0;
+                        string? value = default(string);
+
+                        if((offset = kvp.Value.IndexOf(' ')) != -1)
+                            value = kvp.Value.Substring(0, offset);
+                        else
+                            value = kvp.Value;
+                        SxmInit.addColumnNameType(this.GetType().Name, kvp.Key, value);
                     }
                 }
 
@@ -589,6 +598,8 @@ namespace SQLiteXM
                             sxmTransaction1.executeAlterTable(alterDefinition);
                             sxmTransaction1.commitTransaction();
                         }
+
+                        SxmInit.removeColumnNameType(this.GetType().Name, kvp.Key);
                     }
                 }
             }
