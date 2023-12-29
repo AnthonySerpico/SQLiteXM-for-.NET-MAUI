@@ -84,6 +84,11 @@ namespace SQLiteXM
                         if (kvp.Value != DBNull.Value && kvp.Value != null)
                         {
                             string piType = pi.PropertyType.Name;
+                            Type? underlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
+                            if (underlyingType != null)
+                            {
+                                piType = underlyingType.Name;
+                            }
 
                             if (piType == typeof(int).Name)
                                 pi.SetValue(userObject, (int)(long)kvp.Value);
@@ -92,7 +97,7 @@ namespace SQLiteXM
                                 pi.SetValue(userObject, (long)kvp.Value);
 
                             else if (piType == typeof(ulong).Name)    // Large values will overflow.
-                                pi.SetValue(userObject, (ulong)(long)kvp.Value);
+                                pi.SetValue(userObject, (ulong)ulong.Parse((string)kvp.Value));
 
                             else if (piType == typeof(float).Name)
                                 pi.SetValue(userObject, (float)(double)kvp.Value);
@@ -114,6 +119,9 @@ namespace SQLiteXM
 
                             else if (piType == typeof(double).Name)
                                 pi.SetValue(userObject, (double)kvp.Value);
+
+                            else if (piType == typeof(Guid).Name)
+                                pi.SetValue(userObject, Guid.Parse((string)kvp.Value));
 
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
@@ -228,6 +236,11 @@ namespace SQLiteXM
                         if (userSuppliedObjectData != null)  // If the value of the data for the column in the user supplied object is not null;
                         {
                             string userObjectType = userObjectPI.PropertyType.Name;  // Get the data type of the column in the user supplied object.
+                            Type? underlyingType = Nullable.GetUnderlyingType(userObjectPI.PropertyType);
+                            if (underlyingType != null)
+                            {
+                                userObjectType = underlyingType.Name;
+                            }
 
                             if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
@@ -254,6 +267,15 @@ namespace SQLiteXM
 
                                 else if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData).ToString());
+                            }
+
+                            else if (userObjectType == typeof(ulong).Name)  // Is the data type for the column in the user object a decimal?
+                            {
+                                if (kvp.Value.ToLower().Equals("ulong"))
+                                    returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData));  // Will lose precision. Converts to a numeric which is either a double or a long.
+
+                                else if (kvp.Value.ToLower().Equals("text"))
+                                    returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData).ToString());
                             }
 
                             else if (userObjectType == typeof(DateTimeOffset).Name)  // Is the data type for the column in the user object a decimal?

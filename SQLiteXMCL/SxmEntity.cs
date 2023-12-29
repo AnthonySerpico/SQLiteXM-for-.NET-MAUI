@@ -149,12 +149,12 @@ namespace SQLiteXM
                 {
                     createTable();
 
-                    List<string> existingIndexes = getIndexTableStatements(IndexType.standard);
-                    processIndexAttributes(IndexType.standard, existingIndexes);
+                    List<string> existingStandardIndexes = new List<string>();
+                    List<string> existingUniqueIndexes = new List<string>();
+                    getIndexTableStatements(ref existingStandardIndexes, ref existingUniqueIndexes);
 
-                    existingIndexes.Clear();
-                    existingIndexes = getIndexTableStatements(IndexType.unique);
-                    processIndexAttributes(IndexType.unique, existingIndexes);
+                    processIndexAttributes(IndexType.standard, existingStandardIndexes);
+                    processIndexAttributes(IndexType.unique, existingUniqueIndexes);
 
                     processtriggerAttributes();
                 }
@@ -465,36 +465,36 @@ namespace SQLiteXM
                             indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", extra, myAttribute.indexName, this.GetType().Name, indexFields));
                         }
                     }
+                }
 
-                    foreach (string indexName in existingIndexes)
+                foreach (string indexName in existingIndexes)
+                {
+                    bool found = false;
+
+                    foreach (IIndexVars customAttribute in customAttributes)
                     {
-                        bool found = false;
-
-                        foreach (IIndexVars customAttribute in customAttributes)
+                        if (customAttribute.indexName.Equals(indexName))
                         {
-                            if (customAttribute.indexName.Equals(indexName) )
-                            {
-                                found = true;
-                                break;
-                            }
-                        }
-
-                        if (found == false)
-                        {
-                            indexSqlStatements.Add(string.Format("DROP INDEX {0}", indexName));
+                            found = true;
+                            break;
                         }
                     }
 
-                    if (indexSqlStatements.Count > 0)
+                    if (found == false)
                     {
-                        sxmConnection = new SxmConnection(databaseName);
-                        using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
-                        {
-                            foreach (string indexStatement in indexSqlStatements)
-                                sxmTransaction1.executeIndex(indexStatement);
+                        indexSqlStatements.Add(string.Format("DROP INDEX {0}", indexName));
+                    }
+                }
 
-                            sxmTransaction1.commitTransaction();
-                        }
+                if (indexSqlStatements.Count > 0)
+                {
+                    sxmConnection = new SxmConnection(databaseName);
+                    using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
+                    {
+                        foreach (string indexStatement in indexSqlStatements)
+                            sxmTransaction1.executeIndex(indexStatement);
+
+                        sxmTransaction1.commitTransaction();
                     }
                 }
             }
@@ -518,9 +518,8 @@ namespace SQLiteXM
             }
         }
 
-        private List<string> getIndexTableStatements(IndexType indexType)
+        private void getIndexTableStatements(ref List<string> existingStandardIndexes, ref List<string> existingUniqueIndexes)
         {
-            List<string> indexNames = new List<string>();
             SxmConnection sxmConnection = new SxmConnection(databaseName);
 
             try
@@ -533,16 +532,10 @@ namespace SQLiteXM
                     {
                         string indexName = (string)sxmConnection.getValue("name");
 
-                        if (indexType == IndexType.unique)
-                        {
-                            if ((long)sxmConnection.getValue("unique") == 1)
-                                indexNames.Add(indexName);
-                        }
-                        if (indexType == IndexType.standard)
-                        {
-                            if ((long)sxmConnection.getValue("unique") == 0)
-                                indexNames.Add(indexName);
-                        }
+                        if ((long)sxmConnection.getValue("unique") == 1)
+                            existingUniqueIndexes.Add(indexName);
+                        else
+                            existingStandardIndexes.Add(indexName);
                     }
                 }
             }
@@ -552,8 +545,6 @@ namespace SQLiteXM
                 if (sxmConnection != null)
                     sxmConnection.destroyConnection();
             }
-
-            return indexNames;
         }
 
         private void reconcile()
@@ -799,11 +790,17 @@ namespace SQLiteXM
                 try
                 {
                     PropertyInfo? pi = this.GetType().GetProperty(kvp.Key);
+
                     if (pi != null)
                     {
                         if (kvp.Value != DBNull.Value && kvp.Value != null)
                         {
                             string piType = pi.PropertyType.Name;
+                            Type? underlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
+                            if (underlyingType != null)
+                            {
+                                piType = underlyingType.Name;
+                            }
 
                             if (piType == typeof(int).Name)
                                 pi.SetValue(this, (int)(long)kvp.Value);
