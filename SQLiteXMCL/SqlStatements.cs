@@ -6,10 +6,10 @@ namespace SQLiteXM
 {
     public class SqlStatements
 	{
-        internal static Hashtable? tableCreateStatements = new Hashtable();
-        internal static Hashtable? alterStatements = default(Hashtable);
-		internal static Hashtable? indexStatements = default(Hashtable);
-        internal static Hashtable? triggerStatements = default(Hashtable);
+        internal static Dictionary<string, TableDefinition>? tableCreateStatements = new Dictionary<string, TableDefinition>();
+        internal static Dictionary<string, List<AlterDefinition>>? alterStatements = default(Dictionary<string, List<AlterDefinition>>);
+		internal static Dictionary<string, List<IndexDefinition>>? indexStatements = default(Dictionary<string, List<IndexDefinition>>);
+        internal static Dictionary<string, List<TriggerDefinition>>? triggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
         internal static Dictionary<string, InsertDefinition> insertStatements = new Dictionary<string, InsertDefinition>();
 		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>();
 		internal static Dictionary<string, UpdateDefinition> updateStatements = new Dictionary<string, UpdateDefinition>();
@@ -80,12 +80,12 @@ namespace SQLiteXM
             indexName = indexName.Trim();
 
             if (indexStatements == null)
-				indexStatements = new Hashtable();
+				indexStatements = new Dictionary<string, List<IndexDefinition>>();
 
-			ArrayList? indexStatementsList = indexStatements [dbAndTableName] as ArrayList;
+			List<IndexDefinition>? indexStatementsList = indexStatements [dbAndTableName] as List<IndexDefinition>;
 			if (indexStatementsList == null) 
 			{
-				indexStatementsList = new ArrayList ();
+				indexStatementsList = new List<IndexDefinition> ();
 				indexStatements.Add ( dbAndTableName, indexStatementsList);
 			}
 
@@ -94,10 +94,10 @@ namespace SQLiteXM
 
         internal static void removeIndexDefinitions()
         {
-            if (indexStatements != default(Hashtable))
+            if (indexStatements != default(Dictionary<string, List<IndexDefinition>>))
             {
                 indexStatements.Clear();
-                indexStatements = default(Hashtable);
+                indexStatements = default(Dictionary<string, List<IndexDefinition>>);
             }
         }
 
@@ -108,12 +108,12 @@ namespace SQLiteXM
             dbName = dbName.Trim();
 
             if (triggerStatements == null)
-                triggerStatements = new Hashtable();
+                triggerStatements = new Dictionary<string, List<TriggerDefinition>>();
 
-            ArrayList? triggerStatementsList = triggerStatements[dbName] as ArrayList;
+            List<TriggerDefinition>? triggerStatementsList = triggerStatements[dbName] as List<TriggerDefinition>;
             if (triggerStatementsList == null)
             {
-                triggerStatementsList = new ArrayList();
+                triggerStatementsList = new List<TriggerDefinition>();
                 triggerStatements.Add(dbName, triggerStatementsList);
             }
 
@@ -122,10 +122,10 @@ namespace SQLiteXM
 
         internal static void removeTriggerDefinitions()
         {
-            if (triggerStatements != default(Hashtable))
+            if (triggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
             {
                 triggerStatements.Clear();
-                triggerStatements = default(Hashtable);
+                triggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
             }
         }
 
@@ -136,12 +136,12 @@ namespace SQLiteXM
             columnName = columnName.Trim();
 
             if (alterStatements == null)
-				alterStatements = new Hashtable();
+				alterStatements = new Dictionary<string, List<AlterDefinition>>();
 
-			ArrayList? alterStatementsList = alterStatements [dbAndTableName] as ArrayList;
+            List<AlterDefinition>? alterStatementsList = alterStatements [dbAndTableName] as List<AlterDefinition>;
 			if (alterStatementsList == null) 
 			{
-				alterStatementsList = new ArrayList ();
+				alterStatementsList = new List<AlterDefinition>();
 				alterStatements.Add ( dbAndTableName, alterStatementsList);
 			}
 
@@ -162,41 +162,41 @@ namespace SQLiteXM
             tableSQL = tableSQL.Trim();
 
             if (tableCreateStatements == null)
-				tableCreateStatements = new Hashtable();
+				tableCreateStatements = new Dictionary<string, TableDefinition>();
 
 			tableCreateStatements.Add(dbAndTableName, new TableDefinition (tableSQL, cloudPush));
 		}
 
         internal static void removeTableDefinitions()
         {
-            if (tableCreateStatements != default(Hashtable))
+            if (tableCreateStatements != default(Dictionary<string, TableDefinition>))
             {
                 tableCreateStatements.Clear();
-                tableCreateStatements = default(Hashtable);
+                tableCreateStatements = default(Dictionary<string, TableDefinition>);
             }
         }
         
         internal static void clearStatementTables ()
 		{
-			if (alterStatements != default(Hashtable)) 
+			if (alterStatements != default(Dictionary<string, List<AlterDefinition>>)) 
 			{
 				alterStatements.Clear ();
-				alterStatements = default(Hashtable);
+				alterStatements = default(Dictionary<string, List<AlterDefinition>>);
 			}
 
 			tableCreateStatements?.Clear ();
-			tableCreateStatements = default(Hashtable)!;
+			tableCreateStatements = default(Dictionary<string, TableDefinition>)!;
 
-			if (indexStatements != default(Hashtable)) 
+			if (indexStatements != default(Dictionary<string, List<IndexDefinition>>)) 
 			{
 				indexStatements.Clear ();
-				indexStatements = default(Hashtable);
+				indexStatements = default(Dictionary<string, List<IndexDefinition>>);
 			}
 
-            if (triggerStatements != default(Hashtable))
+            if (triggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
             {
                 triggerStatements.Clear();
-                triggerStatements = default(Hashtable);
+                triggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
             }
         }
 

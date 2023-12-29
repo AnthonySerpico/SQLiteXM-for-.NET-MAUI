@@ -71,7 +71,7 @@ namespace SQLiteXM
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
-                    if (SqlStatements.tableCreateStatements != default(Hashtable))
+                    if (SqlStatements.tableCreateStatements != default(Dictionary<string, TableDefinition>))
                     {
                         foreach (string key in SqlStatements.tableCreateStatements.Keys)
                         {
@@ -377,10 +377,10 @@ namespace SQLiteXM
         private static void applyAlterTableStatements(string key, Hashtable connectionMap)
         {
             SxmConnection sxmConnection = null;
-            ArrayList alterStatementsList = null;
+            List<AlterDefinition> alterStatementsList = null;
 
             if (SqlStatements.alterStatements != null)
-                alterStatementsList = SqlStatements.alterStatements[key] as ArrayList;
+                alterStatementsList = SqlStatements.alterStatements[key] as List<AlterDefinition>;
 
             if (alterStatementsList != null)
             {
@@ -538,7 +538,7 @@ namespace SQLiteXM
 
         internal static void applyTriggerTableStatements(Hashtable? connectionMap)
         {
-            ArrayList? triggerStatementsList = null;
+            List<TriggerDefinition>? triggerStatementsList = default(List<TriggerDefinition>);
 
             if (SqlStatements.triggerStatements != null)
             {
@@ -554,7 +554,7 @@ namespace SQLiteXM
                     if (sxmConnection != null)
                     {
                         List<string> installedTriggers = getAllTriggers(sxmConnection);
-                        triggerStatementsList = SqlStatements.triggerStatements[dbName] as ArrayList;
+                        triggerStatementsList = SqlStatements.triggerStatements[dbName] as List<TriggerDefinition>;
 
                         if (triggerStatementsList != null)
                         {
@@ -584,10 +584,10 @@ namespace SQLiteXM
 
         internal static void applyIndexTableStatements(string key, Hashtable connectionMap)
         {
-            ArrayList indexStatementsList = null;
+            List<IndexDefinition>? indexStatementsList = default(List<IndexDefinition>);
 
             if (SqlStatements.indexStatements != null)
-                indexStatementsList = SqlStatements.indexStatements[key] as ArrayList;
+                indexStatementsList = SqlStatements.indexStatements[key] as List<IndexDefinition>;
 
             if (indexStatementsList != null)
             {
@@ -671,7 +671,7 @@ namespace SQLiteXM
             }
         }
 
-        private static bool dropExists(ArrayList indexStatementsList, string indexName)
+        private static bool dropExists(List<IndexDefinition> indexStatementsList, string indexName)
         {
             foreach (IndexDefinition indexDefinition in indexStatementsList)
             {
@@ -685,7 +685,7 @@ namespace SQLiteXM
 
         internal static void addSynchID(string[] parts, SxmUTransaction sxmTransaction)
         {
-            string alterSQL = String.Format("ALTER TABLE {0} ADD COLUMN systemSynchID TEXT NOT NULL DEFAULT ''", parts[1]);
+            string alterSQL = String.Format("ALTER TABLE {0} ADD COLUMN synchId TEXT NOT NULL DEFAULT ''", parts[1]);
             sxmTransaction.executeAlterTable(alterSQL);
         }
 
@@ -726,7 +726,7 @@ namespace SQLiteXM
 
             //if (isTableInMap(databaseName, databaseTable, tableNamesMap) == false)
             {
-                string tableSQL = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT, dbName TEXT, tableName TEXT, action TEXT, systemSynchID TEXT)", databaseTable);
+                string tableSQL = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT, dbName TEXT, tableName TEXT, action TEXT, synchId TEXT)", databaseTable);
                 sxmTransaction.executeTableStatement(tableSQL);
                 ArrayList dbTableNames = tableNamesMap[databaseName] as ArrayList;
                 if (dbTableNames != default(ArrayList))
@@ -744,11 +744,11 @@ namespace SQLiteXM
 
             if (tableDefinition?.CloudSynch != Defines.NO_CLOUD_SYNCH)
             {
-                string tableSQL = String.Format("CREATE TRIGGER IF NOT EXISTS update{0} UPDATE ON {0} BEGIN INSERT INTO _systemCloudSynch (dbName, tableName, action, systemSynchID) VALUES ('{1}', '{0}', 'update', new.systemSynchID); END;", databaseTable, databaseName);
+                string tableSQL = String.Format("CREATE TRIGGER IF NOT EXISTS update{0} UPDATE ON {0} BEGIN INSERT INTO _systemCloudSynch (dbName, tableName, action, synchId) VALUES ('{1}', '{0}', 'update', new.synchId); END;", databaseTable, databaseName);
                 sxmTransaction.executeCreateTrigger(tableSQL);
                 if (tableDefinition?.CloudSynch == Defines.CLOUD_SYNCH)
                 {
-                    tableSQL = String.Format("CREATE TRIGGER IF NOT EXISTS delete{0} DELETE ON {0} BEGIN INSERT INTO _systemCloudSynch (dbName, tableName, action, systemSynchID) VALUES ('{1}', '{0}', 'delete', old.systemSynchID); END;", databaseTable, databaseName);
+                    tableSQL = String.Format("CREATE TRIGGER IF NOT EXISTS delete{0} DELETE ON {0} BEGIN INSERT INTO _systemCloudSynch (dbName, tableName, action, synchId) VALUES ('{1}', '{0}', 'delete', old.synchId); END;", databaseTable, databaseName);
                     sxmTransaction.executeCreateTrigger(tableSQL);
                 }
             }

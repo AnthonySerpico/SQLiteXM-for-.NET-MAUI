@@ -120,10 +120,10 @@ namespace SQLiteXM
                     List<object> synchIDPV = new List<object>();
 					synchIDPV.Add (synchID);
 					synchIDPV.Add (recordID);
-					executeNonQuery (String.Format ("UPDATE {0} SET systemSynchID = @p0 WHERE id = @p1", insertDefinition.TableName), synchIDPV);
+					executeNonQuery (String.Format ("UPDATE {0} SET synchId = @p0 WHERE id = @p1", insertDefinition.TableName), synchIDPV);
 					synchIDPV.RemoveAt (1);
 
-					executeNonQuery (String.Format ("UPDATE _systemCloudSynch SET action='insert' WHERE systemSynchID = @p0 "), synchIDPV);
+					executeNonQuery (String.Format ("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIDPV);
 				}
 			}
 			#pragma warning disable 0168
@@ -146,26 +146,26 @@ namespace SQLiteXM
 
 		private string? getSynchID (string tableName, long recordID)
 		{
-			string? systemSynchID = default(string);
+			string? synchId = default(string);
 
 			try
 			{
                 List<object> parameterList = new List<object>();
 				parameterList.Add (recordID);
 
-				executeQueryDirect (String.Format ("SELECT systemSynchID FROM {0} WHERE id = @p0 LIMIT 1", tableName), parameterList);
+				executeQueryDirect (String.Format ("SELECT synchId FROM {0} WHERE id = @p0 LIMIT 1", tableName), parameterList);
                 Dictionary<string, object?>? row = connection.getNextRow<Dictionary<string, object?>> ();
 
 				if (row != null && row.Count > 0) 
-					if (row.ContainsKey ("systemSynchID") == true)
-						systemSynchID = (string?)row ["systemSynchID"];
+					if (row.ContainsKey ("synchId") == true)
+						synchId = (string?)row ["synchId"];
 
 			}
 			#pragma warning disable 0168
 			catch (Exception doNothing) { /* If an error occurs reading the record, then do nothing. Assume synch ID does not exist. */ }
 			#pragma warning restore 0168
 
-			return systemSynchID;
+			return synchId;
 		}
 
 		public void executeQuery (string command, List<object> ParameterValues)

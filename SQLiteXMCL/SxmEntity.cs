@@ -569,7 +569,7 @@ namespace SQLiteXM
 
                 foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
                 {
-                    if (!columnNameAndType.ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("systemSynchID"))
+                    if (!columnNameAndType.ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
                     {
                         string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", this.GetType().Name, kvp.Key);
                         using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
