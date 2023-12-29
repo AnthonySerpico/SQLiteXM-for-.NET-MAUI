@@ -116,7 +116,6 @@ namespace SQLiteXM
 
     public class SxmEntity
     {
-        private bool mustReconcile = true;
         private static object lockObject = new object();
         private static string? insertGuid = default(string);
         private static string? updateGuid = default(string);
@@ -310,7 +309,7 @@ namespace SQLiteXM
             }
         }
 
-        protected void processtriggerAttributes()
+        private void processtriggerAttributes()
         {
             int conditionOffset = 0;
             string? triggerName = default(string);
@@ -393,7 +392,7 @@ namespace SQLiteXM
 
                         foreach (var triggerAttribute in customAttributes)
                         {
-                            if(!triggerNameList.Contains(triggerAttribute.triggerSql))
+                            if (!triggerNameList.Contains(triggerAttribute.triggerSql))
                             {
 
                             }
@@ -411,59 +410,53 @@ namespace SQLiteXM
 
         private void processIndexAttributes(IndexType indexType, List<string> existingIndexes)
         {
-            string extra = string.Empty;
+            string unique = string.Empty;
+            IIndexVars[]? firstArray = default(IIndexVars[]);
+            IIndexVars[]? secondArray = default(IIndexVars[]);
             List<string> indexSqlStatements = new List<string>();
             SxmConnection? sxmConnection = default(SxmConnection);
             IIndexVars[]? customAttributes = default(IIndexVars[]);
 
             if (indexType == IndexType.standard)
             {
-                IIndexVars[] firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
-                IIndexVars[] secondArray = standardIndexPropertyAttributesList?.ToArray();
-                if (secondArray == default(IIndexVars[]))
-                    secondArray = new IIndexVars[0];
-
-                customAttributes = new IIndexVars[firstArray.Length + secondArray.Length];
-                Array.Copy(firstArray, customAttributes, firstArray.Length);
-                Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
+                firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
+                secondArray = standardIndexPropertyAttributesList?.ToArray();
             }
 
             if (indexType == IndexType.unique)
             {
-                IIndexVars[] firstArray = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
-                IIndexVars[] secondArray = uniqueIndexPropertyAttributesList?.ToArray();
-                if (secondArray == default(IIndexVars[]))
-                    secondArray = new IIndexVars[0];
+                firstArray = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
+                secondArray = uniqueIndexPropertyAttributesList?.ToArray();
 
-                customAttributes = new IIndexVars[firstArray.Length + secondArray.Length];
-                Array.Copy(firstArray, customAttributes, firstArray.Length);
-                Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
-
-                extra = "UNIQUE";
+                unique = "UNIQUE";
             }
+
+            if (secondArray == default(IIndexVars[]))
+                secondArray = new IIndexVars[0];
+
+            customAttributes = new IIndexVars[firstArray.Length + secondArray.Length];
+            Array.Copy(firstArray, customAttributes, firstArray.Length);
+            Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
 
             try
             {
-                if (customAttributes != null && customAttributes.Length > 0)
+                foreach (var myAttribute in customAttributes)
                 {
-                    foreach (var myAttribute in customAttributes)
+                    if (!existingIndexes.Contains(myAttribute.indexName))
                     {
-                        if (!existingIndexes.Contains(myAttribute.indexName))
+                        string[] indexes = myAttribute.indexFields;
+                        string indexFields = string.Empty;
+                        int i = 0;
+                        foreach (string indexField in indexes)
                         {
-                            string[] indexes = myAttribute.indexFields;
-                            string indexFields = string.Empty;
-                            int i = 0;
-                            foreach (string indexField in indexes)
-                            {
-                                if (i == 0)
-                                    indexFields += indexField;
-                                else
-                                    indexFields += ", " + indexField;
-                                ++i;
-                            }
-
-                            indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", extra, myAttribute.indexName, this.GetType().Name, indexFields));
+                            if (i == 0)
+                                indexFields += indexField;
+                            else
+                                indexFields += ", " + indexField;
+                            ++i;
                         }
+
+                        indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", unique, myAttribute.indexName, this.GetType().Name, indexFields));
                     }
                 }
 
@@ -480,10 +473,8 @@ namespace SQLiteXM
                         }
                     }
 
-                    if (found == false)
-                    {
+                    if (!found)
                         indexSqlStatements.Add(string.Format("DROP INDEX {0}", indexName));
-                    }
                 }
 
                 if (indexSqlStatements.Count > 0)
@@ -568,7 +559,7 @@ namespace SQLiteXM
                         int offset = 0;
                         string? value = default(string);
 
-                        if((offset = kvp.Value.IndexOf(' ')) != -1)
+                        if ((offset = kvp.Value.IndexOf(' ')) != -1)
                             value = kvp.Value.Substring(0, offset);
                         else
                             value = kvp.Value;
@@ -691,7 +682,7 @@ namespace SQLiteXM
                     if (propertyAttribute.ContainsKey("RequiredNotNull"))
                     {
                         RequiredNotNull nn = (RequiredNotNull)propertyAttribute["RequiredNotNull"];
-                        if(nn.defaultValue != null)
+                        if (nn.defaultValue != null)
                             notNull = $" not null default {nn.defaultValue}";
                         else
                             notNull = " not null";
@@ -712,7 +703,7 @@ namespace SQLiteXM
                     }
 
                     Type? underlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
-                    if(underlyingType != null)
+                    if (underlyingType != null)
                     {
                         piType = underlyingType.Name;
                     }
