@@ -8,7 +8,6 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public IndexSource indexSource { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
@@ -16,7 +15,6 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public IndexSource indexSource { get; set; } = IndexSource.classAttribute;
 
         public CreateIndex(string[] indexFields)
         {
@@ -49,7 +47,6 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public IndexSource indexSource { get; set; } = IndexSource.propertiesAttribute;
 
         public IndexPropertyAttributes(string indexField)
         {
@@ -68,7 +65,6 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public IndexSource indexSource { get; set; } = IndexSource.classAttribute;
 
 
         public CreateUnique(string[] indexFields)
