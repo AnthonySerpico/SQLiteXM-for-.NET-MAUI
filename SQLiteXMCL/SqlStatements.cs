@@ -184,8 +184,11 @@ namespace SQLiteXM
 				alterStatements = default(Dictionary<string, List<AlterDefinition>>);
 			}
 
-			tableCreateStatements?.Clear ();
-			tableCreateStatements = default(Dictionary<string, TableDefinition>)!;
+            if (tableCreateStatements != default(Dictionary<string, TableDefinition>))
+            {
+                tableCreateStatements?.Clear();
+                tableCreateStatements = default(Dictionary<string, TableDefinition>)!;
+            }
 
 			if (indexStatements != default(Dictionary<string, List<IndexDefinition>>)) 
 			{
