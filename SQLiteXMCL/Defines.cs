@@ -24,7 +24,13 @@
 			processing
 		};
 
-		public enum IndexType
+		public enum IndexSource
+		{
+			propertiesAttribute,
+			classAttribute
+		}
+
+        public enum IndexType
         {
 			standard,
             standardAttribute,

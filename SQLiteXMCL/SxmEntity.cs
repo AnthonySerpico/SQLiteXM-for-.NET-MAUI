@@ -8,6 +8,7 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
+        public IndexSource indexSource { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
@@ -15,6 +16,7 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
+        public IndexSource indexSource { get; set; } = IndexSource.classAttribute;
 
         public CreateIndex(string[] indexFields)
         {
@@ -47,6 +49,7 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
+        public IndexSource indexSource { get; set; } = IndexSource.propertiesAttribute;
 
         public IndexPropertyAttributes(string indexField)
         {
@@ -65,6 +68,7 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
+        public IndexSource indexSource { get; set; } = IndexSource.classAttribute;
 
 
         public CreateUnique(string[] indexFields)
@@ -149,10 +153,14 @@ namespace SQLiteXM
                 {
                     createTable();
                     reconcile();
-                    processIndexAttributes(IndexType.standard);
-                    processIndexAttributes(IndexType.standardAttribute);
-                    processIndexAttributes(IndexType.unique);
-                    processIndexAttributes(IndexType.uniqueAttribute);
+
+                    List<string> existingIndexes = getIndexTableStatements(IndexType.standard);
+                    processIndexAttributes(IndexType.standard, existingIndexes);
+
+                    existingIndexes.Clear();
+                    existingIndexes = getIndexTableStatements(IndexType.unique);
+                    processIndexAttributes(IndexType.unique, existingIndexes);
+
                     processtriggerAttributes();
                 }
             }
@@ -417,32 +425,41 @@ namespace SQLiteXM
             }
         }
 
-        private void processIndexAttributes(IndexType indexType)
+        private void processIndexAttributes(IndexType indexType, List<string> existingIndexes)
         {
+            string extra = string.Empty;
             List<string> indexSqlStatements = new List<string>();
             SxmConnection? sxmConnection = default(SxmConnection);
-            string extra = string.Empty;
             IIndexVars[]? customAttributes = default(IIndexVars[]);
 
-            if (indexType == IndexType.unique)
+            if (indexType == IndexType.standard || indexType == IndexType.standardAttribute)
             {
-                customAttributes = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
-                extra = "UNIQUE";
+                IIndexVars[] firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
+                IIndexVars[] secondArray = standardIndexPropertyAttributesList?.ToArray();
+                if (secondArray == default(IIndexVars[]))
+                    secondArray = new IIndexVars[0];
+
+                customAttributes = new IIndexVars[firstArray.Length + secondArray.Length];
+                Array.Copy(firstArray, customAttributes, firstArray.Length);
+                Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
             }
-            if (indexType == IndexType.standard)
-                customAttributes = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
-            if (indexType == IndexType.standardAttribute)
-                customAttributes = standardIndexPropertyAttributesList?.ToArray();
-            if (indexType == IndexType.uniqueAttribute)
+
+            if (indexType == IndexType.unique  || indexType == IndexType.uniqueAttribute)
             {
-                customAttributes = uniqueIndexPropertyAttributesList?.ToArray();
+                IIndexVars[] firstArray = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
+                IIndexVars[] secondArray = uniqueIndexPropertyAttributesList?.ToArray();
+                if (secondArray == default(IIndexVars[]))
+                    secondArray = new IIndexVars[0];
+
+                customAttributes = new IIndexVars[firstArray.Length + secondArray.Length];
+                Array.Copy(firstArray, customAttributes, firstArray.Length);
+                Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
+
                 extra = "UNIQUE";
             }
 
             try
             {
-                List<string> existingIndexes = getIndexTableStatements(indexType);
-
                 if (customAttributes != null && customAttributes.Length > 0)
                 {
                     foreach (var myAttribute in customAttributes)
@@ -469,9 +486,9 @@ namespace SQLiteXM
                     {
                         bool found = false;
 
-                        foreach (var myAttribute in customAttributes)
+                        foreach (IIndexVars customAttribute in customAttributes)
                         {
-                            if (myAttribute.indexName.Equals(indexName))
+                            if (customAttribute.indexName.Equals(indexName) )
                             {
                                 found = true;
                                 break;
@@ -505,20 +522,14 @@ namespace SQLiteXM
 
                 if (indexType == IndexType.standardAttribute)
                 {
-                    if (standardIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
-                    {
-                        standardIndexPropertyAttributesList?.Clear();
+                    if (standardIndexPropertyAttributesList != default(List<IndexPropertyAttributes>))
                         standardIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
-                    }
                 }
 
                 if (indexType == IndexType.uniqueAttribute)
                 {
-                    if (uniqueIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
-                    {
-                        uniqueIndexPropertyAttributesList?.Clear();
+                    if (uniqueIndexPropertyAttributesList != default(List<IndexPropertyAttributes>))
                         uniqueIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
-                    }
                 }
             }
         }
@@ -536,15 +547,18 @@ namespace SQLiteXM
 
                     while (sxmConnection.nextRow() == true)
                     {
-                        if (indexType == IndexType.unique)
+                        string indexName = (string)sxmConnection.getValue("name");
+                        if (indexType == IndexType.unique || indexType == IndexType.uniqueAttribute)
                         {
                             if ((long)sxmConnection.getValue("unique") == 1)
-                                indexNames.Add((string)sxmConnection.getValue("name"));
+                                indexNames.Add(indexName);
                         }
                         if (indexType == IndexType.standard || indexType == IndexType.standardAttribute)
                         {
                             if ((long)sxmConnection.getValue("unique") == 0)
-                                indexNames.Add((string)sxmConnection.getValue("name"));
+                            {
+                                indexNames.Add(indexName);
+                            }
                         }
                     }
                 }
