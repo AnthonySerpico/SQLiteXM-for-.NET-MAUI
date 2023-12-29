@@ -714,7 +714,7 @@ namespace SQLiteXM
                         standardIndexPropertyAttributesList?.Add(new IndexPropertyAttributes(piName));
                     }
 
-                    if (propertyAttribute.ContainsKey("CreateUNique"))
+                    if (propertyAttribute.ContainsKey("CreateUnique"))
                     {
                         if (uniqueIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
                             uniqueIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
