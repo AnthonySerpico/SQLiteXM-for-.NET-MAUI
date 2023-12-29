@@ -148,7 +148,6 @@ namespace SQLiteXM
                 if (columnNameAndType.Count == 0)
                 {
                     createTable();
-                    reconcile();
 
                     List<string> existingIndexes = getIndexTableStatements(IndexType.standard);
                     processIndexAttributes(IndexType.standard, existingIndexes);
@@ -162,21 +161,6 @@ namespace SQLiteXM
             }
         }
 
-        public async Task SaveOrUpdate()
-        {
-            if (!doesRecordExist())
-                await Save();
-            else
-                await Update();
-        }
-
-        public async Task SaveOrUpdate(SxmTransaction sxmTrans)
-        {
-            if (!doesRecordExist())
-                await Save(sxmTrans);
-            else
-                await Update(sxmTrans);
-        }
 
         public async Task Save(string sqlStatementName)
         {
@@ -220,26 +204,30 @@ namespace SQLiteXM
 
         public async Task Save()
         {
-            buildSaveSql();
-            await Save(insertGuid);
+            if (!doesRecordExist())
+            {
+                buildSaveSql();
+                await Save(insertGuid);
+            }
+            else
+            {
+                buildUpdateSql();
+                await Update(updateGuid);
+            }
         }
 
         public async Task Save(SxmTransaction sxmTrans)
         {
-            buildSaveSql();
-            await Save(insertGuid, sxmTrans);
-        }
-
-        public async Task Update()
-        {
-            buildUpdateSql();
-            await Update(updateGuid);
-        }
-
-        public async Task Update(SxmTransaction sxmTrans)
-        {
-            buildUpdateSql();
-            await Update(updateGuid, sxmTrans);
+            if (!doesRecordExist())
+            {
+                buildSaveSql();
+                await Save(insertGuid, sxmTrans);
+            }
+            else
+            {
+                buildUpdateSql();
+                await Update(updateGuid, sxmTrans);
+            }
         }
 
         public async Task Delete()
@@ -428,7 +416,7 @@ namespace SQLiteXM
             SxmConnection? sxmConnection = default(SxmConnection);
             IIndexVars[]? customAttributes = default(IIndexVars[]);
 
-            if (indexType == IndexType.standard || indexType == IndexType.standardAttribute)
+            if (indexType == IndexType.standard)
             {
                 IIndexVars[] firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
                 IIndexVars[] secondArray = standardIndexPropertyAttributesList?.ToArray();
@@ -440,7 +428,7 @@ namespace SQLiteXM
                 Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
             }
 
-            if (indexType == IndexType.unique  || indexType == IndexType.uniqueAttribute)
+            if (indexType == IndexType.unique)
             {
                 IIndexVars[] firstArray = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
                 IIndexVars[] secondArray = uniqueIndexPropertyAttributesList?.ToArray();
@@ -516,13 +504,13 @@ namespace SQLiteXM
                 if (sxmConnection != null)
                     sxmConnection.destroyConnection();
 
-                if (indexType == IndexType.standardAttribute)
+                if (indexType == IndexType.standard)
                 {
                     if (standardIndexPropertyAttributesList != default(List<IndexPropertyAttributes>))
                         standardIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
                 }
 
-                if (indexType == IndexType.uniqueAttribute)
+                if (indexType == IndexType.unique)
                 {
                     if (uniqueIndexPropertyAttributesList != default(List<IndexPropertyAttributes>))
                         uniqueIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
@@ -544,17 +532,16 @@ namespace SQLiteXM
                     while (sxmConnection.nextRow() == true)
                     {
                         string indexName = (string)sxmConnection.getValue("name");
-                        if (indexType == IndexType.unique || indexType == IndexType.uniqueAttribute)
+
+                        if (indexType == IndexType.unique)
                         {
                             if ((long)sxmConnection.getValue("unique") == 1)
                                 indexNames.Add(indexName);
                         }
-                        if (indexType == IndexType.standard || indexType == IndexType.standardAttribute)
+                        if (indexType == IndexType.standard)
                         {
                             if ((long)sxmConnection.getValue("unique") == 0)
-                            {
                                 indexNames.Add(indexName);
-                            }
                         }
                     }
                 }
@@ -691,6 +678,8 @@ namespace SQLiteXM
                 SxmInit.createTable(this.databaseName, this.GetType().Name);
                 SqlStatements.removeTableDefinitions();
             }
+            else
+                reconcile();
         }
 
         private void getColumnNamesAndDataTypes()

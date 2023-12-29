@@ -24,18 +24,10 @@
 			processing
 		};
 
-		public enum IndexSource
-		{
-			propertiesAttribute,
-			classAttribute
-		}
-
         public enum IndexType
         {
 			standard,
-            standardAttribute,
-            unique,
-            uniqueAttribute,
+            unique
         }
 
         // Database operation types. 
