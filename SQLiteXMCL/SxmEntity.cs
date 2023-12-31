@@ -132,7 +132,7 @@ namespace SQLiteXM
 
     internal class ForeignKeyAttributes
     {
-        public string fieldName { get; set; }  
+        public string fieldName { get; set; }
         public string foreignTable { get; set; }
     }
 
@@ -335,101 +335,95 @@ namespace SQLiteXM
 
         private void processtriggerAttributes()
         {
-            int conditionOffset = 0;
-            string? triggerName = default(string);
-            List<string> triggerNameList = new List<string>();
+            Dictionary<string, string> newTriggerNameList = new Dictionary<string, string>();
 
             var customAttributes = (CreateTrigger[])this.GetType().GetCustomAttributes(typeof(CreateTrigger), true);
 
-            if (customAttributes != null && customAttributes.Length > 0)
+            if (customAttributes.Length > 0)
             {
                 foreach (var myAttribute in customAttributes)
                 {
                     string? triggerSql = myAttribute.triggerSql;
+                    string? triggerToBeAdded = default(string?);
 
+                    if ((triggerToBeAdded = extractTriggerName(triggerSql)) != default(string?))
+                        newTriggerNameList.Add(triggerToBeAdded, triggerSql);
+                }
 
-                    if ((conditionOffset = triggerSql.IndexOf(" before ", StringComparison.OrdinalIgnoreCase)) == -1)
-                    {
-                        if ((conditionOffset = triggerSql.IndexOf(" after ", StringComparison.OrdinalIgnoreCase)) == -1)
-                        {
-                            conditionOffset = triggerSql.IndexOf(" instead ", StringComparison.OrdinalIgnoreCase);
-                        }
-                    }
-                    if (conditionOffset == -1)
-                        return;
-
-                    int schemaDivider = triggerSql.IndexOf('.');
-                    if (schemaDivider != -1 && schemaDivider < conditionOffset)
-                    {
-                        int endTableName = triggerSql.IndexOf(' ', schemaDivider);
-                        ++schemaDivider;
-                        if (triggerSql[endTableName - 1].Equals("'"))
-                            --endTableName;
-
-                        triggerName = triggerSql.Substring(schemaDivider, endTableName - schemaDivider);
-                    }
-                    else
-                    {
-                        --conditionOffset;
-                        while (triggerSql[conditionOffset] == ' ')
-                            --conditionOffset;
-
-                        int startTableName = conditionOffset;
-                        if (!triggerSql[conditionOffset].Equals("'"))
-                            ++conditionOffset;
-
-                        while (triggerSql[startTableName] != ' ')
-                            --startTableName;
-                        ++startTableName;
-
-                        if (triggerSql[startTableName].Equals("'"))
-                            ++startTableName;
-
-                        triggerName = triggerSql.Substring(startTableName, conditionOffset - startTableName);
-                    }
-
-                    if (triggerName == default(string))
-                        return;
-
-                    triggerNameList.Add(triggerName);
-                    SxmConnection? sxmConnection = new SxmConnection(databaseName);
+                if (newTriggerNameList.Count > 0)
+                {
                     try
                     {
-                        List<string> triggerList = SxmInit.getAllTriggers(sxmConnection);
-                        if (!triggerList.Contains(triggerName))
+                        SxmConnection? sxmConnection = new SxmConnection(databaseName);
+                        List<string> ExistingTriggers = SxmInit.getAllTriggers(sxmConnection);
+
+                        using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
                         {
-                            using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                            foreach (KeyValuePair<string, string> kvp in newTriggerNameList)
+                                if (!ExistingTriggers.Contains(kvp.Key))
+                                    sxmTransaction.executeCreateTrigger(kvp.Value);
+
+
+                            foreach (string existingTrigger in ExistingTriggers)
                             {
-                                sxmTransaction.executeCreateTrigger(triggerSql);
-
-                                foreach (var triggerAttribute in customAttributes)
-                                {
-                                    if (!triggerNameList.Contains(triggerAttribute.triggerSql))
-                                    {
-                                        sxmTransaction.executeCreateTrigger(string.Format("DROP TRIGGER {0}", triggerAttribute.triggerSql));
-                                    }
-                                }
-
-                                sxmTransaction.commitTransaction();
+                                if (!newTriggerNameList.ContainsKey(existingTrigger))
+                                    sxmTransaction.executeCreateTrigger(string.Format("DROP TRIGGER {0}", existingTrigger));
                             }
-                        }
 
-                        foreach (var triggerAttribute in customAttributes)
-                        {
-                            if (!triggerNameList.Contains(triggerAttribute.triggerSql))
-                            {
-
-                            }
+                            sxmTransaction.commitTransaction();
                         }
                     }
                     catch (Exception ex) { }
-                    finally
-                    {
-                        if (sxmConnection != null)
-                            sxmConnection.destroyConnection();
-                    }
                 }
             }
+        }
+
+        private string? extractTriggerName(string triggerSql)
+        {
+            int conditionOffset = 0;
+            string? triggerToBeAdded = default(string);
+
+            if ((conditionOffset = triggerSql.IndexOf(" before ", StringComparison.OrdinalIgnoreCase)) == -1)
+            {
+                if ((conditionOffset = triggerSql.IndexOf(" after ", StringComparison.OrdinalIgnoreCase)) == -1)
+                {
+                    conditionOffset = triggerSql.IndexOf(" instead ", StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            if (conditionOffset == -1)
+                return triggerToBeAdded;
+
+            int schemaDivider = triggerSql.IndexOf('.');
+            if (schemaDivider != -1 && schemaDivider < conditionOffset)
+            {
+                int endTableName = triggerSql.IndexOf(' ', schemaDivider);
+                ++schemaDivider;
+                if (triggerSql[endTableName - 1].Equals("'"))
+                    --endTableName;
+
+                triggerToBeAdded = triggerSql.Substring(schemaDivider, endTableName - schemaDivider);
+            }
+            else
+            {
+                --conditionOffset;
+                while (triggerSql[conditionOffset] == ' ')
+                    --conditionOffset;
+
+                int startTableName = conditionOffset;
+                if (!triggerSql[conditionOffset].Equals("'"))
+                    ++conditionOffset;
+
+                while (triggerSql[startTableName] != ' ')
+                    --startTableName;
+                ++startTableName;
+
+                if (triggerSql[startTableName].Equals("'"))
+                    ++startTableName;
+
+                triggerToBeAdded = triggerSql.Substring(startTableName, conditionOffset - startTableName);
+            }
+
+            return triggerToBeAdded;
         }
 
         private void processIndexAttributes(IndexType indexType, List<string> existingIndexes)
@@ -693,7 +687,7 @@ namespace SQLiteXM
 
                 if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
                 {
-                    foreach(ForeignKeyAttributes attribute in foreignKeyAttributeList)
+                    foreach (ForeignKeyAttributes attribute in foreignKeyAttributeList)
                         tableStatement += $", FOREIGN KEY({attribute.fieldName}) REFERENCES {attribute.foreignTable}(id)";
 
                     foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
@@ -756,7 +750,7 @@ namespace SQLiteXM
                         {
                             fieldName = piName,
                             foreignTable = fk.foreignTable,
-                        } );
+                        });
                     }
 
                     Type? underlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
