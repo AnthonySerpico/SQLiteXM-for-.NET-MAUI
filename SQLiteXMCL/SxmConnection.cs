@@ -132,6 +132,8 @@ namespace SQLiteXM
                 SQLitePCL.Batteries.Init();
                 //SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
                 dbConn.Open();
+
+                this.executeQuery("PRAGMA foreign_keys = ON", default(List<object>));
             }
 #pragma warning disable 0168
             catch (SxmException ex)

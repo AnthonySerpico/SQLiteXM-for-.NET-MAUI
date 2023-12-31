@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using static SQLiteXM.Defines;
 
@@ -105,13 +107,33 @@ namespace SQLiteXM
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    public class CreateForeignKey : Attribute
+    {
+        public string foreignTable { get; set; }
+
+        public CreateForeignKey(string foreignTable)
+        {
+            this.foreignTable = foreignTable;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
     public class RequiredNotNull : Attribute
     {
-        public object? defaultValue { get; set; } = default(object?);
+        public object defaultValue { get; set; }
 
-        public RequiredNotNull()
+        public RequiredNotNull(object defaultValue)
         {
+            this.defaultValue = defaultValue;
+            if (defaultValue == null)
+                throw new ArgumentNullException("RequiredNotNull", "For fields with the attribute 'RequiredNotNull', the default value for the field cannot be null.");
         }
+    }
+
+    internal class ForeignKeyAttributes
+    {
+        public string fieldName { get; set; }  
+        public string foreignTable { get; set; }
     }
 
     public class SxmEntity
@@ -124,6 +146,7 @@ namespace SQLiteXM
         private static List<IndexPropertyAttributes>? uniqueIndexPropertyAttributesList;
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private static Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
+        private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
         public virtual long id { get; set; }
         public virtual string synchId { get; set; }
@@ -146,6 +169,8 @@ namespace SQLiteXM
 
                 if (columnNameAndType.Count == 0)
                 {
+                    getColumnNamesAndDataTypes();
+
                     createTable();
 
                     List<string> existingStandardIndexes = new List<string>();
@@ -159,7 +184,6 @@ namespace SQLiteXM
                 }
             }
         }
-
 
         public async Task Save(string sqlStatementName)
         {
@@ -550,6 +574,20 @@ namespace SQLiteXM
                     if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
                     {
                         string alterDefinition = string.Format("ALTER TABLE {0} ADD {1} {2}", this.GetType().Name, kvp.Key, kvp.Value);
+
+                        if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
+                        {
+                            foreach (ForeignKeyAttributes attribute in foreignKeyAttributeList)
+                            {
+                                if (kvp.Key.Equals(attribute.fieldName))
+                                {
+                                    alterDefinition += $" CONSTRAINT fk_{attribute.fieldName} REFERENCES {attribute.foreignTable}(id)";
+                                    foreignKeyAttributeList.Remove(attribute);
+                                    break;
+                                }
+                            }
+                        }
+
                         using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
                         {
                             sxmTransaction1.executeAlterTable(alterDefinition);
@@ -563,6 +601,7 @@ namespace SQLiteXM
                             value = kvp.Value.Substring(0, offset);
                         else
                             value = kvp.Value;
+
                         SxmInit.addColumnNameType(this.GetType().Name, kvp.Key, value);
                     }
                 }
@@ -645,14 +684,20 @@ namespace SQLiteXM
 
         private void createTable()
         {
-            getColumnNamesAndDataTypes();
-
             if (!SxmInit.doesTableExist(this.GetType().Name, default(SxmConnection)))
             {
                 string tableStatement = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT", this.GetType().Name);
 
                 foreach (KeyValuePair<string, string> kvp in columnNameAndType)
                     tableStatement += string.Format(", {0} {1}", kvp.Key, kvp.Value);
+
+                if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
+                {
+                    foreach(ForeignKeyAttributes attribute in foreignKeyAttributeList)
+                        tableStatement += $", FOREIGN KEY({attribute.fieldName}) REFERENCES {attribute.foreignTable}(id)";
+
+                    foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
+                }
 
                 tableStatement += ")";
 
@@ -700,6 +745,18 @@ namespace SQLiteXM
                         if (uniqueIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
                             uniqueIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
                         uniqueIndexPropertyAttributesList?.Add(new IndexPropertyAttributes(piName));
+                    }
+                    if (propertyAttribute.ContainsKey("CreateForeignKey"))
+                    {
+                        CreateForeignKey fk = (CreateForeignKey)propertyAttribute["CreateForeignKey"];
+
+                        if (foreignKeyAttributeList == default(List<ForeignKeyAttributes>))
+                            foreignKeyAttributeList = new List<ForeignKeyAttributes>();
+                        foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
+                        {
+                            fieldName = piName,
+                            foreignTable = fk.foreignTable,
+                        } );
                     }
 
                     Type? underlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
