@@ -14,7 +14,7 @@ namespace SQLiteXM
                                                                                                                                                where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
-            if(statementType != SqlStatementType.insert)
+            if (statementType != SqlStatementType.insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatement<T, TResult>(sqlStatementName, userObjectParameters, dbName);
             return select[0];
@@ -62,13 +62,13 @@ namespace SQLiteXM
 
 
         /************************************************************************* SELECT ********************************************************************/
-        public static async Task<List<M>> PerformSelect<T, M>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
-                                                                                                                                         where M : class, new()
+        public static async Task<List<TResult>> PerformSelect<T, TResult>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
+                                                                                                                                                     where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatement<T, M>(sqlStatementName, userObjectParameters, dbName);
+            return await RunStatement<T, TResult>(sqlStatementName, userObjectParameters, dbName);
         }
         public static async Task<List<Dictionary<string, object?>>> PerformSelect<T>(string sqlStatementName, T userObjectParameters, string? dbName = default) where T : class, new()
         {

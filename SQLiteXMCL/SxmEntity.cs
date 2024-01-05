@@ -139,13 +139,15 @@ namespace SQLiteXM
     public class SxmEntity
     {
         private static object lockObject = new object();
-        private static string? insertGuid = default(string);
-        private static string? updateGuid = default(string);
-        private static string? deleteGuid = default(string);
-        private static List<IndexPropertyAttributes>? standardIndexPropertyAttributesList;
-        private static List<IndexPropertyAttributes>? uniqueIndexPropertyAttributesList;
+
+        private  string? insertGuid = default(string);
+        private  string? updateGuid = default(string);
+        private  string? deleteGuid = default(string);
+        private  List<IndexPropertyAttributes>? standardIndexPropertyAttributesList;
+        private  List<IndexPropertyAttributes>? uniqueIndexPropertyAttributesList;
+        private  Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
+
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
-        private static Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
         public virtual long id { get; set; }
@@ -354,15 +356,14 @@ namespace SQLiteXM
                 {
                     try
                     {
-                        SxmConnection? sxmConnection = new SxmConnection(databaseName);
-                        List<string> ExistingTriggers = SxmInit.getAllTriggers(sxmConnection);
 
-                        using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                        using (SxmUTransaction sxmTransaction = new SxmUTransaction(new SxmConnection(databaseName)))
                         {
+                            List<string> ExistingTriggers = SxmInit.getAllTriggers(sxmTransaction.Connection);
+
                             foreach (KeyValuePair<string, string> kvp in newTriggerNameList)
                                 if (!ExistingTriggers.Contains(kvp.Key))
                                     sxmTransaction.executeCreateTrigger(kvp.Value);
-
 
                             foreach (string existingTrigger in ExistingTriggers)
                             {
@@ -497,8 +498,7 @@ namespace SQLiteXM
 
                 if (indexSqlStatements.Count > 0)
                 {
-                    sxmConnection = new SxmConnection(databaseName);
-                    using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
+                    using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(new SxmConnection(databaseName)))
                     {
                         foreach (string indexStatement in indexSqlStatements)
                             sxmTransaction1.executeIndex(indexStatement);
@@ -510,9 +510,6 @@ namespace SQLiteXM
             catch (Exception ex) { }
             finally
             {
-                if (sxmConnection != null)
-                    sxmConnection.destroyConnection();
-
                 if (indexType == IndexType.standard)
                 {
                     if (standardIndexPropertyAttributesList != default(List<IndexPropertyAttributes>))
@@ -529,19 +526,18 @@ namespace SQLiteXM
 
         private void getIndexTableStatements(ref List<string> existingStandardIndexes, ref List<string> existingUniqueIndexes)
         {
-            SxmConnection sxmConnection = new SxmConnection(databaseName);
 
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(new SxmConnection(databaseName)))
                 {
-                    sxmConnection.executeQuery(String.Format("PRAGMA index_list({0})", this.GetType().Name), null as List<object>);
+                    sxmTransaction.Connection.executeQuery(String.Format("PRAGMA index_list({0})", this.GetType().Name), null as List<object>);
 
-                    while (sxmConnection.nextRow() == true)
+                    while (sxmTransaction.Connection.nextRow() == true)
                     {
-                        string indexName = (string)sxmConnection.getValue("name");
+                        string indexName = (string)sxmTransaction.Connection.getValue("name");
 
-                        if ((long)sxmConnection.getValue("unique") == 1)
+                        if ((long)sxmTransaction.Connection.getValue("unique") == 1)
                             existingUniqueIndexes.Add(indexName);
                         else
                             existingStandardIndexes.Add(indexName);
@@ -551,8 +547,6 @@ namespace SQLiteXM
             catch (Exception ex) { }
             finally
             {
-                if (sxmConnection != null)
-                    sxmConnection.destroyConnection();
             }
         }
 
@@ -560,7 +554,6 @@ namespace SQLiteXM
         {
             Dictionary<string, string> dbTableColumnNameAndType = SxmInit.getTableColumnNames(databaseName, this.GetType().Name);
 
-            SxmConnection sxmConnection = new SxmConnection(databaseName);
             try
             {
                 foreach (KeyValuePair<string, string> kvp in columnNameAndType)
@@ -582,7 +575,7 @@ namespace SQLiteXM
                             }
                         }
 
-                        using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
+                        using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(new SxmConnection(databaseName)))
                         {
                             sxmTransaction1.executeAlterTable(alterDefinition);
                             sxmTransaction1.commitTransaction();
@@ -605,7 +598,7 @@ namespace SQLiteXM
                     if (!columnNameAndType.ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
                     {
                         string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", this.GetType().Name, kvp.Key);
-                        using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(sxmConnection))
+                        using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(new SxmConnection(databaseName)))
                         {
                             sxmTransaction1.executeAlterTable(alterDefinition);
                             sxmTransaction1.commitTransaction();
@@ -618,14 +611,12 @@ namespace SQLiteXM
             catch { }
             finally
             {
-                if (sxmConnection != null)
-                    sxmConnection.destroyConnection();
             }
         }
 
         private bool doesRecordExist()
         {
-            SxmConnection? sxmConnection = null;
+            SxmConnection? sxmConnection = default(SxmConnection);
             try
             {
                 if (id > 0)
@@ -642,7 +633,7 @@ namespace SQLiteXM
             }
             finally
             {
-                if (sxmConnection != null)
+                if (sxmConnection != default(SxmConnection))
                     sxmConnection.destroyConnection();
             }
 
@@ -716,7 +707,7 @@ namespace SQLiteXM
                 string notNull = string.Empty;
                 string? columnType = default(string);
 
-                if (!piName.Equals("id") && !piName.Equals("synchId") && !propertyAttribute.ContainsKey("Exclude"))
+                if (!piName.Equals("id") && !piName.Equals("synchId") && propertyAttribute.ContainsKey("ColumnAttribute"))
                 {
                     if (propertyAttribute.ContainsKey("RequiredNotNull"))
                     {
@@ -796,7 +787,7 @@ namespace SQLiteXM
                         columnType = "text";
 
                     else if (piType == typeof(Guid).Name)
-                        columnType = "text";
+                        columnType = "Guid";
 
                     else if (piType == typeof(decimal).Name)  // Large values will overflow unless this is defined as text.
                         columnType = "text";

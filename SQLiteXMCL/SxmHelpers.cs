@@ -91,7 +91,7 @@ namespace SQLiteXM
                             }
 
                             if (piType == typeof(int).Name)
-                                pi.SetValue(userObject, (int)(long)kvp.Value);
+                                pi.SetValue(userObject, (int)(int)kvp.Value);
 
                             else if (piType == typeof(long).Name)
                                 pi.SetValue(userObject, (long)kvp.Value);
@@ -109,7 +109,7 @@ namespace SQLiteXM
                                 pi.SetValue(userObject, (ushort)(long)kvp.Value);
 
                             else if (piType == typeof(uint).Name)
-                                pi.SetValue(userObject, (uint)(long)kvp.Value);
+                                pi.SetValue(userObject, (uint)(uint)kvp.Value);
 
                             else if (piType == typeof(sbyte).Name)
                                 pi.SetValue(userObject, (sbyte)(long)kvp.Value);
@@ -121,7 +121,7 @@ namespace SQLiteXM
                                 pi.SetValue(userObject, (double)kvp.Value);
 
                             else if (piType == typeof(Guid).Name)
-                                pi.SetValue(userObject, Guid.Parse((string)kvp.Value));
+                                pi.SetValue(userObject, (Guid)kvp.Value);
 
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
@@ -257,7 +257,7 @@ namespace SQLiteXM
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("o"));
 
                                 else if (kvp.Value.ToLower().Equals("dateonly"))
-                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).DayNumber);
+                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(decimal).Name)  // Is the data type for the column in the user object a decimal?

@@ -1,6 +1,5 @@
 ﻿using System.Data.Common;
 using System.Collections;
-using Microsoft.Data.Sqlite;
 
 namespace SQLiteXM
 {
@@ -51,10 +50,10 @@ namespace SQLiteXM
             get { return databaseName; }
         }
         private DbCommand connCommand;
-        private SqliteConnection dbConn;
+        private System.Data.SQLite.SQLiteConnection dbConn;
         private string databaseFolderPath;
         private DbDataReader connDataReader;
-        private SqliteTransaction? dbConnTransaction;
+        private System.Data.SQLite.SQLiteTransaction? dbConnTransaction;
 
         static private string? implicitDatabaseName;
         static internal string? ImplicitDatabaseName
@@ -63,13 +62,48 @@ namespace SQLiteXM
         }
         private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
-        public SxmConnection(string? databaseName, bool transient = false)
+        public SxmConnection(string? databaseName, bool createConnection = true, bool transient = false)
         {
+            DatabaseDescriptor? databaseDescriptor = default(DatabaseDescriptor);
             Environment.SpecialFolder logfileFolder;
             string logfileName;
             int logfileMaxSize;
             bool noLog;
 
+            try  // We use a try-catch for the finally block. The unlock must happen.
+            {
+                databaseDescriptor = initializeDbName(databaseName, transient);
+
+                // The descriptor is locked in order to guarantee that it is not in an indeterminate state.
+                databaseDescriptor?.lockDescriptor();
+                logfileName = databaseDescriptor.logfileName;
+                logfileFolder = databaseDescriptor.logfileFolder;
+                logfileMaxSize = databaseDescriptor.logfileMaxSize;
+                noLog = databaseDescriptor.noLog;
+            }
+#pragma warning disable 0168
+            catch (SxmException ex)
+#pragma warning restore 0168
+            {
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                throw new SxmException(ex);
+            }
+            finally
+            {
+                // Unlock the descriptor as soon as possible.
+                databaseDescriptor?.unlockDescriptor();
+            }
+
+            logger = new Logging(logfileName, logfileFolder, logfileMaxSize, noLog);
+            if (createConnection)
+                createNewConnection();
+        }
+
+        private DatabaseDescriptor? initializeDbName(string? databaseName, bool transient)
+        {
             if (databaseName == null)
             {
                 if (SxmConnection.implicitDatabaseName == null)
@@ -93,33 +127,17 @@ namespace SQLiteXM
             this.transient = transient;
             this.databaseName = databaseName!;
             databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
-            try  // We use a try-catch for the finally block. The unlock must happen.
-            {
-                // The descriptor is locked in order to guarantee that it is not in an indeterminate state.
-                databaseDescriptor.lockDescriptor();
-                logfileName = databaseDescriptor.logfileName;
-                logfileFolder = databaseDescriptor.logfileFolder;
-                logfileMaxSize = databaseDescriptor.logfileMaxSize;
-                noLog = databaseDescriptor.noLog;
-            }
-#pragma warning disable 0168
-            catch (SxmException ex)
-#pragma warning restore 0168
-            {
-                throw;
-            }
-            catch (System.Exception ex)
-            {
-                throw new SxmException(ex);
-            }
-            finally
-            {
-                // Unlock the descriptor as soon as possible.
-                databaseDescriptor.unlockDescriptor();
-            }
 
-            logger = new Logging(logfileName, logfileFolder, logfileMaxSize, noLog);
-            createNewConnection();
+            return databaseDescriptor;
+        }
+
+        internal static string getConnectionString(string? databaseName = default(string))
+        {
+            SxmConnection sxmConn = new SxmConnection(databaseName, createConnection: false);
+
+            string pathToDatabase = Path.Combine(sxmConn.databaseFolderPath, sxmConn.databaseName);
+            string connectionString = String.Format("Data Source={0}", pathToDatabase + ";" + " DateTimeFormat = Ticks; Read Only=False;");
+            return connectionString;
         }
 
         private void createNewConnection()
@@ -127,10 +145,8 @@ namespace SQLiteXM
             try
             {
                 string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
-                string connectionString = String.Format("Data Source={0}", pathToDatabase);
-                dbConn = new SqliteConnection(connectionString);
-                SQLitePCL.Batteries.Init();
-                //SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
+                string connectionString = String.Format("Data Source={0}", pathToDatabase + ";" + " DateTimeFormat = Ticks");
+                dbConn = new System.Data.SQLite.SQLiteConnection(connectionString);
                 dbConn.Open();
 
                 this.executeQuery("PRAGMA foreign_keys = ON", default(List<object>));
@@ -224,15 +240,15 @@ namespace SQLiteXM
                     else
                         dbConnTransaction.Rollback();
 
-                    dbConnTransaction = default(SqliteTransaction);
+                    dbConnTransaction = default(System.Data.SQLite.SQLiteTransaction);
                 }
-                catch (SqliteException ex)
+                catch (System.Data.SQLite.SQLiteException ex)
                 {
                     logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                     //if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
 
                     if (commitFlag == SQLiteXM.Defines.commitTransaction)
-                        sqLiteErrorCode = (SQLiteErrorCode)ex.SqliteErrorCode;
+                        sqLiteErrorCode = (SQLiteErrorCode)ex.ErrorCode;
                     else
                         throw new SxmException(ex);
                 }
@@ -254,7 +270,7 @@ namespace SQLiteXM
 
                 dbConn.Close();
                 dbConn.Dispose();
-                dbConn = default(SqliteConnection);
+                dbConn = default(System.Data.SQLite.SQLiteConnection);
             }
         }
 
@@ -364,7 +380,7 @@ namespace SQLiteXM
                     return;
                 }
 
-                if (dbParametersDataType == DbParametersDataType.list )
+                if (dbParametersDataType == DbParametersDataType.list)
                 {
                     int cntr = 0;
 
@@ -418,9 +434,9 @@ namespace SQLiteXM
                 }
 
             }
-            catch (SqliteException ex)
+            catch (System.Data.SQLite.SQLiteException ex)
             {
-                if (ex.SqliteErrorCode == (int)SQLiteErrorCode.Busy)
+                if (ex.ErrorCode == (int)SQLiteErrorCode.Busy)
                 {
                     logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 }
