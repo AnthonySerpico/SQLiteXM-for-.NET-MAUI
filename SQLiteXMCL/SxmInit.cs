@@ -176,8 +176,7 @@ namespace SQLiteXM
             catch (System.Exception) { }
             finally
             {
-                if (sxmConnection != default)
-                    sxmConnection.destroyConnection();
+                sxmConnection?.destroyConnection();
             }
 
             return versionNumber;
@@ -198,8 +197,7 @@ namespace SQLiteXM
             catch (System.Exception) { }
             finally
             {
-                if (sxmConnection != default)
-                    sxmConnection.destroyConnection();
+                sxmConnection?.destroyConnection();
             }
         }
 
@@ -218,8 +216,7 @@ namespace SQLiteXM
             catch (System.Exception) { }
             finally
             {
-                if (sxmConnection != default)
-                    sxmConnection.destroyConnection();
+                sxmConnection?.destroyConnection();
             }
         }
 
@@ -309,8 +306,7 @@ namespace SQLiteXM
             }
             finally
             {
-                if (sxmConnection != null)
-                    sxmConnection.destroyConnection();
+                sxmConnection?.destroyConnection();
             }
         }
 
@@ -335,8 +331,7 @@ namespace SQLiteXM
             }
             finally 
             {
-                if (connectionCreated)
-                    sxmConnection.destroyConnection();
+                sxmConnection?.destroyConnection();
              }
 
             return false;
@@ -355,6 +350,7 @@ namespace SQLiteXM
                     sxmTransaction.executeTableStatement(tableDefinition.TableSQL);
                     sxmTransaction.executeTableStatement(string.Format("DROP TRIGGER IF EXISTS update{0}", parts[1]));
                     sxmTransaction.executeTableStatement(string.Format("DROP TRIGGER IF EXISTS delete{0}", parts[1]));
+
                     sxmTransaction.commitTransaction();
                 }
             }

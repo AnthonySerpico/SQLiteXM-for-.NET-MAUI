@@ -54,6 +54,8 @@ namespace SQLiteXM
         private string databaseFolderPath;
         private DbDataReader connDataReader;
         private System.Data.SQLite.SQLiteTransaction? dbConnTransaction;
+        private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
+        private static string SQLiteConnString = "Data Source={0}; DateTimeFormat = Ticks; Read Only=False;";
 
         static private string? implicitDatabaseName;
         static internal string? ImplicitDatabaseName
@@ -104,6 +106,21 @@ namespace SQLiteXM
 
         private DatabaseDescriptor? initializeDbName(string? databaseName, bool transient)
         {
+            databaseName = resolveDatabaseName(databaseName);
+
+            DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
+            if (databaseDescriptor == null)
+                throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName!));
+
+            this.transient = transient;
+            this.databaseName = databaseName!;
+            databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+
+            return databaseDescriptor;
+        }
+
+        private static string resolveDatabaseName(string? databaseName)
+        {
             if (databaseName == null)
             {
                 if (SxmConnection.implicitDatabaseName == null)
@@ -118,25 +135,26 @@ namespace SQLiteXM
                 databaseName = SxmConnection.implicitDatabaseName;
             }
 
-            DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
-            if (databaseDescriptor == null)
-            {
-                throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName!));
-            }
-
-            this.transient = transient;
-            this.databaseName = databaseName!;
-            databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
-
-            return databaseDescriptor;
+            return databaseName;
         }
 
         internal static string getConnectionString(string? databaseName = default(string))
         {
-            SxmConnection sxmConn = new SxmConnection(databaseName, createConnection: false);
+            string? connectionString = default(string);
+            string? dbNameInDictionary = databaseName != default(string) ? databaseName : "_default@@";
 
-            string pathToDatabase = Path.Combine(sxmConn.databaseFolderPath, sxmConn.databaseName);
-            string connectionString = String.Format("Data Source={0}", pathToDatabase + ";" + " DateTimeFormat = Ticks; Read Only=False;");
+            if (!dbConnectionString.TryGetValue(dbNameInDictionary, out connectionString))
+            {
+                databaseName = SxmConnection.resolveDatabaseName(databaseName);
+                DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
+                string databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+
+                string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
+                connectionString = String.Format(SQLiteConnString, pathToDatabase);
+
+                dbConnectionString.Add(dbNameInDictionary, connectionString);
+            }
+
             return connectionString;
         }
 
@@ -144,8 +162,7 @@ namespace SQLiteXM
         {
             try
             {
-                string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
-                string connectionString = String.Format("Data Source={0}", pathToDatabase + ";" + " DateTimeFormat = Ticks");
+                string? connectionString = SxmConnection.getConnectionString(databaseName);
                 dbConn = new System.Data.SQLite.SQLiteConnection(connectionString);
                 dbConn.Open();
 

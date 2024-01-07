@@ -17,7 +17,11 @@ namespace SQLiteXM
             dConnection = this.Connection;
         }
 
-        public void SubmitChanges()
+        public async Task SubmitChanges(ConflictMode cm)
+        {
+            await SubmitChanges();
+        }
+        public async Task SubmitChanges()
         {
             try
             {
@@ -25,17 +29,17 @@ namespace SQLiteXM
 
                 foreach (SxmEntity sxmEntity in cs.Inserts)
                 {
-                    sxmEntity.Save();
+                    await sxmEntity.Save();
                 }
 
                 foreach (SxmEntity sxmEntity in cs.Updates)
                 {
-                    sxmEntity.Save();
+                    await sxmEntity.Save();
                 }
 
                 foreach (SxmEntity sxmEntity in cs.Deletes)
                 {
-                    sxmEntity.Delete();
+                    await sxmEntity.Delete();
                 }
             }
             catch (Exception ex)
@@ -61,7 +65,7 @@ namespace SQLiteXM
 
             if (disposing && dConnection != default(System.Data.Common.DbConnection))
             {
-                // free managed resources
+                // Free managed resources
                 dConnection.Dispose();
             }
 

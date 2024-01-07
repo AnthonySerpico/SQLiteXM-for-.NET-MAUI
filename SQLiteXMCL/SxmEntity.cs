@@ -187,9 +187,8 @@ namespace SQLiteXM
             }
         }
 
-        public async Task Save(string sqlStatementName)
+        private async Task Save(string sqlStatementName)
         {
-            if (!doesRecordExist())
             {
                 Dictionary<string, object?> result = await SxmStatement.PerformInsert<SxmEntity>(sqlStatementName, this, databaseName);
                 loadDbValues(result);
@@ -197,7 +196,6 @@ namespace SQLiteXM
         }
         public async Task Save(string sqlStatementName, SxmTransaction sxmTrans)
         {
-            if (!doesRecordExist())
             {
                 Dictionary<string, object?> result = await sxmTrans.PerformInsert<SxmEntity>(sqlStatementName, this);
                 loadDbValues(result);
@@ -206,24 +204,20 @@ namespace SQLiteXM
 
         public async Task Update(string sqlStatementName)
         {
-            if (doesRecordExist())
                 await SxmStatement.PerformUpdate<SxmEntity>(sqlStatementName, this, databaseName);
         }
 
         public async Task Update(string sqlStatementName, SxmTransaction sxmTrans)
         {
-            if (doesRecordExist())
                 await sxmTrans.PerformUpdate<SxmEntity>(sqlStatementName, this);
         }
 
         public async Task Delete(string sqlStatementName)
         {
-            if (doesRecordExist())
                 await SxmStatement.PerformDelete<SxmEntity>(sqlStatementName, this, databaseName);
         }
         public async Task Delete(string sqlStatementName, SxmTransaction sxmTrans)
         {
-            if (doesRecordExist())
                 await sxmTrans.PerformDelete<SxmEntity>(sqlStatementName, this);
         }
 
@@ -258,13 +252,15 @@ namespace SQLiteXM
         public async Task Delete()
         {
             buildDeleteSql();
-            await Delete(deleteGuid);
+            if (doesRecordExist())
+                await Delete(deleteGuid);
         }
 
         public async Task Delete(SxmTransaction sxmTrans)
         {
             buildDeleteSql();
-            await Delete(deleteGuid, sxmTrans);
+            if (doesRecordExist())
+                await Delete(deleteGuid, sxmTrans);
         }
 
         private void buildSaveSql()
@@ -614,14 +610,14 @@ namespace SQLiteXM
             }
         }
 
-        private bool doesRecordExist()
+        public bool doesRecordExist()
         {
             SxmConnection? sxmConnection = default(SxmConnection);
             try
             {
                 if (id > 0)
                 {
-                    sxmConnection = new SxmConnection(databaseName);  // Creates an implicit database name.
+                    sxmConnection = new SxmConnection(databaseName);
                     string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = {1}", this.GetType().Name, id);
                     sxmConnection.executeQuery(sqlSelect, default(List<object>));
                     if (sxmConnection.hasRows() == true)
@@ -633,8 +629,7 @@ namespace SQLiteXM
             }
             finally
             {
-                if (sxmConnection != default(SxmConnection))
-                    sxmConnection.destroyConnection();
+                sxmConnection?.destroyConnection();
             }
 
             return false;
@@ -655,14 +650,11 @@ namespace SQLiteXM
                 }
                 finally
                 {
-                    if (sxmConnection != default(SxmConnection))
-                        sxmConnection.destroyConnection();
+                    sxmConnection?.destroyConnection();
 
                     this.databaseName = SxmConnection.ImplicitDatabaseName;
                     if (this.databaseName == null)
-                    {
                         throw new InvalidDataException("The database name cannot be null.");
-                    }
                 }
             }
         }
