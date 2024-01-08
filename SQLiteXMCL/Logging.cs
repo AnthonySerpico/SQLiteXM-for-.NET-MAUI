@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Text;
+﻿using System.Text;
 
 namespace SQLiteXM
 {
@@ -9,7 +7,9 @@ namespace SQLiteXM
 		private bool noLog;
 		private int maxLogSize;
 		private string logPath;
+
 		private static readonly object synchLock = new object();
+		internal static Dictionary<string, Logging> loggers = new Dictionary<string, Logging>();
 
 		internal Logging(string logFileName, Environment.SpecialFolder logPathSpecialFolder, int maxLogSize, bool noLog)
 		{
@@ -18,7 +18,16 @@ namespace SQLiteXM
 			logPath = Path.Combine( Environment.GetFolderPath (logPathSpecialFolder), logFileName );
 		}
 
-		internal void log(System.Exception ex, string? method, string logLevel = "Error")
+		static internal void log(string dbName, System.Exception ex, string? method, string logLevel = "Error")
+		{
+			Logging? log;
+
+            if(loggers.TryGetValue(dbName, out log))
+				log.log(ex, method, logLevel);
+        }
+
+
+        private void log(System.Exception ex, string? method, string logLevel = "Error")
 		{
 			if (!noLog && !string.IsNullOrEmpty(method)) 
 			{

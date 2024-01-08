@@ -12,7 +12,7 @@ namespace SQLiteXM
     {
         private bool isDisposed;
         private System.Data.Common.DbConnection? dConnection = default(System.Data.Common.DbConnection);
-        public SxmLinqContext(string? databaseName = default(string?)) : base(System.Data.SQLite.Linq.SQLiteProviderFactory.Instance.CreateDataSource(SxmConnection.getConnectionString(databaseName)).OpenConnection())
+        public SxmLinqContext(string? databaseName = default(string?)) : base(System.Data.SQLite.Linq.SQLiteProviderFactory.Instance.CreateDataSource(SxmConnection.getConnectionString(ref databaseName)).OpenConnection())
         {
             dConnection = this.Connection;
         }

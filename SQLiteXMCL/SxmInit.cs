@@ -251,7 +251,7 @@ namespace SQLiteXM
             catch (System.Exception ex)
             {
                 if (sxmConnection != null)
-                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    sxmConnection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 
                 throw new SxmException(ex);
             }
@@ -299,9 +299,7 @@ namespace SQLiteXM
             }
             catch (System.Exception ex)
             {
-                if (sxmConnection != null)
-                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-
+                sxmConnection?.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw new SxmException(ex);
             }
             finally
@@ -331,7 +329,8 @@ namespace SQLiteXM
             }
             finally 
             {
-                sxmConnection?.destroyConnection();
+                if(connectionCreated)
+                    sxmConnection?.destroyConnection();
              }
 
             return false;
@@ -363,7 +362,7 @@ namespace SQLiteXM
             catch (System.Exception ex)
             {
                 if (sxmConnection != null)
-                    sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    sxmConnection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
 
                 throw new SxmException(ex);
             }
@@ -457,7 +456,7 @@ namespace SQLiteXM
                             }
                             catch (System.Exception ex)
                             {
-                                sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                                sxmConnection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                                 throw new SxmException(ex);
                             }
                         }
@@ -658,7 +657,7 @@ namespace SQLiteXM
                             }
                             catch (System.Exception ex)
                             {
-                                sxmConnection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                                sxmConnection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                                 throw new SxmException(ex);
                             }
                         }

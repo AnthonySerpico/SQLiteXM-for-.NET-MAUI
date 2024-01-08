@@ -46,8 +46,11 @@ namespace SQLiteXM
 
 					createDB ();
 					dbDescriptors.Add (databaseName, this);
-				}
-			}
+
+                    SQLiteXM.Logging logger = new Logging(logfileName, logfileFolder, logfileMaxSize, noLog);
+					Logging.loggers.Add(databaseName, logger);
+                }
+            }
 			catch (System.Exception ex) 
 			{
 				throw new SxmException (ex);

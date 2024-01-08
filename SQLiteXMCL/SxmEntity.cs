@@ -140,12 +140,12 @@ namespace SQLiteXM
     {
         private static object lockObject = new object();
 
-        private  string? insertGuid = default(string);
-        private  string? updateGuid = default(string);
-        private  string? deleteGuid = default(string);
-        private  List<IndexPropertyAttributes>? standardIndexPropertyAttributesList;
-        private  List<IndexPropertyAttributes>? uniqueIndexPropertyAttributesList;
-        private  Dictionary<string, string> columnNameAndType = new Dictionary<string, string>();
+        private static Dictionary<string, string> insertGuidDict = new Dictionary<string, string>();
+        private static Dictionary<string, string> updateGuidDict = new Dictionary<string, string>();
+        private static Dictionary<string, string> deleteGuidDict = new Dictionary<string, string>();
+        private static Dictionary<string, List<IndexPropertyAttributes>> uniqueIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
+        private static Dictionary<string, List<IndexPropertyAttributes>> standardIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
+        private static Dictionary<string, Dictionary<string, string>> columnNameAndTypeDict = new Dictionary<string,  Dictionary<string, string>>();
 
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
@@ -169,7 +169,7 @@ namespace SQLiteXM
             {
                 dbNameValidation();
 
-                if (columnNameAndType.Count == 0)
+                if (!columnNameAndTypeDict.ContainsKey(this.GetType().Name))
                 {
                     getColumnNamesAndDataTypes();
 
@@ -226,12 +226,12 @@ namespace SQLiteXM
             if (!doesRecordExist())
             {
                 buildSaveSql();
-                await Save(insertGuid);
+                await Save(insertGuidDict[this.GetType().Name]);
             }
             else
             {
                 buildUpdateSql();
-                await Update(updateGuid);
+                await Update(updateGuidDict[this.GetType().Name]);
             }
         }
 
@@ -240,12 +240,12 @@ namespace SQLiteXM
             if (!doesRecordExist())
             {
                 buildSaveSql();
-                await Save(insertGuid, sxmTrans);
+                await Save(insertGuidDict[this.GetType().Name], sxmTrans);
             }
             else
             {
                 buildUpdateSql();
-                await Update(updateGuid, sxmTrans);
+                await Update(updateGuidDict[this.GetType().Name], sxmTrans);
             }
         }
 
@@ -253,25 +253,25 @@ namespace SQLiteXM
         {
             buildDeleteSql();
             if (doesRecordExist())
-                await Delete(deleteGuid);
+                await Delete(deleteGuidDict[this.GetType().Name]);
         }
 
         public async Task Delete(SxmTransaction sxmTrans)
         {
             buildDeleteSql();
             if (doesRecordExist())
-                await Delete(deleteGuid, sxmTrans);
+                await Delete(deleteGuidDict[this.GetType().Name], sxmTrans);
         }
 
         private void buildSaveSql()
         {
-            if (insertGuid == default(string))
+            if (insertGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
             {
                 string insertColumns = string.Empty;
                 string insertValues = string.Empty;
 
                 int i = 0;
-                foreach (KeyValuePair<string, string> kvp in columnNameAndType)
+                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
                 {
                     if (!kvp.Key.Equals("synchId") && !kvp.Key.Equals("id"))
                     {
@@ -290,19 +290,19 @@ namespace SQLiteXM
                 }
 
                 string insertStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2})", this.GetType().Name, insertColumns, insertValues);
-                insertGuid = Guid.NewGuid().ToString();
-                SqlStatements.addInsertDefinition(insertGuid, this.GetType().Name, insertStatement);
+                insertGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
+                SqlStatements.addInsertDefinition(insertGuidDict[this.GetType().Name], this.GetType().Name, insertStatement);
             }
         }
 
         private void buildUpdateSql()
         {
-            if (updateGuid == default(string))
+            if (updateGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
             {
                 string insertColumns = string.Empty;
 
                 int i = 0;
-                foreach (KeyValuePair<string, string> kvp in columnNameAndType)
+                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
                 {
                     if (!kvp.Key.Equals("synchId") && !kvp.Key.Equals("id"))
                     {
@@ -316,18 +316,18 @@ namespace SQLiteXM
                 }
 
                 string updateStatement = string.Format("UPDATE {0} SET {1} WHERE id=@id", this.GetType().Name, insertColumns);
-                updateGuid = Guid.NewGuid().ToString();
-                SqlStatements.addUpdateDefinition(updateGuid, this.GetType().Name, updateStatement);
+                updateGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
+                SqlStatements.addUpdateDefinition(updateGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
             }
         }
 
         private void buildDeleteSql()
         {
-            if (deleteGuid == default(string))
+            if (deleteGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
             {
                 string updateStatement = string.Format("DELETE FROM {0} WHERE id=@id", this.GetType().Name);
-                deleteGuid = Guid.NewGuid().ToString();
-                SqlStatements.addDeleteDefinition(deleteGuid, this.GetType().Name, updateStatement);
+                deleteGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
+                SqlStatements.addDeleteDefinition(deleteGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
             }
         }
 
@@ -435,13 +435,13 @@ namespace SQLiteXM
             if (indexType == IndexType.standard)
             {
                 firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
-                secondArray = standardIndexPropertyAttributesList?.ToArray();
+                secondArray = standardIndexDict.ContainsKey(this.GetType().Name) ? standardIndexDict[this.GetType().Name].ToArray() : default(IIndexVars[]);
             }
 
             if (indexType == IndexType.unique)
             {
                 firstArray = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
-                secondArray = uniqueIndexPropertyAttributesList?.ToArray();
+                secondArray = uniqueIndexDict.ContainsKey(this.GetType().Name) ? uniqueIndexDict[this.GetType().Name].ToArray() : default(IIndexVars[]);
 
                 unique = "UNIQUE";
             }
@@ -508,14 +508,14 @@ namespace SQLiteXM
             {
                 if (indexType == IndexType.standard)
                 {
-                    if (standardIndexPropertyAttributesList != default(List<IndexPropertyAttributes>))
-                        standardIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                    if (standardIndexDict.GetValueOrDefault(this.GetType().Name) != default(List<IndexPropertyAttributes>))
+                        standardIndexDict.Remove(this.GetType().Name);
                 }
 
                 if (indexType == IndexType.unique)
                 {
-                    if (uniqueIndexPropertyAttributesList != default(List<IndexPropertyAttributes>))
-                        uniqueIndexPropertyAttributesList = default(List<IndexPropertyAttributes>);
+                    if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) != default(List<IndexPropertyAttributes>))
+                        uniqueIndexDict.Remove(this.GetType().Name);
                 }
             }
         }
@@ -552,7 +552,7 @@ namespace SQLiteXM
 
             try
             {
-                foreach (KeyValuePair<string, string> kvp in columnNameAndType)
+                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
                 {
                     if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
                     {
@@ -591,7 +591,7 @@ namespace SQLiteXM
 
                 foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
                 {
-                    if (!columnNameAndType.ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
+                    if (!columnNameAndTypeDict[this.GetType().Name].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
                     {
                         string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", this.GetType().Name, kvp.Key);
                         using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(new SxmConnection(databaseName)))
@@ -665,7 +665,7 @@ namespace SQLiteXM
             {
                 string tableStatement = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT", this.GetType().Name);
 
-                foreach (KeyValuePair<string, string> kvp in columnNameAndType)
+                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
                     tableStatement += string.Format(", {0} {1}", kvp.Key, kvp.Value);
 
                 if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
@@ -689,6 +689,7 @@ namespace SQLiteXM
         private void getColumnNamesAndDataTypes()
         {
             PropertyInfo[]? thisPropertyInfo = this.GetType().GetProperties();
+            columnNameAndTypeDict.Add(this.GetType().Name, new Dictionary<string, string>());
 
             foreach (PropertyInfo pi in thisPropertyInfo)
             {
@@ -712,16 +713,16 @@ namespace SQLiteXM
 
                     if (propertyAttribute.ContainsKey("CreateIndex"))
                     {
-                        if (standardIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
-                            standardIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
-                        standardIndexPropertyAttributesList?.Add(new IndexPropertyAttributes(piName));
+                        if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
+                            standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
+                        standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
                     }
 
                     if (propertyAttribute.ContainsKey("CreateUnique"))
                     {
-                        if (uniqueIndexPropertyAttributesList == default(List<IndexPropertyAttributes>))
-                            uniqueIndexPropertyAttributesList = new List<IndexPropertyAttributes>();
-                        uniqueIndexPropertyAttributesList?.Add(new IndexPropertyAttributes(piName));
+                        if(uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
+                            uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
+                        uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
                     }
                     if (propertyAttribute.ContainsKey("CreateForeignKey"))
                     {
@@ -803,7 +804,7 @@ namespace SQLiteXM
                         columnType = "TimeOnly";
 
                     if (columnType != null)
-                        columnNameAndType.Add(piName, columnType + notNull);
+                        columnNameAndTypeDict[this.GetType().Name].Add(piName, columnType + notNull);
                 }
             }
         }

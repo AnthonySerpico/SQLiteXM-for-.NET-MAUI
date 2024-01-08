@@ -10,26 +10,26 @@ namespace SQLiteXM
 
         public SxmConnection Connection { get => connection; }
 
-        public SxmUTransaction(SxmConnection connection)
+        public SxmUTransaction(SxmConnection sxmConnection)
         {
             try
             {
-                if (connection.lockConnection() == false)
+                if (sxmConnection.lockConnection() == false)
                 {
-                    throw new SxmException(new ErrorMessage("lockDB", connection.DatabaseName));
+                    throw new SxmException(new ErrorMessage("lockDB", sxmConnection.DatabaseName));
                 }
-                this.connection = connection;
+                this.connection = sxmConnection;
             }
             catch (SxmException ex)
             {
-                if (connection != null)
-                    connection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                if (sxmConnection != null)
+                    sxmConnection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw;
             }
             catch (System.Exception ex)
             {
-                if (connection != null)
-                    connection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                if (sxmConnection != null)
+                    sxmConnection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw new SxmException(ex);
             }
         }
@@ -53,7 +53,7 @@ namespace SQLiteXM
             {
                 if (connection != null)
                 {
-                    connection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    connection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                     connection.releaseConnection();
                 }
                 throw;
@@ -62,7 +62,7 @@ namespace SQLiteXM
             {
                 if (connection != null)
                 {
-                    connection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    connection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                     connection.releaseConnection();
                 }
                 throw new SxmException(ex);
@@ -363,7 +363,7 @@ namespace SQLiteXM
             {
                 try
                 {
-                    connection.logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    connection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 }
                 catch (Exception) { }
             }

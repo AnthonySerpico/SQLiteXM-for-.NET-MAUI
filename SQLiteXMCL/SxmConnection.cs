@@ -38,24 +38,24 @@ namespace SQLiteXM
 
     public class SxmConnection
     {
-        public Logging logger;
         private bool transient;
         public bool Transient
         {
             get { return transient; }
         }
-        private string databaseName;
-        public string DatabaseName
+        private string? databaseName;
+        public string? DatabaseName
         {
             get { return databaseName; }
         }
-        private DbCommand connCommand;
-        private System.Data.SQLite.SQLiteConnection dbConn;
-        private string databaseFolderPath;
-        private DbDataReader connDataReader;
+        private static readonly object synchLock = new object();
+        private DbCommand? connCommand;
+        private System.Data.SQLite.SQLiteConnection? dbConn;
+        private DbDataReader? connDataReader;
         private System.Data.SQLite.SQLiteTransaction? dbConnTransaction;
+
         private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
-        private static string SQLiteConnString = "Data Source={0}; DateTimeFormat = Ticks; Read Only=False;";
+        private static readonly string SQLiteConnString = "Data Source={0}; DateTimeFormat = Ticks; Read Only=False;";
 
         static private string? implicitDatabaseName;
         static internal string? ImplicitDatabaseName
@@ -64,24 +64,14 @@ namespace SQLiteXM
         }
         private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
-        public SxmConnection(string? databaseName, bool createConnection = true, bool transient = false)
+        public SxmConnection(string? databaseName, bool transient = false)
         {
-            DatabaseDescriptor? databaseDescriptor = default(DatabaseDescriptor);
-            Environment.SpecialFolder logfileFolder;
-            string logfileName;
-            int logfileMaxSize;
-            bool noLog;
-
-            try  // We use a try-catch for the finally block. The unlock must happen.
+            try
             {
-                databaseDescriptor = initializeDbName(databaseName, transient);
+                this.databaseName = databaseName;
+                this.transient = transient;
 
-                // The descriptor is locked in order to guarantee that it is not in an indeterminate state.
-                databaseDescriptor?.lockDescriptor();
-                logfileName = databaseDescriptor.logfileName;
-                logfileFolder = databaseDescriptor.logfileFolder;
-                logfileMaxSize = databaseDescriptor.logfileMaxSize;
-                noLog = databaseDescriptor.noLog;
+                createNewConnection();
             }
 #pragma warning disable 0168
             catch (SxmException ex)
@@ -93,30 +83,60 @@ namespace SQLiteXM
             {
                 throw new SxmException(ex);
             }
-            finally
-            {
-                // Unlock the descriptor as soon as possible.
-                databaseDescriptor?.unlockDescriptor();
-            }
-
-            logger = new Logging(logfileName, logfileFolder, logfileMaxSize, noLog);
-            if (createConnection)
-                createNewConnection();
         }
 
-        private DatabaseDescriptor? initializeDbName(string? databaseName, bool transient)
+        internal void log(System.Exception ex, string? method)
         {
-            databaseName = resolveDatabaseName(databaseName);
+            if (this.databaseName != default(string))
+                Logging.log(this.databaseName, ex, method);
+        }
 
-            DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
-            if (databaseDescriptor == null)
-                throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName!));
+        private void createNewConnection()
+        {
+            try
+            {
+                string? connectionString = SxmConnection.getConnectionString(ref this.databaseName);
+                dbConn = new System.Data.SQLite.SQLiteConnection(connectionString);
+                dbConn.Open();
 
-            this.transient = transient;
-            this.databaseName = databaseName!;
-            databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+                this.executeQuery("PRAGMA foreign_keys = ON", default(List<object>));
+            }
+#pragma warning disable 0168
+            catch (SxmException ex)
+#pragma warning restore 0168
+            {
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                destroyConnection();
+                log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                throw new SxmException(ex);
+            }
+        }
 
-            return databaseDescriptor;
+        internal static string getConnectionString(ref string? databaseName)
+        {
+            string? connectionString = default(string);
+
+            lock (synchLock)
+            {
+                databaseName = SxmConnection.resolveDatabaseName(databaseName);
+                if (!dbConnectionString.TryGetValue(databaseName, out connectionString))
+                {
+                    DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
+                    if (databaseDescriptor == null)
+                        throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName!));
+
+                    string databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+                    string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
+                    connectionString = String.Format(SQLiteConnString, pathToDatabase);
+
+                    dbConnectionString.Add(databaseName, connectionString);
+                }
+            }
+
+            return connectionString;
         }
 
         private static string resolveDatabaseName(string? databaseName)
@@ -135,51 +155,7 @@ namespace SQLiteXM
                 databaseName = SxmConnection.implicitDatabaseName;
             }
 
-            return databaseName;
-        }
-
-        internal static string getConnectionString(string? databaseName = default(string))
-        {
-            string? connectionString = default(string);
-            string? dbNameInDictionary = databaseName != default(string) ? databaseName : "_default@@";
-
-            if (!dbConnectionString.TryGetValue(dbNameInDictionary, out connectionString))
-            {
-                databaseName = SxmConnection.resolveDatabaseName(databaseName);
-                DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
-                string databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
-
-                string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
-                connectionString = String.Format(SQLiteConnString, pathToDatabase);
-
-                dbConnectionString.Add(dbNameInDictionary, connectionString);
-            }
-
-            return connectionString;
-        }
-
-        private void createNewConnection()
-        {
-            try
-            {
-                string? connectionString = SxmConnection.getConnectionString(databaseName);
-                dbConn = new System.Data.SQLite.SQLiteConnection(connectionString);
-                dbConn.Open();
-
-                this.executeQuery("PRAGMA foreign_keys = ON", default(List<object>));
-            }
-#pragma warning disable 0168
-            catch (SxmException ex)
-#pragma warning restore 0168
-            {
-                throw;
-            }
-            catch (System.Exception ex)
-            {
-                destroyConnection();
-                logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                throw new SxmException(ex);
-            }
+            return databaseName!;
         }
 
         public bool lockConnection(int wait = 100)
@@ -261,7 +237,7 @@ namespace SQLiteXM
                 }
                 catch (System.Data.SQLite.SQLiteException ex)
                 {
-                    logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                     //if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
 
                     if (commitFlag == SQLiteXM.Defines.commitTransaction)
@@ -271,7 +247,7 @@ namespace SQLiteXM
                 }
                 catch (System.Exception ex)
                 {
-                    logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                     throw new SxmException(ex);
                 }
             }
@@ -334,7 +310,7 @@ namespace SQLiteXM
             }
             catch (System.Exception ex)
             {
-                logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw new SxmException(ex);
             }
         }
@@ -365,7 +341,7 @@ namespace SQLiteXM
             }
             catch (System.Exception ex)
             {
-                logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw new SxmException(ex);
             }
         }
@@ -455,7 +431,7 @@ namespace SQLiteXM
             {
                 if (ex.ErrorCode == (int)SQLiteErrorCode.Busy)
                 {
-                    logger.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 }
                 throw new SxmException(ex);
             }
