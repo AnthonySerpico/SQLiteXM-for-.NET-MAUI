@@ -48,12 +48,12 @@ namespace SQLiteXM
         {
             get { return databaseName; }
         }
-        private static readonly object synchLock = new object();
         private DbCommand? connCommand;
-        private System.Data.SQLite.SQLiteConnection? dbConn;
         private DbDataReader? connDataReader;
+        private System.Data.SQLite.SQLiteConnection? dbConn;
         private System.Data.SQLite.SQLiteTransaction? dbConnTransaction;
 
+        private static readonly object synchLock = new object();
         private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
         private static readonly string SQLiteConnString = "Data Source={0}; DateTimeFormat = Ticks; Read Only=False;";
 
@@ -180,9 +180,8 @@ namespace SQLiteXM
         {
             SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
-            if (dbConn != null)
-                if (dbConnTransaction != null)
-                    sqLiteErrorCode = doCommit(commitFlag);
+            if (dbConn != null && dbConnTransaction != null)
+                sqLiteErrorCode = doCommit(commitFlag);
 
             return sqLiteErrorCode;
         }

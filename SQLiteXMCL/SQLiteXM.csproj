@@ -23,6 +23,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="Platforms\iOS\BackgroundUpload.cs" />
 	  <Compile Remove="SxmSqlStatements.cs" />
 	  <Compile Remove="SxmTransactionHelper.cs" />
 	</ItemGroup>

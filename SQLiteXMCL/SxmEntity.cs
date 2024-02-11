@@ -1,7 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Reflection;
+﻿using System.Reflection;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -151,7 +148,7 @@ namespace SQLiteXM
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
         public virtual long id { get; set; }
-        public virtual string synchId { get; set; }
+        public virtual string? synchId { get; set; }
 
         public SxmEntity(string? databaseName)
         {
