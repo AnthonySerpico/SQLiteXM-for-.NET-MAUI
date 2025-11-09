@@ -1,7 +1,4 @@
 ﻿using System.Reflection;
-
-
-
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
@@ -91,7 +88,7 @@ namespace SQLiteXM
                             }
 
                             if (piType == typeof(int).Name)
-                                pi.SetValue(userObject, (int)(int)kvp.Value);
+                                pi.SetValue(userObject, (int)(long)kvp.Value);
 
                             else if (piType == typeof(long).Name)
                                 pi.SetValue(userObject, (long)kvp.Value);
@@ -109,7 +106,7 @@ namespace SQLiteXM
                                 pi.SetValue(userObject, (ushort)(long)kvp.Value);
 
                             else if (piType == typeof(uint).Name)
-                                pi.SetValue(userObject, (uint)(uint)kvp.Value);
+                                pi.SetValue(userObject, (uint)(long)kvp.Value);
 
                             else if (piType == typeof(sbyte).Name)
                                 pi.SetValue(userObject, (sbyte)(long)kvp.Value);
@@ -121,7 +118,7 @@ namespace SQLiteXM
                                 pi.SetValue(userObject, (double)kvp.Value);
 
                             else if (piType == typeof(Guid).Name)
-                                pi.SetValue(userObject, (Guid)kvp.Value);
+                                pi.SetValue(userObject, (Guid)Guid.Parse((string)kvp.Value));
 
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
@@ -247,7 +244,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o"));
 
-                                else if (kvp.Value.ToLower().Equals("datetime"))
+                                else if (kvp.Value.ToLower().Equals("int"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
                             }
 

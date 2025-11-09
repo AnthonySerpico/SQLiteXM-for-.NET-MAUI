@@ -3,6 +3,14 @@ using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
+    internal enum SxmEntityState
+    {
+        None,
+        Insert,
+        Update,
+        Delete
+    }
+
     interface IIndexVars
     {
         public string[] indexFields { get; set; }
@@ -143,6 +151,12 @@ namespace SQLiteXM
         private static Dictionary<string, List<IndexPropertyAttributes>> uniqueIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
         private static Dictionary<string, List<IndexPropertyAttributes>> standardIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
         private static Dictionary<string, Dictionary<string, string>> columnNameAndTypeDict = new Dictionary<string,  Dictionary<string, string>>();
+
+        private SxmEntityState _pendingState = SxmEntityState.None;
+        internal void MarkAsInsert() => _pendingState = SxmEntityState.Insert;
+        internal void MarkAsUpdate() => _pendingState = SxmEntityState.Update;
+        internal void MarkAsDelete() => _pendingState = SxmEntityState.Delete;
+        internal SxmEntityState PendingState => _pendingState;
 
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
@@ -786,7 +800,7 @@ namespace SQLiteXM
                         columnType = "bool";
 
                     else if (piType == typeof(DateTime).Name)
-                        columnType = "DateTime";
+                        columnType = "long";
 
                     else if (piType == typeof(DateTimeOffset).Name)
                         columnType = "DateTimeOffset";

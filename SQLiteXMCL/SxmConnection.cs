@@ -50,12 +50,12 @@ namespace SQLiteXM
         }
         private DbCommand? connCommand;
         private DbDataReader? connDataReader;
-        private System.Data.SQLite.SQLiteConnection? dbConn;
-        private System.Data.SQLite.SQLiteTransaction? dbConnTransaction;
+        private Microsoft.Data.Sqlite.SqliteConnection? dbConn;
+        private Microsoft.Data.Sqlite.SqliteTransaction? dbConnTransaction;
 
         private static readonly object synchLock = new object();
         private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
-        private static readonly string SQLiteConnString = "Data Source={0}; DateTimeFormat = Ticks; Read Only=False;";
+        private static readonly string SQLiteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
 
         static private string? implicitDatabaseName;
         static internal string? ImplicitDatabaseName
@@ -96,7 +96,7 @@ namespace SQLiteXM
             try
             {
                 string? connectionString = SxmConnection.getConnectionString(ref this.databaseName);
-                dbConn = new System.Data.SQLite.SQLiteConnection(connectionString);
+                dbConn = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
                 dbConn.Open();
 
                 this.executeQuery("PRAGMA foreign_keys = ON", default(List<object>));
@@ -232,9 +232,9 @@ namespace SQLiteXM
                     else
                         dbConnTransaction.Rollback();
 
-                    dbConnTransaction = default(System.Data.SQLite.SQLiteTransaction);
+                    dbConnTransaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
                 }
-                catch (System.Data.SQLite.SQLiteException ex)
+                catch (Microsoft.Data.Sqlite.SqliteException ex)
                 {
                     log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                     //if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
@@ -262,7 +262,7 @@ namespace SQLiteXM
 
                 dbConn.Close();
                 dbConn.Dispose();
-                dbConn = default(System.Data.SQLite.SQLiteConnection);
+                dbConn = default(Microsoft.Data.Sqlite.SqliteConnection);
             }
         }
 
@@ -426,7 +426,7 @@ namespace SQLiteXM
                 }
 
             }
-            catch (System.Data.SQLite.SQLiteException ex)
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
             {
                 if (ex.ErrorCode == (int)SQLiteErrorCode.Busy)
                 {

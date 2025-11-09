@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 
 namespace SQLiteXM
 {
@@ -21,7 +21,7 @@ namespace SQLiteXM
             this.Data.Add("sxmErrorCode", ErrorMessages.error["innerException"].ErrorID);
         }
 
-        public SxmException(System.Data.SQLite.SQLiteException sqliteException)
+        public SxmException(Microsoft.Data.Sqlite.SqliteException sqliteException)
             : base(sqliteException.Message)
         {
             this.Data.Add("sxmErrorCode", ErrorMessages.error["SqliteException"].ErrorID);
