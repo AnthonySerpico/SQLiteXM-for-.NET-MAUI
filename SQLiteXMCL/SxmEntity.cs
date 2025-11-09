@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using LinqToDB.Mapping;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -141,6 +142,7 @@ namespace SQLiteXM
         public string foreignTable { get; set; }
     }
 
+    [Table(IsColumnAttributeRequired = false)]
     public class SxmEntity
     {
         private static object lockObject = new object();
@@ -161,7 +163,9 @@ namespace SQLiteXM
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
+        [Column, PrimaryKey, Identity]
         public virtual long id { get; set; }
+        [Column]
         public virtual string? synchId { get; set; }
 
         public SxmEntity(string? databaseName)
