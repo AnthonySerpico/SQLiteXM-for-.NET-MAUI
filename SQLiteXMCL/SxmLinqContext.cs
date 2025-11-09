@@ -60,12 +60,10 @@ namespace SQLiteXM
 
             entity.MarkAsUpdate();
 
-            if (!_changeSet.Inserts.Contains(entity) &&
-                !_changeSet.Updates.Contains(entity))
-            {
+            if (!_changeSet.Updates.Contains(entity))
                 _changeSet.Updates.Add(entity);
-            }
 
+            _changeSet.Inserts.Remove(entity);
             _changeSet.Deletes.Remove(entity);
         }
 
@@ -97,51 +95,72 @@ namespace SQLiteXM
 
         public async Task SubmitChanges(ConflictMode conflictMode)
         {
-            try
-            {
-                // Inserts + updates both call your existing Save()
-                foreach (var e in _changeSet.Inserts.ToList())
-                {
-                    try
-                    {
-                        await e.Save();
-                    }
-                    catch
-                    {
-                        if (conflictMode == ConflictMode.FailOnFirstConflict)
-                            throw;
-                    }
-                }
+            if (_changeSet.IsEmpty)
+                return;
 
-                foreach (var e in _changeSet.Updates.ToList())
-                {
-                    try
-                    {
-                        await e.Save();
-                    }
-                    catch
-                    {
-                        if (conflictMode == ConflictMode.FailOnFirstConflict)
-                            throw;
-                    }
-                }
-
-                foreach (var e in _changeSet.Deletes.ToList())
-                {
-                    try
-                    {
-                        await e.Delete();
-                    }
-                    catch
-                    {
-                        if (conflictMode == ConflictMode.FailOnFirstConflict)
-                            throw;
-                    }
-                }
-            }
-            finally
+            // One transaction for the whole unit of work
+            using (var sxmTrans = new SxmTransaction())
             {
-                _changeSet.Clear();
+                try
+                {
+                    // INSERTS
+                    foreach (var e in _changeSet.Inserts.ToList())
+                    {
+                        try
+                        {
+                            await e.Save(sxmTrans);
+                        }
+                        catch
+                        {
+                            if (conflictMode == ConflictMode.FailOnFirstConflict)
+                                throw;
+                            // ContinueOnConflict: skip this one, try to apply the rest
+                        }
+                    }
+
+                    // UPDATES
+                    foreach (var e in _changeSet.Updates.ToList())
+                    {
+                        try
+                        {
+                            await e.Save(sxmTrans);
+                        }
+                        catch
+                        {
+                            if (conflictMode == ConflictMode.FailOnFirstConflict)
+                                throw;
+                        }
+                    }
+
+                    // DELETES
+                    foreach (var e in _changeSet.Deletes.ToList())
+                    {
+                        try
+                        {
+                            await e.Delete(sxmTrans);
+                        }
+                        catch
+                        {
+                            if (conflictMode == ConflictMode.FailOnFirstConflict)
+                                throw;
+                        }
+                    }
+
+                    // If we get here without an exception in FailOnFirstConflict mode,
+                    // or we are in ContinueOnConflict mode and are okay with partial success,
+                    // commit the transaction.
+                    sxmTrans.commitTransaction();
+                }
+                catch
+                {
+                    // If SxmTransaction supports rollback, this is where you'd call it.
+                    // sxmTrans.rollbackTransaction();
+                    throw;
+                }
+                finally
+                {
+                    _changeSet.Clear();
+                }
             }
         }
 
