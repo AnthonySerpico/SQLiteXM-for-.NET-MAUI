@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using SQLiteXM.Internal;
+using System.Collections;
 
 namespace SQLiteXM
 {
@@ -16,13 +17,13 @@ namespace SQLiteXM
 
         public static async Task initDB(string SqlStatementsFileName, Defines.SqlStatementsFileType fileType)
         {
-            await parseSqlStatementsFile(SqlStatementsFileName, fileType);
+            await parseSqlStatementsFile(SqlStatementsFileName, fileType).CAF();
             SxmInit.initialize();
         }
 
         public static async Task initDB(Stream stream, Defines.SqlStatementsFileType fileType)
         {
-            await parseSqlStatementsFile(stream, fileType);
+            await parseSqlStatementsFile(stream, fileType).CAF();
             SxmInit.initialize();
         }
 
@@ -46,8 +47,8 @@ namespace SQLiteXM
                 throw new FileNotFoundException(
                     $"The SQL statements file '{fileName}' could not be found. Resolved path: {fullPath}", fullPath);
 
-            await using var stream = File.OpenRead(fullPath);
-            await parseSqlStatementsFile(stream, fileType);
+            using var stream = File.OpenRead(fullPath);
+            await parseSqlStatementsFile(stream, fileType).CAF();
         }
 
         /// <summary>
@@ -89,9 +90,9 @@ namespace SQLiteXM
 
         /*private static async Task parseSqlStatementsFile(string SqlStatementsFileName)
         {
-            if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
+            if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).CAF())
             {
-                using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).ConfigureAwait(false))
+                using (Stream stream = await FileSystem.OpenAppPackageFileAsync(SqlStatementsFileName).CAF())
                 {
                     string sqlStatemenstFileExtenzion = Path.GetExtension(SqlStatementsFileName).ToLower();
 

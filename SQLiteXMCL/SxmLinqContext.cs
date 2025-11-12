@@ -1,11 +1,11 @@
-﻿using System;
+﻿using LinqToDB;
+using LinqToDB.Data;
+using Microsoft.Data.Sqlite;
+using SQLiteXM.Internal;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
-using LinqToDB;
-using LinqToDB.Data;
-using Microsoft.Data.Sqlite;
 
 namespace SQLiteXM
 {
@@ -90,7 +90,7 @@ namespace SQLiteXM
 
         public async Task SubmitChanges()
         {
-            await SubmitChanges(ConflictMode.FailOnFirstConflict);
+            await SubmitChanges(ConflictMode.FailOnFirstConflict).CAF();
         }
 
         public async Task SubmitChanges(ConflictMode conflictMode)
@@ -108,7 +108,7 @@ namespace SQLiteXM
                     {
                         try
                         {
-                            await e.Save(sxmTrans);
+                            await e.Save(sxmTrans).CAF();
                         }
                         catch
                         {
@@ -123,7 +123,7 @@ namespace SQLiteXM
                     {
                         try
                         {
-                            await e.Save(sxmTrans);
+                            await e.Save(sxmTrans).CAF();
                         }
                         catch
                         {
@@ -137,7 +137,7 @@ namespace SQLiteXM
                     {
                         try
                         {
-                            await e.Delete(sxmTrans);
+                            await e.Delete(sxmTrans).CAF();
                         }
                         catch
                         {

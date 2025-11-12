@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SQLiteXM.Internal;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,7 +26,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(selectedRows);
+            return await Task.FromResult(selectedRows).CAF();
         }
         internal static async Task<List<Dictionary<string, object?>>> performSelectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
@@ -41,7 +42,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(selectedRows);
+            return await Task.FromResult(selectedRows).CAF();
         }
 
         internal static async Task<List<Dictionary<string, object?>>> performSelectDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
@@ -61,7 +62,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(selectedRows);
+            return await Task.FromResult(selectedRows).CAF();
         }
         internal static async Task<List<Dictionary<string, object?>>> performSelectTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
@@ -77,7 +78,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(selectedRows);
+            return await Task.FromResult(selectedRows).CAF();
         }
     }
 }

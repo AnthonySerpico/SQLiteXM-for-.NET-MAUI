@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SQLiteXM.Internal;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,7 +26,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(ir);
+            return await Task.FromResult(ir).CAF();
         }
 
         internal static async Task<Dictionary<string, object?>> performInsertTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
@@ -41,7 +42,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            return await Task.FromResult(ir);
+            return await Task.FromResult(ir).CAF();
         }
     }
 }

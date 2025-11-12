@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SQLiteXM.Internal;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,7 +24,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.CAF();
         }
 
         internal static async Task performUpdateTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
@@ -37,7 +38,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.CAF();
         }
 
         internal static async Task performUpdateDirect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
@@ -55,7 +56,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.CAF();
         }
 
         internal static async Task performUpdateTransDirect(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
@@ -69,7 +70,7 @@ namespace SQLiteXM
                 throw;
             }
 
-            await Task.CompletedTask;
+            await Task.CompletedTask.CAF();
         }
     }
 }
