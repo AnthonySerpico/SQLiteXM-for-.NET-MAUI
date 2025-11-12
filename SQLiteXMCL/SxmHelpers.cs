@@ -244,7 +244,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o"));
 
-                                else if (kvp.Value.ToLower().Equals("int"))
+                                else if (kvp.Value.ToLower().Equals("long"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
                             }
 

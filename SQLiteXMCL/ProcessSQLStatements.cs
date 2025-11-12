@@ -1,10 +1,4 @@
-﻿using Microsoft.Maui.Controls.PlatformConfiguration;
-using Microsoft.Maui.Storage;
-using System;
-using System.IO;
-using System.Reflection.PortableExecutable;
-using System.Text.Json;
-using System.Xml.Linq;
+﻿using System.Text.Json;
 using System.Xml.Serialization;
 
 namespace SQLiteXM

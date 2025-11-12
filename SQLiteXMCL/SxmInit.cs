@@ -14,13 +14,80 @@ namespace SQLiteXM
             SxmInit.initialize();
         }
 
-        public static async Task initDB(string SqlStatementsFileName)
+        public static async Task initDB(string SqlStatementsFileName, Defines.SqlStatementsFileType fileType)
         {
-            await parseSqlStatementsFile(SqlStatementsFileName);
+            await parseSqlStatementsFile(SqlStatementsFileName, fileType);
             SxmInit.initialize();
         }
 
-        private static async Task parseSqlStatementsFile(string SqlStatementsFileName)
+        public static async Task initDB(Stream stream, Defines.SqlStatementsFileType fileType)
+        {
+            await parseSqlStatementsFile(stream, fileType);
+            SxmInit.initialize();
+        }
+
+        /// <summary>
+        /// Parse SQL statement definitions from a file on disk.
+        /// </summary>
+        /// <param name="fileName">
+        /// Absolute or relative path to the SQL definition file. Relative paths are resolved against <see cref="AppContext.BaseDirectory"/>.
+        /// </param>
+        /// <param name="fileType">The format of the SQL definitions (json, xml, or txt).</param>
+        /// <exception cref="ArgumentNullException">fileName is null or whitespace.</exception>
+        /// <exception cref="FileNotFoundException">The resolved file cannot be found.</exception>
+        private static async Task parseSqlStatementsFile(string fileName, Defines.SqlStatementsFileType fileType)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentNullException(nameof(fileName));
+
+            var fullPath = ResolveToBase(fileName);
+
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException(
+                    $"The SQL statements file '{fileName}' could not be found. Resolved path: {fullPath}", fullPath);
+
+            await using var stream = File.OpenRead(fullPath);
+            await parseSqlStatementsFile(stream, fileType);
+        }
+
+        /// <summary>
+        /// Parse SQL statement definitions from an open, readable stream.
+        /// </summary>
+        /// <param name="stream">An open, readable stream positioned at the beginning of the SQL definitions.</param>
+        /// <param name="fileType">The format of the SQL definitions (json, xml, or txt).</param>
+        /// <exception cref="ArgumentNullException">stream is null.</exception>
+        /// <exception cref="ArgumentException">stream is not readable.</exception>
+        private static Task parseSqlStatementsFile(Stream stream, Defines.SqlStatementsFileType fileType)
+        {
+            if (stream is null) throw new ArgumentNullException(nameof(stream));
+            if (!stream.CanRead) throw new ArgumentException("Stream must be readable.", nameof(stream));
+
+            switch (fileType)
+            {
+                case Defines.SqlStatementsFileType.json:
+                    ProcessSQLStatements.Parse(stream, Defines.SqlStatementsFileType.json);
+                    break;
+
+                case Defines.SqlStatementsFileType.xml:
+                    ProcessSQLStatements.Parse(stream, Defines.SqlStatementsFileType.xml);
+                    break;
+
+                case Defines.SqlStatementsFileType.txt:
+                default:
+                    using (var reader = new StreamReader(stream, leaveOpen: false))
+                        ProcessSQLStatements.Parse(reader);
+                    break;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Resolves a relative path against the application's base directory.
+        /// </summary>
+        private static string ResolveToBase(string path) => Path.IsPathRooted(path) ? path : Path.Combine(AppContext.BaseDirectory, path);
+
+        /*private static async Task parseSqlStatementsFile(string SqlStatementsFileName)
         {
             if (await FileSystem.AppPackageFileExistsAsync(SqlStatementsFileName).ConfigureAwait(false))
             {
@@ -51,7 +118,7 @@ namespace SQLiteXM
             }
             else
                 throw new FileNotFoundException(string.Format("The SQL statements file {0} could not be found.", SqlStatementsFileName));
-        }
+        }*/
 
         private static bool initialize() // No synchronize.
         {

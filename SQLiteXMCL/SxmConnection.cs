@@ -362,7 +362,7 @@ namespace SQLiteXM
                         {
                             DbParameter dbParameter = connCommand.CreateParameter();
 
-                            dbParameter.ParameterName = kvp.Key;
+                            dbParameter.ParameterName = "@" + kvp.Key;
                             dbParameter.Value = kvp.Value;
 
                             connCommand.Parameters.Add(dbParameter);
