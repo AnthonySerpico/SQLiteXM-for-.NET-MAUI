@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
@@ -94,7 +95,7 @@ namespace SQLiteXM
                                 pi.SetValue(userObject, (long)kvp.Value);
 
                             else if (piType == typeof(ulong).Name)    // Large values will overflow.
-                                pi.SetValue(userObject, (ulong)ulong.Parse((string)kvp.Value));
+                                pi.SetValue(userObject, (ulong)ulong.Parse((string)kvp.Value, CultureInfo.InvariantCulture));
 
                             else if (piType == typeof(float).Name)
                                 pi.SetValue(userObject, (float)(double)kvp.Value);
@@ -127,7 +128,7 @@ namespace SQLiteXM
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, Decimal.Parse(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, Decimal.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
 
                                 else if (typeName == typeof(long).Name)
                                     pi.SetValue(userObject, (decimal)(long)kvp.Value);   // Will lose precision.
@@ -151,7 +152,7 @@ namespace SQLiteXM
                                     pi.SetValue(userObject, new DateTime((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, DateTime.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
                             }
 
                             else if (piType == typeof(DateTimeOffset).Name)  // Can be either text or DATETIMEOFFSET.
@@ -161,7 +162,7 @@ namespace SQLiteXM
                                     pi.SetValue(userObject, DateTimeOffset.FromUnixTimeMilliseconds((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, DateTimeOffset.Parse(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, DateTimeOffset.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
                             }
 
                             else if (piType == typeof(TimeSpan).Name)  // Can be either text or TIMESPAN.
@@ -171,7 +172,7 @@ namespace SQLiteXM
                                     pi.SetValue(userObject, TimeSpan.FromTicks((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, TimeSpan.Parse(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, TimeSpan.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
                             }
 
                             else if (piType == typeof(DateOnly).Name)  // Must be text.
@@ -181,7 +182,7 @@ namespace SQLiteXM
                                     pi.SetValue(userObject, DateOnly.FromDayNumber((int)(long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, DateOnly.Parse(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, DateOnly.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
 
                                 else if (typeName == typeof(int).Name)
                                     pi.SetValue(userObject, DateOnly.FromDayNumber((int)kvp.Value));
@@ -194,7 +195,7 @@ namespace SQLiteXM
                                     pi.SetValue(userObject, new TimeOnly((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, TimeOnly.Parse(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, TimeOnly.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
                             }
 
                             else
@@ -242,7 +243,7 @@ namespace SQLiteXM
                             if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
                                 if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o"));
+                                    returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
 
                                 else if (kvp.Value.ToLower().Equals("long"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
@@ -251,10 +252,10 @@ namespace SQLiteXM
                             else if (userObjectType == typeof(DateOnly).Name)  // Is the data type for the column in the user object a DateOnly?
                             {
                                 if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("o"));
+                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture  ));
 
                                 else if (kvp.Value.ToLower().Equals("dateonly"))
-                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).DayNumber);
                             }
 
                             else if (userObjectType == typeof(decimal).Name)  // Is the data type for the column in the user object a decimal?
@@ -263,7 +264,7 @@ namespace SQLiteXM
                                     returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData));  // Will lose precision. Converts to a numeric which is either a double or a long.
 
                                 else if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData).ToString());
+                                    returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData).ToString(CultureInfo.InvariantCulture));
                             }
 
                             else if (userObjectType == typeof(ulong).Name)  // Is the data type for the column in the user object a decimal?
@@ -272,13 +273,13 @@ namespace SQLiteXM
                                     returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData));  // Will lose precision. Converts to a numeric which is either a double or a long.
 
                                 else if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData).ToString());
+                                    returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData).ToString(CultureInfo.InvariantCulture));
                             }
 
                             else if (userObjectType == typeof(DateTimeOffset).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToString("o"));
+                                    returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
 
                                 else if (kvp.Value.ToLower().Equals("datetimeoffset"))
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToUnixTimeMilliseconds());
@@ -287,7 +288,7 @@ namespace SQLiteXM
                             else if (userObjectType == typeof(TimeSpan).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).ToString());
+                                    returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).ToString("c", CultureInfo.InvariantCulture));
 
                                 else if (kvp.Value.ToLower().Equals("timespan"))
                                     returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).Ticks);
@@ -296,12 +297,11 @@ namespace SQLiteXM
                             else if (userObjectType == typeof(TimeOnly).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).ToString("o"));
+                                    returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).ToString("HH:mm:ss.fffffff", CultureInfo.InvariantCulture));
 
                                 else if (kvp.Value.ToLower().Equals("timeonly"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).Ticks);
                             }
-
                             else
                             {
                                 returnDictionary.Add(columnName, userObjectPI.GetValue(userObject));

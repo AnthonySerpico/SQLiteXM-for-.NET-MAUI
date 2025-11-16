@@ -1,5 +1,7 @@
-﻿using LinqToDB.Mapping;
+﻿using LinqToDB;
+using LinqToDB.Mapping;
 using SQLiteXM.Internal;
+using NotMappedAttribute = System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute;
 using System.Reflection;
 using static SQLiteXM.Defines;
 
@@ -153,7 +155,7 @@ namespace SQLiteXM
         private static Dictionary<string, string> deleteGuidDict = new Dictionary<string, string>();
         private static Dictionary<string, List<IndexPropertyAttributes>> uniqueIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
         private static Dictionary<string, List<IndexPropertyAttributes>> standardIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
-        private static Dictionary<string, Dictionary<string, string>> columnNameAndTypeDict = new Dictionary<string,  Dictionary<string, string>>();
+        private static Dictionary<string, Dictionary<string, string>> columnNameAndTypeDict = new Dictionary<string, Dictionary<string, string>>();
 
         private SxmEntityState _pendingState = SxmEntityState.None;
         internal void MarkAsInsert() => _pendingState = SxmEntityState.Insert;
@@ -220,21 +222,21 @@ namespace SQLiteXM
 
         public async Task Update(string sqlStatementName)
         {
-                await SxmStatement.PerformUpdate<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+            await SxmStatement.PerformUpdate<SxmEntity>(sqlStatementName, this, databaseName).CAF();
         }
 
         public async Task Update(string sqlStatementName, SxmTransaction sxmTrans)
         {
-                await sxmTrans.PerformUpdate<SxmEntity>(sqlStatementName, this).CAF();
+            await sxmTrans.PerformUpdate<SxmEntity>(sqlStatementName, this).CAF();
         }
 
         public async Task Delete(string sqlStatementName)
         {
-                await SxmStatement.PerformDelete<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+            await SxmStatement.PerformDelete<SxmEntity>(sqlStatementName, this, databaseName).CAF();
         }
         public async Task Delete(string sqlStatementName, SxmTransaction sxmTrans)
         {
-                await sxmTrans.PerformDelete<SxmEntity>(sqlStatementName, this).CAF();
+            await sxmTrans.PerformDelete<SxmEntity>(sqlStatementName, this).CAF();
         }
 
         public async Task Save()
@@ -704,6 +706,129 @@ namespace SQLiteXM
 
         private void getColumnNamesAndDataTypes()
         {
+            var type = GetType();
+            PropertyInfo[]? thisPropertyInfo = type.GetProperties();
+            columnNameAndTypeDict.Add(this.GetType().Name, new Dictionary<string, string>());
+
+            foreach (PropertyInfo pi in thisPropertyInfo)
+            {
+                string piType = pi.PropertyType.Name;
+                string piName = pi.Name;
+
+                // Skip "id" and "synchId" properties
+                if (piName is "id" or "synchId")
+                    continue;
+
+                // Skip properties marked with [NotMapped] or [LinqToDB.Mapping.NotColumn]
+                if (pi.IsDefined(typeof(NotMappedAttribute), false) || pi.IsDefined(typeof(LinqToDB.Mapping.NotColumnAttribute), false))
+                    continue;
+
+                // Get the [Column] attribute, if present, otherwise it's null.
+                ColumnAttribute? colAttr = pi.GetCustomAttribute<ColumnAttribute>(inherit: false);
+
+                // Get the [Table] attribute to check IsColumnAttributeRequired.
+                TableAttribute? tbl = type.GetCustomAttribute<LinqToDB.Mapping.TableAttribute>(inherit: false);
+                bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
+                if (columnIsRequired && colAttr == null)
+                    continue; // Must have [Column] attribute in order to map to a database, but it's missing.
+
+                string notNull = string.Empty;
+                Dictionary<string, object> propertyAttribute = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
+
+                if (propertyAttribute.ContainsKey("RequiredNotNull"))
+                {
+                    RequiredNotNull nn = (RequiredNotNull)propertyAttribute["RequiredNotNull"];
+                    if (nn.defaultValue != null)
+                        notNull = $" not null default {nn.defaultValue}";
+                    else
+                        notNull = " not null";
+                }
+
+                if (propertyAttribute.ContainsKey("CreateIndex"))
+                {
+                    if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
+                        standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
+                    standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
+                }
+
+                if (propertyAttribute.ContainsKey("CreateUnique"))
+                {
+                    if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
+                        uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
+                    uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
+                }
+                if (propertyAttribute.ContainsKey("CreateForeignKey"))
+                {
+                    CreateForeignKey fk = (CreateForeignKey)propertyAttribute["CreateForeignKey"];
+
+                    if (foreignKeyAttributeList == default(List<ForeignKeyAttributes>))
+                        foreignKeyAttributeList = new List<ForeignKeyAttributes>();
+                    foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
+                    {
+                        fieldName = piName,
+                        foreignTable = fk.foreignTable,
+                    });
+                }
+
+                // Override from DataType if specified, for example, [Column(DataType = DataType.Text)]
+                string? columnType = colAttr?.DataType switch
+                {
+                    DataType.Text or DataType.NVarChar or DataType.VarChar or DataType.Char or DataType.NChar => "text",
+                    DataType.Int16 => "short",
+                    DataType.Int32 => "int",
+                    DataType.Int64 => "long",
+                    DataType.UInt16 => "ushort",
+                    DataType.UInt32 => "uint",
+                    DataType.UInt64 => "text", // keep ulong as text for precision
+                    DataType.Boolean => "bool",
+                    DataType.Single => "float",
+                    DataType.Double => "double",
+                    DataType.Decimal => "text", // precision retention
+                    DataType.Guid => "Guid",
+                    DataType.DateTime => "long", // ticks strategy
+                    DataType.Date => "DateOnly",
+                    DataType.Time => "TimeSpan",
+                    DataType.Binary or DataType.Blob or DataType.VarBinary => "blob",
+                    _ => null
+                };
+
+                // Fallback to CLR mapping if DataType was Undefined.
+                if (columnType == null)
+                {
+                    // Determine CLR (nullable unwrap)
+                    var clrType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
+
+                    columnType = clrType == typeof(int) ? "int" :
+                                 clrType == typeof(string) ? "text" :
+                                 clrType == typeof(long) ? "long" :
+                                 clrType == typeof(ulong) ? "text" :
+                                 clrType == typeof(float) ? "float" :
+                                 clrType == typeof(short) ? "short" :
+                                 clrType == typeof(ushort) ? "ushort" :
+                                 clrType == typeof(uint) ? "uint" :
+                                 clrType == typeof(sbyte) ? "sbyte" :
+                                 clrType == typeof(byte) ? "byte" :
+                                 clrType == typeof(double) ? "double" :
+                                 clrType == typeof(Guid) ? "Guid" :
+                                 clrType == typeof(decimal) ? "text" :
+                                 clrType == typeof(bool) ? "bool" :
+                                 clrType == typeof(byte[]) ? "blob" :
+                                 clrType == typeof(DateTime) ? "long" :
+                                 clrType == typeof(DateTimeOffset) ? "DateTimeOffset" :
+                                 clrType == typeof(TimeSpan) ? "TimeSpan" :
+                                 clrType == typeof(DateOnly) ? "DateOnly" :
+                                 clrType == typeof(TimeOnly) ? "TimeOnly" :
+                                 null;
+                }
+
+                if (columnType != null)
+                    columnNameAndTypeDict[type.Name].Add(piName, columnType + notNull);
+            }
+        }
+
+/*
+         private void getColumnNamesAndDataTypes()
+        {
             PropertyInfo[]? thisPropertyInfo = this.GetType().GetProperties();
             columnNameAndTypeDict.Add(this.GetType().Name, new Dictionary<string, string>());
 
@@ -805,7 +930,7 @@ namespace SQLiteXM
                         columnType = "bool";
 
                     else if (piType == typeof(DateTime).Name)
-                        columnType = "long";
+                        columnType = "DateTime";
 
                     else if (piType == typeof(DateTimeOffset).Name)
                         columnType = "DateTimeOffset";
@@ -824,6 +949,7 @@ namespace SQLiteXM
                 }
             }
         }
+*/
 
         private void loadDbValues(Dictionary<string, object?> databaseRecord)
         {
@@ -883,6 +1009,7 @@ namespace SQLiteXM
                             else if (piType == typeof(decimal).Name)    // Can be either text or double. Double will lose precision
                             {
                                 string typeName = kvp.Value.GetType().Name;
+
                                 if (typeName == typeof(string).Name)
                                     pi.SetValue(this, Decimal.Parse(kvp.Value.ToString()!));
 
@@ -904,6 +1031,7 @@ namespace SQLiteXM
                             else if (piType == typeof(DateTime).Name)  // Can be either text or double for saving ticks.
                             {
                                 string typeName = kvp.Value.GetType().Name;
+
                                 if (typeName == typeof(long).Name)
                                     pi.SetValue(this, new DateTime((long)kvp.Value));
 
@@ -914,6 +1042,7 @@ namespace SQLiteXM
                             else if (piType == typeof(DateTimeOffset).Name)  // Can be either text or DATETIMEOFFSET.
                             {
                                 string typeName = kvp.Value.GetType().Name;
+
                                 if (typeName == typeof(long).Name)
                                     pi.SetValue(this, DateTimeOffset.FromUnixTimeSeconds((long)kvp.Value));
 
@@ -924,6 +1053,7 @@ namespace SQLiteXM
                             else if (piType == typeof(TimeSpan).Name)  // Can be either text or TIMESPAN.
                             {
                                 string typeName = kvp.Value.GetType().Name;
+
                                 if (typeName == typeof(long).Name)
                                     pi.SetValue(this, TimeSpan.FromTicks((long)kvp.Value));
 
@@ -934,6 +1064,7 @@ namespace SQLiteXM
                             else if (piType == typeof(DateOnly).Name)  // Must be text.
                             {
                                 string typeName = kvp.Value.GetType().Name;
+
                                 if (typeName == typeof(long).Name)
                                     pi.SetValue(this, DateOnly.FromDayNumber((int)(long)kvp.Value));
 
@@ -947,6 +1078,7 @@ namespace SQLiteXM
                             else if (piType == typeof(TimeOnly).Name)    // Can be either text or double for saving ticks.
                             {
                                 string typeName = kvp.Value.GetType().Name;
+
                                 if (typeName == typeof(long).Name)
                                     pi.SetValue(this, new TimeOnly((long)kvp.Value));
 

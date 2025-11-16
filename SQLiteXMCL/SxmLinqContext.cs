@@ -27,6 +27,8 @@ namespace SQLiteXM
                 LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"),
                 dConnection
             );
+
+            DataConnection.AddMappingSchema(SxmMapping.Schema);
         }
 
         public DataConnection DataConnection => _dataConnection!;

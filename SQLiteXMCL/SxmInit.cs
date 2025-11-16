@@ -6,7 +6,7 @@ namespace SQLiteXM
     public class SxmInit
     {
         //private static Dictionary<string, Synchronize> synchronized = new Dictionary<string, Synchronize>();
-        private static Dictionary<string, Dictionary<string, string>> columnNameTpyes = new Dictionary<string, Dictionary<string, string>>();
+        private static Dictionary<string, Dictionary<string, string>> columnNameTypes = new Dictionary<string, Dictionary<string, string>>();
 
         private SxmInit() { }
 
@@ -555,9 +555,9 @@ namespace SQLiteXM
         {
             Dictionary<string, string>? columnNameType = default(Dictionary<string, string>);
 
-            if (columnNameTpyes.ContainsKey(tableName))
+            if (columnNameTypes.ContainsKey(tableName))
             {
-                columnNameType = columnNameTpyes[tableName];
+                columnNameType = columnNameTypes[tableName];
                 columnNameType.Add(columnName, columnType); 
             }
         }
@@ -566,17 +566,17 @@ namespace SQLiteXM
         {
             Dictionary<string, string>? columnNameType = default(Dictionary<string, string>);
 
-            if (columnNameTpyes.ContainsKey(tableName))
+            if (columnNameTypes.ContainsKey(tableName))
             {
-                columnNameType = columnNameTpyes[tableName];
+                columnNameType = columnNameTypes[tableName];
                 columnNameType.Remove(columnName);
             }
         }
 
         internal static Dictionary<string, string> getTableColumnNames(string? dbName, string? tableName)
         {
-            if (columnNameTpyes.ContainsKey(tableName))
-                return columnNameTpyes[tableName];
+            if (columnNameTypes.ContainsKey(tableName))
+                return columnNameTypes[tableName];
 
             Dictionary<string, string> columnNames = new Dictionary<string, string>();
 
@@ -594,7 +594,7 @@ namespace SQLiteXM
                 }
             }
 
-            columnNameTpyes.Add(tableName, columnNames);
+            columnNameTypes.Add(tableName, columnNames);
             return columnNames;
 
         }
