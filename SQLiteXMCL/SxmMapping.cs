@@ -21,10 +21,12 @@ namespace SQLiteXM
             ms.SetConverter<DateTime, string>(d => d.ToString("o", CultureInfo.InvariantCulture));
             ms.SetConverter<string, DateTime>(s => DateTime.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
 
-            // decimal / ulong TEXT
+            // decimal TEXT
             ms.SetConverter<decimal, string>(d => d.ToString(CultureInfo.InvariantCulture));
             ms.SetConverter<string, decimal>(s => decimal.Parse(s, CultureInfo.InvariantCulture));
-            ms.SetConverter<ulong, string>(u => u.ToString(CultureInfo.InvariantCulture));
+
+            // ulong TEXT + long
+            ms.SetConverter<ulong, string>(u => u.ToString("D20", CultureInfo.InvariantCulture));
             ms.SetConverter<string, ulong>(s => ulong.Parse(s, CultureInfo.InvariantCulture));
 
             // DateOnly TEXT + numeric (DayNumber)

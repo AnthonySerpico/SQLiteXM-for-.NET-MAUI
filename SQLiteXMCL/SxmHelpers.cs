@@ -69,7 +69,7 @@ namespace SQLiteXM
             return userObjectList;
         }
 
-        // Data being loaded into a user object; usualy after a select.
+        // Data being loaded into a user entity; usualy after a select.
         internal static void loadDbValues<T>(Dictionary<string, object?> databaseRecord, ref T userObject) where T : class
         {
             foreach (KeyValuePair<string, object?> kvp in databaseRecord)  // Process each entry (column) in the Dictionary.
@@ -93,9 +93,6 @@ namespace SQLiteXM
 
                             else if (piType == typeof(long).Name)
                                 pi.SetValue(userObject, (long)kvp.Value);
-
-                            else if (piType == typeof(ulong).Name)    // Large values will overflow.
-                                pi.SetValue(userObject, (ulong)ulong.Parse((string)kvp.Value, CultureInfo.InvariantCulture));
 
                             else if (piType == typeof(float).Name)
                                 pi.SetValue(userObject, (float)(double)kvp.Value);
@@ -124,18 +121,11 @@ namespace SQLiteXM
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
 
-                            else if (piType == typeof(decimal).Name)    // Can be either text or double. Double will lose precision
-                            {
-                                string typeName = kvp.Value.GetType().Name;
-                                if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, Decimal.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
+                            else if (piType == typeof(decimal).Name)    // Large vlues will overflow if not text in DB.
+                                pi.SetValue(userObject, Decimal.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
 
-                                else if (typeName == typeof(long).Name)
-                                    pi.SetValue(userObject, (decimal)(long)kvp.Value);   // Will lose precision.
-
-                                else if (typeName == typeof(double).Name)
-                                    pi.SetValue(userObject, (decimal)(double)kvp.Value);   // Will lose precision.
-                            }
+                            else if (piType == typeof(ulong).Name)    // Large values will overflow if not text in DB.
+                                pi.SetValue(userObject, ulong.Parse((string)kvp.Value, CultureInfo.InvariantCulture));
 
                             else if (piType == typeof(bool).Name)
                             {
@@ -217,7 +207,7 @@ namespace SQLiteXM
             }
         }
 
-        // Data from the user supplied object loaded into a dictionary that is then to be written to the database.
+        // Data from the user entity loaded into a dictionary that is then to be written to the database.
         internal static Dictionary<string, object?> loadParamaterValues<T>(Dictionary<string, string> dbColumnNameType, T userObject) where T : class, new()
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
@@ -240,7 +230,17 @@ namespace SQLiteXM
                                 userObjectType = underlyingType.Name;
                             }
 
-                            if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
+                            if (userObjectType == typeof(decimal).Name)  // Is the data type for the column in the user object a decimal?
+                            {
+                                returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData).ToString(CultureInfo.InvariantCulture));
+                            }
+
+                            else if (userObjectType == typeof(ulong).Name)  // Is the data type for the column in the user object a ulong?
+                            {
+                                returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData).ToString("D20", CultureInfo.InvariantCulture));
+                            }
+
+                            else if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
@@ -254,26 +254,8 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture  ));
 
-                                else if (kvp.Value.ToLower().Equals("dateonly"))
+                                else if (kvp.Value.ToLower().Equals("long"))
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).DayNumber);
-                            }
-
-                            else if (userObjectType == typeof(decimal).Name)  // Is the data type for the column in the user object a decimal?
-                            {
-                                if (kvp.Value.ToLower().Equals("decimal"))
-                                    returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData));  // Will lose precision. Converts to a numeric which is either a double or a long.
-
-                                else if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((decimal)userSuppliedObjectData).ToString(CultureInfo.InvariantCulture));
-                            }
-
-                            else if (userObjectType == typeof(ulong).Name)  // Is the data type for the column in the user object a decimal?
-                            {
-                                if (kvp.Value.ToLower().Equals("ulong"))
-                                    returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData));  // Will lose precision. Converts to a numeric which is either a double or a long.
-
-                                else if (kvp.Value.ToLower().Equals("text"))
-                                    returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData).ToString(CultureInfo.InvariantCulture));
                             }
 
                             else if (userObjectType == typeof(DateTimeOffset).Name)  // Is the data type for the column in the user object a decimal?
@@ -281,7 +263,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("datetimeoffset"))
+                                else if (kvp.Value.ToLower().Equals("long"))
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToUnixTimeMilliseconds());
                             }
 
@@ -290,7 +272,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).ToString("c", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("timespan"))
+                                else if (kvp.Value.ToLower().Equals("long"))
                                     returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).Ticks);
                             }
 
@@ -299,7 +281,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).ToString("HH:mm:ss.fffffff", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("timeonly"))
+                                else if (kvp.Value.ToLower().Equals("long"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).Ticks);
                             }
                             else
