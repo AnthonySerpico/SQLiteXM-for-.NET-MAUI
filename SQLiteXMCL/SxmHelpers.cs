@@ -1,5 +1,8 @@
-﻿using System.Globalization;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Globalization;
 using System.Reflection;
+using System.Xml.Linq;
+
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
 
@@ -8,7 +11,75 @@ namespace SQLiteXM
     // A Transaction object represents a series of SQL statements that will be executes as a single transaction.
     public class SxmHelpers
     {
+        private static ISet<string> _registeredAssociations = new HashSet<string>();
         private SxmHelpers() { }
+
+        internal static List<string> getAllUserTableNames(SxmConnection? sxmConnection)
+        {
+            List<string> tableNames = new List<string>();
+
+            if (sxmConnection != null)
+            {
+                sxmConnection.executeQuery("SELECT tableName FROM _systemCloudSynchDescriptor", null as List<object>);
+
+                if (sxmConnection.hasRows() == true)
+                {
+                    string[] fieldNames = sxmConnection.getFieldNames();
+                    while (sxmConnection.nextRow() == true)
+                    {
+                        foreach (string fieldName in fieldNames)
+                            tableNames.Add(sxmConnection.getValue(fieldName).ToString());
+                    }
+                }
+            }
+
+            return tableNames;
+        }
+
+        internal static void CreateAssociation(Type sourceType, string sourceKey, string targetTableName )
+        {
+
+            // Attempt to wire an association if a navigation property exists.
+            // Conditions:
+            // 1. Navigation property must have PropertyType.Name == fk.foreignTable
+            // 2. It must be excluded from column mapping (NotMapped or NotColumn) so schema builder ignores it.
+            // 3. Avoid duplicate registration per (SourceType.PropertyName)
+            try
+            {
+                // Find a single navigation property whose CLR type name matches the foreign table name.
+                var navProp = sourceType
+                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .FirstOrDefault(p =>
+                        p.PropertyType.Name.Equals(targetTableName, StringComparison.Ordinal) &&
+                        (p.IsDefined(typeof(NotMappedAttribute), false) ||
+                         p.IsDefined(typeof(LinqToDB.Mapping.NotColumnAttribute), false)));
+
+                if (navProp != null &&
+                    typeof(SxmEntity).IsAssignableFrom(navProp.PropertyType))
+                {
+                    string assocKey = $"{sourceType.FullName}.{navProp.Name}";
+                    if (_registeredAssociations.Add(assocKey))
+                    {
+                        // Register runtime association: Source.FK -> Target.id
+                        SxmMapping.ConfigureAssociation(
+                            sourceType: sourceType,
+                            navigationPropertyName: navProp.Name,
+                            thisKey: sourceKey,
+                            canBeNull: true);
+                    }
+                }
+                else
+                {
+                    // OPTIONAL: You can log or ignore if no navigation property is found.
+                    // This means only the physical FK will exist; navigation-based LINQ won't.
+                }
+            }
+            catch
+            {
+                // Swallow or log; association registration failure should not break table creation.
+            }
+
+        }
 
         internal static string GetDatabaseStatementTypeName(SqlStatementType statementType)
         {

@@ -1,10 +1,11 @@
 ﻿using LinqToDB;
 using LinqToDB.Mapping;
 using SQLiteXM.Internal;
-using NotMappedAttribute = System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute;
-using System.Reflection;
-using static SQLiteXM.Defines;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using System.Security.AccessControl;
+using static SQLiteXM.Defines;
+using NotMappedAttribute = System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute;
 
 namespace SQLiteXM
 {
@@ -769,6 +770,8 @@ namespace SQLiteXM
                         fieldName = piName,
                         foreignTable = fk.foreignTable,
                     });
+
+                    SxmHelpers.CreateAssociation(type, piName, fk.foreignTable);
                 }
 
                 var clrType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;

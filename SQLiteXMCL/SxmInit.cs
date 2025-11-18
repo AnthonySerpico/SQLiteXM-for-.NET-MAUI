@@ -165,6 +165,7 @@ namespace SQLiteXM
 
                     applyTriggerTableStatements(connectionMap);
                     storeDbVersionNumber(sqlStatementsVersionNumber);
+                    SxmMapping.attachDatabase();
                 }
             }
 #pragma warning disable 0168
