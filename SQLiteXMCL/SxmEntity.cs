@@ -21,6 +21,7 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
+        public static string? OwnerType { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
@@ -28,12 +29,13 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
+        public static string? OwnerType { get; set; } // set by the consumer
 
         public CreateIndex(string[] indexFields)
         {
             this.indexFields = indexFields;
 
-            this.indexName = "IDX";
+            this.indexName = "IDX_" + OwnerType;
             foreach (string field in indexFields)
             {
                 this.indexName += "_" + field;
@@ -44,7 +46,7 @@ namespace SQLiteXM
         {
             this.indexFields = new string[] { indexField };
 
-            this.indexName = "IDX";
+            this.indexName = "IDX_" + OwnerType;
             foreach (string field in this.indexFields)
             {
                 this.indexName += "_" + field;
@@ -60,12 +62,13 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
+        public string? OwnerType { get; set; } // set by the consumer
 
-        public IndexPropertyAttributes(string indexField)
+        public IndexPropertyAttributes(string indexField, string tableName)
         {
             this.indexFields = new string[] { indexField };
 
-            this.indexName = "IDX";
+            this.indexName = "IDX_" + tableName;
             foreach (string field in this.indexFields)
             {
                 this.indexName += "_" + field;
@@ -78,13 +81,13 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-
+        public static string? OwnerType { get; set; } // set by the consumer   
 
         public CreateUnique(string[] indexFields)
         {
             this.indexFields = indexFields;
 
-            this.indexName = "IDXU";
+            this.indexName = "IDXU_" + OwnerType;
             foreach (string field in indexFields)
             {
                 this.indexName += "_" + field;
@@ -451,17 +454,21 @@ namespace SQLiteXM
             List<string> indexSqlStatements = new List<string>();
             SxmConnection? sxmConnection = default(SxmConnection);
             IIndexVars[]? customAttributes = default(IIndexVars[]);
+            string tableName = this.GetType().Name;
 
+            CreateIndex.OwnerType = this.GetType().Name;
+            CreateUnique.OwnerType = this.GetType().Name;
             if (indexType == IndexType.standard)
+
             {
                 firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
-                secondArray = standardIndexDict.ContainsKey(this.GetType().Name) ? standardIndexDict[this.GetType().Name].ToArray() : default(IIndexVars[]);
+                secondArray = standardIndexDict.ContainsKey(tableName) ? standardIndexDict[tableName].ToArray() : default(IIndexVars[]);
             }
 
             if (indexType == IndexType.unique)
             {
                 firstArray = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
-                secondArray = uniqueIndexDict.ContainsKey(this.GetType().Name) ? uniqueIndexDict[this.GetType().Name].ToArray() : default(IIndexVars[]);
+                secondArray = uniqueIndexDict.ContainsKey(tableName) ? uniqueIndexDict[tableName].ToArray() : default(IIndexVars[]);
 
                 unique = "UNIQUE";
             }
@@ -750,14 +757,14 @@ namespace SQLiteXM
                 {
                     if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
                         standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                    standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
+                    standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
                 }
 
                 if (propertyAttribute.ContainsKey("CreateUnique"))
                 {
                     if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
                         uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                    uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
+                    uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
                 }
                 if (propertyAttribute.ContainsKey("CreateForeignKey"))
                 {
