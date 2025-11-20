@@ -1,8 +1,14 @@
 ﻿namespace SQLiteXM
 {
+    public enum ColumnType
+    {
+        Text, NVarChar, VarChar, Char, NChar, Int16, Int32, Int64, UInt16, UInt32,
+        UInt64, Boolean, Single, Double, Decimal, Guid, DateTime, Date, Time, Binary, Blob, VarBinary
+    };
+
     public class Defines
 	{
-		public static readonly int ONE_MINUTE = 60000; // One Minutes in milliseconds.
+        public static readonly int ONE_MINUTE = 60000; // One Minutes in milliseconds.
 
 		// Delimeters used for enclosing commands in the SqlStatemets properties file.
 		internal static readonly char openStatementDelimeter = '[';

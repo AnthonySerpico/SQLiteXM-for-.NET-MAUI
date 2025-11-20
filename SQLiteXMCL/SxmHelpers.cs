@@ -49,10 +49,7 @@ namespace SQLiteXM
                 // Find a single navigation property whose CLR type name matches the foreign table name.
                 var navProp = sourceType
                     .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .FirstOrDefault(p =>
-                        p.PropertyType.Name.Equals(targetTableName, StringComparison.Ordinal) &&
-                        (p.IsDefined(typeof(NotMappedAttribute), false) ||
-                         p.IsDefined(typeof(LinqToDB.Mapping.NotColumnAttribute), false)));
+                    .FirstOrDefault(p => p.PropertyType.Name.Equals(targetTableName, StringComparison.Ordinal) && p.IsDefined(typeof(NotAColumnAttribute), false));
 
                 if (navProp != null &&
                     typeof(SxmEntity).IsAssignableFrom(navProp.PropertyType))
@@ -244,9 +241,6 @@ namespace SQLiteXM
 
                                 else if (typeName == typeof(string).Name)
                                     pi.SetValue(userObject, DateOnly.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
-
-                                else if (typeName == typeof(int).Name)
-                                    pi.SetValue(userObject, DateOnly.FromDayNumber((int)kvp.Value));
                             }
 
                             else if (piType == typeof(TimeOnly).Name)    // Can be either text or double for saving ticks.
@@ -316,7 +310,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("long"))
+                                else if (kvp.Value.ToLower().Equals("integer"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
                             }
 
@@ -325,7 +319,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture  ));
 
-                                else if (kvp.Value.ToLower().Equals("long"))
+                                else if (kvp.Value.ToLower().Equals("integer"))
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).DayNumber);
                             }
 
@@ -334,7 +328,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("long"))
+                                else if (kvp.Value.ToLower().Equals("integer"))
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToUnixTimeMilliseconds());
                             }
 
@@ -343,7 +337,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).ToString("c", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("long"))
+                                else if (kvp.Value.ToLower().Equals("integer"))
                                     returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).Ticks);
                             }
 
@@ -352,7 +346,7 @@ namespace SQLiteXM
                                 if (kvp.Value.ToLower().Equals("text"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).ToString("HH:mm:ss.fffffff", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("long"))
+                                else if (kvp.Value.ToLower().Equals("integer"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).Ticks);
                             }
                             else

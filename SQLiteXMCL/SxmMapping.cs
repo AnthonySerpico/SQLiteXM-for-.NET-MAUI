@@ -1,10 +1,8 @@
-using LinqToDB;
 using LinqToDB.Mapping;
 using System.Collections;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Xml.Linq;
 
 namespace SQLiteXM
 {
@@ -37,8 +35,7 @@ namespace SQLiteXM
             // DateOnly TEXT + numeric (DayNumber)
             ms.SetConverter<DateOnly, string>(d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             ms.SetConverter<string, DateOnly>(s => DateOnly.Parse(s, CultureInfo.InvariantCulture));
-            ms.SetConverter<DateOnly, int>(d => d.DayNumber);
-            ms.SetConverter<int, DateOnly>(n => DateOnly.FromDayNumber(n));
+            ms.SetConverter<DateOnly, long>(d => d.DayNumber);
             ms.SetConverter<long, DateOnly>(l => DateOnly.FromDayNumber((int)l)); // in case stored as long
 
             // TimeOnly TEXT + numeric (Ticks)
@@ -62,7 +59,7 @@ namespace SQLiteXM
             return ms;
         }
 
-        public static void attachDatabase()
+        public static void InitializeAssociations()
         {
             if(wasMapped) return;
 
@@ -70,10 +67,10 @@ namespace SQLiteXM
             ArrayList databaseNames = DatabaseDescriptor.getDatabaseNames();
 
             foreach (string databaseName in databaseNames)
-                getDbVersionNumber(databaseName);
+                AttachAssociation(databaseName);
         }
 
-        public static void getDbVersionNumber(string databaseName)
+        public static void AttachAssociation(string databaseName)
         {
             SxmConnection? sxmConnection = default;
 

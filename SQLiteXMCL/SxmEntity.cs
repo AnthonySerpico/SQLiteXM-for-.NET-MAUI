@@ -1,11 +1,7 @@
-﻿using LinqToDB;
-using LinqToDB.Mapping;
+﻿using LinqToDB.Mapping;
 using SQLiteXM.Internal;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Security.AccessControl;
 using static SQLiteXM.Defines;
-using NotMappedAttribute = System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute;
 
 namespace SQLiteXM
 {
@@ -21,7 +17,7 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public static string? OwnerType { get; set; }
+        public static string? tableName { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
@@ -29,13 +25,13 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public static string? OwnerType { get; set; } // set by the consumer
+        public static string? tableName { get; set; } // set by the consumer
 
         public CreateIndex(string[] indexFields)
         {
             this.indexFields = indexFields;
 
-            this.indexName = "IDX_" + OwnerType;
+            this.indexName = "IDX_" + tableName;
             foreach (string field in indexFields)
             {
                 this.indexName += "_" + field;
@@ -46,7 +42,7 @@ namespace SQLiteXM
         {
             this.indexFields = new string[] { indexField };
 
-            this.indexName = "IDX_" + OwnerType;
+            this.indexName = "IDX_" + tableName;
             foreach (string field in this.indexFields)
             {
                 this.indexName += "_" + field;
@@ -62,7 +58,7 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public string? OwnerType { get; set; } // set by the consumer
+        public string? tableName { get; set; } // set by the consumer
 
         public IndexPropertyAttributes(string indexField, string tableName)
         {
@@ -81,13 +77,13 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public static string? OwnerType { get; set; } // set by the consumer   
+        public static string? tableName { get; set; } // set by the consumer   
 
         public CreateUnique(string[] indexFields)
         {
             this.indexFields = indexFields;
 
-            this.indexName = "IDXU_" + OwnerType;
+            this.indexName = "IDX_" + tableName;
             foreach (string field in indexFields)
             {
                 this.indexName += "_" + field;
@@ -95,6 +91,27 @@ namespace SQLiteXM
         }
 
         public CreateUnique()
+        {
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    public class IsAColumnAttribute : Attribute
+    {
+        public ColumnType ColumnType { get; set; }
+    }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    public class NotAColumnAttribute : Attribute
+    {
+    }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+    public class TableAttribute : Attribute
+    {
+        public bool ColumnAttributeRequired { get; set; } = false;
+
+        public TableAttribute()
         {
         }
     }
@@ -150,7 +167,7 @@ namespace SQLiteXM
         public string foreignTable { get; set; }
     }
 
-    [Table(IsColumnAttributeRequired = false)]
+    [Table(ColumnAttributeRequired = false)]
     public class SxmEntity
     {
         private static object lockObject = new object();
@@ -171,9 +188,11 @@ namespace SQLiteXM
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
+        [IsAColumn]
         [Column, PrimaryKey, Identity]
         public virtual long id { get; set; }
-        [Column]
+
+        [IsAColumn]
         public virtual string? synchId { get; set; }
 
         public SxmEntity(string? databaseName)
@@ -456,8 +475,9 @@ namespace SQLiteXM
             IIndexVars[]? customAttributes = default(IIndexVars[]);
             string tableName = this.GetType().Name;
 
-            CreateIndex.OwnerType = this.GetType().Name;
-            CreateUnique.OwnerType = this.GetType().Name;
+            CreateIndex.tableName = tableName;
+            CreateUnique.tableName = tableName;
+
             if (indexType == IndexType.standard)
 
             {
@@ -729,15 +749,15 @@ namespace SQLiteXM
                     continue;
 
                 // Skip properties marked with [NotMapped] or [LinqToDB.Mapping.NotColumn]
-                if (pi.IsDefined(typeof(NotMappedAttribute), false) || pi.IsDefined(typeof(LinqToDB.Mapping.NotColumnAttribute), false))
+                if (pi.IsDefined(typeof(NotAColumnAttribute), false))
                     continue;
 
                 // Get the [Column] attribute, if present, otherwise it's null.
-                ColumnAttribute? colAttr = pi.GetCustomAttribute<ColumnAttribute>(inherit: false);
+                IsAColumnAttribute? colAttr = pi.GetCustomAttribute<IsAColumnAttribute>(inherit: false);
 
-                // Get the [Table] attribute to check IsColumnAttributeRequired.
-                TableAttribute? tbl = type.GetCustomAttribute<LinqToDB.Mapping.TableAttribute>(inherit: false);
-                bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
+                // Get the [Table] attribute to check IsAColumnAttributeRequired.
+                TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
+                bool columnIsRequired = tbl?.ColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
                 if (columnIsRequired && colAttr == null)
                     continue; // Must have [Column] attribute in order to map to a database, but it's missing.
 
@@ -783,96 +803,55 @@ namespace SQLiteXM
 
                 var clrType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
 
-                // Override from DataType if specified, for example, [Column(DataType = DataType.Text)]
-                string? columnType = colAttr?.DataType switch
+                // Override from ColumnType if specified, for example, [Column(DataType = DataType.Text)]
+                string? columnType = colAttr?.ColumnType switch
                 {
-                    DataType.Text or DataType.NVarChar or DataType.VarChar or DataType.Char or DataType.NChar => "text",
-                    DataType.Int16 => "short",
-                    DataType.Int32 => "int",
-                    DataType.Int64 => "long",
-                    DataType.UInt16 => "ushort",
-                    DataType.UInt32 => "uint",
-                    DataType.UInt64 => "text", // keep ulong as text for precision
-                    DataType.Boolean => "bool",
-                    DataType.Single => "float",
-                    DataType.Double => "double",
-                    DataType.Decimal => "text", // precision retention
-                    DataType.Guid => "Guid",
-                    DataType.DateTime => "DateTime", // ticks strategy
-                    DataType.Date => "DateOnly",
-                    DataType.Time => "TimeSpan",
-                    DataType.Binary or DataType.Blob or DataType.VarBinary => "blob",
+                    ColumnType.Text or ColumnType.NVarChar or ColumnType.VarChar or ColumnType.Char or ColumnType.NChar => "TEXT",
+                    ColumnType.Int16 or ColumnType.Int32 or ColumnType.Int64 => "INTEGER",
+                    ColumnType.UInt16 or ColumnType.UInt32 => "INTEGER",
+                    ColumnType.UInt64 => "TEXT", // preserve range
+                    ColumnType.Boolean => "INTEGER",
+                    ColumnType.Single or ColumnType.Double => "REAL",
+                    ColumnType.Decimal => "TEXT", // preserve range
+                    ColumnType.Guid => "TEXT",
+                    ColumnType.DateTime or ColumnType.Date or ColumnType.Time => "INTEGER", // ticks
+                    ColumnType.Binary or ColumnType.Blob or ColumnType.VarBinary => "BLOB",
                     _ => null
                 };
 
                 if (columnType != null)
                 {
-                    if (clrType == typeof(DateTime))
+                    if (clrType == typeof(DateTime) || clrType == typeof(DateOnly) || clrType == typeof(TimeSpan) || clrType == typeof(TimeOnly) || clrType == typeof(DateTimeOffset))
                     {
-                        if (!columnType.Equals("text"))
+                        if (!columnType.Equals("TEXT"))
                             columnType = null;
-                    }
-                    else
-                    {
-                        if (clrType == typeof(DateOnly))
-                        {
-                            if (!columnType.Equals("text"))
-                                columnType = null;
-                        }
-                        else
-                        {
-                            if (clrType == typeof(TimeSpan))
-                            {
-                                if (!columnType.Equals("text"))
-                                    columnType = null;
-                            }
-                            else
-                            {
-                                if (clrType == typeof(TimeOnly))
-                                {
-                                    if (!columnType.Equals("text"))
-                                        columnType = null;
-                                }
-                                else
-                                {
-                                    if (clrType == typeof(DateTimeOffset))
-                                    {
-                                        if (!columnType.Equals("text"))
-                                            columnType = null;
-                                    }
-                                    else
-
-                                        columnType = null;
-                                }
-                            }
-                        }
                     }
                 }
 
-                // Fallback to CLR mapping if DataType was Undefined.
+                // Fallback to CLR mapping if ColumnType was Undefined.
                 if (columnType == null)
                 {
                     // Determine CLR (nullable unwrap)
-                    columnType = clrType == typeof(int) ? "int" :
-                                 clrType == typeof(string) ? "text" :
-                                 clrType == typeof(long) ? "long" :
-                                 clrType == typeof(ulong) ? "text" :
-                                 clrType == typeof(float) ? "float" :
-                                 clrType == typeof(short) ? "short" :
-                                 clrType == typeof(ushort) ? "ushort" :
-                                 clrType == typeof(uint) ? "uint" :
-                                 clrType == typeof(sbyte) ? "sbyte" :
-                                 clrType == typeof(byte) ? "byte" :
-                                 clrType == typeof(double) ? "double" :
-                                 clrType == typeof(Guid) ? "Guid" :
-                                 clrType == typeof(decimal) ? "text" :
-                                 clrType == typeof(bool) ? "bool" :
-                                 clrType == typeof(byte[]) ? "blob" :
-                                 clrType == typeof(DateTime) ? "long" :
-                                 clrType == typeof(DateTimeOffset) ? "long" :
-                                 clrType == typeof(TimeSpan) ? "long" :
-                                 clrType == typeof(DateOnly) ? "long" :
-                                 clrType == typeof(TimeOnly) ? "long" :
+                    columnType = clrType == typeof(int) ? "INTEGER" :
+                                 clrType == typeof(string) ? "TEXT" :
+                                 clrType == typeof(long) ? "INTEGER" :
+                                 clrType == typeof(ulong) ? "TEXT" :
+                                 clrType == typeof(float) ? "REAL" :
+                                 clrType == typeof(short) ? "INTEGER" :
+                                 clrType == typeof(ushort) ? "INTEGER" :
+                                 clrType == typeof(uint) ? "INTEGER" :
+                                 clrType == typeof(sbyte) ? "INTEGER" :
+                                 clrType == typeof(byte) ? "INTEGER" :
+                                 clrType == typeof(double) ? "REAL" :
+                                 clrType == typeof(Guid) ? "TEXT" :
+                                 clrType == typeof(decimal) ? "TEXT" :
+                                 clrType == typeof(bool) ? "INTEGER" :
+                                 clrType == typeof(byte[]) ? "BLOB" :
+                                 clrType == typeof(DateTime) ? "INTEGER" :
+                                 clrType == typeof(DateTimeOffset) ? "INTEGER" :
+                                 clrType == typeof(TimeSpan) ? "INTEGER" :
+                                 clrType == typeof(DateOnly) ? "INTEGER" :
+                                 clrType == typeof(TimeOnly) ? "INTEGER" :
                                  null;
                 }
 
