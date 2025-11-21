@@ -6,6 +6,12 @@
         UInt64, Boolean, Single, Double, Decimal, Guid, DateTime, Date, Time, Binary, Blob, VarBinary
     };
 
+    internal enum SxmEntityState
+    {
+        None, Insert, Update, Delete
+    }
+
+
     public class Defines
 	{
         public static readonly int ONE_MINUTE = 60000; // One Minutes in milliseconds.

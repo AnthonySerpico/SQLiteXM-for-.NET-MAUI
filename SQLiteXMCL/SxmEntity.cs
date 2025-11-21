@@ -5,168 +5,6 @@ using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
-    internal enum SxmEntityState
-    {
-        None,
-        Insert,
-        Update,
-        Delete
-    }
-
-    interface IIndexVars
-    {
-        public string[] indexFields { get; set; }
-        public string indexName { get; set; }
-        public static string? tableName { get; set; }
-    }
-
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
-    public class CreateIndex : Attribute, IIndexVars
-    {
-        public string[] indexFields { get; set; }
-        public string indexName { get; set; }
-        public static string? tableName { get; set; } // set by the consumer
-
-        public CreateIndex(string[] indexFields)
-        {
-            this.indexFields = indexFields;
-
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in indexFields)
-            {
-                this.indexName += "_" + field;
-            }
-        }
-
-        public CreateIndex(string indexField)
-        {
-            this.indexFields = new string[] { indexField };
-
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in this.indexFields)
-            {
-                this.indexName += "_" + field;
-            }
-        }
-
-        public CreateIndex()
-        {
-        }
-    }
-
-    public class IndexPropertyAttributes : IIndexVars
-    {
-        public string[] indexFields { get; set; }
-        public string indexName { get; set; }
-        public string? tableName { get; set; } // set by the consumer
-
-        public IndexPropertyAttributes(string indexField, string tableName)
-        {
-            this.indexFields = new string[] { indexField };
-
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in this.indexFields)
-            {
-                this.indexName += "_" + field;
-            }
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
-    public class CreateUnique : Attribute, IIndexVars
-    {
-        public string[] indexFields { get; set; }
-        public string indexName { get; set; }
-        public static string? tableName { get; set; } // set by the consumer   
-
-        public CreateUnique(string[] indexFields)
-        {
-            this.indexFields = indexFields;
-
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in indexFields)
-            {
-                this.indexName += "_" + field;
-            }
-        }
-
-        public CreateUnique()
-        {
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class IsAColumnAttribute : Attribute
-    {
-        public ColumnType ColumnType { get; set; }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class NotAColumnAttribute : Attribute
-    {
-    }
-
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public class TableAttribute : Attribute
-    {
-        public bool ColumnAttributeRequired { get; set; } = false;
-
-        public TableAttribute()
-        {
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    public class CreateTrigger : Attribute
-    {
-        public string triggerSql { get; set; }
-
-        public CreateTrigger(string triggerSql)
-        {
-            this.triggerSql = triggerSql;
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class Exclude : Attribute
-    {
-        public bool exclude { get; set; } = true;
-
-        public Exclude()
-        {
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class CreateForeignKey : Attribute
-    {
-        public string foreignTable { get; set; }
-
-        public CreateForeignKey(string foreignTable)
-        {
-            this.foreignTable = foreignTable;
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class RequiredNotNull : Attribute
-    {
-        public object defaultValue { get; set; }
-
-        public RequiredNotNull(object defaultValue)
-        {
-            this.defaultValue = defaultValue;
-            if (defaultValue == null)
-                throw new ArgumentNullException("RequiredNotNull", "For fields with the attribute 'RequiredNotNull', the default value for the field cannot be null.");
-        }
-    }
-
-    internal class ForeignKeyAttributes
-    {
-        public string fieldName { get; set; }
-        public string foreignTable { get; set; }
-    }
-
     [Table(ColumnAttributeRequired = false)]
     public class SxmEntity
     {
@@ -213,7 +51,8 @@ namespace SQLiteXM
 
                 if (!columnNameAndTypeDict.ContainsKey(this.GetType().Name))
                 {
-                    getColumnNamesAndDataTypes();
+                    getColumnNamesAndDataTypes(GetType().GetProperties());
+                    //processObservableProperties();
 
                     createTable();
 
@@ -227,6 +66,40 @@ namespace SQLiteXM
                     processtriggerAttributes();
                 }
             }
+        }
+
+        private void processObservableProperties()
+        {
+            var type = this.GetType();
+            var mappedProperties = new List<PropertyInfo>();
+
+            foreach (var field in type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+            {
+                var colAttr = field.GetCustomAttribute<IsAColumnAttribute>();
+                var obsAtt = field.GetCustomAttribute<ObservablePropertyAttribute>();
+
+                if(colAttr != null && obsAtt != null)
+                {
+                    var prop = GetGeneratedPropertiesForField(field);
+                    if(prop != null)
+                        mappedProperties.Add(prop);
+                }
+            }
+
+            if(mappedProperties.Count > 0) 
+                getColumnNamesAndDataTypes(mappedProperties.ToArray());
+        }
+
+        private PropertyInfo? GetGeneratedPropertiesForField(FieldInfo field)
+        {
+            var type = field.DeclaringType;
+            var name = field.Name;
+
+            if(name.StartsWith("_"))
+                name = name.Substring(1);
+
+            name = char.ToUpper(name[0]) + name.Substring(1);
+            return this.GetType().GetProperty(name);
         }
 
         private async Task Save(string sqlStatementName)
@@ -476,7 +349,7 @@ namespace SQLiteXM
             string tableName = this.GetType().Name;
 
             CreateIndex.tableName = tableName;
-            CreateUnique.tableName = tableName;
+            CreateUniqueIndex.tableName = tableName;
 
             if (indexType == IndexType.standard)
 
@@ -487,7 +360,7 @@ namespace SQLiteXM
 
             if (indexType == IndexType.unique)
             {
-                firstArray = (CreateUnique[])this.GetType().GetCustomAttributes(typeof(CreateUnique), true);
+                firstArray = (CreateUniqueIndex[])this.GetType().GetCustomAttributes(typeof(CreateUniqueIndex), true);
                 secondArray = uniqueIndexDict.ContainsKey(tableName) ? uniqueIndexDict[tableName].ToArray() : default(IIndexVars[]);
 
                 unique = "UNIQUE";
@@ -733,257 +606,134 @@ namespace SQLiteXM
                 reconcile();
         }
 
-        private void getColumnNamesAndDataTypes()
+        private void getColumnNamesAndDataTypes(PropertyInfo[]? thisPropertyInfo)
         {
-            var type = GetType();
-            PropertyInfo[]? thisPropertyInfo = type.GetProperties();
-            columnNameAndTypeDict.Add(this.GetType().Name, new Dictionary<string, string>());
-
-            foreach (PropertyInfo pi in thisPropertyInfo)
+            if (thisPropertyInfo != null)
             {
-                string piType = pi.PropertyType.Name;
-                string piName = pi.Name;
+                var type = GetType();
+                columnNameAndTypeDict.Add(this.GetType().Name, new Dictionary<string, string>());
 
-                // Skip "id" and "synchId" properties
-                if (piName is "id" or "synchId")
-                    continue;
-
-                // Skip properties marked with [NotMapped] or [LinqToDB.Mapping.NotColumn]
-                if (pi.IsDefined(typeof(NotAColumnAttribute), false))
-                    continue;
-
-                // Get the [Column] attribute, if present, otherwise it's null.
-                IsAColumnAttribute? colAttr = pi.GetCustomAttribute<IsAColumnAttribute>(inherit: false);
-
-                // Get the [Table] attribute to check IsAColumnAttributeRequired.
-                TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
-                bool columnIsRequired = tbl?.ColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
-                if (columnIsRequired && colAttr == null)
-                    continue; // Must have [Column] attribute in order to map to a database, but it's missing.
-
-                string notNull = string.Empty;
-                Dictionary<string, object> propertyAttribute = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
-
-                if (propertyAttribute.ContainsKey("RequiredNotNull"))
+                foreach (PropertyInfo pi in thisPropertyInfo)
                 {
-                    RequiredNotNull nn = (RequiredNotNull)propertyAttribute["RequiredNotNull"];
-                    if (nn.defaultValue != null)
-                        notNull = $" not null default {nn.defaultValue}";
-                    else
-                        notNull = " not null";
-                }
+                    string piType = pi.PropertyType.Name;
+                    string piName = pi.Name;
 
-                if (propertyAttribute.ContainsKey("CreateIndex"))
-                {
-                    if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
-                        standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                    standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
-                }
+                    // Skip "id" and "synchId" properties
+                    if (piName is "id" or "synchId")
+                        continue;
 
-                if (propertyAttribute.ContainsKey("CreateUnique"))
-                {
-                    if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
-                        uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                    uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
-                }
-                if (propertyAttribute.ContainsKey("CreateForeignKey"))
-                {
-                    CreateForeignKey fk = (CreateForeignKey)propertyAttribute["CreateForeignKey"];
+                    // Skip properties marked with [NotAColumn].
+                    if (pi.IsDefined(typeof(NotAColumnAttribute), false))
+                        continue;
 
-                    if (foreignKeyAttributeList == default(List<ForeignKeyAttributes>))
-                        foreignKeyAttributeList = new List<ForeignKeyAttributes>();
-                    foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
+                    // Get the [Column] attribute, if present, otherwise it's null.
+                    IsAColumnAttribute? colAttr = pi.GetCustomAttribute<IsAColumnAttribute>(inherit: false);
+
+                    // Get the [Table] attribute to check IsAColumnAttributeRequired.
+                    TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
+                    bool columnIsRequired = tbl?.ColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
+                    if (columnIsRequired && colAttr == null)
+                        continue; // Must have [Column] attribute in order to map to a database, but it's missing.
+
+                    string notNull = string.Empty;
+                    Dictionary<string, object> propertyAttribute = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
+
+                    if (propertyAttribute.ContainsKey("RequiredNotNull"))
                     {
-                        fieldName = piName,
-                        foreignTable = fk.foreignTable,
-                    });
-
-                    SxmHelpers.CreateAssociation(type, piName, fk.foreignTable);
-                }
-
-                var clrType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
-
-                // Override from ColumnType if specified, for example, [Column(DataType = DataType.Text)]
-                string? columnType = colAttr?.ColumnType switch
-                {
-                    ColumnType.Text or ColumnType.NVarChar or ColumnType.VarChar or ColumnType.Char or ColumnType.NChar => "TEXT",
-                    ColumnType.Int16 or ColumnType.Int32 or ColumnType.Int64 => "INTEGER",
-                    ColumnType.UInt16 or ColumnType.UInt32 => "INTEGER",
-                    ColumnType.UInt64 => "TEXT", // preserve range
-                    ColumnType.Boolean => "INTEGER",
-                    ColumnType.Single or ColumnType.Double => "REAL",
-                    ColumnType.Decimal => "TEXT", // preserve range
-                    ColumnType.Guid => "TEXT",
-                    ColumnType.DateTime or ColumnType.Date or ColumnType.Time => "INTEGER", // ticks
-                    ColumnType.Binary or ColumnType.Blob or ColumnType.VarBinary => "BLOB",
-                    _ => null
-                };
-
-                if (columnType != null)
-                {
-                    if (clrType == typeof(DateTime) || clrType == typeof(DateOnly) || clrType == typeof(TimeSpan) || clrType == typeof(TimeOnly) || clrType == typeof(DateTimeOffset))
-                    {
-                        if (!columnType.Equals("TEXT"))
-                            columnType = null;
+                        RequiredNotNull nn = (RequiredNotNull)propertyAttribute["RequiredNotNull"];
+                        if (nn.defaultValue != null)
+                            notNull = $" not null default {nn.defaultValue}";
+                        else
+                            notNull = " not null";
                     }
-                }
 
-                // Fallback to CLR mapping if ColumnType was Undefined.
-                if (columnType == null)
-                {
-                    // Determine CLR (nullable unwrap)
-                    columnType = clrType == typeof(int) ? "INTEGER" :
-                                 clrType == typeof(string) ? "TEXT" :
-                                 clrType == typeof(long) ? "INTEGER" :
-                                 clrType == typeof(ulong) ? "TEXT" :
-                                 clrType == typeof(float) ? "REAL" :
-                                 clrType == typeof(short) ? "INTEGER" :
-                                 clrType == typeof(ushort) ? "INTEGER" :
-                                 clrType == typeof(uint) ? "INTEGER" :
-                                 clrType == typeof(sbyte) ? "INTEGER" :
-                                 clrType == typeof(byte) ? "INTEGER" :
-                                 clrType == typeof(double) ? "REAL" :
-                                 clrType == typeof(Guid) ? "TEXT" :
-                                 clrType == typeof(decimal) ? "TEXT" :
-                                 clrType == typeof(bool) ? "INTEGER" :
-                                 clrType == typeof(byte[]) ? "BLOB" :
-                                 clrType == typeof(DateTime) ? "INTEGER" :
-                                 clrType == typeof(DateTimeOffset) ? "INTEGER" :
-                                 clrType == typeof(TimeSpan) ? "INTEGER" :
-                                 clrType == typeof(DateOnly) ? "INTEGER" :
-                                 clrType == typeof(TimeOnly) ? "INTEGER" :
-                                 null;
-                }
-
-                if (columnType != null)
-                    columnNameAndTypeDict[type.Name].Add(piName, columnType + notNull);
-            }
-        }
-
-        /*
-                 private void getColumnNamesAndDataTypes()
-                {
-                    PropertyInfo[]? thisPropertyInfo = this.GetType().GetProperties();
-                    columnNameAndTypeDict.Add(this.GetType().Name, new Dictionary<string, string>());
-
-                    foreach (PropertyInfo pi in thisPropertyInfo)
+                    if (propertyAttribute.ContainsKey("CreateIndex"))
                     {
-                        string piType = pi.PropertyType.Name;
-                        string piName = pi.Name;
-                        Dictionary<string, object> propertyAttribute = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
+                        if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
+                            standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
+                        standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
+                    }
 
-                        string notNull = string.Empty;
-                        string? columnType = default(string);
+                    if (propertyAttribute.ContainsKey("CreateUnique"))
+                    {
+                        if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
+                            uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
+                        uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
+                    }
+                    if (propertyAttribute.ContainsKey("CreateForeignKey"))
+                    {
+                        CreateForeignKey fk = (CreateForeignKey)propertyAttribute["CreateForeignKey"];
 
-                        if (!piName.Equals("id") && !piName.Equals("synchId") && propertyAttribute.ContainsKey("ColumnAttribute"))
+                        if (foreignKeyAttributeList == default(List<ForeignKeyAttributes>))
+                            foreignKeyAttributeList = new List<ForeignKeyAttributes>();
+                        foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
                         {
-                            if (propertyAttribute.ContainsKey("RequiredNotNull"))
-                            {
-                                RequiredNotNull nn = (RequiredNotNull)propertyAttribute["RequiredNotNull"];
-                                if (nn.defaultValue != null)
-                                    notNull = $" not null default {nn.defaultValue}";
-                                else
-                                    notNull = " not null";
-                            }
+                            fieldName = piName,
+                            foreignTable = fk.foreignTable,
+                        });
 
-                            if (propertyAttribute.ContainsKey("CreateIndex"))
-                            {
-                                if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
-                                    standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                                standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
-                            }
+                        SxmHelpers.CreateAssociation(type, piName, fk.foreignTable);
+                    }
 
-                            if (propertyAttribute.ContainsKey("CreateUnique"))
-                            {
-                                if(uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
-                                    uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                                uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName));
-                            }
-                            if (propertyAttribute.ContainsKey("CreateForeignKey"))
-                            {
-                                CreateForeignKey fk = (CreateForeignKey)propertyAttribute["CreateForeignKey"];
+                    var clrType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
 
-                                if (foreignKeyAttributeList == default(List<ForeignKeyAttributes>))
-                                    foreignKeyAttributeList = new List<ForeignKeyAttributes>();
-                                foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
-                                {
-                                    fieldName = piName,
-                                    foreignTable = fk.foreignTable,
-                                });
-                            }
+                    // Override from ColumnType if specified, for example, [Column(DataType = DataType.Text)]
+                    string? columnType = colAttr?.ColumnType switch
+                    {
+                        ColumnType.Text or ColumnType.NVarChar or ColumnType.VarChar or ColumnType.Char or ColumnType.NChar => "TEXT",
+                        ColumnType.Int16 or ColumnType.Int32 or ColumnType.Int64 => "INTEGER",
+                        ColumnType.UInt16 or ColumnType.UInt32 => "INTEGER",
+                        ColumnType.UInt64 => "TEXT", // preserve range
+                        ColumnType.Boolean => "INTEGER",
+                        ColumnType.Single or ColumnType.Double => "REAL",
+                        ColumnType.Decimal => "TEXT", // preserve range
+                        ColumnType.Guid => "TEXT",
+                        ColumnType.DateTime or ColumnType.Date or ColumnType.Time => "INTEGER", // ticks
+                        ColumnType.Binary or ColumnType.Blob or ColumnType.VarBinary => "BLOB",
+                        _ => null
+                    };
 
-                            Type? underlyingType = Nullable.GetUnderlyingType(pi.PropertyType);
-                            if (underlyingType != null)
-                            {
-                                piType = underlyingType.Name;
-                            }
-
-                            if (piType == typeof(int).Name)
-                                columnType = "int";
-
-                            else if (piType == typeof(string).Name)
-                                columnType = "text";
-
-                            else if (piType == typeof(long).Name)
-                                columnType = "long";
-
-                            else if (piType == typeof(ulong).Name)  // Large values will overflow unless this is defined as text.
-                                columnType = "text";
-
-                            else if (piType == typeof(float).Name)
-                                columnType = "float";
-
-                            else if (piType == typeof(short).Name)
-                                columnType = "short";
-
-                            else if (piType == typeof(ushort).Name)
-                                columnType = "ushort";
-
-                            else if (piType == typeof(uint).Name)
-                                columnType = "uint";
-
-                            else if (piType == typeof(sbyte).Name)
-                                columnType = "sbyte";
-
-                            else if (piType == typeof(byte).Name)
-                                columnType = "byte";
-
-                            else if (piType == typeof(double).Name)
-                                columnType = "double";
-
-                            else if (piType == typeof(string).Name)
-                                columnType = "text";
-
-                            else if (piType == typeof(Guid).Name)
-                                columnType = "Guid";
-
-                            else if (piType == typeof(decimal).Name)  // Large values will overflow unless this is defined as text.
-                                columnType = "text";
-
-                            else if (piType == typeof(bool).Name)
-                                columnType = "bool";
-
-                            else if (piType == typeof(DateTime).Name)
-                                columnType = "DateTime";
-
-                            else if (piType == typeof(DateTimeOffset).Name)
-                                columnType = "DateTimeOffset";
-
-                            else if (piType == typeof(TimeSpan).Name)
-                                columnType = "TimeSpan";
-
-                            else if (piType == typeof(DateOnly).Name)
-                                columnType = "DateOnly";
-
-                            else if (piType == typeof(TimeOnly).Name)
-                                columnType = "TimeOnly";
-
-                            if (columnType != null)
-                                columnNameAndTypeDict[this.GetType().Name].Add(piName, columnType + notNull);
+                    if (columnType != null)
+                    {
+                        if (clrType == typeof(DateTime) || clrType == typeof(DateOnly) || clrType == typeof(TimeSpan) || clrType == typeof(TimeOnly) || clrType == typeof(DateTimeOffset))
+                        {
+                            if (!columnType.Equals("TEXT"))
+                                columnType = null;
                         }
                     }
+
+                    // Fallback to CLR mapping if ColumnType was Undefined.
+                    if (columnType == null)
+                    {
+                        // Determine CLR (nullable unwrap)
+                        columnType = clrType == typeof(int) ? "INTEGER" :
+                                     clrType == typeof(string) ? "TEXT" :
+                                     clrType == typeof(long) ? "INTEGER" :
+                                     clrType == typeof(ulong) ? "TEXT" :
+                                     clrType == typeof(float) ? "REAL" :
+                                     clrType == typeof(short) ? "INTEGER" :
+                                     clrType == typeof(ushort) ? "INTEGER" :
+                                     clrType == typeof(uint) ? "INTEGER" :
+                                     clrType == typeof(sbyte) ? "INTEGER" :
+                                     clrType == typeof(byte) ? "INTEGER" :
+                                     clrType == typeof(double) ? "REAL" :
+                                     clrType == typeof(Guid) ? "TEXT" :
+                                     clrType == typeof(decimal) ? "TEXT" :
+                                     clrType == typeof(bool) ? "INTEGER" :
+                                     clrType == typeof(byte[]) ? "BLOB" :
+                                     clrType == typeof(DateTime) ? "INTEGER" :
+                                     clrType == typeof(DateTimeOffset) ? "INTEGER" :
+                                     clrType == typeof(TimeSpan) ? "INTEGER" :
+                                     clrType == typeof(DateOnly) ? "INTEGER" :
+                                     clrType == typeof(TimeOnly) ? "INTEGER" :
+                                     null;
+                    }
+
+                    if (columnType != null)
+                        columnNameAndTypeDict[type.Name].Add(piName, columnType + notNull);
                 }
-        */
+            }
+        }
 
         private void loadDbValues(Dictionary<string, object?> databaseRecord)
         {

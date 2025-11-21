@@ -42,7 +42,7 @@ namespace SQLiteXM
             // Attempt to wire an association if a navigation property exists.
             // Conditions:
             // 1. Navigation property must have PropertyType.Name == fk.foreignTable
-            // 2. It must be excluded from column mapping (NotMapped or NotColumn) so schema builder ignores it.
+            // 2. It must be excluded from column mapping (NotAColumn) so schema builder ignores it.
             // 3. Avoid duplicate registration per (SourceType.PropertyName)
             try
             {
@@ -307,46 +307,46 @@ namespace SQLiteXM
 
                             else if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
-                                if (kvp.Value.ToLower().Equals("text"))
+                                if (kvp.Value.ToUpper().Equals("TEXT"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("integer"))
+                                else if (kvp.Value.ToUpper().Equals("INTEGER"))
                                     returnDictionary.Add(columnName, ((DateTime)userSuppliedObjectData).Ticks);
                             }
 
                             else if (userObjectType == typeof(DateOnly).Name)  // Is the data type for the column in the user object a DateOnly?
                             {
-                                if (kvp.Value.ToLower().Equals("text"))
+                                if (kvp.Value.ToUpper().Equals("TEXT"))
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture  ));
 
-                                else if (kvp.Value.ToLower().Equals("integer"))
+                                else if (kvp.Value.ToUpper().Equals("INTEGER"))
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).DayNumber);
                             }
 
                             else if (userObjectType == typeof(DateTimeOffset).Name)  // Is the data type for the column in the user object a decimal?
                             {
-                                if (kvp.Value.ToLower().Equals("text"))
+                                if (kvp.Value.ToUpper().Equals("TEXT"))
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToString("o", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("integer"))
+                                else if (kvp.Value.ToUpper().Equals("INTEGER"))
                                     returnDictionary.Add(columnName, ((DateTimeOffset)userSuppliedObjectData).ToUnixTimeMilliseconds());
                             }
 
                             else if (userObjectType == typeof(TimeSpan).Name)  // Is the data type for the column in the user object a decimal?
                             {
-                                if (kvp.Value.ToLower().Equals("text"))
+                                if (kvp.Value.ToUpper().Equals("TEXT"))
                                     returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).ToString("c", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("integer"))
+                                else if (kvp.Value.ToUpper().Equals("INTEGER"))
                                     returnDictionary.Add(columnName, ((TimeSpan)userSuppliedObjectData).Ticks);
                             }
 
                             else if (userObjectType == typeof(TimeOnly).Name)  // Is the data type for the column in the user object a decimal?
                             {
-                                if (kvp.Value.ToLower().Equals("text"))
+                                if (kvp.Value.ToUpper().Equals("TEXT"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).ToString("HH:mm:ss.fffffff", CultureInfo.InvariantCulture));
 
-                                else if (kvp.Value.ToLower().Equals("integer"))
+                                else if (kvp.Value.ToUpper().Equals("INTEGER"))
                                     returnDictionary.Add(columnName, ((TimeOnly)userSuppliedObjectData).Ticks);
                             }
                             else
