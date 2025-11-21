@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Reflection;
 using System.Xml.Linq;
+using System;
 
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.Defines;
@@ -36,7 +37,7 @@ namespace SQLiteXM
             return tableNames;
         }
 
-        internal static void CreateAssociation(Type sourceType, string sourceKey, string targetTableName )
+        internal static void CreateAssociation(Type sourceType, string sourceKey, string targetTableName)
         {
 
             // Attempt to wire an association if a navigation property exists.
@@ -317,7 +318,7 @@ namespace SQLiteXM
                             else if (userObjectType == typeof(DateOnly).Name)  // Is the data type for the column in the user object a DateOnly?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture  ));
+                                    returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
                                     returnDictionary.Add(columnName, ((DateOnly)userSuppliedObjectData).DayNumber);
@@ -368,6 +369,32 @@ namespace SQLiteXM
                 }
             }
             return returnDictionary;
+        }
+    }
+
+    public static class MemberInfoExtensions
+    {
+        /// <summary>
+        /// Gets the underlying Type of the member (e.g., the property type, field type, etc.).
+        /// </summary>
+        /// <param name="member">The MemberInfo instance.</param>
+        /// <returns>The underlying Type of the member, or null if the type cannot be determined.</returns>
+        public static Type GetMemberType(this MemberInfo member)
+        {
+            switch (member.MemberType)
+            {
+                case MemberTypes.Field:
+                    return ((FieldInfo)member).FieldType;
+                case MemberTypes.Property:
+                    return ((PropertyInfo)member).PropertyType;
+                case MemberTypes.Event:
+                    return ((EventInfo)member).EventHandlerType;
+                case MemberTypes.Method:
+                    return ((MethodInfo)member).ReturnType;
+                default:
+                    // Other member types like Constructor, TypeInfo, etc., don't have a single "type" property in this context.
+                    return null;
+            }
         }
     }
 }

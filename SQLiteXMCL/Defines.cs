@@ -2,7 +2,7 @@
 {
     public enum ColumnType
     {
-        Text, NVarChar, VarChar, Char, NChar, Int16, Int32, Int64, UInt16, UInt32,
+        None, Text, NVarChar, VarChar, Char, NChar, Int16, Int32, Int64, UInt16, UInt32,
         UInt64, Boolean, Single, Double, Decimal, Guid, DateTime, Date, Time, Binary, Blob, VarBinary
     };
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,7 +18,6 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public string? tableName { get; set; } // set by the consumer
 
         public IndexPropertyAttributes(string indexField, string tableName)
         {
@@ -31,33 +31,20 @@ namespace SQLiteXM
         }
     }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class CreateIndex : Attribute, IIndexVars
     {
-        public string[] indexFields { get; set; }
-        public string indexName { get; set; }
-        public static string? tableName { get; set; } // set by the consumer
+        public string[]? indexFields { get; set; }
+        public string? indexName { get; set; }
 
         public CreateIndex(string[] indexFields)
         {
             this.indexFields = indexFields;
-
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in indexFields)
-            {
-                this.indexName += "_" + field;
-            }
         }
 
         public CreateIndex(string indexField)
         {
             this.indexFields = new string[] { indexField };
-
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in this.indexFields)
-            {
-                this.indexName += "_" + field;
-            }
         }
 
         public CreateIndex()
@@ -65,22 +52,15 @@ namespace SQLiteXM
         }
     }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class CreateUniqueIndex : Attribute, IIndexVars
     {
-        public string[] indexFields { get; set; }
-        public string indexName { get; set; }
-        public static string? tableName { get; set; } // set by the consumer   
+        public string[]? indexFields { get; set; }
+        public string? indexName { get; set; }
 
         public CreateUniqueIndex(string[] indexFields)
         {
             this.indexFields = indexFields;
-
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in indexFields)
-            {
-                this.indexName += "_" + field;
-            }
         }
 
         public CreateUniqueIndex()
@@ -99,7 +79,7 @@ namespace SQLiteXM
         public ColumnType ColumnType { get; set; }
     }
 
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class NotAColumnAttribute : Attribute
     {
     }
@@ -125,7 +105,7 @@ namespace SQLiteXM
         }
     }
 
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class RequiredNotNull : Attribute
     {
         public object defaultValue { get; set; }
@@ -157,5 +137,17 @@ namespace SQLiteXM
 
     internal class SxmAttributes
     {
+    }
+
+    internal class MemberInfoWithAlias
+    {
+        public MemberInfo memberInfo {  get; set; }
+        public string alias { get; set; }
+
+        internal MemberInfoWithAlias(MemberInfo propertyInfo, string alias)
+        {
+            this.memberInfo = propertyInfo;
+            this.alias = alias; 
+        }
     }
 }

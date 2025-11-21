@@ -1,6 +1,8 @@
 ﻿using LinqToDB.Mapping;
 using SQLiteXM.Internal;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Xml.Linq;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -51,8 +53,15 @@ namespace SQLiteXM
 
                 if (!columnNameAndTypeDict.ContainsKey(this.GetType().Name))
                 {
-                    getColumnNamesAndDataTypes(GetType().GetProperties());
-                    //processObservableProperties();
+                    List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
+                    PropertyInfo[] pi = GetType().GetProperties();
+                    foreach (PropertyInfo piItem in pi)
+                    {
+                        propertyInfoWithAliases.Add(new MemberInfoWithAlias(piItem, string.Empty));
+                    }
+
+                    getColumnNamesAndDataTypes(propertyInfoWithAliases);
+                    propertyInfoWithAliases = processObservableProperties();
 
                     createTable();
 
@@ -60,46 +69,34 @@ namespace SQLiteXM
                     List<string> existingUniqueIndexes = new List<string>();
                     getIndexTableStatements(ref existingStandardIndexes, ref existingUniqueIndexes);
 
-                    processIndexAttributes(IndexType.standard, existingStandardIndexes);
-                    processIndexAttributes(IndexType.unique, existingUniqueIndexes);
+                    processIndexAttributes(IndexType.standard, existingStandardIndexes, propertyInfoWithAliases);
+                    processIndexAttributes(IndexType.unique, existingUniqueIndexes, propertyInfoWithAliases);
 
                     processtriggerAttributes();
                 }
             }
         }
 
-        private void processObservableProperties()
+        private List<MemberInfoWithAlias> processObservableProperties()
         {
-            var type = this.GetType();
-            var mappedProperties = new List<PropertyInfo>();
+            List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
 
-            foreach (var field in type.GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
+            foreach (FieldInfo fieldInfo in this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
             {
-                var colAttr = field.GetCustomAttribute<IsAColumnAttribute>();
-                var obsAtt = field.GetCustomAttribute<ObservablePropertyAttribute>();
-
-                if(colAttr != null && obsAtt != null)
-                {
-                    var prop = GetGeneratedPropertiesForField(field);
-                    if(prop != null)
-                        mappedProperties.Add(prop);
-                }
+                if(fieldInfo.GetCustomAttribute<ObservablePropertyAttribute>() != null)
+                    propertyInfoWithAliases.Add(new MemberInfoWithAlias(fieldInfo, GetPropertyNameAlias(fieldInfo.Name)));
             }
 
-            if(mappedProperties.Count > 0) 
-                getColumnNamesAndDataTypes(mappedProperties.ToArray());
+            getColumnNamesAndDataTypes(propertyInfoWithAliases);
+            return propertyInfoWithAliases;
         }
 
-        private PropertyInfo? GetGeneratedPropertiesForField(FieldInfo field)
+        private string GetPropertyNameAlias(string name)
         {
-            var type = field.DeclaringType;
-            var name = field.Name;
-
             if(name.StartsWith("_"))
                 name = name.Substring(1);
 
-            name = char.ToUpper(name[0]) + name.Substring(1);
-            return this.GetType().GetProperty(name);
+            return char.ToUpper(name[0]) + name.Substring(1);
         }
 
         private async Task Save(string sqlStatementName)
@@ -338,7 +335,7 @@ namespace SQLiteXM
             return triggerToBeAdded;
         }
 
-        private void processIndexAttributes(IndexType indexType, List<string> existingIndexes)
+        private void processIndexAttributes(IndexType indexType, List<string> existingIndexes, List<MemberInfoWithAlias> propertyInfoWithAliases)
         {
             string unique = string.Empty;
             IIndexVars[]? firstArray = default(IIndexVars[]);
@@ -347,9 +344,6 @@ namespace SQLiteXM
             SxmConnection? sxmConnection = default(SxmConnection);
             IIndexVars[]? customAttributes = default(IIndexVars[]);
             string tableName = this.GetType().Name;
-
-            CreateIndex.tableName = tableName;
-            CreateUniqueIndex.tableName = tableName;
 
             if (indexType == IndexType.standard)
 
@@ -368,6 +362,9 @@ namespace SQLiteXM
 
             if (secondArray == default(IIndexVars[]))
                 secondArray = new IIndexVars[0];
+
+            processIndexArrays(firstArray, propertyInfoWithAliases, tableName);
+            processIndexArrays(secondArray, propertyInfoWithAliases, tableName);
 
             customAttributes = new IIndexVars[firstArray.Length + secondArray.Length];
             Array.Copy(firstArray, customAttributes, firstArray.Length);
@@ -438,6 +435,30 @@ namespace SQLiteXM
                         uniqueIndexDict.Remove(this.GetType().Name);
                 }
             }
+        }
+
+        private void processIndexArrays(IIndexVars[] indexArray, List<MemberInfoWithAlias> propertyInfoWithAliases, string tableName)
+        {
+            foreach (IIndexVars iiV in indexArray)
+            {
+                iiV.indexName = "IDX_" + tableName;
+
+                for (int i = 0; i < iiV.indexFields.Length; i++)
+                {
+                    foreach (MemberInfoWithAlias propertyInfoIndexer in propertyInfoWithAliases)
+                    {
+                        if (propertyInfoIndexer.memberInfo.Name.Equals(iiV.indexFields[i]))
+                        {
+                            iiV.indexFields[i] = propertyInfoIndexer.alias;
+                            break;
+                        }
+                    }
+
+                    iiV.indexName += "_" + iiV.indexFields[i];
+                }
+            }
+
+
         }
 
         private void getIndexTableStatements(ref List<string> existingStandardIndexes, ref List<string> existingUniqueIndexes)
@@ -606,16 +627,16 @@ namespace SQLiteXM
                 reconcile();
         }
 
-        private void getColumnNamesAndDataTypes(PropertyInfo[]? thisPropertyInfo)
+        private void getColumnNamesAndDataTypes(List<MemberInfoWithAlias> propertyInfoWithAliases)
         {
-            if (thisPropertyInfo != null)
+            if (propertyInfoWithAliases != null && propertyInfoWithAliases.Count > 0)
             {
                 var type = GetType();
-                columnNameAndTypeDict.Add(this.GetType().Name, new Dictionary<string, string>());
+                columnNameAndTypeDict.TryAdd(this.GetType().Name, new Dictionary<string, string>());
 
-                foreach (PropertyInfo pi in thisPropertyInfo)
+                foreach (MemberInfoWithAlias propertyInfoWithAlias in propertyInfoWithAliases)
                 {
-                    string piType = pi.PropertyType.Name;
+                    MemberInfo pi = propertyInfoWithAlias.memberInfo;
                     string piName = pi.Name;
 
                     // Skip "id" and "synchId" properties
@@ -626,7 +647,7 @@ namespace SQLiteXM
                     if (pi.IsDefined(typeof(NotAColumnAttribute), false))
                         continue;
 
-                    // Get the [Column] attribute, if present, otherwise it's null.
+                    // Get the [IsAColumn] attribute, if present, otherwise it's null.
                     IsAColumnAttribute? colAttr = pi.GetCustomAttribute<IsAColumnAttribute>(inherit: false);
 
                     // Get the [Table] attribute to check IsAColumnAttributeRequired.
@@ -647,18 +668,22 @@ namespace SQLiteXM
                             notNull = " not null";
                     }
 
+                    string fkField = piName;
+                    if (!string.IsNullOrEmpty(propertyInfoWithAlias.alias))
+                        fkField = propertyInfoWithAlias.alias;
+
                     if (propertyAttribute.ContainsKey("CreateIndex"))
                     {
                         if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
                             standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                        standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
+                        standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(fkField, type.Name));
                     }
 
                     if (propertyAttribute.ContainsKey("CreateUnique"))
                     {
                         if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
                             uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                        uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(piName, type.Name));
+                        uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(fkField, type.Name));
                     }
                     if (propertyAttribute.ContainsKey("CreateForeignKey"))
                     {
@@ -666,18 +691,22 @@ namespace SQLiteXM
 
                         if (foreignKeyAttributeList == default(List<ForeignKeyAttributes>))
                             foreignKeyAttributeList = new List<ForeignKeyAttributes>();
+
+                        if (!string.IsNullOrEmpty(propertyInfoWithAlias.alias))
+                                fkField = propertyInfoWithAlias.alias;
+
                         foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
                         {
-                            fieldName = piName,
+                            fieldName = fkField,
                             foreignTable = fk.foreignTable,
                         });
 
-                        SxmHelpers.CreateAssociation(type, piName, fk.foreignTable);
+                        SxmHelpers.CreateAssociation(type, fkField, fk.foreignTable);
                     }
 
-                    var clrType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
+                    var clrType = Nullable.GetUnderlyingType(pi.GetMemberType()) ?? pi.GetMemberType();
 
-                    // Override from ColumnType if specified, for example, [Column(DataType = DataType.Text)]
+                    // Override from ColumnType if specified, for example, [Column(ColumnType = ColumnType.Text)]
                     string? columnType = colAttr?.ColumnType switch
                     {
                         ColumnType.Text or ColumnType.NVarChar or ColumnType.VarChar or ColumnType.Char or ColumnType.NChar => "TEXT",
@@ -730,7 +759,12 @@ namespace SQLiteXM
                     }
 
                     if (columnType != null)
-                        columnNameAndTypeDict[type.Name].Add(piName, columnType + notNull);
+                    {
+                        if(string.IsNullOrEmpty(propertyInfoWithAlias.alias))
+                            columnNameAndTypeDict[type.Name].Add(piName, columnType + notNull);
+                        else
+                            columnNameAndTypeDict[type.Name].Add(propertyInfoWithAlias.alias, columnType + notNull);
+                    }
                 }
             }
         }
