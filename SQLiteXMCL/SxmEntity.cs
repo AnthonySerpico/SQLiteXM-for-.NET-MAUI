@@ -3,6 +3,7 @@ using SQLiteXM.Internal;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Xml.Linq;
+using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.Defines;
 
 namespace SQLiteXM
@@ -53,15 +54,13 @@ namespace SQLiteXM
 
                 if (!columnNameAndTypeDict.ContainsKey(this.GetType().Name))
                 {
-                    List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
-                    PropertyInfo[] pi = GetType().GetProperties();
-                    foreach (PropertyInfo piItem in pi)
-                    {
-                        propertyInfoWithAliases.Add(new MemberInfoWithAlias(piItem, string.Empty));
-                    }
-
+                    // Process the public properties of the entity.
+                    List<MemberInfoWithAlias> propertyInfoWithAliases = getEntityProperties();
                     getColumnNamesAndDataTypes(propertyInfoWithAliases);
-                    propertyInfoWithAliases = processObservableProperties();
+
+                    // Process the private [ObjectProperties] fields of the entity.
+                    List<MemberInfoWithAlias> observableFieldsWithAliases = getEntityObservableFields();
+                    getColumnNamesAndDataTypes(observableFieldsWithAliases);
 
                     createTable();
 
@@ -69,15 +68,25 @@ namespace SQLiteXM
                     List<string> existingUniqueIndexes = new List<string>();
                     getIndexTableStatements(ref existingStandardIndexes, ref existingUniqueIndexes);
 
-                    processIndexAttributes(IndexType.standard, existingStandardIndexes, propertyInfoWithAliases);
-                    processIndexAttributes(IndexType.unique, existingUniqueIndexes, propertyInfoWithAliases);
+                    processIndexAttributes(IndexType.standard, existingStandardIndexes, observableFieldsWithAliases);
+                    processIndexAttributes(IndexType.unique, existingUniqueIndexes, observableFieldsWithAliases);
 
                     processtriggerAttributes();
                 }
             }
         }
 
-        private List<MemberInfoWithAlias> processObservableProperties()
+        private List<MemberInfoWithAlias> getEntityProperties()
+        {
+            List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
+
+            foreach (PropertyInfo piItem in GetType().GetProperties())
+                propertyInfoWithAliases.Add(new MemberInfoWithAlias(piItem, string.Empty));
+
+            return propertyInfoWithAliases;
+        }
+
+        private List<MemberInfoWithAlias> getEntityObservableFields()
         {
             List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
 
@@ -87,7 +96,6 @@ namespace SQLiteXM
                     propertyInfoWithAliases.Add(new MemberInfoWithAlias(fieldInfo, GetPropertyNameAlias(fieldInfo.Name)));
             }
 
-            getColumnNamesAndDataTypes(propertyInfoWithAliases);
             return propertyInfoWithAliases;
         }
 
@@ -245,10 +253,23 @@ namespace SQLiteXM
 
         private void processtriggerAttributes()
         {
+            try
+            {
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(new SxmConnection(databaseName)))
+                {
+                    List<string> ExistingTriggers = SxmInit.getAllTriggers(sxmTransaction.Connection, this.GetType().Name);
+                    foreach (string existingTrigger in ExistingTriggers)
+                    {
+                        sxmTransaction.executeCreateTrigger(string.Format("DROP TRIGGER {0}", existingTrigger));
+                    }
+
+                    sxmTransaction.commitTransaction();
+                }
+            }
+            catch (Exception ex) { }
+
             Dictionary<string, string> newTriggerNameList = new Dictionary<string, string>();
-
             var customAttributes = (CreateTrigger[])this.GetType().GetCustomAttributes(typeof(CreateTrigger), true);
-
             if (customAttributes.Length > 0)
             {
                 foreach (var myAttribute in customAttributes)
@@ -264,20 +285,10 @@ namespace SQLiteXM
                 {
                     try
                     {
-
                         using (SxmUTransaction sxmTransaction = new SxmUTransaction(new SxmConnection(databaseName)))
                         {
-                            List<string> ExistingTriggers = SxmInit.getAllTriggers(sxmTransaction.Connection);
-
                             foreach (KeyValuePair<string, string> kvp in newTriggerNameList)
-                                if (!ExistingTriggers.Contains(kvp.Key))
-                                    sxmTransaction.executeCreateTrigger(kvp.Value);
-
-                            foreach (string existingTrigger in ExistingTriggers)
-                            {
-                                if (!newTriggerNameList.ContainsKey(existingTrigger))
-                                    sxmTransaction.executeCreateTrigger(string.Format("DROP TRIGGER {0}", existingTrigger));
-                            }
+                                sxmTransaction.executeCreateTrigger(kvp.Value);
 
                             sxmTransaction.commitTransaction();
                         }
@@ -335,38 +346,33 @@ namespace SQLiteXM
             return triggerToBeAdded;
         }
 
-        private void processIndexAttributes(IndexType indexType, List<string> existingIndexes, List<MemberInfoWithAlias> propertyInfoWithAliases)
+        private void processIndexAttributes(IndexType indexType, List<string> existingIndexes, List<MemberInfoWithAlias> observableFieldsWithAliases)
         {
             string unique = string.Empty;
             IIndexVars[]? firstArray = default(IIndexVars[]);
             IIndexVars[]? secondArray = default(IIndexVars[]);
             List<string> indexSqlStatements = new List<string>();
-            SxmConnection? sxmConnection = default(SxmConnection);
             IIndexVars[]? customAttributes = default(IIndexVars[]);
             string tableName = this.GetType().Name;
 
             if (indexType == IndexType.standard)
-
             {
                 firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
-                secondArray = standardIndexDict.ContainsKey(tableName) ? standardIndexDict[tableName].ToArray() : default(IIndexVars[]);
+                secondArray = standardIndexDict.TryGetValue(tableName, out var stdList) ? stdList.ToArray() : Array.Empty<IIndexVars>();
             }
 
             if (indexType == IndexType.unique)
             {
                 firstArray = (CreateUniqueIndex[])this.GetType().GetCustomAttributes(typeof(CreateUniqueIndex), true);
-                secondArray = uniqueIndexDict.ContainsKey(tableName) ? uniqueIndexDict[tableName].ToArray() : default(IIndexVars[]);
+                secondArray = uniqueIndexDict.TryGetValue(tableName, out var uniqList) ? uniqList.ToArray() : Array.Empty<IIndexVars>();
 
                 unique = "UNIQUE";
             }
 
-            if (secondArray == default(IIndexVars[]))
-                secondArray = new IIndexVars[0];
+            processIndexArrays(firstArray!, observableFieldsWithAliases, tableName);
+            processIndexArrays(secondArray!, observableFieldsWithAliases, tableName);
 
-            processIndexArrays(firstArray, propertyInfoWithAliases, tableName);
-            processIndexArrays(secondArray, propertyInfoWithAliases, tableName);
-
-            customAttributes = new IIndexVars[firstArray.Length + secondArray.Length];
+            customAttributes = new IIndexVars[firstArray!.Length + secondArray!.Length];
             Array.Copy(firstArray, customAttributes, firstArray.Length);
             Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
 

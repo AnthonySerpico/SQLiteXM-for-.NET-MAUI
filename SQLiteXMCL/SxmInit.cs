@@ -1,5 +1,6 @@
 ﻿using SQLiteXM.Internal;
 using System.Collections;
+using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
 {
@@ -614,29 +615,31 @@ namespace SQLiteXM
                     if (connectionMap.Count == 0)
                         connectionMap.Add(dbName, new SxmConnection(dbName));
 
+                    // Get a connection to the next database.
                     SxmConnection? sxmConnection = (SxmConnection?)connectionMap[dbName];
                     if (sxmConnection != null)
                     {
-                        List<string> installedTriggers = getAllTriggers(sxmConnection);
-                        triggerStatementsList = SqlStatements.triggerStatements[dbName] as List<TriggerDefinition>;
+                        // Delete all triggers in the database.
+                        using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                        {
+                            List<string> ExistingTriggers = SxmInit.getAllTriggers(sxmTransaction.Connection, string.Empty);
+                            foreach (string existingTrigger in ExistingTriggers)
+                            {
+                                sxmTransaction.executeCreateTrigger(string.Format("DROP TRIGGER {0}", existingTrigger));
+                            }
 
+                            sxmTransaction.commitTransaction();
+                        }
+
+                        // Get all triggers in the SQL Statements file and create them.
+                        triggerStatementsList = SqlStatements.triggerStatements[dbName] as List<TriggerDefinition>;
                         if (triggerStatementsList != null)
                         {
                             using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
                             {
                                 foreach (TriggerDefinition td in triggerStatementsList)
                                 {
-                                    if (td.TriggerSQL.StartsWith("drop ", true, null))
-                                    {
-                                        if (installedTriggers.Contains(td.TriggerName))
-                                            sxmTransaction.executeCreateTrigger(td.TriggerSQL);
-                                    }
-                                    else
-                                    {
-                                        if (!installedTriggers.Contains(td.TriggerName))
-                                            sxmTransaction.executeCreateTrigger(td.TriggerSQL);
-                                    }
-
+                                    sxmTransaction.executeCreateTrigger(td.TriggerSQL);
                                 }
                                 sxmTransaction.commitTransaction();
                             }
@@ -875,13 +878,16 @@ namespace SQLiteXM
             return false;
         }
 
-        internal static List<string> getAllTriggers(SxmConnection? sxmConnection)
+        internal static List<string> getAllTriggers(SxmConnection? sxmConnection, string tableName)
         {
             List<string> triggerNames = new List<string>();
 
             if (sxmConnection != null)
             {
-                sxmConnection.executeQuery("SELECT name FROM sqlite_master WHERE type='trigger'", null as List<object>);
+                if(tableName != string.Empty)
+                    tableName = $" AND tbl_name = '{tableName}'";
+
+                sxmConnection.executeQuery($"SELECT name FROM sqlite_master WHERE type='trigger'{tableName}", null as List<object>);
 
                 if (sxmConnection.hasRows() == true)
                 {

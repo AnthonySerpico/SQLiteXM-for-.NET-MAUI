@@ -11,7 +11,6 @@ namespace SQLiteXM
     {
         public string[] indexFields { get; set; }
         public string indexName { get; set; }
-        public static string? tableName { get; set; }
     }
 
     public class IndexPropertyAttributes : IIndexVars
