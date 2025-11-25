@@ -33,44 +33,75 @@ namespace SQLiteXM
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class CreateIndex : Attribute, IIndexVars
     {
-        public string[]? indexFields { get; set; }
-        public string? indexName { get; set; }
+        // Implementing the interface
+        public string[] indexFields { get; set; } = Array.Empty<string>();
+        public string indexName { get; set; } = string.Empty;
 
-        public CreateIndex(string[] indexFields)
-        {
-            this.indexFields = indexFields;
-        }
-
-        public CreateIndex(string indexField)
-        {
-            this.indexFields = new string[] { indexField };
-        }
-
+        // Default ctor (no args => attribute on property/field; class-level use should provide field names)
         public CreateIndex()
         {
+        }
+
+        // Single-field index
+        public CreateIndex(string indexField)
+        {
+            indexFields = new[] { indexField };
+        }
+
+        // Multi-field index
+        public CreateIndex(params string[] indexFields)
+        {
+            this.indexFields = indexFields ?? Array.Empty<string>();
+        }
+
+        // Optional helper to set index name fluently via named argument:
+        // [CreateIndex("col1", IndexName = "IX_Name")]
+        public string IndexName
+        {
+            get => indexName;
+            set => indexName = value ?? string.Empty;
         }
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class CreateUniqueIndex : Attribute, IIndexVars
     {
-        public string[]? indexFields { get; set; }
-        public string? indexName { get; set; }
+        // Implementing the interface
+        public string[] indexFields { get; set; } = Array.Empty<string>();
+        public string indexName { get; set; } = string.Empty;
 
-        public CreateUniqueIndex(string[] indexFields)
-        {
-            this.indexFields = indexFields;
-        }
-
+        // Default ctor (no args => attribute on property/field; class-level use should provide field names)
         public CreateUniqueIndex()
         {
         }
+
+        // Single-field index
+        public CreateUniqueIndex(string indexField)
+        {
+            indexFields = new[] { indexField };
+        }
+
+        // Multi-field index
+        public CreateUniqueIndex(params string[] indexFields)
+        {
+            this.indexFields = indexFields ?? Array.Empty<string>();
+        }
+
+        // Optional helper to set index name fluently via named argument:
+        // [CreateUniqueIndex("col1", IndexName = "IX_Name")]
+        public string IndexName
+        {
+            get => indexName;
+            set => indexName = value ?? string.Empty;
+        }
     }
 
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
+
+    // For testing only.
+    /*[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class ObservablePropertyAttribute : Attribute
     {
-    }
+    }*/
 
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class IsAColumnAttribute : Attribute
@@ -84,11 +115,11 @@ namespace SQLiteXM
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public class TableAttribute : Attribute
+    public class IsTableAttribute : Attribute
     {
-        public bool ColumnAttributeRequired { get; set; } = false;
+        public bool IsColumnAttributeRequired { get; set; } = false;
 
-        public TableAttribute()
+        public IsTableAttribute()
         {
         }
     }

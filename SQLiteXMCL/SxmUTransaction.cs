@@ -230,7 +230,8 @@ namespace SQLiteXM
 
         public void executeNonQueryTrans(string sqlStatement, List<object>? ParameterValues = null)
         {
-            //connection.beginTransaction ();
+            // Was commented out for testing.
+            connection.beginTransaction ();
             connection.executeNonQuery(sqlStatement, ParameterValues);
         }
 

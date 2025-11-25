@@ -43,14 +43,14 @@ namespace SQLiteXM
             // Attempt to wire an association if a navigation property exists.
             // Conditions:
             // 1. Navigation property must have PropertyType.Name == fk.foreignTable
-            // 2. It must be excluded from column mapping (NotAColumn) so schema builder ignores it.
+            // 2. It must be excluded from column mapping (NotColumn) so schema builder ignores it.
             // 3. Avoid duplicate registration per (SourceType.PropertyName)
             try
             {
                 // Find a single navigation property whose CLR type name matches the foreign table name.
                 var navProp = sourceType
                     .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .FirstOrDefault(p => p.PropertyType.Name.Equals(targetTableName, StringComparison.Ordinal) && p.IsDefined(typeof(NotAColumnAttribute), false));
+                    .FirstOrDefault(p => p.PropertyType.Name.Equals(targetTableName, StringComparison.Ordinal) && p.IsDefined(typeof(LinqToDB.Mapping.NotColumnAttribute), false));
 
                 if (navProp != null &&
                     typeof(SxmEntity).IsAssignableFrom(navProp.PropertyType))

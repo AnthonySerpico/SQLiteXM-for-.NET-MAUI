@@ -1,4 +1,6 @@
-﻿using LinqToDB.Mapping;
+﻿//using CommunityToolkit.Mvvm.ComponentModel;
+using LinqToDB;
+using LinqToDB.Mapping;
 using SQLiteXM.Internal;
 using System.Collections.Generic;
 using System.Reflection;
@@ -8,7 +10,7 @@ using static SQLiteXM.Defines;
 
 namespace SQLiteXM
 {
-    [Table(ColumnAttributeRequired = false)]
+    [Table(IsColumnAttributeRequired = false)]
     public class SxmEntity
     {
         private static object lockObject = new object();
@@ -29,11 +31,10 @@ namespace SQLiteXM
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
-        [IsAColumn]
         [Column, PrimaryKey, Identity]
         public virtual long id { get; set; }
 
-        [IsAColumn]
+        [Column]
         public virtual string? synchId { get; set; }
 
         public SxmEntity(string? databaseName)
@@ -58,9 +59,9 @@ namespace SQLiteXM
                     List<MemberInfoWithAlias> propertyInfoWithAliases = getEntityProperties();
                     getColumnNamesAndDataTypes(propertyInfoWithAliases);
 
-                    // Process the private [ObjectProperties] fields of the entity.
-                    List<MemberInfoWithAlias> observableFieldsWithAliases = getEntityObservableFields();
-                    getColumnNamesAndDataTypes(observableFieldsWithAliases);
+                    // Process the private [ObservableProperty] fields of the entity.
+                    List<MemberInfoWithAlias> observableFieldsWithAliases = new List<MemberInfoWithAlias>(); // getEntityObservableFields();
+                    //getColumnNamesAndDataTypes(observableFieldsWithAliases);
 
                     createTable();
 
@@ -68,8 +69,8 @@ namespace SQLiteXM
                     List<string> existingUniqueIndexes = new List<string>();
                     getIndexTableStatements(ref existingStandardIndexes, ref existingUniqueIndexes);
 
-                    processIndexAttributes(IndexType.standard, existingStandardIndexes, observableFieldsWithAliases);
-                    processIndexAttributes(IndexType.unique, existingUniqueIndexes, observableFieldsWithAliases);
+                    processIndexStatements(IndexType.standard, existingStandardIndexes, observableFieldsWithAliases);
+                    processIndexStatements(IndexType.unique, existingUniqueIndexes, observableFieldsWithAliases);
 
                     processtriggerAttributes();
                 }
@@ -86,7 +87,7 @@ namespace SQLiteXM
             return propertyInfoWithAliases;
         }
 
-        private List<MemberInfoWithAlias> getEntityObservableFields()
+       /* private List<MemberInfoWithAlias> getEntityObservableFields()
         {
             List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
 
@@ -97,7 +98,7 @@ namespace SQLiteXM
             }
 
             return propertyInfoWithAliases;
-        }
+        }*/
 
         private string GetPropertyNameAlias(string name)
         {
@@ -185,7 +186,8 @@ namespace SQLiteXM
 
         private void buildSaveSql()
         {
-            if (insertGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
+            Type type = this.GetType();
+            if (insertGuidDict.GetValueOrDefault(type.Name) == default(string))
             {
                 string insertColumns = string.Empty;
                 string insertValues = string.Empty;
@@ -346,35 +348,41 @@ namespace SQLiteXM
             return triggerToBeAdded;
         }
 
-        private void processIndexAttributes(IndexType indexType, List<string> existingIndexes, List<MemberInfoWithAlias> observableFieldsWithAliases)
+        private void processIndexStatements(IndexType indexType, List<string> existingIndexes, List<MemberInfoWithAlias> observableFieldsWithAliases)
         {
+            List<string> indexSqlStatements = new List<string>();
+
+            var type = this.GetType();
             string unique = string.Empty;
+            string tableName = type.Name;
+
             IIndexVars[]? firstArray = default(IIndexVars[]);
             IIndexVars[]? secondArray = default(IIndexVars[]);
-            List<string> indexSqlStatements = new List<string>();
-            IIndexVars[]? customAttributes = default(IIndexVars[]);
-            string tableName = this.GetType().Name;
 
             if (indexType == IndexType.standard)
             {
-                firstArray = (CreateIndex[])this.GetType().GetCustomAttributes(typeof(CreateIndex), true);
+                firstArray = (CreateIndex[])type.GetCustomAttributes(typeof(CreateIndex), true);
                 secondArray = standardIndexDict.TryGetValue(tableName, out var stdList) ? stdList.ToArray() : Array.Empty<IIndexVars>();
             }
-
-            if (indexType == IndexType.unique)
+            else if (indexType == IndexType.unique)
             {
-                firstArray = (CreateUniqueIndex[])this.GetType().GetCustomAttributes(typeof(CreateUniqueIndex), true);
+                firstArray = (CreateUniqueIndex[])type.GetCustomAttributes(typeof(CreateUniqueIndex), true);
                 secondArray = uniqueIndexDict.TryGetValue(tableName, out var uniqList) ? uniqList.ToArray() : Array.Empty<IIndexVars>();
 
                 unique = "UNIQUE";
             }
 
-            processIndexArrays(firstArray!, observableFieldsWithAliases, tableName);
-            processIndexArrays(secondArray!, observableFieldsWithAliases, tableName);
+            // Ensure non-null arrays
+            firstArray ??= Array.Empty<IIndexVars>();
+            secondArray ??= Array.Empty<IIndexVars>();
 
-            customAttributes = new IIndexVars[firstArray!.Length + secondArray!.Length];
-            Array.Copy(firstArray, customAttributes, firstArray.Length);
-            Array.Copy(secondArray, 0, customAttributes, firstArray.Length, secondArray.Length);
+            // Normalize index fields to aliases and construct predictable index names.
+            // Combine custom attributes from both sources into a single list.
+            List<IIndexVars> customAttributes = new List<IIndexVars>(firstArray.Length + secondArray.Length);
+            customAttributes.AddRange(firstArray);
+            customAttributes.AddRange(secondArray);
+
+            processIndexArrays(customAttributes!, observableFieldsWithAliases, tableName);
 
             try
             {
@@ -394,7 +402,7 @@ namespace SQLiteXM
                             ++i;
                         }
 
-                        indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", unique, myAttribute.indexName, this.GetType().Name, indexFields));
+                        indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", unique, myAttribute.indexName, type.Name, indexFields));
                     }
                 }
 
@@ -431,19 +439,19 @@ namespace SQLiteXM
             {
                 if (indexType == IndexType.standard)
                 {
-                    if (standardIndexDict.GetValueOrDefault(this.GetType().Name) != default(List<IndexPropertyAttributes>))
-                        standardIndexDict.Remove(this.GetType().Name);
+                    if (standardIndexDict.GetValueOrDefault(type.Name) != default(List<IndexPropertyAttributes>))
+                        standardIndexDict.Remove(type.Name);
                 }
 
                 if (indexType == IndexType.unique)
                 {
-                    if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) != default(List<IndexPropertyAttributes>))
-                        uniqueIndexDict.Remove(this.GetType().Name);
+                    if (uniqueIndexDict.GetValueOrDefault(type.Name) != default(List<IndexPropertyAttributes>))
+                        uniqueIndexDict.Remove(type.Name);
                 }
             }
         }
 
-        private void processIndexArrays(IIndexVars[] indexArray, List<MemberInfoWithAlias> propertyInfoWithAliases, string tableName)
+        private void processIndexArrays(List<IIndexVars> indexArray, List<MemberInfoWithAlias> memberInfoWithAliases, string tableName)
         {
             foreach (IIndexVars iiV in indexArray)
             {
@@ -451,7 +459,7 @@ namespace SQLiteXM
 
                 for (int i = 0; i < iiV.indexFields.Length; i++)
                 {
-                    foreach (MemberInfoWithAlias propertyInfoIndexer in propertyInfoWithAliases)
+                    foreach (MemberInfoWithAlias propertyInfoIndexer in memberInfoWithAliases)
                     {
                         if (propertyInfoIndexer.memberInfo.Name.Equals(iiV.indexFields[i]))
                         {
@@ -469,7 +477,6 @@ namespace SQLiteXM
 
         private void getIndexTableStatements(ref List<string> existingStandardIndexes, ref List<string> existingUniqueIndexes)
         {
-
             try
             {
                 using (SxmUTransaction sxmTransaction = new SxmUTransaction(new SxmConnection(databaseName)))
@@ -478,9 +485,13 @@ namespace SQLiteXM
 
                     while (sxmTransaction.Connection.nextRow() == true)
                     {
-                        string indexName = (string)sxmTransaction.Connection.getValue("name");
+                        string? indexName = (string?)sxmTransaction.Connection.getValue("name");
+                        if(indexName == null)
+                            continue;
 
-                        if ((long)sxmTransaction.Connection.getValue("unique") == 1)
+                        var raw = sxmTransaction.Connection.getValue("unique");
+                        bool isUnique = raw != null && Convert.ToInt64(raw) == 1;
+                        if (isUnique)
                             existingUniqueIndexes.Add(indexName);
                         else
                             existingStandardIndexes.Add(indexName);
@@ -493,17 +504,18 @@ namespace SQLiteXM
             }
         }
 
-        private void reconcile()
+        private void reconcileTableColumns()
         {
+            Type type = this.GetType();
             Dictionary<string, string> dbTableColumnNameAndType = SxmInit.getTableColumnNames(databaseName, this.GetType().Name);
 
             try
             {
-                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
+                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[type.Name])
                 {
                     if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
                     {
-                        string alterDefinition = string.Format("ALTER TABLE {0} ADD {1} {2}", this.GetType().Name, kvp.Key, kvp.Value);
+                        string alterDefinition = string.Format("ALTER TABLE {0} ADD {1} {2}", type.Name, kvp.Key, kvp.Value);
 
                         if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
                         {
@@ -532,15 +544,15 @@ namespace SQLiteXM
                         else
                             value = kvp.Value;
 
-                        SxmInit.addColumnNameType(this.GetType().Name, kvp.Key, value);
+                        SxmInit.addColumnNameType(type.Name, kvp.Key, value);
                     }
                 }
 
                 foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
                 {
-                    if (!columnNameAndTypeDict[this.GetType().Name].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
+                    if (!columnNameAndTypeDict[type.Name].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
                     {
-                        string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", this.GetType().Name, kvp.Key);
+                        string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", type.Name, kvp.Key);
                         using (SxmUTransaction sxmTransaction1 = new SxmUTransaction(new SxmConnection(databaseName)))
                         {
                             sxmTransaction1.executeAlterTable(alterDefinition);
@@ -630,7 +642,7 @@ namespace SQLiteXM
                 SqlStatements.removeTableDefinitions();
             }
             else
-                reconcile();
+                reconcileTableColumns();
         }
 
         private void getColumnNamesAndDataTypes(List<MemberInfoWithAlias> propertyInfoWithAliases)
@@ -649,16 +661,16 @@ namespace SQLiteXM
                     if (piName is "id" or "synchId")
                         continue;
 
-                    // Skip properties marked with [NotAColumn].
-                    if (pi.IsDefined(typeof(NotAColumnAttribute), false))
+                    // Skip properties marked with [NotColumn].
+                    if (pi.IsDefined(typeof(NotColumnAttribute), false))
                         continue;
 
-                    // Get the [IsAColumn] attribute, if present, otherwise it's null.
-                    IsAColumnAttribute? colAttr = pi.GetCustomAttribute<IsAColumnAttribute>(inherit: false);
+                    // Get the [Column] attribute, if present, otherwise it's null.
+                    ColumnAttribute? colAttr = pi.GetCustomAttribute<ColumnAttribute>(inherit: false);
 
-                    // Get the [Table] attribute to check IsAColumnAttributeRequired.
+                    // Get the [Table] attribute to check IsColumnAttributeRequired.
                     TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
-                    bool columnIsRequired = tbl?.ColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
+                    bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
                     if (columnIsRequired && colAttr == null)
                         continue; // Must have [Column] attribute in order to map to a database, but it's missing.
 
@@ -685,7 +697,7 @@ namespace SQLiteXM
                         standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(fkField, type.Name));
                     }
 
-                    if (propertyAttribute.ContainsKey("CreateUnique"))
+                    if (propertyAttribute.ContainsKey("CreateUniqueIndex"))
                     {
                         if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
                             uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
@@ -713,18 +725,18 @@ namespace SQLiteXM
                     var clrType = Nullable.GetUnderlyingType(pi.GetMemberType()) ?? pi.GetMemberType();
 
                     // Override from ColumnType if specified, for example, [Column(ColumnType = ColumnType.Text)]
-                    string? columnType = colAttr?.ColumnType switch
+                    string? columnType = colAttr?.DataType switch
                     {
-                        ColumnType.Text or ColumnType.NVarChar or ColumnType.VarChar or ColumnType.Char or ColumnType.NChar => "TEXT",
-                        ColumnType.Int16 or ColumnType.Int32 or ColumnType.Int64 => "INTEGER",
-                        ColumnType.UInt16 or ColumnType.UInt32 => "INTEGER",
-                        ColumnType.UInt64 => "TEXT", // preserve range
-                        ColumnType.Boolean => "INTEGER",
-                        ColumnType.Single or ColumnType.Double => "REAL",
-                        ColumnType.Decimal => "TEXT", // preserve range
-                        ColumnType.Guid => "TEXT",
-                        ColumnType.DateTime or ColumnType.Date or ColumnType.Time => "INTEGER", // ticks
-                        ColumnType.Binary or ColumnType.Blob or ColumnType.VarBinary => "BLOB",
+                        DataType.Text or DataType.NVarChar or DataType.VarChar or DataType.Char or DataType.NChar => "TEXT",
+                        DataType.Int16 or DataType.Int32 or DataType.Int64 => "INTEGER",
+                        DataType.UInt16 or DataType.UInt32 => "INTEGER",
+                        DataType.UInt64 => "TEXT", // preserve range
+                        DataType.Boolean => "INTEGER",
+                        DataType.Single or DataType.Double => "REAL",
+                        DataType.Decimal => "TEXT", // preserve range
+                        DataType.Guid => "TEXT",
+                        DataType.DateTime or DataType.Date or DataType.Time => "INTEGER", // ticks
+                        DataType.Binary or DataType.Blob or DataType.VarBinary => "BLOB",
                         _ => null
                     };
 

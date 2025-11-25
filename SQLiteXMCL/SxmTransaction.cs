@@ -18,7 +18,7 @@ namespace SQLiteXM
 
         /************************************************************************* INSERT ********************************************************************/
         public async Task<TResult> PerformInsert<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
-                                                                                                                                                where TResult : class, new()
+                                                                                                              where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -167,7 +167,7 @@ namespace SQLiteXM
         /************************************************************************* GENERIC ********************************************************************/
 
         private async Task<List<TResult>> RunStatement<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
-                                                                                                                   where TResult : class, new()
+                                                                                                                    where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
