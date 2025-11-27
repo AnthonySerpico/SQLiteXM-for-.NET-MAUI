@@ -108,6 +108,63 @@ namespace SQLiteXM
             return char.ToUpper(name[0]) + name.Substring(1);
         }
 
+        public async Task Save()
+        {
+            if (AmbientSxmTransaction.Current != null)
+            {
+                await Save(AmbientSxmTransaction.Current);
+            }
+            else
+            {
+                if (!doesRecordExist())
+                {
+                    buildSaveSql();
+                    await Save(insertGuidDict[this.GetType().Name]).CAF();
+                }
+                else
+                {
+                    buildUpdateSql();
+                    await Update(updateGuidDict[this.GetType().Name]).CAF();
+                }
+            }
+        }
+
+        public async Task Save(SxmTransaction sxmTrans)
+        {
+            if (!doesRecordExist())
+            {
+                buildSaveSql();
+                await Save(insertGuidDict[this.GetType().Name], sxmTrans).CAF();
+            }
+            else
+            {
+                buildUpdateSql();
+                await Update(updateGuidDict[this.GetType().Name], sxmTrans).CAF();
+            }
+        }
+
+        public async Task Delete()
+        {
+            if (AmbientSxmTransaction.Current != null)
+            {
+                await Delete(AmbientSxmTransaction.Current);
+            }
+            else
+            {
+                buildDeleteSql();
+                if (doesRecordExist())
+                    await Delete(deleteGuidDict[this.GetType().Name]).CAF();
+            }
+        }
+
+        public async Task Delete(SxmTransaction sxmTrans)
+        {
+            buildDeleteSql();
+            if (doesRecordExist())
+                await Delete(deleteGuidDict[this.GetType().Name], sxmTrans).CAF();
+        }
+
+
         private async Task Save(string sqlStatementName)
         {
             {
@@ -140,48 +197,6 @@ namespace SQLiteXM
         public async Task Delete(string sqlStatementName, SxmTransaction sxmTrans)
         {
             await sxmTrans.PerformDelete<SxmEntity>(sqlStatementName, this).CAF();
-        }
-
-        public async Task Save()
-        {
-            if (!doesRecordExist())
-            {
-                buildSaveSql();
-                await Save(insertGuidDict[this.GetType().Name]).CAF();
-            }
-            else
-            {
-                buildUpdateSql();
-                await Update(updateGuidDict[this.GetType().Name]).CAF();
-            }
-        }
-
-        public async Task Save(SxmTransaction sxmTrans)
-        {
-            if (!doesRecordExist())
-            {
-                buildSaveSql();
-                await Save(insertGuidDict[this.GetType().Name], sxmTrans).CAF();
-            }
-            else
-            {
-                buildUpdateSql();
-                await Update(updateGuidDict[this.GetType().Name], sxmTrans).CAF();
-            }
-        }
-
-        public async Task Delete()
-        {
-            buildDeleteSql();
-            if (doesRecordExist())
-                await Delete(deleteGuidDict[this.GetType().Name]).CAF();
-        }
-
-        public async Task Delete(SxmTransaction sxmTrans)
-        {
-            buildDeleteSql();
-            if (doesRecordExist())
-                await Delete(deleteGuidDict[this.GetType().Name], sxmTrans).CAF();
         }
 
         private void buildSaveSql()

@@ -7,14 +7,41 @@ namespace SQLiteXM
     public class SxmTransaction : SxmUTransaction
     {
         private string? databaseName = default;
+        private bool encounteredError = false;
 
         public SxmTransaction(string? databaseName) : base(databaseName)
         {
             this.databaseName = databaseName;
+            AmbientSxmTransaction.Push(this);
         }
         public SxmTransaction() : base()
         {
+            AmbientSxmTransaction.Push(this);
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            // Remove ambient before base cleanup to ensure Current still points to this tx during base dispose.
+            try
+            {
+                // Commit the transaction here if ambient and no errors.
+                if(AmbientSxmTransaction.Current != null && !encounteredError)
+                    commitTransaction();
+            }
+            finally
+            {
+                try
+                {
+                    AmbientSxmTransaction.Pop(this);
+                }
+                catch (Exception)
+                {
+                }
+                base.Dispose(disposing);
+            }
+        }
+
+        public void ResetError() => encounteredError = false;
 
         /************************************************************************* INSERT ********************************************************************/
         public async Task<TResult> PerformInsert<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
@@ -211,45 +238,50 @@ namespace SQLiteXM
         {
             List<Dictionary<string, object?>> recordData = default(List<Dictionary<string, object?>>)!;
 
-            try
+            if (!encounteredError)
             {
-                switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
+                try
                 {
-                    case SqlStatementType.select:
-                        recordData = await SxmSelectHelpers.performSelectTrans(sqlStatementName, sqlStatementParameters, this).CAF();
-                        break;
+                    switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
+                    {
+                        case SqlStatementType.select:
+                            recordData = await SxmSelectHelpers.performSelectTrans(sqlStatementName, sqlStatementParameters, this).CAF();
+                            break;
 
-                    case SqlStatementType.insert:
-                        recordData = new List<Dictionary<string, object?>>(1);
-                        recordData.Add(await SxmInsertHelpers.performInsertTrans(sqlStatementName, sqlStatementParameters, this).CAF());
-                        break;
+                        case SqlStatementType.insert:
+                            recordData = new List<Dictionary<string, object?>>(1);
+                            recordData.Add(await SxmInsertHelpers.performInsertTrans(sqlStatementName, sqlStatementParameters, this).CAF());
+                            break;
 
-                    case SqlStatementType.update:
-                        await SxmUpdateHelpers.performUpdateTrans(sqlStatementName, sqlStatementParameters, this).CAF();
-                        break;
+                        case SqlStatementType.update:
+                            await SxmUpdateHelpers.performUpdateTrans(sqlStatementName, sqlStatementParameters, this).CAF();
+                            break;
 
-                    case SqlStatementType.delete:
-                        await SxmDeleteHelpers.performDeleteTrans(sqlStatementName, sqlStatementParameters, this).CAF();
-                        break;
+                        case SqlStatementType.delete:
+                            await SxmDeleteHelpers.performDeleteTrans(sqlStatementName, sqlStatementParameters, this).CAF();
+                            break;
 
-                    case SqlStatementType.selectDirect:
-                        recordData = await SxmSelectHelpers.performSelectTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
-                        break;
+                        case SqlStatementType.selectDirect:
+                            recordData = await SxmSelectHelpers.performSelectTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
+                            break;
 
-                    case SqlStatementType.deleteDirect:
-                        await SxmDeleteHelpers.performDeleteTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
-                        break;
+                        case SqlStatementType.deleteDirect:
+                            await SxmDeleteHelpers.performDeleteTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
+                            break;
 
-                    case SqlStatementType.updateDirect:
-                        await SxmUpdateHelpers.performUpdateTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
-                        break;
+                        case SqlStatementType.updateDirect:
+                            await SxmUpdateHelpers.performUpdateTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
+                            break;
 
-                    default: break;
+                        default: break;
+                    }
                 }
-            }
-            catch (System.Exception)
-            {
-                throw;
+                catch (System.Exception)
+                {
+                    // Record Error
+                    encounteredError = true;
+                    throw;
+                }
             }
 
             if (recordData == default(List<Dictionary<string, object?>>))
