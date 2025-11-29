@@ -4,6 +4,7 @@ using LinqToDB.Mapping;
 using SQLiteXM.Internal;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.Defines;
@@ -37,11 +38,13 @@ namespace SQLiteXM
         [Column]
         public virtual string? synchId { get; set; }
 
+        // Needs to throw an exception if databaseName is invalid.
         public SxmEntity(string? databaseName)
         {
             this.databaseName = databaseName;
             initialize();
         }
+        // Needs to throw an exception if databaseName is invalid.
         public SxmEntity()
         {
             initialize();
@@ -53,15 +56,12 @@ namespace SQLiteXM
             {
                 dbNameValidation();
 
+                // If the database table does not exist, create it. Tables defined in the SqlStatements file are created first, and skipped here.
                 if (!columnNameAndTypeDict.ContainsKey(this.GetType().Name))
                 {
                     // Process the public properties of the entity.
                     List<MemberInfoWithAlias> propertyInfoWithAliases = getEntityProperties();
                     getColumnNamesAndDataTypes(propertyInfoWithAliases);
-
-                    // Process the private [ObservableProperty] fields of the entity.
-                    List<MemberInfoWithAlias> observableFieldsWithAliases = new List<MemberInfoWithAlias>(); // getEntityObservableFields();
-                    //getColumnNamesAndDataTypes(observableFieldsWithAliases);
 
                     createTable();
 
@@ -69,8 +69,8 @@ namespace SQLiteXM
                     List<string> existingUniqueIndexes = new List<string>();
                     getIndexTableStatements(ref existingStandardIndexes, ref existingUniqueIndexes);
 
-                    processIndexStatements(IndexType.standard, existingStandardIndexes, observableFieldsWithAliases);
-                    processIndexStatements(IndexType.unique, existingUniqueIndexes, observableFieldsWithAliases);
+                    processIndexStatements(IndexType.standard, existingStandardIndexes);
+                    processIndexStatements(IndexType.unique, existingUniqueIndexes);
 
                     processtriggerAttributes();
                 }
@@ -85,27 +85,6 @@ namespace SQLiteXM
                 propertyInfoWithAliases.Add(new MemberInfoWithAlias(piItem, string.Empty));
 
             return propertyInfoWithAliases;
-        }
-
-       /* private List<MemberInfoWithAlias> getEntityObservableFields()
-        {
-            List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
-
-            foreach (FieldInfo fieldInfo in this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance))
-            {
-                if(fieldInfo.GetCustomAttribute<ObservablePropertyAttribute>() != null)
-                    propertyInfoWithAliases.Add(new MemberInfoWithAlias(fieldInfo, GetPropertyNameAlias(fieldInfo.Name)));
-            }
-
-            return propertyInfoWithAliases;
-        }*/
-
-        private string GetPropertyNameAlias(string name)
-        {
-            if(name.StartsWith("_"))
-                name = name.Substring(1);
-
-            return char.ToUpper(name[0]) + name.Substring(1);
         }
 
         public async Task Save()
@@ -164,7 +143,7 @@ namespace SQLiteXM
                 await Delete(deleteGuidDict[this.GetType().Name], sxmTrans).CAF();
         }
 
-
+        // Save Statements.
         private async Task Save(string sqlStatementName)
         {
             {
@@ -180,16 +159,17 @@ namespace SQLiteXM
             }
         }
 
+        // Update statements.
         public async Task Update(string sqlStatementName)
         {
             await SxmStatement.PerformUpdate<SxmEntity>(sqlStatementName, this, databaseName).CAF();
         }
-
         public async Task Update(string sqlStatementName, SxmTransaction sxmTrans)
         {
             await sxmTrans.PerformUpdate<SxmEntity>(sqlStatementName, this).CAF();
         }
 
+        // Delete statements.
         public async Task Delete(string sqlStatementName)
         {
             await SxmStatement.PerformDelete<SxmEntity>(sqlStatementName, this, databaseName).CAF();
@@ -363,7 +343,7 @@ namespace SQLiteXM
             return triggerToBeAdded;
         }
 
-        private void processIndexStatements(IndexType indexType, List<string> existingIndexes, List<MemberInfoWithAlias> observableFieldsWithAliases)
+        private void processIndexStatements(IndexType indexType, List<string> existingIndexes)
         {
             List<string> indexSqlStatements = new List<string>();
 
@@ -397,7 +377,7 @@ namespace SQLiteXM
             customAttributes.AddRange(firstArray);
             customAttributes.AddRange(secondArray);
 
-            processIndexArrays(customAttributes!, observableFieldsWithAliases, tableName);
+            assignIndexNames(customAttributes!, tableName);
 
             try
             {
@@ -449,7 +429,10 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch (Exception ex) { }
+            catch (Exception ex) 
+            { 
+                // Throw an exception here.
+            }
             finally
             {
                 if (indexType == IndexType.standard)
@@ -466,7 +449,7 @@ namespace SQLiteXM
             }
         }
 
-        private void processIndexArrays(List<IIndexVars> indexArray, List<MemberInfoWithAlias> memberInfoWithAliases, string tableName)
+        private void assignIndexNames(List<IIndexVars> indexArray, string tableName)
         {
             foreach (IIndexVars iiV in indexArray)
             {
@@ -474,20 +457,9 @@ namespace SQLiteXM
 
                 for (int i = 0; i < iiV.indexFields.Length; i++)
                 {
-                    foreach (MemberInfoWithAlias propertyInfoIndexer in memberInfoWithAliases)
-                    {
-                        if (propertyInfoIndexer.memberInfo.Name.Equals(iiV.indexFields[i]))
-                        {
-                            iiV.indexFields[i] = propertyInfoIndexer.alias;
-                            break;
-                        }
-                    }
-
                     iiV.indexName += "_" + iiV.indexFields[i];
                 }
             }
-
-
         }
 
         private void getIndexTableStatements(ref List<string> existingStandardIndexes, ref List<string> existingUniqueIndexes)
@@ -955,5 +927,81 @@ namespace SQLiteXM
                 }
             }
         }
+
+
+        // MapAndSave maps properties from the source into this instance and then persists the entity.
+        public async Task MapAndSave(object mapSource)
+        {
+            MapProperties(mapSource);
+            // Persist the entity after mapping. Use CAF() to follow project's await pattern.
+            await Save().CAF();
+        }
+
+        /// <summary>
+        /// Copy matching public instance properties from <paramref name="source"/> to <paramref name="destination"/>.
+        /// The destination must inherit from SxmEntity. Properties named "id" and "synchId" are ignored.
+        /// Only properties with exactly the same PropertyType (no conversions) are copied.
+        /// Indexer properties are ignored. Both properties must be public instance properties and the destination property must be writable.
+        /// </summary>
+        /// <param name="source">Source object to copy values from.</param>
+        /// <Destination object that this inherits from SxmEntity to copy values to.</param>
+        public void MapProperties(object source)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            Type srcType = source.GetType();
+            Type dstType = this.GetType();
+
+            PropertyInfo[] srcProps = srcType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (PropertyInfo sp in srcProps)
+            {
+                // Skip indexers and non-readable properties
+                if (sp.GetIndexParameters().Length > 0)
+                    continue;
+                if (!sp.CanRead)
+                    continue;
+
+                // Ignore id and synchId on source
+                if (string.Equals(sp.Name, "id", StringComparison.OrdinalIgnoreCase) || string.Equals(sp.Name, "synchId", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                PropertyInfo? dp = dstType.GetProperty(sp.Name, BindingFlags.Public | BindingFlags.Instance);
+                if (dp == null)
+                    continue;
+                if (dp.GetIndexParameters().Length > 0)
+                    continue;
+                if (!dp.CanWrite)
+                    continue;
+
+                // Ignore destination id and synchId as well
+                if (string.Equals(dp.Name, "id", StringComparison.OrdinalIgnoreCase) || string.Equals(dp.Name, "synchId", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // Only allow exact type match (no conversions) including nullable status
+                if (dp.PropertyType != sp.PropertyType)
+                    continue;
+
+                object? value = sp.GetValue(source);
+
+                // If null, set only if destination accepts null (nullable or reference type)
+                if (value == null)
+                {
+                    if (Nullable.GetUnderlyingType(dp.PropertyType) != null || !dp.PropertyType.IsValueType)
+                    {
+                        dp.SetValue(this, null);
+                    }
+
+                    continue;
+                }
+
+                // Set value directly (types are identical)
+                dp.SetValue(this, value);
+            }
+        }
+
+        private static bool IsNullableType(Type t) => Nullable.GetUnderlyingType(t) != null;
+
     }
 }
