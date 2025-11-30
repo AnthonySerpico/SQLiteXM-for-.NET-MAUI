@@ -184,9 +184,6 @@ namespace SQLiteXM
                             else if (piType == typeof(double).Name)
                                 pi.SetValue(userObject, (double)kvp.Value);
 
-                            else if (piType == typeof(Guid).Name)
-                                pi.SetValue(userObject, (Guid)Guid.Parse((string)kvp.Value));
-
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
 
@@ -195,6 +192,16 @@ namespace SQLiteXM
 
                             else if (piType == typeof(ulong).Name)    // Large values will overflow if not text in DB.
                                 pi.SetValue(userObject, ulong.Parse((string)kvp.Value, CultureInfo.InvariantCulture));
+
+                            else if (piType == typeof(Guid).Name)
+                            {
+                                string typeName = kvp.Value.GetType().Name;
+                                if (typeName == typeof(byte[]).Name)
+                                    pi.SetValue(userObject, (Guid)GuidStorageHelpers.FromRfc4122Bytes((byte[])kvp.Value));
+
+                                else if (typeName == typeof(string).Name)
+                                    pi.SetValue(userObject, (Guid)Guid.Parse((string)kvp.Value));
+                            }
 
                             else if (piType == typeof(bool).Name)
                             {
@@ -306,6 +313,15 @@ namespace SQLiteXM
                                 returnDictionary.Add(columnName, ((ulong)userSuppliedObjectData).ToString("D20", CultureInfo.InvariantCulture));
                             }
 
+                            else if (userObjectType == typeof(Guid).Name)  // Is the data type for the column in the user object a DateTime?
+                            {
+                                if (kvp.Value.ToUpper().Equals("TEXT"))
+                                    returnDictionary.Add(columnName, ((Guid)userSuppliedObjectData).ToString());
+
+                                else if (kvp.Value.ToUpper().Equals("BLOB"))
+                                    returnDictionary.Add(columnName, ((Guid)userSuppliedObjectData).ToRfc4122Bytes());
+                            }
+
                             else if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
@@ -369,6 +385,43 @@ namespace SQLiteXM
                 }
             }
             return returnDictionary;
+        }
+    }
+
+    public static class GuidStorageHelpers
+    {
+        // Convert Guid -> 16 bytes in RFC-4122 (network) order
+        public static byte[] ToRfc4122Bytes(this Guid g)
+        {
+            Span<byte> b = stackalloc byte[16];
+            g.TryWriteBytes(b); // CLR layout
+            // Reverse the three little-endian fields -> network order
+            Swap(b, 0, 3); Swap(b, 1, 2);
+            Swap(b, 4, 5);
+            Swap(b, 6, 7);
+            return b.ToArray();
+        }
+
+        // Convert RFC-4122 16 bytes -> Guid (CLR layout for .NET Guid ctor)
+        public static Guid FromRfc4122Bytes(ReadOnlySpan<byte> bytes)
+        {
+            if (bytes.Length != 16) throw new ArgumentException("GUID must be 16 bytes.", nameof(bytes));
+            Span<byte> b = stackalloc byte[16];
+            bytes.CopyTo(b);
+            // Reverse back to CLR layout
+            Swap(b, 0, 3); Swap(b, 1, 2);
+            Swap(b, 4, 5);
+            Swap(b, 6, 7);
+            return new Guid(b.ToArray());
+        }
+
+        public static Guid FromRfc4122Bytes(byte[] bytes) => FromRfc4122Bytes((ReadOnlySpan<byte>)bytes);
+
+        private static void Swap(Span<byte> b, int i, int j)
+        {
+            byte t = b[i];
+            b[i] = b[j];
+            b[j] = t;
         }
     }
 

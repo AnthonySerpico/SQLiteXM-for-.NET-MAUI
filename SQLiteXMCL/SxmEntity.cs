@@ -3,6 +3,7 @@ using LinqToDB;
 using LinqToDB.Mapping;
 using SQLiteXM.Internal;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Xml.Linq;
@@ -35,8 +36,8 @@ namespace SQLiteXM
         [Column, PrimaryKey, Identity]
         public virtual long id { get; set; }
 
-        [Column]
-        public virtual string? synchId { get; set; }
+        [Column(DataType = DataType.Blob)]
+        public virtual Guid? synchId { get; set; }
 
         // Needs to throw an exception if databaseName is invalid.
         public SxmEntity(string? databaseName)
@@ -719,9 +720,9 @@ namespace SQLiteXM
                         DataType.UInt16 or DataType.UInt32 => "INTEGER",
                         DataType.UInt64 => "TEXT", // preserve range
                         DataType.Boolean => "INTEGER",
+                        DataType.Guid => "TEXT",
                         DataType.Single or DataType.Double => "REAL",
                         DataType.Decimal => "TEXT", // preserve range
-                        DataType.Guid => "TEXT",
                         DataType.DateTime or DataType.Date or DataType.Time => "INTEGER", // ticks
                         DataType.Binary or DataType.Blob or DataType.VarBinary => "BLOB",
                         _ => null
@@ -734,6 +735,13 @@ namespace SQLiteXM
                             if (!columnType.Equals("TEXT"))
                                 columnType = null;
                         }
+                        else if (clrType == typeof(Guid))
+                        {
+                            if (!columnType.Equals("BLOB"))
+                                columnType = null;
+                        }
+                        else
+                            columnType = null;
                     }
 
                     // Fallback to CLR mapping if ColumnType was Undefined.
@@ -799,9 +807,6 @@ namespace SQLiteXM
                             else if (piType == typeof(long).Name)
                                 pi.SetValue(this, (long)kvp.Value);
 
-                            else if (piType == typeof(ulong).Name)    // Large values will overflow.
-                                pi.SetValue(this, (ulong)(long)kvp.Value);
-
                             else if (piType == typeof(float).Name)
                                 pi.SetValue(this, (float)(double)kvp.Value);
 
@@ -823,24 +828,24 @@ namespace SQLiteXM
                             else if (piType == typeof(double).Name)
                                 pi.SetValue(this, (double)kvp.Value);
 
-                            else if (piType == typeof(Guid).Name)
-                                pi.SetValue(this, Guid.Parse((string)kvp.Value));
-
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(this, kvp.Value.ToString());
 
-                            else if (piType == typeof(decimal).Name)    // Can be either text or double. Double will lose precision
+                            else if (piType == typeof(decimal).Name)    // Large vlues will overflow if not text in DB.
+                                pi.SetValue(this, Decimal.Parse(kvp.Value.ToString()!, CultureInfo.InvariantCulture));
+
+                            else if (piType == typeof(ulong).Name)    // Large values will overflow if not text in DB.
+                                pi.SetValue(this, ulong.Parse((string)kvp.Value, CultureInfo.InvariantCulture));
+
+                            else if (piType == typeof(Guid).Name)
                             {
                                 string typeName = kvp.Value.GetType().Name;
 
+                                if (typeName == typeof(byte[]).Name)
+                                    pi.SetValue(this, GuidStorageHelpers.FromRfc4122Bytes((byte[])kvp.Value));
+
                                 if (typeName == typeof(string).Name)
-                                    pi.SetValue(this, Decimal.Parse(kvp.Value.ToString()!));
-
-                                else if (typeName == typeof(long).Name)
-                                    pi.SetValue(this, (decimal)(long)kvp.Value);   // Will lose precision.
-
-                                else if (typeName == typeof(double).Name)
-                                    pi.SetValue(this, (decimal)(double)kvp.Value);   // Will lose precision.
+                                    pi.SetValue(this, Guid.Parse((string)kvp.Value));
                             }
 
                             else if (piType == typeof(bool).Name)

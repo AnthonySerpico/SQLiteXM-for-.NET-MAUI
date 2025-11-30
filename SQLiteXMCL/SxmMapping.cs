@@ -16,21 +16,19 @@ namespace SQLiteXM
         {
             var ms = new MappingSchema();
 
-            // DateTime ticks (INTEGER) default
-            ms.SetConverter<DateTime, long>(d => d.Ticks);
-            ms.SetConverter<long, DateTime>(t => new DateTime(t));
-
-            // DateTime TEXT (ISO 8601)
-            ms.SetConverter<DateTime, string>(d => d.ToString("o", CultureInfo.InvariantCulture));
-            ms.SetConverter<string, DateTime>(s => DateTime.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
-
             // decimal TEXT
             ms.SetConverter<decimal, string>(d => d.ToString(CultureInfo.InvariantCulture));
             ms.SetConverter<string, decimal>(s => decimal.Parse(s, CultureInfo.InvariantCulture));
 
-            // ulong TEXT + long
+            // ulong TEXT
             ms.SetConverter<ulong, string>(u => u.ToString("D20", CultureInfo.InvariantCulture));
             ms.SetConverter<string, ulong>(s => ulong.Parse(s, CultureInfo.InvariantCulture));
+
+            // DateTime TEXT (ISO 8601) DateTime ticks (INTEGER)
+            ms.SetConverter<DateTime, string>(d => d.ToString("o", CultureInfo.InvariantCulture));
+            ms.SetConverter<string, DateTime>(s => DateTime.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+            ms.SetConverter<DateTime, long>(d => d.Ticks);
+            ms.SetConverter<long, DateTime>(t => new DateTime(t));
 
             // DateOnly TEXT + numeric (DayNumber)
             ms.SetConverter<DateOnly, string>(d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
@@ -55,6 +53,12 @@ namespace SQLiteXM
             ms.SetConverter<string, DateTimeOffset>(s => DateTimeOffset.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
             ms.SetConverter<DateTimeOffset, long>(dto => dto.ToUnixTimeMilliseconds());
             ms.SetConverter<long, DateTimeOffset>(msVal => DateTimeOffset.FromUnixTimeMilliseconds(msVal));
+
+            // Guid TEXT + byte[]
+            ms.SetConverter<Guid, string>(g => g.ToString());
+            ms.SetConverter<string, Guid>(s => Guid.Parse(s));
+            ms.SetConverter<Guid, byte[]>(g => g.ToRfc4122Bytes());
+            ms.SetConverter<byte[], Guid>(b => GuidStorageHelpers.FromRfc4122Bytes(b));
 
             return ms;
         }
