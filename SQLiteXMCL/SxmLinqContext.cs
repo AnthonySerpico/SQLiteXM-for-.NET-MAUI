@@ -27,15 +27,46 @@ namespace SQLiteXM
             DataConnection.AddMappingSchema(SxmMapping.Schema);
         }
 
-        public DataConnection DataConnection => _dataConnection!;
+        private DataConnection DataConnection => _dataConnection!;
 
         // LinqToDB table access
-        public ITable<T> GetTable<T>() where T : class
+        public IQueryable<T> GetTable<T>() where T : class
         {
             return DataConnection.GetTable<T>();
         }
 
         public SxmChangeSet GetChangeSet() => _changeSet;
+
+        // ---------- Convenience async helpers to avoid exposing DataConnection externally ----------
+        /// <summary>
+        /// Insert the given entity using the underlying DataConnection.
+        /// Use this instead of calling DataConnection.InsertAsync(...) from outside this assembly.
+        /// </summary>
+        public Task InsertAsync<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return _dataConnection!.InsertAsync(entity);
+        }
+
+        /// <summary>
+        /// Update the given entity using the underlying DataConnection.
+        /// Use this instead of calling DataConnection.UpdateAsync(...) from outside this assembly.
+        /// </summary>
+        public Task UpdateAsync<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return _dataConnection!.UpdateAsync(entity);
+        }
+
+        /// <summary>
+        /// Delete the given entity using the underlying DataConnection.
+        /// </summary>
+        public Task DeleteAsync<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return _dataConnection!.DeleteAsync(entity);
+        }
+        // -------------------------------------------------------------------------------------------
 
         // ---------- Change tracking API ------------------
 

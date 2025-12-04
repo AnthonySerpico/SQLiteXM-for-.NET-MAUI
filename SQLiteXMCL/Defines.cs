@@ -1,5 +1,34 @@
 ﻿namespace SQLiteXM
 {
+    // Local friendly enum — names mirror LinqToDB.DataType so we can map by name
+    public enum DataType
+    {
+        Default,
+        Text,
+        NVarChar,
+        VarChar,
+        Char,
+        NChar,
+        Int16,
+        Int32,
+        Int64,
+        UInt16,
+        UInt32,
+        UInt64,
+        Boolean,
+        Guid,
+        Single,
+        Double,
+        Decimal,
+        DateTime,
+        Date,
+        Time,
+        Binary,
+        Blob,
+        VarBinary,
+        Long
+    }
+
     public enum ColumnType
     {
         None, Text, NVarChar, VarChar, Char, NChar, Int16, Int32, Int64, UInt16, UInt32,

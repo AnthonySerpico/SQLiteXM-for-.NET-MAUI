@@ -1,6 +1,6 @@
 ﻿using SQLiteXM.Internal;
 using System.Collections;
-using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
+//using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
 {
@@ -137,6 +137,7 @@ namespace SQLiteXM
             {
                 long sqlStatementsVersionNumber = ProcessSQLStatements.getSqlStatementsVersionNumber;  // The value in the current SQL statements file.
                 long currentDbVersionNumber = getDbVersionNumber();
+                //setJournalMode();
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
@@ -250,6 +251,26 @@ namespace SQLiteXM
             }
 
             return versionNumber;
+        }
+
+        public static void setJournalMode()
+        {
+            SxmConnection? sxmConnection = default;
+
+            try
+            {
+                sxmConnection = new SxmConnection(ProcessSQLStatements.retreiveDatabaseName);
+                using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                {
+                    sxmConnection.executeQuery("PRAGMA journal_mode=WAL", default(List<object>));
+                    sxmConnection.executeQuery("PRAGMA synchronous=NORMAL", default(List<object>));
+                }
+            }
+            catch (System.Exception) { }
+            finally
+            {
+                sxmConnection?.destroyConnection();
+            }
         }
 
         public static void deleteDbVersionNumber()

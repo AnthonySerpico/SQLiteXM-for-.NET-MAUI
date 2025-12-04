@@ -7,6 +7,67 @@ using System.Threading.Tasks;
 
 namespace SQLiteXM
 {
+
+    // Class-level table attribute (alias to LinqToDB.Mapping.TableAttribute)
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+    public class TableAttribute : LinqToDB.Mapping.TableAttribute
+    {
+        public TableAttribute() : base() { }
+        public TableAttribute(string tableName) : base(tableName) { }
+    }
+
+    // Property/field column attribute (alias to LinqToDB.Mapping.ColumnAttribute)
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
+    public class ColumnAttribute : LinqToDB.Mapping.ColumnAttribute
+    {
+        public ColumnAttribute() : base() { }
+        public ColumnAttribute(string name) : base(name) { }
+
+        // Consumer-facing DataType that maps to LinqToDB.DataType by name.
+        // Use in user code: [Column(DataType = SQLiteXM.DataType.Long)]
+        public new DataType DataType
+        {
+            get
+            {
+                try
+                {
+                    var baseName = base.DataType.ToString();
+                    if (Enum.TryParse<DataType>(baseName, out var dt))
+                        return dt;
+                }
+                catch { }
+                return DataType.Default;
+            }
+            set
+            {
+                try
+                {
+                    // map by name to LinqToDB.DataType
+                    if (Enum.TryParse(typeof(LinqToDB.DataType), value.ToString(), ignoreCase: false, out var baseDt))
+                    {
+                        base.DataType = (LinqToDB.DataType)baseDt!;
+                        return;
+                    }
+
+                    // fallback: if someone used "Long" as our enum entry but LinqToDB has "Long" too,
+                    // above will work. If name mismatches, default to base default.
+                    base.DataType = default;
+                }
+                catch
+                {
+                    base.DataType = default;
+                }
+            }
+        }
+    }
+
+    // Property/field NotColumn attribute (alias to LinqToDB.Mapping.NotColumnAttribute)
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
+    public class NotColumnAttribute : LinqToDB.Mapping.NotColumnAttribute
+    {
+        public NotColumnAttribute() : base() { }
+    }
+
     interface IIndexVars
     {
         public string[] indexFields { get; set; }
