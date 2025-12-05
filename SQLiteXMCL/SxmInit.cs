@@ -167,7 +167,7 @@ namespace SQLiteXM
 
                     applyTriggerTableStatements(connectionMap);
                     storeDbVersionNumber(sqlStatementsVersionNumber);
-                    SxmMapping.InitializeAssociations();
+                    SxmAssociationMapper.InitializeAssociations();
                 }
             }
 #pragma warning disable 0168

@@ -59,7 +59,7 @@ namespace SQLiteXM
                     if (_registeredAssociations.Add(assocKey))
                     {
                         // Register runtime association: Source.FK -> Target.id
-                        SxmMapping.ConfigureAssociation(
+                        SxmAssociationMapper.ConfigureAssociation(
                             sourceType: sourceType,
                             navigationPropertyName: navProp.Name,
                             thisKey: sourceKey,
