@@ -44,7 +44,27 @@ namespace SQLiteXM
             return new SxmTable<T>(DataConnection.GetTable<T>());
         }
 
+        // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
+        public ITable<T> GetRawTable<T>() where T : class
+        {
+            return DataConnection.GetTable<T>();
+        }
+
         public SxmChangeSet GetChangeSet() => _changeSet;
+
+        // Insert the entity and return the generated identity (as object).
+        public object InsertWithIdentity<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return DataConnection.InsertWithIdentity(entity);
+        }
+
+        // Async insert returning generated identity (as object).
+        public Task<object> InsertWithIdentityAsync<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return DataConnection.InsertWithIdentityAsync(entity);
+        }
 
         // ---------- Convenience async helpers to avoid exposing DataConnection externally ----------
         /// <summary>
@@ -272,6 +292,10 @@ namespace SQLiteXM
             }
             return this;
         }
+
+        /// Return the inner query as LinqToDB's ITable<T> when available.
+        /// Callers who need LinqToDB-specific extensions can use this.
+        public ITable<T>? AsITable() => _inner as ITable<T>;
 
         // IQueryable<T> implementation - delegate to the underlying query
         public Type ElementType => _inner.ElementType;
