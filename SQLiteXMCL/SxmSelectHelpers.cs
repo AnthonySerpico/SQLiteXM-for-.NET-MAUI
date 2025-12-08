@@ -15,9 +15,9 @@ namespace SQLiteXM
 
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    sxmTransaction.executeQuery(sqlStatementName, sqlStatementParameters);
+                    await sxmTransaction.executeQueryAsync(sqlStatementName, sqlStatementParameters);
                     selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                 }
             }
@@ -34,7 +34,7 @@ namespace SQLiteXM
 
             try
             {
-                sxmTransaction.executeQuery(sqlStatementName, sqlStatementParameters);
+                await sxmTransaction.executeQueryAsync(sqlStatementName, sqlStatementParameters);
                 selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
             }
             catch (System.Exception)
@@ -51,9 +51,9 @@ namespace SQLiteXM
 
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    sxmTransaction.executeQueryDirect(sqlStatement, sqlStatementParameters);
+                    await sxmTransaction.executeQueryDirectAsync(sqlStatement, sqlStatementParameters);
                     selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                 }
             }
@@ -70,7 +70,7 @@ namespace SQLiteXM
 
             try
             {
-                sxmTransaction.executeQueryDirect(sqlStatement, sqlStatementParameters);
+                await sxmTransaction.executeQueryDirectAsync(sqlStatement, sqlStatementParameters);
                 selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
             }
             catch (System.Exception)

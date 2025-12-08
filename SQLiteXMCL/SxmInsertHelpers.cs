@@ -15,9 +15,9 @@ namespace SQLiteXM
 
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    ir = sxmTransaction.executeInsert(sqlStatementName, sqlStatementParameters);
+                    ir = await sxmTransaction.executeInsertAsync(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
                 }
             }
@@ -35,7 +35,7 @@ namespace SQLiteXM
 
             try
             {
-                ir = sxmTransaction.executeInsert(sqlStatementName, sqlStatementParameters);
+                ir = await sxmTransaction.executeInsertAsync(sqlStatementName, sqlStatementParameters);
             }
             catch (System.Exception)
             {

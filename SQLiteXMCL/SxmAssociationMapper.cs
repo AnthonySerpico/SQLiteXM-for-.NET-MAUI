@@ -23,22 +23,22 @@ namespace SQLiteXM
                 AttachAssociation(databaseName);
         }
 
-        public static void AttachAssociation(string databaseName)
+        public static async Task AttachAssociation(string databaseName)
         {
             SxmConnection? sxmConnection = default;
 
             try
             {
                 sxmConnection = new SxmConnection(databaseName);
-                List<string> tableNames = SxmHelpers.getAllUserTableNames(sxmConnection);
+                List<string> tableNames = await SxmHelpers.getAllUserTableNames(sxmConnection);
 
                 if (tableNames.Count > 0)
                 {
-                    using (SxmUTransaction sxmTransaction = new SxmUTransaction(sxmConnection))
+                    await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                     {
                         foreach (string tableName in tableNames)
                         {
-                            sxmConnection.executeQuery(String.Format("PRAGMA foreign_key_list({0})", tableName), default(List<object>));
+                            await sxmConnection.executeQueryAsync(String.Format("PRAGMA foreign_key_list({0})", tableName), default(List<object>));
 
                             if (sxmConnection.nextRow() == true)
                             {

@@ -132,7 +132,7 @@ namespace SQLiteXM
                             switch (SxmHelpers.GetDatabaseStatementType(transactionItem.SqlStatementName))
                             {
                                 case SqlStatementType.select:
-                                    sxmTransaction.executeQuery(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    sxmTransaction.executeQueryAsync(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
                                     responseObject.recordData = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                                     responseObject.sqlStatementName = transactionItem.SqlStatementName;
                                     responseObject.sqlStatementType = SqlStatementType.select;
@@ -171,7 +171,7 @@ namespace SQLiteXM
                             switch (SxmHelpers.GetDatabaseStatementType(transactionItem.SqlStatementName))
                             {
                                 case SqlStatementType.select:
-                                    sxmTransaction.executeQuery(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
+                                    await sxmTransaction.executeQueryAsync(transactionItem.SqlStatementName, transactionItem.SqlStatementParameters);
                                     responseObject.recordData = sxmTransaction.getAllRows<Dictionary<string, object?>>();
                                     responseObject.sqlStatementName = transactionItem.SqlStatementName;
                                     responseObject.sqlStatementType = SqlStatementType.select;

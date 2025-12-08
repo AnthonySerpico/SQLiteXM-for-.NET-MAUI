@@ -169,7 +169,7 @@ namespace SQLiteXM
             if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not allowed.");
 
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
+            Dictionary<string, string> columnNames = await SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await RunStatement(sqlStatementName, selectParameterValues, databaseName).CAF();
             List<TResult> userRecordList = SxmHelpers.populateUserRecord<TResult>(select);
@@ -188,7 +188,7 @@ namespace SQLiteXM
             if (statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not allowed.");
 
-            Dictionary<string, string> columnNames = SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
+            Dictionary<string, string> columnNames = await SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
             Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues(columnNames, userObjectParameters);
 
             return await RunStatement(sqlStatementName, selectParameterValues, databaseName).CAF();
@@ -209,17 +209,12 @@ namespace SQLiteXM
 
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(databaseName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName))
                 {
                     switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
                     {
                         case SqlStatementType.select:
                             recordData = await SxmSelectHelpers.performSelect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
-                            break;
-
-                        case SqlStatementType.insert:
-                            recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.performInsert(sqlStatementName, sqlStatementParameters, databaseName).CAF());
                             break;
 
                         case SqlStatementType.update:
@@ -230,17 +225,22 @@ namespace SQLiteXM
                             await SxmDeleteHelpers.performDelete(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
+                        case SqlStatementType.insert:
+                            recordData = new List<Dictionary<string, object?>>(1);
+                            recordData.Add(await SxmInsertHelpers.performInsert(sqlStatementName, sqlStatementParameters, databaseName).CAF());
+                            break;
+
                         // Direct SQL statement queries are processed here.
                         case SqlStatementType.selectDirect:
                             recordData = await SxmSelectHelpers.performSelectDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
-                        case SqlStatementType.deleteDirect:
-                            await SxmDeleteHelpers.performDeleteDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
-                            break;
-
                         case SqlStatementType.updateDirect:
                             await SxmUpdateHelpers.performUpdateDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
+                            break;
+
+                        case SqlStatementType.deleteDirect:
+                            await SxmDeleteHelpers.performDeleteDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
                         default: break;

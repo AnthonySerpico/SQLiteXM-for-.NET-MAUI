@@ -13,9 +13,9 @@ namespace SQLiteXM
         {
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    sxmTransaction.executeDelete(sqlStatementName, sqlStatementParameters);
+                    await sxmTransaction.executeDeleteAsync(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
                 }
             }
@@ -31,7 +31,7 @@ namespace SQLiteXM
         {
             try
             {
-                sxmTransaction.executeDelete(sqlStatementName, sqlStatementParameters);
+                await sxmTransaction.executeDeleteAsync(sqlStatementName, sqlStatementParameters);
             }
             catch (System.Exception)
             {
@@ -44,10 +44,10 @@ namespace SQLiteXM
         {
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    sxmTransaction.executeDeleteDirect(sqlStatement, sqlStatementParameters);
-                    sxmTransaction.commitTransaction();
+                    await sxmTransaction.executeDeleteDirectAsync(sqlStatement, sqlStatementParameters);
+                    await sxmTransaction.commitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -61,7 +61,7 @@ namespace SQLiteXM
         {
             try
             {
-                sxmTransaction.executeDeleteDirect(sqlStatement, sqlStatementParameters);
+                await sxmTransaction.executeDeleteDirectAsync(sqlStatement, sqlStatementParameters);
             }
             catch (System.Exception)
             {

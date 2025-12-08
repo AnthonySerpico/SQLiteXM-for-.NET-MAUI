@@ -13,9 +13,9 @@ namespace SQLiteXM
         {
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    sxmTransaction.executeUpdate(sqlStatementName, sqlStatementParameters);
+                    await sxmTransaction.executeUpdateAsync(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
                 }
             }
@@ -31,7 +31,7 @@ namespace SQLiteXM
         {
             try
             {
-                sxmTransaction.executeUpdate(sqlStatementName, sqlStatementParameters);
+                await sxmTransaction.executeUpdateAsync(sqlStatementName, sqlStatementParameters);
             }
             catch (System.Exception)
             {
@@ -45,9 +45,9 @@ namespace SQLiteXM
         {
             try
             {
-                using (SxmUTransaction sxmTransaction = new SxmUTransaction(dbName))
+                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    sxmTransaction.executeUpdateDirect(sqlStatementName, sqlStatementParameters);
+                    await sxmTransaction.executeUpdateDirectAsync(sqlStatementName, sqlStatementParameters);
                     sxmTransaction.commitTransaction();
                 }
             }
@@ -63,7 +63,7 @@ namespace SQLiteXM
         {
             try
             {
-                sxmTransaction.executeUpdateDirect(sqlStatementName, sqlStatementParameters);
+                await sxmTransaction.executeUpdateDirectAsync(sqlStatementName, sqlStatementParameters);
             }
             catch (System.Exception)
             {

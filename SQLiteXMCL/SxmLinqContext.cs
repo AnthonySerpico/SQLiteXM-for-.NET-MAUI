@@ -150,7 +150,7 @@ namespace SQLiteXM
                 return;
 
             // One transaction for the whole unit of work
-            using (var sxmTrans = new SxmTransaction())
+            await using (var sxmTrans = SxmTransaction.Create())
             {
                 try
                 {

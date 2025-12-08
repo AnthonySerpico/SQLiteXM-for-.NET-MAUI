@@ -15,13 +15,13 @@ namespace SQLiteXM
         private static ISet<string> _registeredAssociations = new HashSet<string>();
         private SxmHelpers() { }
 
-        internal static List<string> getAllUserTableNames(SxmConnection? sxmConnection)
+        internal static async Task<List<string>> getAllUserTableNames(SxmConnection? sxmConnection)
         {
             List<string> tableNames = new List<string>();
 
             if (sxmConnection != null)
             {
-                sxmConnection.executeQuery("SELECT tableName FROM _systemCloudSynchDescriptor", null as List<object>);
+                await sxmConnection.executeQueryAsync("SELECT tableName FROM _systemCloudSynchDescriptor", null as List<object>);
 
                 if (sxmConnection.hasRows() == true)
                 {
@@ -96,14 +96,11 @@ namespace SQLiteXM
 
         internal static SqlStatementType GetDatabaseStatementType(string? sqlStatementName)
         {
-            if (sqlStatementName == null)
-                throw new ArgumentException("A sql statement name cannot be null.");
+            if (string.IsNullOrEmpty(sqlStatementName))
+                throw new ArgumentException("A sql statement name cannot be null or empty.");
 
             if (SqlStatements.selectStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.select;
-
-            if (SqlStatements.insertStatements.ContainsKey(sqlStatementName) != default)
-                return SqlStatementType.insert;
 
             if (SqlStatements.updateStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.update;
@@ -111,15 +108,18 @@ namespace SQLiteXM
             if (SqlStatements.deleteStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.delete;
 
+            if (SqlStatements.insertStatements.ContainsKey(sqlStatementName) != default)
+                return SqlStatementType.insert;
+
             // Direct SQL statement queries are processed here.
             if (sqlStatementName.StartsWith("SELECT ", true, null))
                 return SqlStatementType.selectDirect;
 
-            if (sqlStatementName.StartsWith("DELETE ", true, null))
-                return SqlStatementType.deleteDirect;
-
             if (sqlStatementName.StartsWith("UPDATE ", true, null))
                 return SqlStatementType.updateDirect;
+
+            if (sqlStatementName.StartsWith("DELETE ", true, null))
+                return SqlStatementType.deleteDirect;
 
             throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName.Length > 30 ? (sqlStatementName.Substring(0, 29) + "...") : sqlStatementName));
         }

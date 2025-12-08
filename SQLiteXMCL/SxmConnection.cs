@@ -1,5 +1,9 @@
-﻿using System.Data.Common;
+﻿using System.Collections;
+using System.Data.Common;
+using System.Data.Common;
 using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SQLiteXM
 {
@@ -38,11 +42,14 @@ namespace SQLiteXM
 
     public class SxmConnection
     {
-        private bool transient;
-        public bool Transient
-        {
-            get { return transient; }
-        }
+        // true => connection is shared / reused across callers
+        // false => connection is non-shared / private to the creator
+        private bool shared;
+        /// <summary>
+        /// Preferred property name: use Shared (true == shared/reused).
+        /// </summary>
+        public bool Shared => shared;
+
         private string? databaseName;
         public string? DatabaseName
         {
@@ -54,6 +61,8 @@ namespace SQLiteXM
         private Microsoft.Data.Sqlite.SqliteTransaction? dbConnTransaction;
 
         private static readonly object synchLock = new object();
+        private readonly SemaphoreSlim _asyncLock = new SemaphoreSlim(1, 1);
+
         private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
         private static readonly string SQLiteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
 
@@ -64,12 +73,12 @@ namespace SQLiteXM
         }
         private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
-        public SxmConnection(string? databaseName, bool transient = false)
+        public SxmConnection(string? databaseName, bool shared = true)
         {
             try
             {
                 this.databaseName = databaseName;
-                this.transient = transient;
+                this.shared = shared;
 
                 createNewConnection();
             }
@@ -99,7 +108,9 @@ namespace SQLiteXM
                 dbConn = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
                 dbConn.Open();
 
-                this.executeQuery("PRAGMA foreign_keys = ON", default(List<object>));
+                // execute PRAGMA using async ADO but block here because we're in ctor
+                // This is initialization; prefer to run the async call and block synchronously once.
+                this.executeQueryAsync("PRAGMA foreign_keys = ON", default).GetAwaiter().GetResult();
             }
 #pragma warning disable 0168
             catch (SxmException ex)
@@ -139,6 +150,31 @@ namespace SQLiteXM
             return connectionString;
         }
 
+        public async Task<bool> LockAsync(int millisecondsTimeout = 100, CancellationToken ct = default)
+        {
+            try
+            {
+                if (dbConn == null) return false;
+                if (await _asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), ct).ConfigureAwait(false))
+                {
+                    if (dbConn.State == System.Data.ConnectionState.Broken)
+                    {
+                        dbConn.Close();
+                        dbConn.Open();
+                    }
+                    return true;
+                }
+            }
+            catch (OperationCanceledException) { }
+            return false;
+        }
+
+        public void ReleaseLock()
+        {
+            try { _asyncLock.Release(); } catch { }
+        }
+
+
         private static string resolveDatabaseName(string? databaseName)
         {
             if (databaseName == null)
@@ -158,32 +194,11 @@ namespace SQLiteXM
             return databaseName!;
         }
 
-        public bool lockConnection(int wait = 100)
-        {
-            if (dbConn != null)
-                if (Monitor.TryEnter(dbConn, wait) == true)
-                {
-                    if (dbConn.State == System.Data.ConnectionState.Broken)
-                    {
-                        dbConn.Close();
-                        dbConn.Open();
-                    }
-
-                    return true;
-                }
-
-            return false;
-        }
-
         // Returns error code for SqliteException, otherwise throw the exception.
         public SQLiteErrorCode finishTransaction(bool commitFlag)
         {
-            SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
-
-            if (dbConn != null && dbConnTransaction != null)
-                sqLiteErrorCode = doCommit(commitFlag);
-
-            return sqLiteErrorCode;
+            // synchronous wrapper for convenience / compatibility: call async implementation and block.
+            return finishTransactionAsync(commitFlag).GetAwaiter().GetResult();
         }
 
         // No-throw guarantee. Makes every effort to perform clean-up.
@@ -194,7 +209,8 @@ namespace SQLiteXM
                 try
                 {
                     if (dbConnTransaction != null)
-                        doCommit(SQLiteXM.Defines.rollbackTransaction);
+                        // ensure rollback is completed; block here to preserve previous behavior
+                        doCommitAsync(SQLiteXM.Defines.rollbackTransaction).GetAwaiter().GetResult();
                 }
 #pragma warning disable 0168
                 catch (System.Exception notUsed) { } // Within a handled exception a finally is guaranteed to run. 
@@ -203,10 +219,7 @@ namespace SQLiteXM
                 {
                     try
                     {
-                        if (Monitor.IsEntered(dbConn) == true)
-                            Monitor.Exit(dbConn);
-
-                        if (transient == true || destroy == true)
+                        if (!shared || destroy == true)
                             destroyConnection();
                         else
                             releaseConnectionResources();
@@ -218,8 +231,19 @@ namespace SQLiteXM
             }
         }
 
-        // Returns error code for SqliteException, otherwise throw the exception.
-        private SQLiteErrorCode doCommit(bool commitFlag)
+        // Async implementation of commit/rollback
+        public async Task<SQLiteErrorCode> finishTransactionAsync(bool commitFlag)
+        {
+            SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
+
+            if (dbConn != null && dbConnTransaction != null)
+                sqLiteErrorCode = await doCommitAsync(commitFlag).ConfigureAwait(false);
+
+            return sqLiteErrorCode;
+        }
+
+        // Async doCommit using async ADO APIs
+        private async Task<SQLiteErrorCode> doCommitAsync(bool commitFlag)
         {
             SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
@@ -228,9 +252,9 @@ namespace SQLiteXM
                 try
                 {
                     if (commitFlag == SQLiteXM.Defines.commitTransaction)
-                        dbConnTransaction.Commit();
+                        await dbConnTransaction.CommitAsync().ConfigureAwait(false);
                     else
-                        dbConnTransaction.Rollback();
+                        await dbConnTransaction.RollbackAsync().ConfigureAwait(false);
 
                     dbConnTransaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
                 }
@@ -252,6 +276,12 @@ namespace SQLiteXM
             }
 
             return sqLiteErrorCode;
+        }
+
+        // Keep old synchronous doCommit for compatibility (rarely used directly)
+        private SQLiteErrorCode doCommit(bool commitFlag)
+        {
+            return doCommitAsync(commitFlag).GetAwaiter().GetResult();
         }
 
         public void destroyConnection()
@@ -284,7 +314,9 @@ namespace SQLiteXM
                 connDataReader = default(DbDataReader);
             }
         }
-        public void executeQuery(string command, List<object>? parameterValues)
+
+        // Async ExecuteReader
+        public async Task executeQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
                 throw new SxmException(ErrorMessages.error["missingSQL"]);
@@ -299,7 +331,16 @@ namespace SQLiteXM
                 connCommand.CommandText = command;
                 connCommand.CommandType = System.Data.CommandType.Text;
                 addCommandParameters(parameterValues);
-                connDataReader = connCommand.ExecuteReader();
+
+                if (connCommand is DbCommand dbCmd)
+                {
+                    connDataReader = await dbCmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Fallback to sync if something unexpected: keep behavior but log
+                    connDataReader = connCommand.ExecuteReader();
+                }
             }
 #pragma warning disable 0168
             catch (SxmException ex)
@@ -314,7 +355,14 @@ namespace SQLiteXM
             }
         }
 
-        public void executeNonQuery(string command, List<object>? parameterValues)
+        // Synchronous wrapper for compatibility
+        public void executeQuery(string command, List<object>? parameterValues)
+        {
+            executeQueryAsync(command, parameterValues).GetAwaiter().GetResult();
+        }
+
+        // Async ExecuteNonQuery
+        public async Task executeNonQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
                 throw new SxmException(ErrorMessages.error["missingSQL"]);
@@ -330,7 +378,16 @@ namespace SQLiteXM
                 connCommand.CommandText = command;
                 connCommand.CommandType = System.Data.CommandType.Text;
                 addCommandParameters(parameterValues);
-                connCommand.ExecuteNonQuery();
+
+                if (connCommand is DbCommand dbCmd)
+                {
+                    await dbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Fallback synchronous
+                    connCommand.ExecuteNonQuery();
+                }
             }
 #pragma warning disable 0168
             catch (SxmException ex)
@@ -343,6 +400,12 @@ namespace SQLiteXM
                 log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 throw new SxmException(ex);
             }
+        }
+
+        // Synchronous wrapper for compatibility
+        public void executeNonQuery(string command, List<object>? parameterValues)
+        {
+            executeNonQueryAsync(command, parameterValues).GetAwaiter().GetResult();
         }
 
         private void addCommandParameters(List<object>? parameterValues)
@@ -413,6 +476,7 @@ namespace SQLiteXM
             return DbParametersDataType.list;
         }
 
+        // Begin transaction (kept synchronous; underlying provider does not provide strong async benefit here)
         public void beginTransaction()
         {
             try
@@ -568,4 +632,3 @@ namespace SQLiteXM
         }
     }
 }
-
