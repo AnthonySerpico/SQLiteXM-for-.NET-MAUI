@@ -329,7 +329,7 @@ namespace SQLiteXM
                     if (!await doesTableExist("_systemCloudSynch", sxmConnection))
                         await createCloudSynchTable(key, tableNamesMap, sxmTransaction);
                     await createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
-                    sxmTransaction.commitTransaction();
+                    await sxmTransaction.commitTransactionAsync();
                 }
 
                 await applyIndexTableStatements(key, connectionMap);
@@ -379,7 +379,7 @@ namespace SQLiteXM
 
                         //await SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
 
-                        sxmTransaction.commitTransaction();
+                        await sxmTransaction.commitTransactionAsync();
                     }
                 }
             }
@@ -442,7 +442,7 @@ namespace SQLiteXM
                     await sxmTransaction.executeTableStatementAsync(string.Format("DROP TRIGGER IF EXISTS update{0}", parts[1]));
                     await sxmTransaction.executeTableStatementAsync (string.Format("DROP TRIGGER IF EXISTS delete{0}", parts[1]));
 
-                    sxmTransaction.commitTransaction();
+                    await sxmTransaction.commitTransactionAsync();
                 }
             }
 #pragma warning disable 0168
@@ -537,7 +537,7 @@ namespace SQLiteXM
                                 await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(sxmConnection))
                                 {
                                     await sxmTransaction1.executeAlterTableAsync(alterDefinition.AlterSQL);
-                                    sxmTransaction1.commitTransaction();
+                                    await sxmTransaction1.commitTransactionAsync();
                                 }
                             }
 #pragma warning disable 0168
@@ -650,7 +650,7 @@ namespace SQLiteXM
                                 await sxmTransaction.executeCreateTriggerAsync(string.Format("DROP TRIGGER {0}", existingTrigger));
                             }
 
-                            sxmTransaction.commitTransaction();
+                            await sxmTransaction.commitTransactionAsync();
                         }
 
                         // Get all triggers in the SQL Statements file and create them.
@@ -663,7 +663,7 @@ namespace SQLiteXM
                                 {
                                     await sxmTransaction.executeCreateTriggerAsync(td.TriggerSQL);
                                 }
-                                sxmTransaction.commitTransaction();
+                                await sxmTransaction.commitTransactionAsync();
                             }
                         }
                     }
@@ -740,7 +740,7 @@ namespace SQLiteXM
                                 await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(sxmConnection))
                                 {
                                     await sxmTransaction1.executeIndexAsync(indexDefinition.IndexSQL);
-                                    sxmTransaction1.commitTransaction();
+                                    await sxmTransaction1.commitTransactionAsync();
                                 }
                             }
 #pragma warning disable 0168

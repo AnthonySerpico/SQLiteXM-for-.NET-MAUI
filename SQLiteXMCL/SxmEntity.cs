@@ -314,7 +314,7 @@ namespace SQLiteXM
                             foreach (KeyValuePair<string, string> kvp in newTriggerNameList)
                                 await sxmTransaction.executeCreateTriggerAsync(kvp.Value);
 
-                            sxmTransaction.commitTransaction();
+                            await sxmTransaction.commitTransactionAsync();
                         }
                     }
                     catch (Exception ex) { }

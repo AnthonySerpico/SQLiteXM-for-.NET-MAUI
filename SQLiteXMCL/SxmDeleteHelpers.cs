@@ -16,7 +16,7 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     await sxmTransaction.executeDeleteAsync(sqlStatementName, sqlStatementParameters);
-                    sxmTransaction.commitTransaction();
+                    await sxmTransaction.commitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -57,7 +57,7 @@ namespace SQLiteXM
 
             await Task.CompletedTask.CAF();
         }
-        internal static async Task performDeleteTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task performDeleteDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {

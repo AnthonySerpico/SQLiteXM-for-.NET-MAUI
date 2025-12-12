@@ -18,7 +18,7 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     ir = await sxmTransaction.executeInsertAsync(sqlStatementName, sqlStatementParameters);
-                    sxmTransaction.commitTransaction();
+                    await sxmTransaction.commitTransactionAsync();
                 }
             }
             catch (System.Exception)

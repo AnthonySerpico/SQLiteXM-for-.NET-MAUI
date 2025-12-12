@@ -61,7 +61,13 @@ namespace SQLiteXM
         private Microsoft.Data.Sqlite.SqliteTransaction? dbConnTransaction;
 
         private static readonly object synchLock = new object();
+
+        // Semaphore used to guard concurrent access. Use ownership + reentrancy to avoid accidentally
+        // releasing someone else's lock and to allow a logical owner to re-enter.
         private readonly SemaphoreSlim _asyncLock = new SemaphoreSlim(1, 1);
+        private readonly object _ownerSync = new object();
+        private Guid? _lockOwner;
+        private int _lockReentrancy = 0;
 
         private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
         private static readonly string SQLiteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
@@ -110,7 +116,8 @@ namespace SQLiteXM
 
                 // execute PRAGMA using async ADO but block here because we're in ctor
                 // This is initialization; prefer to run the async call and block synchronously once.
-                this.executeQueryAsync("PRAGMA foreign_keys = ON", default).GetAwaiter().GetResult();
+                this.executeNonQueryAsync("PRAGMA foreign_keys = ON", default).GetAwaiter().GetResult();
+                this.executeNonQueryAsync("PRAGMA journal_mode = WAL", default).GetAwaiter().GetResult();
             }
 #pragma warning disable 0168
             catch (SxmException ex)
@@ -150,18 +157,58 @@ namespace SQLiteXM
             return connectionString;
         }
 
-        public async Task<bool> LockAsync(int millisecondsTimeout = 100, CancellationToken ct = default)
+        /// <summary>
+        /// Acquire the async lock. When using a shared connection callers SHOULD supply a stable
+        /// ownerId (Guid) so reentrancy and ownership checks work correctly. If ownerId is supplied
+        /// and matches the current owner we increment the reentrancy counter and return immediately.
+        /// </summary>
+        public async Task<bool> LockAsync(int millisecondsTimeout = 100, CancellationToken ct = default, Guid? ownerId = null)
         {
             try
             {
+                // Fast path: if caller supplied an ownerId that already owns the lock, allow re-entrancy.
+                if (ownerId.HasValue)
+                {
+                    lock (_ownerSync)
+                    {
+                        if (_lockOwner.HasValue && _lockOwner.Value == ownerId.Value)
+                        {
+                            // Re-entrant acquire
+                            _lockReentrancy++;
+                            return true;
+                        }
+                    }
+                }
+
                 if (dbConn == null) return false;
+
+                // Wait for the semaphore with timeout/cancellation.
                 if (await _asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), ct).ConfigureAwait(false))
                 {
+                    lock (_ownerSync)
+                    {
+                        // Set owner (use provided ownerId if given; otherwise create a token for best-effort ownership).
+                        _lockOwner = ownerId ?? Guid.NewGuid();
+                        _lockReentrancy = 1;
+                    }
+
+                    // If underlying connection was in a bad state, attempt to repair it.
                     if (dbConn.State == System.Data.ConnectionState.Broken)
                     {
-                        dbConn.Close();
-                        dbConn.Open();
+                        try
+                        {
+                            dbConn.Close();
+                            dbConn.Open();
+                        }
+                        catch (Exception ex)
+                        {
+                            // If we can't reopen, release the acquired semaphore and rethrow wrapped exception.
+                            ReleaseLock(_lockOwner);
+                            log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                            throw new SxmException(ex);
+                        }
                     }
+
                     return true;
                 }
             }
@@ -169,9 +216,43 @@ namespace SQLiteXM
             return false;
         }
 
-        public void ReleaseLock()
+        /// <summary>
+        /// Release the async lock. If ownerId is supplied, ownership is verified before releasing.
+        /// Reentrancy count is decremented; semaphore is released only when counter reaches zero.
+        /// </summary>
+        public void ReleaseLock(Guid? ownerId = null)
         {
-            try { _asyncLock.Release(); } catch { }
+            try
+            {
+                lock (_ownerSync)
+                {
+                    // Nothing to release
+                    if (!_lockOwner.HasValue)
+                        return;
+
+                    // If caller provided ownerId and it doesn't match, log and ignore release attempt.
+                    if (ownerId.HasValue && _lockOwner.Value != ownerId.Value)
+                    {
+                        try { log(new InvalidOperationException("Attempt to release lock by non-owner."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                        return;
+                    }
+
+                    // Decrement reentrancy and only release semaphore when 0.
+                    _lockReentrancy--;
+                    if (_lockReentrancy <= 0)
+                    {
+                        _lockReentrancy = 0;
+                        _lockOwner = null;
+                        try { _asyncLock.Release(); } catch { /* best-effort */ }
+                    }
+
+                    return;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                try { log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+            }
         }
 
 

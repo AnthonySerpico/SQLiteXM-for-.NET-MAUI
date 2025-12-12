@@ -1,5 +1,4 @@
 ﻿using LinqToDB;
-using LinqToDB.Data;
 using Microsoft.Data.Sqlite;
 using SQLiteXM.Internal;
 
@@ -8,10 +7,9 @@ namespace SQLiteXM
     public class SxmLinqContext : IDisposable
     {
         private bool isDisposed = false;
-        private readonly SqliteConnection? dConnection;
-        private readonly DataConnection? _dataConnection;
-
+        private readonly SqliteConnection dConnection;
         private readonly SxmChangeSet _changeSet = new SxmChangeSet();
+        private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
 
         public SxmLinqContext(string? databaseName = null)
         {
@@ -19,28 +17,22 @@ namespace SQLiteXM
             dConnection = new SqliteConnection(connStr);
             dConnection.Open();
 
-            _dataConnection = new DataConnection(
-                LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"),
-                dConnection
-            );
-
-            DataConnection.AddMappingSchema(SxmMapping.Schema);
+            _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), dConnection);
+            _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
         }
-
-        private DataConnection DataConnection => _dataConnection!;
 
         // LinqToDB table access
         public SxmTable<T> GetTable<T>() where T : class
         {
             // Wrap the provider table so callers get an IQueryable-like wrapper that also
             // exposes LoadWith without referencing LinqToDB.
-            return new SxmTable<T>(DataConnection.GetTable<T>());
+            return new SxmTable<T>(_linqToDbDataConnection.GetTable<T>());
         }
 
         // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
         public ITable<T> GetRawTable<T>() where T : class
         {
-            return DataConnection.GetTable<T>();
+            return _linqToDbDataConnection.GetTable<T>();
         }
 
         public SxmChangeSet GetChangeSet() => _changeSet;
@@ -49,14 +41,14 @@ namespace SQLiteXM
         public object InsertWithIdentity<T>(T entity) where T : class
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return DataConnection.InsertWithIdentity(entity);
+            return _linqToDbDataConnection.InsertWithIdentity(entity);
         }
 
         // Async insert returning generated identity (as object).
         public Task<object> InsertWithIdentityAsync<T>(T entity) where T : class
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return DataConnection.InsertWithIdentityAsync(entity);
+            return _linqToDbDataConnection.InsertWithIdentityAsync(entity);
         }
 
         // ---------- Convenience async helpers to avoid exposing DataConnection externally ----------
@@ -67,7 +59,7 @@ namespace SQLiteXM
         public Task InsertAsync<T>(T entity) where T : class
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _dataConnection!.InsertAsync(entity);
+            return _linqToDbDataConnection!.InsertAsync(entity);
         }
 
         /// <summary>
@@ -77,7 +69,7 @@ namespace SQLiteXM
         public Task UpdateAsync<T>(T entity) where T : class
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _dataConnection!.UpdateAsync(entity);
+            return _linqToDbDataConnection!.UpdateAsync(entity);
         }
 
         /// <summary>
@@ -86,7 +78,7 @@ namespace SQLiteXM
         public Task DeleteAsync<T>(T entity) where T : class
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _dataConnection!.DeleteAsync(entity);
+            return _linqToDbDataConnection!.DeleteAsync(entity);
         }
         // -------------------------------------------------------------------------------------------
 
@@ -200,7 +192,7 @@ namespace SQLiteXM
                     // If we get here without an exception in FailOnFirstConflict mode,
                     // or we are in ContinueOnConflict mode and are okay with partial success,
                     // commit the transaction.
-                    sxmTrans.commitTransaction();
+                    await sxmTrans.commitTransactionAsync();
                 }
                 catch
                 {
@@ -230,7 +222,7 @@ namespace SQLiteXM
             if (disposing)
             {
                 dConnection?.Dispose();
-                _dataConnection?.Dispose();
+                _linqToDbDataConnection?.Dispose();
             }
 
             isDisposed = true;

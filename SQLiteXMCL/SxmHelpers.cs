@@ -111,7 +111,7 @@ namespace SQLiteXM
             if (SqlStatements.insertStatements.ContainsKey(sqlStatementName) != default)
                 return SqlStatementType.insert;
 
-            // Direct SQL statement queries are processed here.
+            // Direct SQL statements are processed here.
             if (sqlStatementName.StartsWith("SELECT ", true, null))
                 return SqlStatementType.selectDirect;
 

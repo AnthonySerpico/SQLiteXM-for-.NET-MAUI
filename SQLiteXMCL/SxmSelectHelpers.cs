@@ -64,7 +64,7 @@ namespace SQLiteXM
 
             return await Task.FromResult(selectedRows).CAF();
         }
-        internal static async Task<List<Dictionary<string, object?>>> performSelectTransDirect(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> performSelectDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 

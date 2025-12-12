@@ -11,21 +11,23 @@ namespace SQLiteXM
         private SxmConnection? connection;
         private bool disposed = false;
         private bool ownsAsyncLock = false;
+        private Guid? lockOwnerId = null;
 
         public SxmConnection? Connection { get => connection; }
 
         // Private ctor used by the async factory. Connection lock already acquired.
-        protected SxmUTransaction(SxmConnection conn, bool ownsLock)
+        protected SxmUTransaction(SxmConnection conn, bool ownsLock, Guid? ownerId = null)
         {
             this.connection = conn;
             this.ownsAsyncLock = ownsLock;
+            this.lockOwnerId = ownerId;
         }
 
         // factory: create a private (non-shared) connection (if dbName provided) and acquire async lock without blocking the calling thread.
         public static SxmUTransaction Create(string? databaseName = null)
         {
             SxmConnection conn = new SxmConnection(databaseName, shared: false);
-            return new SxmUTransaction(conn, ownsLock: false);
+            return new SxmUTransaction(conn, ownsLock: false, ownerId: null);
         }
 
         // Async factory overload when caller already has connection.
@@ -34,10 +36,13 @@ namespace SQLiteXM
             if (conn == null) throw new ArgumentNullException(nameof(conn));
 
             bool ownsLock = false;
+            Guid? ownerId = null;
+
             // Only attempt lock when the supplied connection is shared.
             if (conn.Shared)
             {
-                bool locked = await conn.LockAsync(waitMilliseconds, cancellationToken).ConfigureAwait(false);
+                ownerId = Guid.NewGuid();
+                bool locked = await conn.LockAsync(waitMilliseconds, cancellationToken, ownerId).ConfigureAwait(false);
                 if (!locked)
                 {
                     throw new SxmException(new ErrorMessage("lockDB", conn.DatabaseName));
@@ -45,10 +50,21 @@ namespace SQLiteXM
                 ownsLock = true;
             }
 
-            return new SxmUTransaction(conn, ownsLock: ownsLock);
+            return new SxmUTransaction(conn, ownsLock: ownsLock, ownerId: ownerId);
         }
 
         // No-throw guarantee.
+        /// <summary>
+        /// Finalize and clean up the transaction object. This method performs a best-effort release of the
+        /// connection lock (if this transaction owns it) and then releases/returns the underlying connection.
+        ///
+        /// Important semantics:
+        /// - Calling commitTransaction()/commitTransactionAsync() only ends the underlying SQLite transaction
+        ///   (COMMIT/ROLLBACK). It does NOT release the SxmUTransaction's connection lock or null out this object.
+        /// - The SxmUTransaction instance may be reused after a commit to start new database transactions on the same
+        ///   connection; the connection lock remains held until this transaction is disposed/finalized.
+        /// - finalizeTransaction is intentionally best-effort and non-throwing to avoid throwing from finalizers.
+        /// </summary>
         protected void finalizeTransaction()
         {
             // Release the async lock if we own it (best-effort).
@@ -58,7 +74,8 @@ namespace SQLiteXM
                 {
                     try
                     {
-                        connection.ReleaseLock();
+                        // Release only if we are the owner
+                        connection.ReleaseLock(lockOwnerId);
                     }
                     catch (Exception ex)
                     {
@@ -67,6 +84,7 @@ namespace SQLiteXM
                     finally
                     {
                         ownsAsyncLock = false;
+                        lockOwnerId = null;
                     }
                 }
             }
@@ -197,7 +215,7 @@ namespace SQLiteXM
 
         public async Task executeQueryAsync(string command, List<object>? ParameterValues, CancellationToken cancellationToken = default)
         {
-            await connection.executeQueryAsync(command, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await connection.executeQueryAsync(SqlStatements.selectStatements[command].SelectSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task executeUpdateAsync(string command, List<object> ParameterValues, CancellationToken cancellationToken = default)
@@ -354,13 +372,6 @@ namespace SQLiteXM
             }
         }
 
-        // Returns error code for SqliteException, otherwise throw the exception.
-        public SQLiteErrorCode commitTransaction()
-        {
-            // synchronous wrapper for compatibility: block on the async commit
-            return commitTransactionAsync().GetAwaiter().GetResult();
-        }
-
         public async Task<SQLiteErrorCode> commitTransactionAsync(CancellationToken cancellationToken = default)
         {
             SQLiteErrorCode ec = await connection.finishTransactionAsync(SQLiteXM.Defines.commitTransaction).ConfigureAwait(false);
@@ -370,12 +381,6 @@ namespace SQLiteXM
                 interruptSynchronize = false;
             }
             return ec;
-        }
-
-        public void rollbackTransaction()
-        {
-            // synchronous wrapper for compatibility: block on async rollback
-            rollbackTransactionAsync().GetAwaiter().GetResult();
         }
 
         public async Task rollbackTransactionAsync(CancellationToken cancellationToken = default)

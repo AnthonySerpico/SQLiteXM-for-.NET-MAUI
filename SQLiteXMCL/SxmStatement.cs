@@ -209,7 +209,7 @@ namespace SQLiteXM
 
             try
             {
-                await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName))
+                //await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName))
                 {
                     switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
                     {

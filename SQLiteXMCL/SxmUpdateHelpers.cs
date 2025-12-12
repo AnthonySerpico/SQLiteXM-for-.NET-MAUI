@@ -16,7 +16,7 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     await sxmTransaction.executeUpdateAsync(sqlStatementName, sqlStatementParameters);
-                    sxmTransaction.commitTransaction();
+                    await sxmTransaction.commitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -48,7 +48,7 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     await sxmTransaction.executeUpdateDirectAsync(sqlStatementName, sqlStatementParameters);
-                    sxmTransaction.commitTransaction();
+                    await sxmTransaction.commitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -59,7 +59,7 @@ namespace SQLiteXM
             await Task.CompletedTask.CAF();
         }
 
-        internal static async Task performUpdateTransDirect(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task performUpdateDirectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {

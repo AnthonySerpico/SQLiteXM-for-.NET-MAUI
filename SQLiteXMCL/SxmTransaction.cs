@@ -9,20 +9,9 @@ SxmConnection sharedConn = new SxmConnection("myDb", shared: true);
 await using (var tx = await SxmTransaction.CreateAsync(sharedConn))
 {
     await tx.PerformInsert("insertSomething", paramObj);
-} // DisposeAsync() commits if no error
-
-// Transient factory is sync but still use await using to get auto-commit
-await using (var tx = SxmTransaction.Create("myDb"))
-{
-    await tx.PerformInsert("insertSomething", paramObj);
-} // DisposeAsync() commits
-
-// Wrong if you expect auto-commit: using(...) without explicit commit -> rollback
-using (var tx = SxmTransaction.Create("myDb"))
-{
-    await tx.PerformInsert("insertSomething", paramObj);
-} // Dispose() does NOT commit -> rollback (unless you called tx.commitTransaction())*/
-
+} // DisposeAsync awaited here -> lock released
+...
+*/
 
 namespace SQLiteXM
 {
@@ -32,7 +21,7 @@ namespace SQLiteXM
         private bool encounteredError = false;
 
         // Protected ctor used by the async factory. Connection lock already acquired.
-        protected SxmTransaction(SxmConnection conn, bool ownsLock) : base(conn, ownsLock)
+        protected SxmTransaction(SxmConnection conn, bool ownsLock, Guid? ownerId = null) : base(conn, ownsLock, ownerId)
         {
             this.databaseName = conn.DatabaseName;
         }
@@ -45,7 +34,7 @@ namespace SQLiteXM
         public new static SxmTransaction Create(string? databaseName = null)
         {
             var conn = new SxmConnection(databaseName, shared: false);
-            var tx = new SxmTransaction(conn, ownsLock: false);
+            var tx = new SxmTransaction(conn, ownsLock: false, ownerId: null);
             AmbientSxmTransaction.Push(tx);
             return tx;
         }
@@ -56,10 +45,13 @@ namespace SQLiteXM
             if (conn == null) throw new ArgumentNullException(nameof(conn));
 
             bool ownsLock = false;
+            Guid? ownerId = null;
+
             // Only attempt lock when the supplied connection is shared.
             if (conn.Shared)
             {
-                bool locked = await conn.LockAsync(waitMilliseconds, cancellationToken).ConfigureAwait(false);
+                ownerId = Guid.NewGuid();
+                bool locked = await conn.LockAsync(waitMilliseconds, cancellationToken, ownerId).ConfigureAwait(false);
                 if (!locked)
                 {
                     throw new SxmException(new ErrorMessage("lockDB", conn.DatabaseName));
@@ -67,7 +59,7 @@ namespace SQLiteXM
                 ownsLock = true;
             }
 
-            var tx = new SxmTransaction(conn, ownsLock: ownsLock);
+            var tx = new SxmTransaction(conn, ownsLock: ownsLock, ownerId: ownerId);
             AmbientSxmTransaction.Push(tx);
             return tx;
         }
@@ -95,7 +87,7 @@ namespace SQLiteXM
                 try
                 {
                     // Only pop if we are the ambient/top transaction.
-                    if (AmbientSxmTransaction.Current == this )
+                    if (AmbientSxmTransaction.Current == this)
                     {
                         try
                         {
@@ -201,6 +193,15 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Clear the internal encountered-error flag so subsequent statements will run.
+        /// Notes:
+        /// - If a statement previously set the error flag, RunStatement will skip subsequent statements until you call ResetError().
+        /// - Calling commitTransaction()/commitTransactionAsync() ends the underlying SQLite transaction but does NOT release
+        ///   the SxmTransaction's connection lock or dispose the object. You may reuse the same SxmTransaction instance after a commit:
+        ///   the next operation that needs a DB transaction will call SxmConnection.beginTransaction() again and start a new SQLite transaction.
+        /// - The connection lock is released only when the transaction is disposed (DisposeAsync/Dispose) or finalized.
+        /// </summary>
         public void ResetError() => encounteredError = false;
 
         /************************************************************************* INSERT ********************************************************************/
@@ -408,11 +409,6 @@ namespace SQLiteXM
                             recordData = await SxmSelectHelpers.performSelectTrans(sqlStatementName, sqlStatementParameters, this).CAF();
                             break;
 
-                        case SqlStatementType.insert:
-                            recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.performInsertTrans(sqlStatementName, sqlStatementParameters, this).CAF());
-                            break;
-
                         case SqlStatementType.update:
                             await SxmUpdateHelpers.performUpdateTrans(sqlStatementName, sqlStatementParameters, this).CAF();
                             break;
@@ -421,16 +417,22 @@ namespace SQLiteXM
                             await SxmDeleteHelpers.performDeleteTrans(sqlStatementName, sqlStatementParameters, this).CAF();
                             break;
 
-                        case SqlStatementType.selectDirect:
-                            recordData = await SxmSelectHelpers.performSelectTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
+                        case SqlStatementType.insert:
+                            recordData = new List<Dictionary<string, object?>>(1);
+                            recordData.Add(await SxmInsertHelpers.performInsertTrans(sqlStatementName, sqlStatementParameters, this).CAF());
                             break;
 
-                        case SqlStatementType.deleteDirect:
-                            await SxmDeleteHelpers.performDeleteTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
+                        // Direct SQL statements.
+                        case SqlStatementType.selectDirect:
+                            recordData = await SxmSelectHelpers.performSelectDirectTrans(sqlStatementName, sqlStatementParameters, this).CAF();
                             break;
 
                         case SqlStatementType.updateDirect:
-                            await SxmUpdateHelpers.performUpdateTransDirect(sqlStatementName, sqlStatementParameters, this).CAF();
+                            await SxmUpdateHelpers.performUpdateDirectTrans(sqlStatementName, sqlStatementParameters, this).CAF();
+                            break;
+
+                        case SqlStatementType.deleteDirect:
+                            await SxmDeleteHelpers.performDeleteDirectTrans(sqlStatementName, sqlStatementParameters, this).CAF();
                             break;
 
                         default: break;
