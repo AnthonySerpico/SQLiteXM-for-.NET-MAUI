@@ -89,12 +89,7 @@ namespace SQLiteXM
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             entity.MarkAsInsert();
-
-            if (!_changeSet.Inserts.Contains(entity))
-                _changeSet.Inserts.Add(entity);
-
-            _changeSet.Updates.Remove(entity);
-            _changeSet.Deletes.Remove(entity);
+            _changeSet.Add(entity, ChangeType.Insert);
         }
 
         public void UpdateOnSubmit<T>(T entity) where T : SxmEntity
@@ -102,12 +97,7 @@ namespace SQLiteXM
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             entity.MarkAsUpdate();
-
-            if (!_changeSet.Updates.Contains(entity))
-                _changeSet.Updates.Add(entity);
-
-            _changeSet.Inserts.Remove(entity);
-            _changeSet.Deletes.Remove(entity);
+            _changeSet.Add(entity, ChangeType.Update);
         }
 
         public void DeleteOnSubmit<T>(T entity) where T : SxmEntity
@@ -115,100 +105,150 @@ namespace SQLiteXM
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             entity.MarkAsDelete();
-
-            if (!_changeSet.Deletes.Contains(entity))
-                _changeSet.Deletes.Add(entity);
-
-            _changeSet.Inserts.Remove(entity);
-            _changeSet.Updates.Remove(entity);
-        }
-
-        // Backwards-compatible name
-        public void Delete<T>(T entity) where T : SxmEntity
-        {
-            DeleteOnSubmit(entity);
+            _changeSet.Add(entity, ChangeType.Delete);
         }
 
         // ---------- SubmitChanges ------------------------
-
-        public async Task SubmitChanges()
+        // Default now uses RollbackOnAnyFailure (strict atomic behavior).
+        public async Task<SubmitChangesResult> SubmitChanges()
         {
-            await SubmitChanges(ConflictMode.FailOnFirstConflict).CAF();
+            return await SubmitChanges(ConflictMode.RollbackOnAnyFailure).CAF();
         }
 
-        public async Task SubmitChanges(ConflictMode conflictMode)
+        public async Task<SubmitChangesResult> SubmitChanges(ConflictMode conflictMode)
         {
+            var report = new SubmitChangesResult();
             if (_changeSet.IsEmpty)
-                return;
+            {
+                report.AllSucceeded = true;
+                return report;
+            }
+
+            bool committed = false;
+            bool anyFailure = false;
 
             // One transaction for the whole unit of work
-            await using (var sxmTrans = SxmTransaction.Create())
+            await using (SxmTransaction sxmTrans = SxmTransaction.Create())
             {
                 try
                 {
-                    // INSERTS
-                    foreach (var e in _changeSet.Inserts.ToList())
+                    var actions = _changeSet.GetOrderedActions().ToList();
+
+                    foreach (var action in actions)
                     {
                         try
                         {
-                            await e.Save(sxmTrans).CAF();
+                            switch (action.Type)
+                            {
+                                case ChangeType.Insert:
+                                case ChangeType.Update:
+                                    // Save decides insert vs update based on existence; use transaction-aware overload.
+                                    await action.Entity.Save(sxmTrans).CAF();
+                                    break;
+
+                                case ChangeType.Delete:
+                                    await action.Entity.Delete(sxmTrans).CAF();
+                                    break;
+                            }
+
+                            // Success
+                            action.Result = new ChangeResult
+                            {
+                                Success = true,
+                                Error = null,
+                                IdAfterOperation = action.Entity.id > 0 ? action.Entity.id : null,
+                                SynchIdAfterOperation = action.Entity.synchId
+                            };
+
+                            report.Succeeded.Add(action);
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            anyFailure = true;
+
+                            action.Result = new ChangeResult
+                            {
+                                Success = false,
+                                Error = ex,
+                                IdAfterOperation = action.Entity.id > 0 ? action.Entity.id : null,
+                                SynchIdAfterOperation = action.Entity.synchId
+                            };
+
+                            report.Failed.Add(action);
+
                             if (conflictMode == ConflictMode.FailOnFirstConflict)
-                                throw;
-                            // ContinueOnConflict: skip this one, try to apply the rest
+                            {
+                                // stop processing further actions
+                                break;
+                            }
+
+                            // ContinueOnConflict or RollbackOnAnyFailure: continue processing to collect results
                         }
                     }
 
-                    // UPDATES
-                    foreach (var e in _changeSet.Updates.ToList())
+                    // Decide commit/rollback based on conflict mode and outcomes
+                    if (conflictMode == ConflictMode.ContinueOnConflict)
                     {
-                        try
-                        {
-                            await e.Save(sxmTrans).CAF();
-                        }
-                        catch
-                        {
-                            if (conflictMode == ConflictMode.FailOnFirstConflict)
-                                throw;
-                        }
+                        // commit whatever succeeded (partial commit)
+                        await sxmTrans.commitTransactionAsync();
+                        committed = true;
                     }
-
-                    // DELETES
-                    foreach (var e in _changeSet.Deletes.ToList())
+                    else if (conflictMode == ConflictMode.FailOnFirstConflict)
                     {
-                        try
+                        // If any failure happened we must rollback; otherwise commit.
+                        if (anyFailure)
                         {
-                            await e.Delete(sxmTrans).CAF();
+                            await sxmTrans.rollbackTransactionAsync();
+                            committed = false;
                         }
-                        catch
+                        else
                         {
-                            if (conflictMode == ConflictMode.FailOnFirstConflict)
-                                throw;
+                            await sxmTrans.commitTransactionAsync();
+                            committed = true;
                         }
                     }
-
-                    // If we get here without an exception in FailOnFirstConflict mode,
-                    // or we are in ContinueOnConflict mode and are okay with partial success,
-                    // commit the transaction.
-                    await sxmTrans.commitTransactionAsync();
+                    else // RollbackOnAnyFailure (default)
+                    {
+                        if (anyFailure)
+                        {
+                            await sxmTrans.rollbackTransactionAsync();
+                            committed = false;
+                        }
+                        else
+                        {
+                            await sxmTrans.commitTransactionAsync();
+                            committed = true;
+                        }
+                    }
                 }
                 catch
                 {
-                    // If SxmTransaction supports rollback, this is where you'd call it.
-                    // sxmTrans.rollbackTransaction();
+                    // Best-effort rollback if commit/processing failed.
+                    try
+                    {
+                        await sxmTrans.rollbackTransactionAsync();
+                    }
+                    catch
+                    {
+                        // Swallow rollback exceptions — keep original exception semantics.
+                    }
+
                     throw;
                 }
                 finally
                 {
-                    _changeSet.Clear();
+                    // Only clear the change set when commit succeeded.
+                    if (committed)
+                        _changeSet.Clear();
                 }
             }
+
+            report.AllSucceeded = !report.Failed.Any();
+            report.Partial = report.Succeeded.Count > 0 && report.Failed.Count > 0;
+            return report;
         }
 
         // ---------- Dispose ------------------------------
-
         public void Dispose()
         {
             Dispose(true);
@@ -229,10 +269,38 @@ namespace SQLiteXM
         }
     }
 
+
+    /// <summary>
+    /// Controls SubmitChanges behavior when an individual operation throws.
+    /// - FailOnFirstConflict: stop on first failure and rollback.
+    /// - RollbackOnAnyFailure: default — if any action fails, rollback the whole unit.
+    /// - ContinueOnConflict: continue processing and commit successful actions (partial commit).
+    /// </summary>
     public enum ConflictMode
     {
+        /// <summary>
+        /// Stop on first failure and rollback.
+        /// </summary>
         FailOnFirstConflict,
-        ContinueOnConflict
+
+        /// <summary>
+        /// If any action fails, rollback the whole unit. This is the new default.
+        /// </summary>
+        RollbackOnAnyFailure,
+
+        /// <summary>
+        /// Continue applying remaining actions when an action throws and commit successes.
+        /// </summary>
+        ContinueOnConflict,
+    }
+
+    // Aggregate result returned by SubmitChanges
+    public class SubmitChangesResult
+    {
+        public List<ChangeAction> Succeeded { get; } = new List<ChangeAction>();
+        public List<ChangeAction> Failed { get; } = new List<ChangeAction>();
+        public bool AllSucceeded { get; set; }
+        public bool Partial { get; set; }
     }
 }
 
