@@ -1,17 +1,16 @@
-﻿//using CommunityToolkit.Mvvm.ComponentModel;
-using LinqToDB;
-using LinqToDB.Mapping;
+﻿using LinqToDB.Mapping;
 using SQLiteXM.Internal;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Xml.Linq;
-//using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
-using static SQLiteXM.Defines;
+using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM
 {
+    /// <summary>
+    /// Base class for mapped entities that provides automatic table/index/trigger initialization
+    /// plus convenience persistence operations (Save, Update, Delete).
+    /// Derived types are automatically inspected for column/index/foreign key attributes when an
+    /// instance is constructed, and the database schema is created or reconciled as required.
+    /// </summary>
     [Table(IsColumnAttributeRequired = false)]
     public class SxmEntity
     {
@@ -29,32 +28,64 @@ namespace SQLiteXM
         private static Dictionary<string, Dictionary<string, string>> columnNameAndTypeDict = new Dictionary<string, Dictionary<string, string>>();
 
         private SxmEntityState _pendingState = SxmEntityState.None;
+
+        /// <summary>
+        /// Mark this entity as pending insert (used by change-tracking/transaction logic).
+        /// </summary>
         internal void MarkAsInsert() => _pendingState = SxmEntityState.Insert;
+        /// <summary>
+        /// Mark this entity as pending update (used by change-tracking/transaction logic).
+        /// </summary>
         internal void MarkAsUpdate() => _pendingState = SxmEntityState.Update;
+        /// <summary>
+        /// Mark this entity as pending delete (used by change-tracking/transaction logic).
+        /// </summary>
         internal void MarkAsDelete() => _pendingState = SxmEntityState.Delete;
+        /// <summary>
+        /// Gets the current pending state for this entity (Insert/Update/Delete/None).
+        /// </summary>
         internal SxmEntityState PendingState => _pendingState;
 
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
+        /// <summary>
+        /// Primary key column. Mapped to the SQLite INTEGER PRIMARY KEY AUTOINCREMENT column named "id".
+        /// </summary>
         [Column, PrimaryKey, Identity]
         public virtual long id { get; set; }
 
+        /// <summary>
+        /// Optional synchronization identifier stored in the database as a BLOB.
+        /// </summary>
         [Column(DataType = DataType.Blob)]
         public virtual Guid? synchId { get; set; }
 
         // Needs to throw an exception if databaseName is invalid.
+        /// <summary>
+        /// Create an entity instance bound to the specified database name.
+        /// Construction triggers schema/index/trigger initialization for the entity's type.
+        /// </summary>
+        /// <param name="databaseName">Database name to use for initialization. If null, an implicit DB name is created.</param>
         public SxmEntity(string? databaseName)
         {
             this.databaseName = databaseName;
             initialize();
         }
         // Needs to throw an exception if databaseName is invalid.
+        /// <summary>
+        /// Create an entity instance using the implicit database name.
+        /// Construction triggers schema/index/trigger initialization for the entity's type.
+        /// </summary>
         public SxmEntity()
         {
             initialize();
         }
 
+        /// <summary>
+        /// Ensure the entity type has been initialized (table, indexes, triggers). This method is intentionally synchronous
+        /// from the caller's perspective but runs the heavy work on the thread pool to avoid UI deadlocks.
+        /// </summary>
         private void initialize()
         {
             string typeName = this.GetType().Name;
@@ -112,6 +143,10 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Collect public instance properties for the current type and return them wrapped with alias info.
+        /// </summary>
+        /// <returns>List of MemberInfoWithAlias for the current entity type.</returns>
         private List<MemberInfoWithAlias> getEntityProperties()
         {
             List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
@@ -122,38 +157,79 @@ namespace SQLiteXM
             return propertyInfoWithAliases;
         }
 
+        /// <summary>
+        /// Persist this entity. If the row does not exist an INSERT is performed; otherwise an UPDATE is performed.
+        /// Uses the ambient <see cref="SxmTransaction"/> if present.
+        /// </summary>
         public async Task Save()
         {
             // Calls save passing the SxmTransaction from the ambient context.
-            await Save(AmbientSxmTransaction.Current);
+            await Save(SxmAmbientTransaction.Current);
         }
 
+        /// <summary>
+        /// Persist this entity using the supplied transaction (if non-null). Performs insert or update depending on existence.
+        /// </summary>
+        /// <param name="sxmTrans">Optional transaction to use; if null a standalone connection is used.</param>
         public async Task Save(SxmTransaction? sxmTrans)
         {
             if (!await doesRecordExist(sxmTrans))
             {
                 buildSaveSql();
                 if (sxmTrans == null)
-                    await Save(insertGuidDict[this.GetType().Name]).CAF();
+                    await Insert(insertGuidDict[this.GetType().Name]).CAF();
                 else
-                    await Save(insertGuidDict[this.GetType().Name], sxmTrans).CAF();
+                    await Insert(insertGuidDict[this.GetType().Name], sxmTrans).CAF();
             }
             else
             {
                 buildUpdateSql();
-                if(sxmTrans == null)
+                if (sxmTrans == null)
                     await Update(updateGuidDict[this.GetType().Name]).CAF();
                 else
                     await Update(updateGuidDict[this.GetType().Name], sxmTrans).CAF();
             }
         }
 
+        // Save Statements.
+        private async Task Insert(string sqlStatementName)
+        {
+            {
+                Dictionary<string, object?> result = await SxmStatement.Insert<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+                loadDbValues(result);
+            }
+        }
+        private async Task Insert(string sqlStatementName, SxmTransaction sxmTrans)
+        {
+            {
+                Dictionary<string, object?> result = await sxmTrans.Insert<SxmEntity>(sqlStatementName, this).CAF();
+                loadDbValues(result);
+            }
+        }
+
+        // Update statements.
+        private async Task Update(string sqlStatementName)
+        {
+            await SxmStatement.Update<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+        }
+        private async Task Update(string sqlStatementName, SxmTransaction sxmTrans)
+        {
+            await sxmTrans.Update<SxmEntity>(sqlStatementName, this).CAF();
+        }
+
+        /// <summary>
+        /// Delete this entity from the database. Uses the ambient <see cref="SxmTransaction"/> if present.
+        /// </summary>
         public async Task Delete()
         {
             // Calls delete passing the SxmTransaction from the ambient context.
-            await Delete(AmbientSxmTransaction.Current);
+            await Delete(SxmAmbientTransaction.Current);
         }
 
+        /// <summary>
+        /// Delete this entity using the provided transaction (if any). No-op if the record does not exist.
+        /// </summary>
+        /// <param name="sxmTrans">Optional transaction to use; if null a standalone connection is used.</param>
         public async Task Delete(SxmTransaction? sxmTrans)
         {
             // If a transaction/connection is provided, check existence using that connection
@@ -170,42 +246,20 @@ namespace SQLiteXM
                 await Delete(deleteGuidDict[this.GetType().Name], sxmTrans).CAF();
         }
 
-        // Save Statements.
-        private async Task Save(string sqlStatementName)
-        {
-            {
-                Dictionary<string, object?> result = await SxmStatement.PerformInsert<SxmEntity>(sqlStatementName, this, databaseName).CAF();
-                loadDbValues(result);
-            }
-        }
-        public async Task Save(string sqlStatementName, SxmTransaction sxmTrans)
-        {
-            {
-                Dictionary<string, object?> result = await sxmTrans.PerformInsert<SxmEntity>(sqlStatementName, this).CAF();
-                loadDbValues(result);
-            }
-        }
-
-        // Update statements.
-        public async Task Update(string sqlStatementName)
-        {
-            await SxmStatement.PerformUpdate<SxmEntity>(sqlStatementName, this, databaseName).CAF();
-        }
-        public async Task Update(string sqlStatementName, SxmTransaction sxmTrans)
-        {
-            await sxmTrans.PerformUpdate<SxmEntity>(sqlStatementName, this).CAF();
-        }
-
         // Delete statements.
-        public async Task Delete(string sqlStatementName)
+        private async Task Delete(string sqlStatementName)
         {
-            await SxmStatement.PerformDelete<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+            await SxmStatement.Delete<SxmEntity>(sqlStatementName, this, databaseName).CAF();
         }
-        public async Task Delete(string sqlStatementName, SxmTransaction sxmTrans)
+        private async Task Delete(string sqlStatementName, SxmTransaction sxmTrans)
         {
-            await sxmTrans.PerformDelete<SxmEntity>(sqlStatementName, this).CAF();
+            await sxmTrans.Delete<SxmEntity>(sqlStatementName, this).CAF();
         }
 
+        /// <summary>
+        /// Build the cached INSERT SQL for this entity type if not already present.
+        /// The SQL and its GUID key are stored in the static statement cache.
+        /// </summary>
         private void buildSaveSql()
         {
             Type type = this.GetType();
@@ -235,10 +289,13 @@ namespace SQLiteXM
 
                 string insertStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2})", this.GetType().Name, insertColumns, insertValues);
                 insertGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
-                SqlStatements.addInsertDefinition(insertGuidDict[this.GetType().Name], this.GetType().Name, insertStatement);
+                SxmSqlStatements.addInsertDefinition(insertGuidDict[this.GetType().Name], this.GetType().Name, insertStatement);
             }
         }
 
+        /// <summary>
+        /// Build the cached UPDATE SQL for this entity type if not already present.
+        /// </summary>
         private void buildUpdateSql()
         {
             if (updateGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
@@ -261,20 +318,27 @@ namespace SQLiteXM
 
                 string updateStatement = string.Format("UPDATE {0} SET {1} WHERE id=@id", this.GetType().Name, insertColumns);
                 updateGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
-                SqlStatements.addUpdateDefinition(updateGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
+                SxmSqlStatements.addUpdateDefinition(updateGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
             }
         }
 
+        /// <summary>
+        /// Build the cached DELETE SQL for this entity type if not already present.
+        /// </summary>
         private void buildDeleteSql()
         {
             if (deleteGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
             {
                 string updateStatement = string.Format("DELETE FROM {0} WHERE id=@id", this.GetType().Name);
                 deleteGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
-                SqlStatements.addDeleteDefinition(deleteGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
+                SxmSqlStatements.addDeleteDefinition(deleteGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
             }
         }
 
+        /// <summary>
+        /// Recreate triggers specified by the CreateTrigger attributes on the type.
+        /// Existing triggers for the table are dropped before new ones are created.
+        /// </summary>
         private async Task processtriggerAttributes()
         {
             try
@@ -322,6 +386,13 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Attempt to parse the table name referenced inside a CREATE TRIGGER SQL string.
+        /// Returns null if a name cannot be extracted.
+        /// This parser is conservative and relies on patterns like "BEFORE/AFTER/INSTEAD ... &lt;table&gt;".
+        /// </summary>
+        /// <param name="triggerSql">The CREATE TRIGGER SQL text.</param>
+        /// <returns>Parsed table name or null if not found.</returns>
         private string? extractTriggerName(string triggerSql)
         {
             int conditionOffset = 0;
@@ -370,6 +441,11 @@ namespace SQLiteXM
             return triggerToBeAdded;
         }
 
+        /// <summary>
+        /// Create or drop indexes for the current type based on attribute definitions and existing indexes.
+        /// </summary>
+        /// <param name="indexType">Index type (standard or unique).</param>
+        /// <param name="existingIndexes">List of existing index names for the table.</param>
         private async Task processIndexStatements(IndexType indexType, List<string> existingIndexes)
         {
             List<string> indexSqlStatements = new List<string>();
@@ -456,8 +532,8 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 // Throw an exception here.
             }
             finally
@@ -476,6 +552,11 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Assign a deterministic index name for each index attribute based on table and field names.
+        /// </summary>
+        /// <param name="indexArray">List of index descriptors to name.</param>
+        /// <param name="tableName">Table name to include in the index name.</param>
         private void assignIndexNames(List<IIndexVars> indexArray, string tableName)
         {
             foreach (IIndexVars iiV in indexArray)
@@ -489,6 +570,9 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Query the database for the list of index names on the table and populate the provided lists.
+        /// </summary>
         private async Task getIndexTableStatements(List<string> existingStandardIndexes, List<string> existingUniqueIndexes)
         {
             try
@@ -500,7 +584,7 @@ namespace SQLiteXM
                     while (sxmTransaction.Connection.nextRow() == true)
                     {
                         string? indexName = (string?)sxmTransaction.Connection.getValue("name");
-                        if(indexName == null)
+                        if (indexName == null)
                             continue;
 
                         var raw = sxmTransaction.Connection.getValue("unique");
@@ -518,6 +602,9 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Ensure table columns in the database match the type definition. Adds missing columns and removes extraneous ones.
+        /// </summary>
         private async Task reconcileTableColumns()
         {
             Type type = this.GetType();
@@ -583,6 +670,11 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Check whether the record for this entity exists using optional transaction context.
+        /// </summary>
+        /// <param name="sxmTrans">Optional transaction to examine; if provided the check will use the transaction's connection.</param>
+        /// <returns>True if a row with the current id exists, otherwise false.</returns>
         private async Task<bool> doesRecordExist(SxmTransaction? sxmTrans)
         {
             bool exists = false;
@@ -647,6 +739,9 @@ namespace SQLiteXM
             return false;
         }
 
+        /// <summary>
+        /// Validate or create the implicit database name when none was supplied. Throws if a valid name cannot be determined.
+        /// </summary>
         private void dbNameValidation()
         {
             if (this.databaseName == null)
@@ -671,6 +766,9 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Create the table for the current type if it does not exist; otherwise reconcile columns.
+        /// </summary>
         private async Task createTable()
         {
             if (!await SxmInit.doesTableExist(this.GetType().Name, default(SxmConnection)))
@@ -690,14 +788,19 @@ namespace SQLiteXM
 
                 tableStatement += ")";
 
-                SqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, this.GetType().Name), tableStatement);
+                SxmSqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, this.GetType().Name), tableStatement);
                 await SxmInit.createTable(this.databaseName, this.GetType().Name);
-                SqlStatements.removeTableDefinitions();
+                SxmSqlStatements.removeTableDefinitions();
             }
             else
                 await reconcileTableColumns();
         }
 
+        /// <summary>
+        /// Inspect the provided properties and populate the internal column-to-SQL-type mapping for this type.
+        /// Respects [Column], [NotColumn], index and foreign key attributes and will populate index dictionaries used later.
+        /// </summary>
+        /// <param name="propertyInfoWithAliases">List of members with optional alias names.</param>
         private void getColumnNamesAndDataTypes(List<MemberInfoWithAlias> propertyInfoWithAliases)
         {
             if (propertyInfoWithAliases != null && propertyInfoWithAliases.Count > 0)
@@ -764,7 +867,7 @@ namespace SQLiteXM
                             foreignKeyAttributeList = new List<ForeignKeyAttributes>();
 
                         if (!string.IsNullOrEmpty(propertyInfoWithAlias.alias))
-                                fkField = propertyInfoWithAlias.alias;
+                            fkField = propertyInfoWithAlias.alias;
 
                         foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
                         {
@@ -838,7 +941,7 @@ namespace SQLiteXM
 
                     if (columnType != null)
                     {
-                        if(string.IsNullOrEmpty(propertyInfoWithAlias.alias))
+                        if (string.IsNullOrEmpty(propertyInfoWithAlias.alias))
                             columnNameAndTypeDict[type.Name].Add(piName, columnType + notNull);
                         else
                             columnNameAndTypeDict[type.Name].Add(propertyInfoWithAlias.alias, columnType + notNull);
@@ -855,6 +958,11 @@ namespace SQLiteXM
 
 
         // MapAndSave maps properties from the source into this instance and then persists the entity.
+        /// <summary>
+        /// Copy matching public instance properties from <paramref name="mapSource"/> into this instance and persist.
+        /// Useful for mapping values from DTOs or other objects and saving in a single operation.
+        /// </summary>
+        /// <param name="mapSource">Source object to map values from.</param>
         public async Task MapAndSave(object mapSource)
         {
             MapProperties(mapSource);
@@ -863,13 +971,12 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Copy matching public instance properties from <paramref name="source"/> to <paramref name="destination"/>.
+        /// Copy matching public instance properties from <paramref name="source"/> to this instance.
         /// The destination must inherit from SxmEntity. Properties named "id" and "synchId" are ignored.
         /// Only properties with exactly the same PropertyType (no conversions) are copied.
         /// Indexer properties are ignored. Both properties must be public instance properties and the destination property must be writable.
         /// </summary>
         /// <param name="source">Source object to copy values from.</param>
-        /// <Destination object that this inherits from SxmEntity to copy values to.</param>
         private void MapProperties(object source)
         {
             if (source == null)

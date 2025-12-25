@@ -6,11 +6,52 @@ using System.Reflection;
 
 namespace SQLiteXM
 {
+    /// <summary>
+    /// Provides a pre-configured <see cref="MappingSchema"/> with custom type converters
+    /// used by this library to persist CLR types to SQLite-compatible column representations.
+    /// </summary>
+    /// <remarks>
+    /// The mapping schema registers converters for types that do not map cleanly to SQLite's
+    /// native column types (TEXT, INTEGER, BLOB). Converters are centralized here so that
+    /// Linq2DB operations (mappings, query generation and parameter conversion) use the
+    /// same serialization/deserialization logic implemented in <see cref="SxmColumnDataConverters"/>.
+    /// </remarks>
     public static class SxmMapping
     {
+        /// <summary>
+        /// Lazily-built <see cref="MappingSchema"/> instance. Construction is deferred until first use.
+        /// </summary>
         private static readonly Lazy<MappingSchema> _schema = new(Build);
+
+        /// <summary>
+        /// The shared <see cref="MappingSchema"/> with all custom converters registered.
+        /// Use this when creating contexts or configuring Linq2DB so the same conversion rules
+        /// apply everywhere in the library.
+        /// </summary>
         public static MappingSchema Schema => _schema.Value;
 
+        /// <summary>
+        /// Build the <see cref="MappingSchema"/> and register all custom converters.
+        /// </summary>
+        /// <returns>
+        /// A fully configured <see cref="MappingSchema"/> that maps CLR types to SQLite-compatible
+        /// storage formats and back again.
+        /// </returns>
+        /// <remarks>
+        /// Converters registered here:
+        /// - decimal  &lt;-&gt; string (TEXT)
+        /// - ulong    &lt;-&gt; string (TEXT)
+        /// - DateTime &lt;-&gt; string (ISO 8601) and long (Unix ms)
+        /// - DateOnly &lt;-&gt; string and long (DayNumber)
+        /// - TimeOnly &lt;-&gt; string and long (total milliseconds)
+        /// - TimeSpan &lt;-&gt; string and long (total milliseconds)
+        /// - DateTimeOffset &lt;-&gt; string and long (Unix ms)
+        /// - Guid     &lt;-&gt; string (TEXT) and byte[] (RFC 4122 BLOB)
+        ///
+        /// The actual serialization and parsing logic is implemented in <see cref="SxmColumnDataConverters"/>.
+        /// Keep converter registrations here so Linq2DB uses consistent behavior for queries, parameters,
+        /// and result materialization.
+        /// </remarks>
         private static MappingSchema Build()
         {
             var ms = new MappingSchema();

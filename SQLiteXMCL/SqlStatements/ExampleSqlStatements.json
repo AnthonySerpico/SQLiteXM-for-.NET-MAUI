@@ -2,6 +2,8 @@
   "database": "sqlitexmtest",
   "version": 1,
 
+  "_comment": "Do not include any comments in your SQL. For example, INSERT INTO user (name) /*comment */ VALUES('Bob');, or SELECT * FROM user WHERE name = 'Bob'; -- comment",
+
   "table": [
     { "Table Name": "user", "Statement": "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, address TEXT, name TEXT, datetimee TEXT)"},
     { "Table Name": "customer", "Statement": "CREATE TABLE customer (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT)" }

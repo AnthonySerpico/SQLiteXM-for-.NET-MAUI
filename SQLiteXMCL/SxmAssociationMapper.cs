@@ -6,23 +6,63 @@ using System.Reflection;
 
 namespace SQLiteXM
 {
+    /// <summary>
+    /// Helper to discover and register LinqToDB association mappings at runtime.
+    /// </summary>
+    /// <remarks>
+    /// This class re-uses the <see cref="SxmMapping.Schema"/> MappingSchema to avoid rebuilding
+    /// mapping state. It supports scanning databases for foreign keys (using PRAGMA foreign_key_list)
+    /// and registering mapping information via LinqToDB's <see cref="FluentMappingBuilder"/>.
+    /// </remarks>
     public static class SxmAssociationMapper
     {
-// Reuse the MappingSchema built by SxmMapping to avoid duplicating Build()
+        // Reuse the MappingSchema built by SxmMapping to avoid duplicating Build()
+
+        /// <summary>
+        /// Mapping schema used by all dynamic association registrations.
+        /// </summary>
         public static MappingSchema Schema => SxmMapping.Schema;
+
+        /// <summary>
+        /// Guard to ensure database scanning / registration runs only once per process.
+        /// </summary>
         private static bool wasMapped = false;
 
+        /// <summary>
+        /// Scans all configured databases and attaches associations found from their foreign key
+        /// metadata. Safe to call multiple times; registration only runs once.
+        /// </summary>
+        /// <remarks>
+        /// This method enumerates database names using <see cref="SxmDatabaseDescriptor.getDatabaseNames"/>
+        /// and calls <see cref="AttachAssociation(string)"/> for each database.
+        /// </remarks>
         public static void InitializeAssociations()
         {
             if (wasMapped) return;
 
             wasMapped = true;
-            ArrayList databaseNames = DatabaseDescriptor.getDatabaseNames();
+            ArrayList databaseNames = SxmDatabaseDescriptor.getDatabaseNames();
 
             foreach (string databaseName in databaseNames)
                 AttachAssociation(databaseName);
         }
 
+        /// <summary>
+        /// Inspect the SQLite database foreign key metadata and register matching associations.
+        /// </summary>
+        /// <param name="databaseName">Name of the database to open and inspect.</param>
+        /// <returns>A task that completes when the inspection and registration have finished.</returns>
+        /// <remarks>
+        /// This method:
+        /// - Opens an <see cref="SxmConnection"/> for <paramref name="databaseName"/>.
+        /// - Reads all user table names via <see cref="SxmHelpers.getAllUserTableNames"/>.
+        /// - For each table, runs <c>PRAGMA foreign_key_list(table)</c> to discover foreign keys.
+        /// - Locates the CLR source type by table name (types deriving from <see cref="SxmEntity"/>)
+        ///   and calls <see cref="SxmHelpers.CreateAssociation(Type, string, string)"/> to register the
+        ///   association in memory.
+        /// 
+        /// Note: Exceptions are swallowed and connections are always cleaned up in the finally block.
+        /// </remarks>
         public static async Task AttachAssociation(string databaseName)
         {
             SxmConnection? sxmConnection = default;
@@ -67,7 +107,24 @@ namespace SQLiteXM
             }
         }
 
-        // Runtime (Type-based) version – registers navigation mapping and finalizes it (builder.Build())
+        /// <summary>
+        /// Configure a LinqToDB association mapping for a navigation property at runtime.
+        /// </summary>
+        /// <param name="sourceType">Type that contains the navigation property. Must derive from <see cref="SxmEntity"/>.</param>
+        /// <param name="navigationPropertyName">Name of the navigation property on <paramref name="sourceType"/>.</param>
+        /// <param name="thisKey">Name of the foreign-key property on <paramref name="sourceType"/> that references the target's <c>id</c>.</param>
+        /// <param name="canBeNull">Whether the association can be null (optional, defaults to <c>true</c>).</param>
+        /// <exception cref="ArgumentNullException"><paramref name="sourceType"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when required parameters are missing or the types do not derive from <see cref="SxmEntity"/>.</exception>
+        /// <remarks>
+        /// This method attempts to register an association using LinqToDB's fluent API:
+        /// 1. It first builds an expression for the navigation property: <c>(TSource s) => s.Navigation</c>.
+        /// 2. It tries to use the <c>Property(...).HasAttribute(AssociationAttribute)</c> route when available.
+        /// 3. If that path is not available it falls back to calling <c>Association(navigation, keyExpression, [canBeNull])</c>
+        ///    where <c>(TSource s, TTarget t) => s.thisKey == t.id</c> is the equality expression.
+        /// 
+        /// The method finalizes the registration by calling <c>builder.Build()</c> so subsequent contexts see the mapping.
+        /// </remarks>
         public static void ConfigureAssociation(
             Type sourceType,
             string navigationPropertyName,

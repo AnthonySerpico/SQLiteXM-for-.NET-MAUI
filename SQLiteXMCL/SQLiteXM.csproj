@@ -21,7 +21,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Remove="SxmSqlStatements.cs" />
+		<Compile Remove="SxmSqlStatementsUnused.cs" />
 		<Compile Remove="SxmSTransaction.cs" />
 		<Compile Remove="SxmTransactionHelper.cs" />
 	</ItemGroup>

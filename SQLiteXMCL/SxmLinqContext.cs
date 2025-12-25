@@ -1,6 +1,8 @@
 ﻿using LinqToDB;
+using LinqToDB.Data;
 using Microsoft.Data.Sqlite;
 using SQLiteXM.Internal;
+using System;
 
 namespace SQLiteXM
 {
@@ -21,6 +23,8 @@ namespace SQLiteXM
             _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
         }
 
+        public SxmChangeSet GetChangeSet() => _changeSet;
+
         // LinqToDB table access
         public SxmTable<T> GetTable<T>() where T : class
         {
@@ -29,42 +33,170 @@ namespace SQLiteXM
             return new SxmTable<T>(_linqToDbDataConnection.GetTable<T>());
         }
 
+        // Make raw provider escape hatches internal to prevent consumers from calling LinqToDB APIs directly.
+        // Keeps the safe public SxmLinqContext surface (GetTable, Insert/Update/Delete lifecycles, SubmitChanges).
+        // Advanced users inside the library (or friend assemblies) can still use these helpers.
+
         // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
-        public ITable<T> GetRawTable<T>() where T : class
+        private ITable<T> GetRawTable<T>() where T : class
         {
             return _linqToDbDataConnection.GetTable<T>();
         }
 
-        public SxmChangeSet GetChangeSet() => _changeSet;
 
-        // Insert the entity and return the generated identity (as object).
-        public object InsertWithIdentity<T>(T entity) where T : class
+        // Added explicit high-level helpers for advanced operations (BulkCopy, raw SQL, query execution).
+        // Kept low-level WithDataConnectionAsync internal so only library code (or friend assemblies) may access DataConnection.
+
+        // Controlled async escape-hatch for advanced library code that needs direct DataConnection access.
+        // Internal to prevent application code from bypassing SxmLinqContext semantics.
+        // Do NOT dispose or retain the DataConnection instance — it's owned by this context.
+        private async Task<T> WithDataConnectionAsync<T>(Func<LinqToDB.Data.DataConnection, Task<T>> action)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _linqToDbDataConnection.InsertWithIdentity(entity);
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            return await action(_linqToDbDataConnection).CAF();
         }
 
-        // Async insert returning generated identity (as object).
-        public Task<object> InsertWithIdentityAsync<T>(T entity) where T : class
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _linqToDbDataConnection.InsertWithIdentityAsync(entity);
-        }
+        // -------------------------
+        // High-level advanced helpers
+        // -------------------------
 
-        // ---------- Convenience async helpers to avoid exposing DataConnection externally ----------
         /// <summary>
-        /// Insert the given entity using the underlying DataConnection.
-        /// Use this instead of calling DataConnection.InsertAsync(...) from outside this assembly.
+        /// // C# example (caller in app code)
+        ///using var ctx = new SxmLinqContext();
+
+        // Prepare many entities
+        ///var batch = Enumerable.Range(1, 1000)
+        ///.Select(i => new UserRecord { name = $"User {i}", address = "Bulk St" })
+        ///.ToList();
+
+        // Perform efficient bulk insert, returns rows copied
+        ///long rowsCopied = await ctx.BulkCopyAsync(batch);
+        ///Console.WriteLine($"Rows copied: {rowsCopied}");
+        ///
+        /// 
+        /// Perform a bulk copy of the provided entities using LinqToDB bulk API.
+        /// Returns number of rows copied.
+        /// This is a controlled helper that does not expose the DataConnection to callers.
         /// </summary>
-        public Task InsertAsync<T>(T entity) where T : class
+        private async Task<long> BulkCopyAsync<T>(IEnumerable<T> entities, LinqToDB.Data.BulkCopyOptions? options = null) where T : class
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _linqToDbDataConnection!.InsertAsync(entity);
+            if (entities == null) throw new ArgumentNullException(nameof(entities));
+
+            var opts = options ?? new LinqToDB.Data.BulkCopyOptions();
+            var result = await WithDataConnectionAsync(dc => dc.BulkCopyAsync(opts, entities));
+            return result?.RowsCopied ?? 0L;
         }
 
         /// <summary>
-        /// Update the given entity using the underlying DataConnection.
-        /// Use this instead of calling DataConnection.UpdateAsync(...) from outside this assembly.
+        /// Execute a raw SQL statement (non-query) on the underlying connection.
+        /// Returns the number of rows affected.
+        /// This helper accepts SQL and parameters and runs it safely on the internal DataConnection.
+        /// </summary>
+        private Task<int> ExecuteRawSqlAsync(string sql, params object[] parameters)
+        {
+            if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
+            // Use internal escape hatch — still keeps DataConnection out of public API surface.
+            return WithDataConnectionAsync(dc => dc.ExecuteAsync(sql, parameters));
+        }
+
+        /// <summary>
+        /// Execute a LINQ query produced by the provided factory against the internal table and return a materialized list.
+        /// The factory receives an SxmTable<T> so callers do not need to reference LinqToDB types.
+        /// Use this when you need to run slightly more complex queries but want to remain within the safe API.
+        /// </summary>
+        private Task<List<T>> ExecuteQueryAsync<T>(Func<SxmTable<T>, IQueryable<T>> queryFactory) where T : class
+        {
+            if (queryFactory == null) throw new ArgumentNullException(nameof(queryFactory));
+
+            // Execute synchronously (materialize) on the internal connection / table.
+            var table = new SxmTable<T>(_linqToDbDataConnection.GetTable<T>());
+            var q = queryFactory(table) ?? Enumerable.Empty<T>().AsQueryable();
+
+            // Materialize synchronously and return as completed Task — caller can await.
+            List<T> list = q.ToList();
+            return Task.FromResult(list);
+        }
+
+        /// <summary>
+        /// 
+        /// using var ctx = new SxmLinqContext();
+        /// var rows = await ctx.QueryAsync("SELECT id, name, address FROM UserRecord WHERE id > @p0", 100);
+        /// foreach (var row in rows)
+        ///     Console.WriteLine($"{row["id"]}: {row["name"]} - {row["address"]}");
+        ///
+        /// int affected = await ctx.ExecuteRawSqlAsync("UPDATE UserRecord SET address = {0} WHERE name = {1}", "New Addr", "Alice");
+        /// Note: ExecuteRawSqlAsync uses LinqToDB ExecuteAsync so it accepts LinqToDB-style placeholders.
+        /// 
+        /// Execute a SQL SELECT (or any query returning rows) and materialize the result as a
+        /// list of dictionaries (column name -> value). Parameters are added as @p0, @p1, ...
+        /// Example: QueryAsync("SELECT * FROM UserRecord WHERE id = @p0", 42)
+        /// </summary>
+        public async Task<List<Dictionary<string, object?>>> QueryAsync(string sql, params object?[] parameters)
+        {
+            if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
+
+            // Use the owned SqliteConnection directly (safe — still not exposing it).
+            await using var cmd = dConnection.CreateCommand();
+            cmd.CommandText = sql;
+
+            // Add parameters named @p0, @p1, ... to keep the API simple.
+            for (int i = 0; i < (parameters?.Length ?? 0); i++)
+            {
+                var param = cmd.CreateParameter();
+                param.ParameterName = $"@p{i}";
+                param.Value = parameters[i] ?? DBNull.Value;
+                cmd.Parameters.Add(param);
+            }
+
+            var results = new List<Dictionary<string, object?>>();
+
+            await using var reader = await cmd.ExecuteReaderAsync().CAF();
+            while (await reader.ReadAsync().CAF())
+            {
+                var row = new Dictionary<string, object?>(StringComparer.Ordinal);
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    string name = reader.GetName(i);
+                    object? val = await reader.IsDBNullAsync(i).CAF() ? null : reader.GetValue(i);
+                    row[name] = val;
+                }
+                results.Add(row);
+            }
+
+            return results;
+        }
+        
+        // -------------------------
+        // Insert APIs (entity-safe)
+        // -------------------------
+
+        /// <summary>
+        /// Insert the given SxmEntity asynchronously; runs <c>Save()</c> lifecycle.
+        /// </summary>
+        public async Task InsertAsync(SxmEntity entity)
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            await entity.Save().CAF();
+        }
+
+        // -------------------------
+        // Update APIs
+        // -------------------------
+
+        /// <summary>
+        /// Update the given SxmEntity using its lifecycle (runs <c>Save()</c> so any internal processing happens).
+        /// Use this overload for SxmEntity instances.
+        /// </summary>
+        public Task UpdateAsync(SxmEntity entity)
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return entity.Save();
+        }
+
+        /// <summary>
+        /// Generic update convenience that calls LinqToDB.Data.DataConnection.UpdateAsync(entity).
+        /// This bypasses SxmEntity lifecycle processing and should be used intentionally
+        /// (useful for non-entity types or bulk scenarios).
         /// </summary>
         public Task UpdateAsync<T>(T entity) where T : class
         {
@@ -72,8 +204,24 @@ namespace SQLiteXM
             return _linqToDbDataConnection!.UpdateAsync(entity);
         }
 
+        // -------------------------
+        // Delete APIs
+        // -------------------------
+
         /// <summary>
-        /// Delete the given entity using the underlying DataConnection.
+        /// Delete the given SxmEntity using its lifecycle (runs <c>Delete()</c> so any internal processing happens).
+        /// Use this overload for SxmEntity instances.
+        /// </summary>
+        public Task DeleteAsync(SxmEntity entity)
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return entity.Delete();
+        }
+
+        /// <summary>
+        /// Generic delete convenience that calls LinqToDB.Data.DataConnection.DeleteAsync(entity).
+        /// This bypasses SxmEntity lifecycle processing and should be used intentionally
+        /// (useful for non-entity types or bulk scenarios).
         /// </summary>
         public Task DeleteAsync<T>(T entity) where T : class
         {
@@ -132,9 +280,9 @@ namespace SQLiteXM
             {
                 try
                 {
-                    var actions = _changeSet.GetOrderedActions().ToList();
+                    List<ChangeAction> actions = _changeSet.GetOrderedActions().ToList();
 
-                    foreach (var action in actions)
+                    foreach (ChangeAction action in actions)
                     {
                         try
                         {

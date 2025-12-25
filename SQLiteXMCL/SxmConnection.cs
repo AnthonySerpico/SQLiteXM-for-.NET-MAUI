@@ -1,12 +1,12 @@
 ﻿using System.Collections;
 using System.Data.Common;
-using System.Data.Common;
-using System.Collections;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SQLiteXM
 {
+    /// <summary>
+    /// Common SQLite error codes returned by the underlying provider.
+    /// Matches SQLite's native result codes for conversion into the library's API.
+    /// </summary>
     public enum SQLiteErrorCode
     {
         Ok = 0,
@@ -40,17 +40,27 @@ namespace SQLiteXM
         Done = 101
     }
 
+    /// <summary>
+    /// Lightweight connection wrapper around <c>Microsoft.Data.Sqlite.SqliteConnection</c>.
+    /// Provides convenience APIs for shared/non-shared connections, parameter handling,
+    /// transaction management and simple reader helpers used throughout SQLiteXM.
+    /// </summary>
     public class SxmConnection
     {
         // true => connection is shared / reused across callers
         // false => connection is non-shared / private to the creator
         private bool shared;
         /// <summary>
-        /// Preferred property name: use Shared (true == shared/reused).
+        /// Indicates whether the underlying connection is shared (true) or private (false).
+        /// Shared connections may be reused across callers and support reentrant locking via owner tokens.
         /// </summary>
         public bool Shared => shared;
 
         private string? databaseName;
+        /// <summary>
+        /// The resolved database name for this connection instance.
+        /// Can be null for an implicit single-descriptor scenario.
+        /// </summary>
         public string? DatabaseName
         {
             get { return databaseName; }
@@ -73,12 +83,23 @@ namespace SQLiteXM
         private static readonly string SQLiteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
 
         static private string? implicitDatabaseName;
+        /// <summary>
+        /// The implicit database name used when no explicit name was supplied and only
+        /// a single DatabaseDescriptor exists.
+        /// </summary>
         static internal string? ImplicitDatabaseName
         {
             get => implicitDatabaseName;
         }
         private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
+        /// <summary>
+        /// Create a new SxmConnection for the specified databaseName.
+        /// If <paramref name="shared"/> is true the connection may be reused across callers.
+        /// Throws <see cref="SxmException"/> on initialization failures.
+        /// </summary>
+        /// <param name="databaseName">Name of the database file (or null to use implicit name).</param>
+        /// <param name="shared">Whether the connection is shared/reused (default true).</param>
         public SxmConnection(string? databaseName, bool shared = true)
         {
             try
@@ -103,7 +124,7 @@ namespace SQLiteXM
         internal void log(System.Exception ex, string? method)
         {
             if (this.databaseName != default(string))
-                Logging.log(this.databaseName, ex, method);
+                SxmLogging.log(this.databaseName, ex, method);
         }
 
         private void createNewConnection()
@@ -133,6 +154,13 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Build or retrieve a cached connection string for the given database name.
+        /// This method resolves implicit names and verifies a matching DatabaseDescriptor.
+        /// </summary>
+        /// <param name="databaseName">Reference to database name; may be modified if implicit resolution occurs.</param>
+        /// <returns>Connection string that can be used to open a Sqlite connection.</returns>
+        /// <exception cref="SxmException">Thrown when no DatabaseDescriptor exists for the requested name.</exception>
         internal static string getConnectionString(ref string? databaseName)
         {
             string? connectionString = default(string);
@@ -142,7 +170,7 @@ namespace SQLiteXM
                 databaseName = SxmConnection.resolveDatabaseName(databaseName);
                 if (!dbConnectionString.TryGetValue(databaseName, out connectionString))
                 {
-                    DatabaseDescriptor? databaseDescriptor = DatabaseDescriptor.getDescriptor(databaseName!);
+                    SxmDatabaseDescriptor? databaseDescriptor = SxmDatabaseDescriptor.getDescriptor(databaseName!);
                     if (databaseDescriptor == null)
                         throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName!));
 
@@ -159,9 +187,14 @@ namespace SQLiteXM
 
         /// <summary>
         /// Acquire the async lock. When using a shared connection callers SHOULD supply a stable
-        /// ownerId (Guid) so reentrancy and ownership checks work correctly. If ownerId is supplied
-        /// and matches the current owner we increment the reentrancy counter and return immediately.
+        /// <paramref name="ownerId"/> (Guid) so reentrancy and ownership checks work correctly.
+        /// If <paramref name="ownerId"/> matches the current owner the reentrancy counter is incremented
+        /// and the method returns true immediately.
         /// </summary>
+        /// <param name="millisecondsTimeout">Timeout in milliseconds to wait for the lock (default 100ms).</param>
+        /// <param name="ct">Cancellation token to abort waiting.</param>
+        /// <param name="ownerId">Optional owner token to support reentrancy/ownership semantics.</param>
+        /// <returns>True when the lock was acquired; false otherwise.</returns>
         public async Task<bool> LockAsync(int millisecondsTimeout = 100, CancellationToken ct = default, Guid? ownerId = null)
         {
             try
@@ -217,9 +250,10 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Release the async lock. If ownerId is supplied, ownership is verified before releasing.
-        /// Reentrancy count is decremented; semaphore is released only when counter reaches zero.
+        /// Release the async lock. If <paramref name="ownerId"/> is supplied, ownership is verified before releasing.
+        /// Reentrancy count is decremented and the underlying semaphore is released only when the counter reaches zero.
         /// </summary>
+        /// <param name="ownerId">Optional owner token used to verify ownership before releasing the lock.</param>
         public void ReleaseLock(Guid? ownerId = null)
         {
             try
@@ -262,9 +296,9 @@ namespace SQLiteXM
             {
                 if (SxmConnection.implicitDatabaseName == null)
                 {
-                    ArrayList dbNames = DatabaseDescriptor.getDatabaseNames();
+                    ArrayList dbNames = SxmDatabaseDescriptor.getDatabaseNames();
                     if (dbNames.Count != 1) // There must be only one descriptor in order to use implicit database naming.
-                        throw new SxmException(ErrorMessages.error["noImplicitDBDescriptorExists"]);
+                        throw new SxmException(SxmErrorMessages.error["noImplicitDBDescriptorExists"]);
                     else
                         SxmConnection.implicitDatabaseName = dbNames[0] as string;
                 }
@@ -275,14 +309,24 @@ namespace SQLiteXM
             return databaseName!;
         }
 
-        // Returns error code for SqliteException, otherwise throw the exception.
+        /// <summary>
+        /// Synchronous wrapper to finish a transaction. Returns a SQLiteErrorCode indicating commit/rollback result.
+        /// This method blocks and calls <see cref="finishTransactionAsync(bool)"/>.
+        /// </summary>
+        /// <param name="commitFlag">True to commit; false to rollback.</param>
+        /// <returns>SQLiteErrorCode representing the operation result.</returns>
         public SQLiteErrorCode finishTransaction(bool commitFlag)
         {
             // synchronous wrapper for convenience / compatibility: call async implementation and block.
             return finishTransactionAsync(commitFlag).GetAwaiter().GetResult();
         }
 
-        // No-throw guarantee. Makes every effort to perform clean-up.
+        /// <summary>
+        /// Release the connection resources. If <paramref name="destroy"/> is true or the connection is not shared,
+        /// the underlying connection is closed and disposed. This method attempts to rollback any pending transaction
+        /// without throwing to preserve the no-throw guarantee for cleanup.
+        /// </summary>
+        /// <param name="destroy">Force destruction of the underlying connection (default false).</param>
         public void releaseConnection(bool destroy = false)
         {
             if (dbConn != null)
@@ -291,7 +335,7 @@ namespace SQLiteXM
                 {
                     if (dbConnTransaction != null)
                         // ensure rollback is completed; block here to preserve previous behavior
-                        doCommitAsync(SQLiteXM.Defines.rollbackTransaction).GetAwaiter().GetResult();
+                        doCommitAsync(SQLiteXM.SxmDefines.rollbackTransaction).GetAwaiter().GetResult();
                 }
 #pragma warning disable 0168
                 catch (System.Exception notUsed) { } // Within a handled exception a finally is guaranteed to run. 
@@ -312,7 +356,11 @@ namespace SQLiteXM
             }
         }
 
-        // Async implementation of commit/rollback
+        /// <summary>
+        /// Async implementation of finishing a transaction. Returns a <see cref="SQLiteErrorCode"/>.
+        /// </summary>
+        /// <param name="commitFlag">True to commit; false to rollback.</param>
+        /// <returns>SQLiteErrorCode representing the operation result.</returns>
         public async Task<SQLiteErrorCode> finishTransactionAsync(bool commitFlag)
         {
             SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
@@ -332,7 +380,7 @@ namespace SQLiteXM
             {
                 try
                 {
-                    if (commitFlag == SQLiteXM.Defines.commitTransaction)
+                    if (commitFlag == SQLiteXM.SxmDefines.commitTransaction)
                         await dbConnTransaction.CommitAsync().ConfigureAwait(false);
                     else
                         await dbConnTransaction.RollbackAsync().ConfigureAwait(false);
@@ -344,7 +392,7 @@ namespace SQLiteXM
                     log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                     //if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
 
-                    if (commitFlag == SQLiteXM.Defines.commitTransaction)
+                    if (commitFlag == SQLiteXM.SxmDefines.commitTransaction)
                         sqLiteErrorCode = (SQLiteErrorCode)ex.ErrorCode;
                     else
                         throw new SxmException(ex);
@@ -365,6 +413,10 @@ namespace SQLiteXM
             return doCommitAsync(commitFlag).GetAwaiter().GetResult();
         }
 
+        /// <summary>
+        /// Immediately closes and disposes the underlying connection and related resources.
+        /// After this call the instance will no longer hold an open SqliteConnection.
+        /// </summary>
         public void destroyConnection()
         {
             if (dbConn != null)
@@ -396,11 +448,18 @@ namespace SQLiteXM
             }
         }
 
-        // Async ExecuteReader
+        /// <summary>
+        /// Execute a query and prepare an open data reader for subsequent row access.
+        /// Caller should use <see cref="nextRow"/> / <see cref="getNextRow{T}"/> / <see cref="getValue(string)"/> to read results.
+        /// </summary>
+        /// <param name="command">SQL text to execute.</param>
+        /// <param name="parameterValues">Optional parameter values (see internal parameter handling).</param>
+        /// <param name="cancellationToken">Token used to cancel the async execution.</param>
+        /// <exception cref="SxmException">Thrown for invalid SQL or provider errors.</exception>
         public async Task executeQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(ErrorMessages.error["missingSQL"]);
+                throw new SxmException(SxmErrorMessages.error["missingSQL"]);
 
             try
             {
@@ -436,17 +495,27 @@ namespace SQLiteXM
             }
         }
 
-        // Synchronous wrapper for compatibility
+        /// <summary>
+        /// Synchronous wrapper for <see cref="executeQueryAsync(string, List{object}?, CancellationToken)"/>.
+        /// </summary>
+        /// <param name="command">SQL text to execute.</param>
+        /// <param name="parameterValues">Optional parameter values.</param>
         public void executeQuery(string command, List<object>? parameterValues)
         {
             executeQueryAsync(command, parameterValues).GetAwaiter().GetResult();
         }
 
-        // Async ExecuteNonQuery
+        /// <summary>
+        /// Execute a command that does not return rows (INSERT/UPDATE/DELETE) asynchronously.
+        /// </summary>
+        /// <param name="command">SQL text to execute.</param>
+        /// <param name="parameterValues">Optional parameter values.</param>
+        /// <param name="cancellationToken">Token used to cancel the async execution.</param>
+        /// <exception cref="SxmException">Thrown for invalid SQL or provider errors.</exception>
         public async Task executeNonQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(ErrorMessages.error["missingSQL"]);
+                throw new SxmException(SxmErrorMessages.error["missingSQL"]);
 
             try
             {
@@ -483,7 +552,11 @@ namespace SQLiteXM
             }
         }
 
-        // Synchronous wrapper for compatibility
+        /// <summary>
+        /// Synchronous wrapper for <see cref="executeNonQueryAsync(string, List{object}?, CancellationToken)"/>.
+        /// </summary>
+        /// <param name="command">SQL text to execute.</param>
+        /// <param name="parameterValues">Optional parameter values.</param>
         public void executeNonQuery(string command, List<object>? parameterValues)
         {
             executeNonQueryAsync(command, parameterValues).GetAwaiter().GetResult();
@@ -557,7 +630,10 @@ namespace SQLiteXM
             return DbParametersDataType.list;
         }
 
-        // Begin transaction (kept synchronous; underlying provider does not provide strong async benefit here)
+        /// <summary>
+        /// Begin a database transaction. Transaction support is synchronous for compatibility.
+        /// </summary>
+        /// <exception cref="SxmException">Wraps provider exceptions thrown while beginning a transaction.</exception>
         public void beginTransaction()
         {
             try
@@ -581,6 +657,10 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Indicates whether the last executed query has row results available.
+        /// </summary>
+        /// <returns>True if a data reader is present and has rows; otherwise false.</returns>
         public bool hasRows()
         {
             if (connDataReader != null)
@@ -589,6 +669,12 @@ namespace SQLiteXM
             return false;
         }
 
+        /// <summary>
+        /// Get the value of the named field on the current row.
+        /// Returns null (default) if the field is not present or no current row.
+        /// </summary>
+        /// <param name="fieldName">Name of the field/column to retrieve.</param>
+        /// <returns>Field value or null if not available.</returns>
         public object? getValue(string fieldName)
         {
             try
@@ -608,6 +694,11 @@ namespace SQLiteXM
             return default;
         }
 
+        /// <summary>
+        /// Get the value of the field at the specified ordinal on the current row.
+        /// </summary>
+        /// <param name="fieldOrdinal">Zero-based column ordinal.</param>
+        /// <returns>Field value or null if not available.</returns>
         public object? getValue(int fieldOrdinal)
         {
             try
@@ -623,6 +714,11 @@ namespace SQLiteXM
             return default;
         }
 
+        /// <summary>
+        /// Return the field name for the given ordinal in the current resultset.
+        /// </summary>
+        /// <param name="fieldOrdinal">Zero-based column ordinal.</param>
+        /// <returns>Column name or null if not available.</returns>
         public string? getFieldName(int fieldOrdinal)
         {
             try
@@ -638,6 +734,10 @@ namespace SQLiteXM
             return default;
         }
 
+        /// <summary>
+        /// Return all field names for the current resultset.
+        /// </summary>
+        /// <returns>Array of field names. Empty array if no rows are available.</returns>
         public string[] getFieldNames()
         {
             string[] fieldNames;
@@ -653,6 +753,12 @@ namespace SQLiteXM
 
             return fieldNames;
         }
+        /// <summary>
+        /// Read the next row and map it into a dictionary-like instance of <typeparamref name="T"/>.
+        /// The returned dictionary keys are column names and values are the column values.
+        /// </summary>
+        /// <typeparam name="T">An IDictionary&lt;string, object?&gt; implementation with a public parameterless constructor.</typeparam>
+        /// <returns>A populated instance of <typeparamref name="T"/> for the next row, or null if no more rows.</returns>
         public T? getNextRow<T>() where T : IDictionary<string, object?>, new()
         {
             T? row = default(T);
@@ -672,6 +778,10 @@ namespace SQLiteXM
             return row;
         }
 
+        /// <summary>
+        /// Return the number of columns in the current resultset.
+        /// </summary>
+        /// <returns>Number of columns or zero if no resultset is present.</returns>
         public int getColumnCount()
         {
             if (hasRows() == true)
@@ -680,6 +790,10 @@ namespace SQLiteXM
             return 0;
         }
 
+        /// <summary>
+        /// Advance the reader to the next row. If no more rows are available the data reader is released.
+        /// </summary>
+        /// <returns>True if another row is available; otherwise false.</returns>
         public bool nextRow()
         {
             bool anotherRow = false;
@@ -694,6 +808,11 @@ namespace SQLiteXM
             return anotherRow;
         }
 
+        /// <summary>
+        /// Return the CLR <see cref="Type"/> of the specified column by name in the current resultset.
+        /// </summary>
+        /// <param name="fieldName">Column name.</param>
+        /// <returns>CLR type for the column, or null if not available.</returns>
         public Type? getType(string fieldName)
         {
             try
