@@ -240,6 +240,14 @@ namespace SQLiteXM
             }
             finally
             {
+                // Ensure lock is released deterministically before finishing async disposal.
+                try
+                {
+                    // Protected helper on base class; idempotent and best-effort.
+                    this.EnsureLockReleased();
+                }
+                catch { /* swallow to avoid throwing during final cleanup */ }
+                
                 // Call base async dispose to release resources.
                 await base.DisposeAsync().ConfigureAwait(false);
             }
@@ -542,7 +550,7 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Core executor that dispatches to the appropriate helper based on the statement type. Supports List of positional parameters. Return list of dictionary rows.
+        /// Core executor that dispatches to the appropriate helper based on the statement type. Supports a dictionary of named parameters that is put inside a List. Return list of dictionary rows.
         /// </summary>
         /// <param name="sqlStatementName">Named SQL statement.</param>
         /// <param name="sqlStatementParameters">Parameters supplied as a list of dictionaries or other objects as expected by the helper.</param>

@@ -77,7 +77,6 @@ namespace SQLiteXM
             return new SxmUTransaction(conn, ownsLock: ownsLock, ownerId: ownerId);
         }
 
-        // No-throw guarantee.
         /// <summary>
         /// Finalize and clean up the transaction object.
         /// This method performs a best-effort release of the connection lock (if this transaction owns it)
@@ -92,7 +91,36 @@ namespace SQLiteXM
         /// </summary>
         protected void finalizeTransaction()
         {
-            // Release the async lock if we own it (best-effort).
+            // Centralized, idempotent lock release helper.
+            EnsureLockReleased();
+
+            // then cleanup the connection and transaction resources as before
+            try
+            {
+                connection?.releaseConnection();
+            }
+            catch (System.Exception ex) // I don't think there is any way to get here, but just in case.
+            {
+                try
+                {
+                    connection?.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                }
+                catch (Exception) { }
+            }
+            finally
+            {
+                connection = null;
+            }
+        }
+
+        /// <summary>
+        /// Ensure the async lock is released if this transaction owns it.
+        /// This method is idempotent and swallows/logs exceptions as a best-effort cleanup helper.
+        /// Derived classes may call this to deterministically release a lock before final disposal.
+        /// </summary>
+        protected void EnsureLockReleased()
+        {
+            // Best-effort, no-throw lock release. Idempotent.
             try
             {
                 if (ownsAsyncLock && connection != null)
@@ -114,24 +142,6 @@ namespace SQLiteXM
                 }
             }
             catch { /* best-effort release; don't let this block final cleanup */ }
-
-            // then cleanup the connection and transaction resources as before
-            try
-            {
-                connection?.releaseConnection();
-            }
-            catch (System.Exception ex) // I don't think there is any way to get here, but just in case.
-            {
-                try
-                {
-                    connection?.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                }
-                catch (Exception) { }
-            }
-            finally
-            {
-                connection = null;
-            }
         }
 
         /// <summary>
@@ -160,13 +170,29 @@ namespace SQLiteXM
         /// <param name="disposing">True when called from user code; false when called from the runtime finalizer.</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (disposed == true)
+            if (disposed)
                 return;
 
-            if (disposing == true) {/* Called from user code. Release managed and unmanaged resources. */}
+            // If called from user code we could release managed resources here.
+            // Do not duplicate lock-release: finalizeTransaction() already calls EnsureLockReleased().
+            if (disposing)
+            {
+                // Release managed resources (none specific here).
+            }
 
-            finalizeTransaction();
-            disposed = true;
+            try
+            {
+                finalizeTransaction();
+            }
+            catch (System.Exception ex)
+            {
+                // Best-effort: log and swallow to avoid throwing from Dispose.
+                try { connection?.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+            }
+            finally
+            {
+                disposed = true;
+            }
         }
 
         /// <summary>
@@ -187,7 +213,7 @@ namespace SQLiteXM
             InsertDefinition id = new InsertDefinition(commandName, insertSql);
             SxmSqlStatements.insertStatements.Add(commandName, id);
 
-            Dictionary<string, object?>  insertResponse = await executeInsertAsync(commandName, ParameterValues, cancellationToken);
+            Dictionary<string, object?> insertResponse = await executeInsertAsync(commandName, ParameterValues, cancellationToken);
             SxmSqlStatements.insertStatements.Remove(commandName);
             return insertResponse;
         }
