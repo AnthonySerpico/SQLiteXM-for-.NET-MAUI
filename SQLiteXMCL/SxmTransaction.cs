@@ -274,8 +274,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Named SQL statement to execute.</param>
         /// <param name="userObjectParameters">User object with parameter values.</param>
         /// <returns>The first result row mapped to <typeparamref name="TResult"/>.</returns>
-        public async Task<TResult> Insert<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
-                                                                                                       where TResult : class, new()
+        public async Task<TResult> Insert<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -287,7 +286,7 @@ namespace SQLiteXM
         /// <summary>
         /// Perform an insert and return the first result row as a dictionary. Supports entity mapping. Return dictionary of inserted columns.
         /// </summary>
-        public async Task<Dictionary<string, object?>> Insert<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
+        public async Task<Dictionary<string, object?>> Insert<T>(string sqlStatementName, T userObjectParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -297,14 +296,14 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Perform an insert using dictionary parameters and map the result to <typeparamref name="T"/>. Supports dictionary of named parameters. Return the entity object.
+        /// Perform an insert using dictionary parameters and map the result to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return the entity object.
         /// </summary>
-        public async Task<T> Insert<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where T : class, new()
+        public async Task<TResult> Insert<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<T> select = await RunStatement<T>(sqlStatementName, sqlStatementParameters).CAF();
+            List<TResult> select = await RunStatement<TResult>(sqlStatementName, sqlStatementParameters).CAF();
             return select[0];
         }
 
@@ -321,14 +320,14 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Perform an insert using a list of parameter objects and map the first result to <typeparamref name="T"/>. Supports List of positional parameters. Return the entity object.
+        /// Perform an insert using a list of parameter objects and map the first result to <typeparamref name="TResult"/>. Supports List of positional parameters. Return the entity object.
         /// </summary>
-        public async Task<T> Insert<T>(string sqlStatementName, List<object> sqlStatementParameters) where T : class, new()
+        public async Task<TResult> Insert<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<T> select = await RunStatement<T>(sqlStatementName, sqlStatementParameters).CAF();
+            List<TResult> select = await RunStatement<TResult>(sqlStatementName, sqlStatementParameters).CAF();
             return select[0];
         }
 
@@ -350,7 +349,7 @@ namespace SQLiteXM
         /// <summary>
         /// Perform an update statement using a user object for parameters. Supports entity mapping.
         /// </summary>
-        public async Task Update<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
+        public async Task Update<T>(string sqlStatementName, T userObjectParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.update && statementType != SqlStatementType.updateDirect)
@@ -385,7 +384,7 @@ namespace SQLiteXM
         /// <summary>
         /// Perform a select statement and return a list of dictionary rows. Supports entity mapping. Return list of dictionary rows.
         /// </summary>
-        public async Task<List<Dictionary<string, object?>>> Select<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
+        public async Task<List<Dictionary<string, object?>>> Select<T>(string sqlStatementName, T userObjectParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -396,8 +395,7 @@ namespace SQLiteXM
         /// <summary>
         /// Perform a select statement and map results to <typeparamref name="TResult"/>. Supports entity mapping. Return a List of entity objects.
         /// </summary>
-        public async Task<List<TResult>> Select<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
-                                                                                                                    where TResult : class, new()
+        public async Task<List<TResult>> Select<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -417,25 +415,25 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Perform a select using dictionary parameters and map to <typeparamref name="T"/>. Supports dictionary of named parameters. Return a List of entity objects.
+        /// Perform a select using dictionary parameters and map to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return a List of entity objects.
         /// </summary>
-        public async Task<List<T>> Select<T>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where T : class, new()
+        public async Task<List<TResult>> Select<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatement<T>(sqlStatementName, sqlStatementParameters).CAF();
+            return await RunStatement<TResult>(sqlStatementName, sqlStatementParameters).CAF();
         }
 
         /// <summary>
-        /// Perform a select using a list of parameter objects and map to <typeparamref name="T"/>. Supports List of positional parameters. Return a List of entity objects.
+        /// Perform a select using a list of parameter objects and map to <typeparamref name="TResult"/>. Supports List of positional parameters. Return a List of entity objects.
         /// </summary>
-        public async Task<List<T>> Select<T>(string sqlStatementName, List<object> sqlStatementParameters) where T : class, new()
+        public async Task<List<TResult>> Select<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatement<T>(sqlStatementName, sqlStatementParameters).CAF();
+            return await RunStatement<TResult>(sqlStatementName, sqlStatementParameters).CAF();
         }
 
         /// <summary>
@@ -455,7 +453,7 @@ namespace SQLiteXM
         /// <summary>
         /// Perform a delete statement using a user object for parameters. Supports entity mapping.
         /// </summary>
-        public async Task Delete<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
+        public async Task Delete<T>(string sqlStatementName, T userObjectParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.delete && statementType != SqlStatementType.deleteDirect)
@@ -491,8 +489,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and map results to <typeparamref name="TResult"/>. Supports entity mapping. Return a List of entity objects.
         /// </summary>
-        private async Task<List<TResult>> RunStatement<T, TResult>(string sqlStatementName, T userObjectParameters) where T : class, new()
-                                                                                                                    where TResult : class, new()
+        private async Task<List<TResult>> RunStatement<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
@@ -519,7 +516,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and return list of dictionary rows. Supports entity mapping. Return list of dictionary rows.
         /// </summary>
-        private async Task<List<Dictionary<string, object?>>> RunStatement<T>(string sqlStatementName, T userObjectParameters) where T : class, new()
+        private async Task<List<Dictionary<string, object?>>> RunStatement<T>(string sqlStatementName, T userObjectParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)

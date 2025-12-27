@@ -878,20 +878,22 @@ namespace SQLiteXM
                         SxmHelpers.CreateAssociation(type, fkField, fk.foreignTable);
                     }
 
-                    var clrType = Nullable.GetUnderlyingType(pi.GetMemberType()) ?? pi.GetMemberType();
+                    // Safe, null-free (preferred here).
+                    PropertyInfo? propertyInfo = pi as PropertyInfo;
+                    if (propertyInfo == null) continue;  // Should not happen.
+                    Type clrType = Nullable.GetUnderlyingType(propertyInfo.PropertyType) ?? propertyInfo.PropertyType;
+
+                    //clrType = Nullable.GetUnderlyingType(pi.GetMemberType()) ?? pi.GetMemberType();
 
                     // Override from ColumnType if specified, for example, [Column(ColumnType = ColumnType.Text)]
                     string? columnType = colAttr?.DataType switch
                     {
-                        DataType.Text or DataType.NVarChar or DataType.VarChar or DataType.Char or DataType.NChar => "TEXT",
-                        DataType.Int16 or DataType.Int32 or DataType.Int64 => "INTEGER",
-                        DataType.UInt16 or DataType.UInt32 => "INTEGER",
-                        DataType.UInt64 => "TEXT", // preserve range
-                        DataType.Boolean => "INTEGER",
+                        DataType.Text or DataType.NChar or DataType.NVarChar or DataType.Char or DataType.VarChar => "TEXT",
+                        DataType.Int16 or DataType.Int32 or DataType.UInt16 or DataType.UInt32 or DataType.Int64 or DataType.Long => "INTEGER",
+                        DataType.Boolean or DataType.DateTime or DataType.Date or DataType.Time => "INTEGER", // unix.milliseconds for time types
+                        DataType.Decimal or DataType.UInt64 => "TEXT",  // preserve range
                         DataType.Guid => "TEXT",
                         DataType.Single or DataType.Double => "REAL",
-                        DataType.Decimal => "TEXT", // preserve range
-                        DataType.DateTime or DataType.Date or DataType.Time => "INTEGER", // ticks
                         DataType.Binary or DataType.Blob or DataType.VarBinary => "BLOB",
                         _ => null
                     };
@@ -916,26 +918,29 @@ namespace SQLiteXM
                     if (columnType == null)
                     {
                         // Determine CLR (nullable unwrap)
-                        columnType = clrType == typeof(int) ? "INTEGER" :
+                        columnType = clrType == typeof(decimal) ? "TEXT" :
                                      clrType == typeof(string) ? "TEXT" :
-                                     clrType == typeof(long) ? "INTEGER" :
                                      clrType == typeof(ulong) ? "TEXT" :
-                                     clrType == typeof(float) ? "REAL" :
-                                     clrType == typeof(short) ? "INTEGER" :
-                                     clrType == typeof(ushort) ? "INTEGER" :
-                                     clrType == typeof(uint) ? "INTEGER" :
-                                     clrType == typeof(sbyte) ? "INTEGER" :
-                                     clrType == typeof(byte) ? "INTEGER" :
-                                     clrType == typeof(double) ? "REAL" :
                                      clrType == typeof(Guid) ? "TEXT" :
-                                     clrType == typeof(decimal) ? "TEXT" :
-                                     clrType == typeof(bool) ? "INTEGER" :
-                                     clrType == typeof(byte[]) ? "BLOB" :
-                                     clrType == typeof(DateTime) ? "INTEGER" :
+
                                      clrType == typeof(DateTimeOffset) ? "INTEGER" :
                                      clrType == typeof(TimeSpan) ? "INTEGER" :
                                      clrType == typeof(DateOnly) ? "INTEGER" :
                                      clrType == typeof(TimeOnly) ? "INTEGER" :
+                                     clrType == typeof(DateTime) ? "INTEGER" :
+                                     clrType == typeof(ushort) ? "INTEGER" :
+                                     clrType == typeof(sbyte) ? "INTEGER" :
+                                     clrType == typeof(short) ? "INTEGER" :
+                                     clrType == typeof(long) ? "INTEGER" :
+                                     clrType == typeof(uint) ? "INTEGER" :
+                                     clrType == typeof(byte) ? "INTEGER" :
+                                     clrType == typeof(bool) ? "INTEGER" :
+                                     clrType == typeof(int) ? "INTEGER" :
+
+                                     clrType == typeof(double) ? "REAL" :
+                                     clrType == typeof(float) ? "REAL" :
+                                     
+                                     clrType == typeof(byte[]) ? "BLOB" :
                                      null;
                     }
 

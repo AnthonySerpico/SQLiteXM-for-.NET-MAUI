@@ -482,18 +482,18 @@ namespace SQLiteXM
 
 
         /// <summary>
-        /// Creates a list of user objects of type <typeparamref name="T"/> from database row dictionaries.
+        /// Creates a list of user objects of type <typeparamref name="TResult"/> from database row dictionaries.
         /// </summary>
-        /// <typeparam name="T">User entity type with a public parameterless constructor.</typeparam>
+        /// <typeparam name="TResult">User entity type with a public parameterless constructor.</typeparam>
         /// <param name="databaseRowsList">List of dictionary rows where keys are column/property names.</param>
         /// <returns>List of populated user objects.</returns>
-        internal static List<T> populateUserRecord<T>(List<Dictionary<string, object?>> databaseRowsList) where T : class, new()
+        internal static List<TResult> populateUserRecord<TResult>(List<Dictionary<string, object?>> databaseRowsList) where TResult : class, new()
         {
-            List<T> userObjectList = new List<T>();
+            List<TResult> userObjectList = new List<TResult>();
 
             foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
-                T userObject = new T();
+                TResult userObject = new TResult();
                 loadDbValues(databaseRecord, userObject);
                 userObjectList.Add(userObject);
             }
@@ -771,7 +771,7 @@ namespace SQLiteXM
     /// <summary>
     /// Helpers for converting GUIDs to/from RFC-4122 (network) byte order suitable for storing as BLOBs.
     /// </summary>
-    public static class GuidStorageHelpers
+    internal static class GuidStorageHelpers
     {
         /// <summary>
         /// Convert Guid -> 16 bytes in RFC-4122 (network) order.
@@ -795,7 +795,7 @@ namespace SQLiteXM
         /// <param name="bytes">Span containing 16 RFC-4122 bytes.</param>
         /// <returns>Guid represented by the RFC-4122 bytes.</returns>
         /// <exception cref="ArgumentException">If <paramref name="bytes"/> does not contain exactly 16 bytes.</exception>
-        public static Guid FromRfc4122Bytes(ReadOnlySpan<byte> bytes)
+        internal static Guid FromRfc4122Bytes(ReadOnlySpan<byte> bytes)
         {
             if (bytes.Length != 16) throw new ArgumentException("GUID must be 16 bytes.", nameof(bytes));
             Span<byte> b = stackalloc byte[16];
@@ -812,7 +812,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="bytes">16-byte RFC-4122 byte array.</param>
         /// <returns>Guid constructed from the bytes.</returns>
-        public static Guid FromRfc4122Bytes(byte[] bytes) => FromRfc4122Bytes((ReadOnlySpan<byte>)bytes);
+        internal static Guid FromRfc4122Bytes(byte[] bytes) => FromRfc4122Bytes((ReadOnlySpan<byte>)bytes);
 
         /// <summary>
         /// Swap two bytes inside a span.
@@ -828,7 +828,7 @@ namespace SQLiteXM
         }
     }
 
-    public static class MemberInfoExtensions
+    internal static class MemberInfoExtensions
     {
         /// <summary>
         /// Gets the underlying Type of the member (e.g., the property type, field type, etc.).
@@ -836,18 +836,22 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="member">The MemberInfo instance.</param>
         /// <returns>The underlying Type of the member, or null if the type cannot be determined.</returns>
-        public static Type GetMemberType(this MemberInfo member)
+        internal static Type? GetMemberType(this MemberInfo member)
         {
             switch (member.MemberType)
             {
                 case MemberTypes.Field:
                     return ((FieldInfo)member).FieldType;
+
                 case MemberTypes.Property:
                     return ((PropertyInfo)member).PropertyType;
+
                 case MemberTypes.Event:
                     return ((EventInfo)member).EventHandlerType;
+
                 case MemberTypes.Method:
                     return ((MethodInfo)member).ReturnType;
+
                 default:
                     // Other member types like Constructor, TypeInfo, etc., don't have a single "type" property in this context.
                     return null;
