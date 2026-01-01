@@ -236,7 +236,6 @@ namespace SQLiteXM
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            entity.MarkAsInsert();
             _changeSet.Add(entity, ChangeType.Insert);
         }
 
@@ -244,7 +243,6 @@ namespace SQLiteXM
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            entity.MarkAsUpdate();
             _changeSet.Add(entity, ChangeType.Update);
         }
 
@@ -252,7 +250,6 @@ namespace SQLiteXM
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            entity.MarkAsDelete();
             _changeSet.Add(entity, ChangeType.Delete);
         }
 

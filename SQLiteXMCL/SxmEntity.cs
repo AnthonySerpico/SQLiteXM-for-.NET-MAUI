@@ -1,6 +1,10 @@
 ﻿using LinqToDB.Mapping;
+using Microsoft.VisualBasic;
 using SQLiteXM.Internal;
+using System;
+using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.Intrinsics.Arm;
 using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM
@@ -15,36 +19,36 @@ namespace SQLiteXM
     public class SxmEntity
     {
         // Prevent multiple concurrent initializations for the same entity type.
-        private static object lockObject = new object();
-        // Prevent multiple concurrent initializations for the same entity type.
-        private static readonly HashSet<string> initializingTypes = new HashSet<string>(StringComparer.Ordinal);
-
-
-        private static Dictionary<string, string> insertGuidDict = new Dictionary<string, string>();
-        private static Dictionary<string, string> updateGuidDict = new Dictionary<string, string>();
-        private static Dictionary<string, string> deleteGuidDict = new Dictionary<string, string>();
-        private static Dictionary<string, List<IndexPropertyAttributes>> uniqueIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
-        private static Dictionary<string, List<IndexPropertyAttributes>> standardIndexDict = new Dictionary<string, List<IndexPropertyAttributes>>();
-        private static Dictionary<string, Dictionary<string, string>> columnNameAndTypeDict = new Dictionary<string, Dictionary<string, string>>();
-
-        private SxmEntityState _pendingState = SxmEntityState.None;
+        private static readonly object lockObject = new object();
 
         /// <summary>
-        /// Mark this entity as pending insert (used by change-tracking/transaction logic).
+        /// Per-table initialization gate.
+        /// 
+        /// Maps a table/entity key to a single lazily-created initialization <see cref="Task"/>.
+        /// The first caller creates and starts the task; all subsequent callers retrieve the
+        /// same task and synchronously wait for it to complete.
+        /// 
+        /// This guarantees that schema initialization (tables, indexes, triggers, etc.)
+        /// runs exactly once per table key and prevents use-before-ready races across threads.
+        /// 
+        /// IMPORTANT:
+        /// The key is derived from the entity type name. Entity classes in different namespaces
+        /// MUST NOT share the same class name, or initialization collisions will occur.
+        /// If this constraint cannot be guaranteed, use the fully-qualified type name instead.
         /// </summary>
-        internal void MarkAsInsert() => _pendingState = SxmEntityState.Insert;
-        /// <summary>
-        /// Mark this entity as pending update (used by change-tracking/transaction logic).
-        /// </summary>
-        internal void MarkAsUpdate() => _pendingState = SxmEntityState.Update;
-        /// <summary>
-        /// Mark this entity as pending delete (used by change-tracking/transaction logic).
-        /// </summary>
-        internal void MarkAsDelete() => _pendingState = SxmEntityState.Delete;
-        /// <summary>
-        /// Gets the current pending state for this entity (Insert/Update/Delete/None).
-        /// </summary>
-        internal SxmEntityState PendingState => _pendingState;
+        private static readonly ConcurrentDictionary<string, Lazy<Task>> initTasks = new();
+
+        // Statement concurrent GUID caches.
+        private static ConcurrentDictionary<string, string> insertGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        private static ConcurrentDictionary<string, string> updateGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        private static ConcurrentDictionary<string, string> deleteGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+
+        // Index dictionaries: thread-safe per-type bags of index descriptors.
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> uniqueIndexDict = new ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> standardIndexDict = new ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>>(StringComparer.Ordinal);
+
+        // Column map per type: nested concurrent dictionary for safe concurrent reads/writes.
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> columnNameAndTypeDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
 
         private string? databaseName = SxmConnection.ImplicitDatabaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
@@ -83,63 +87,63 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Ensure the entity type has been initialized (table, indexes, triggers). This method is intentionally synchronous
-        /// from the caller's perspective but runs the heavy work on the thread pool to avoid UI deadlocks.
+        /// Ensures the database schema for this entity type (table, indexes, triggers)
+        /// is fully initialized before use.
+        /// 
+        /// Initialization is guaranteed to:
+        ///  - Run exactly once per table/entity key.
+        ///  - Block all concurrent callers until the first initialization completes.
+        ///  - Propagate initialization failures to all waiting callers.
+        ///  - Allow retry on subsequent calls if initialization fails.
+        /// 
+        /// Internally, initialization work is executed on the thread pool and this method
+        /// blocks synchronously until completion, avoiding UI-thread deadlocks while still
+        /// providing a synchronous API to callers.
+        /// 
+        /// IMPORTANT:
+        /// The initialization key is based on the entity class name. Entity classes in
+        /// different namespaces MUST NOT share the same name, or they will be treated
+        /// as the same table during initialization.
         /// </summary>
         private void initialize()
         {
-            string typeName = this.GetType().Name;
+            // NOTE: Entity class names must be globally unique across namespaces.
+            string tableName = GetType().Name;
 
-            // Short critical section: validate DB name and mark this type as initializing.
             lock (lockObject)
             {
                 dbNameValidation();
-
-                // Already initialized or already initializing -> nothing to do.
-                if (columnNameAndTypeDict.ContainsKey(typeName) || initializingTypes.Contains(typeName))
-                    return;
-
-                initializingTypes.Add(typeName);
             }
+
+            var lazyInit = initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
+                    () => Task.Run(async () =>
+                    {
+                        var props = getEntityProperties();
+                        getColumnNamesAndDataTypes(props);
+
+                        await createTable().ConfigureAwait(false);
+
+                        var std = new List<string>();
+                        var uniq = new List<string>();
+                        await getIndexTableStatements(std, uniq).ConfigureAwait(false);
+
+                        await processIndexStatements(IndexType.standard, std).ConfigureAwait(false);
+                        await processIndexStatements(IndexType.unique, uniq).ConfigureAwait(false);
+
+                        await processtriggerAttributes().ConfigureAwait(false);
+                    }),
+                    LazyThreadSafetyMode.ExecutionAndPublication
+                )
+            );
 
             try
             {
-                // Run the async initialization on the thread‑pool and block synchronously.
-                // Using Task.Run avoids deadlocks on synchronization contexts (UI thread).
-                Task.Run(async () =>
-                {
-                    // Process the public properties of the entity.
-                    List<MemberInfoWithAlias> propertyInfoWithAliases = getEntityProperties();
-                    getColumnNamesAndDataTypes(propertyInfoWithAliases);
-
-                    await createTable().ConfigureAwait(false);
-
-                    List<string> existingStandardIndexes = new List<string>();
-                    List<string> existingUniqueIndexes = new List<string>();
-                    await getIndexTableStatements(existingStandardIndexes, existingUniqueIndexes).ConfigureAwait(false);
-
-                    await processIndexStatements(IndexType.standard, existingStandardIndexes).ConfigureAwait(false);
-                    await processIndexStatements(IndexType.unique, existingUniqueIndexes).ConfigureAwait(false);
-
-                    await processtriggerAttributes().ConfigureAwait(false);
-                }).GetAwaiter().GetResult();
+                lazyInit.Value.GetAwaiter().GetResult();
             }
             catch
             {
-                // On failure, allow retry by removing the initializing marker.
-                lock (lockObject)
-                {
-                    initializingTypes.Remove(typeName);
-                }
+                initTasks.TryRemove(tableName, out _); // allow retry on failure
                 throw;
-            }
-            finally
-            {
-                // Initialization succeeded — remove the in-progress marker.
-                lock (lockObject)
-                {
-                    initializingTypes.Remove(typeName);
-                }
             }
         }
 
@@ -173,21 +177,31 @@ namespace SQLiteXM
         /// <param name="sxmTrans">Optional transaction to use; if null a standalone connection is used.</param>
         public async Task Save(SxmTransaction? sxmTrans)
         {
+            string tableName = this.GetType().Name;
+
             if (!await doesRecordExist(sxmTrans))
             {
                 buildSaveSql();
+
+                if (!insertGuidDict.TryGetValue(tableName, out var insertGuid) || string.IsNullOrEmpty(insertGuid))
+                    throw new InvalidOperationException($"Insert statement not found for '{tableName}'.");
+
                 if (sxmTrans == null)
-                    await Insert(insertGuidDict[this.GetType().Name]).CAF();
+                    await Insert(insertGuid).CAF();
                 else
-                    await Insert(insertGuidDict[this.GetType().Name], sxmTrans).CAF();
+                    await Insert(insertGuid, sxmTrans).CAF();
             }
             else
             {
                 buildUpdateSql();
+
+                if (!updateGuidDict.TryGetValue(tableName, out var updateGuid) || string.IsNullOrEmpty(updateGuid))
+                    throw new InvalidOperationException($"Update statement not found for '{tableName}'.");
+
                 if (sxmTrans == null)
-                    await Update(updateGuidDict[this.GetType().Name]).CAF();
+                    await Update(updateGuid).CAF();
                 else
-                    await Update(updateGuidDict[this.GetType().Name], sxmTrans).CAF();
+                    await Update(updateGuid, sxmTrans).CAF();
             }
         }
 
@@ -196,14 +210,14 @@ namespace SQLiteXM
         {
             {
                 Dictionary<string, object?> result = await SxmStatement.Insert<SxmEntity>(sqlStatementName, this, databaseName).CAF();
-                loadDbValues(result);
+                SxmHelpers.loadDbValues(result, this);
             }
         }
         private async Task Insert(string sqlStatementName, SxmTransaction sxmTrans)
         {
             {
                 Dictionary<string, object?> result = await sxmTrans.Insert<SxmEntity>(sqlStatementName, this).CAF();
-                loadDbValues(result);
+                SxmHelpers.loadDbValues(result, this);
             }
         }
 
@@ -238,12 +252,16 @@ namespace SQLiteXM
                 return;
 
             buildDeleteSql();
+            string tableName = this.GetType().Name;
+
+            if (!deleteGuidDict.TryGetValue(tableName, out var deleteGuid) || string.IsNullOrEmpty(deleteGuid))
+                throw new InvalidOperationException($"Delete statement not found for '{tableName}'.");
 
             // If no transaction supplied, perform non-transactional delete; otherwise use the provided transaction.
             if (sxmTrans == null)
-                await Delete(deleteGuidDict[this.GetType().Name]).CAF();
+                await Delete(deleteGuid).CAF();
             else
-                await Delete(deleteGuidDict[this.GetType().Name], sxmTrans).CAF();
+                await Delete(deleteGuid, sxmTrans).CAF();
         }
 
         // Delete statements.
@@ -263,34 +281,26 @@ namespace SQLiteXM
         private void buildSaveSql()
         {
             Type type = this.GetType();
-            if (insertGuidDict.GetValueOrDefault(type.Name) == default(string))
+            string tableName = type.Name;
+
+            // The per-type column map must already exist. Fail fast if not.
+            if (!columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
+                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Call initialize() before building SQL.");
+
+
+            // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
+            insertGuidDict.GetOrAdd(tableName, _ =>
             {
-                string insertColumns = string.Empty;
-                string insertValues = string.Empty;
+                var columns = perTypeColumns.Keys.Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase)).ToArray();
 
-                int i = 0;
-                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
-                {
-                    if (!kvp.Key.Equals("synchId") && !kvp.Key.Equals("id"))
-                    {
-                        if (i > 0)
-                        {
-                            insertColumns += string.Format(", {0}", kvp.Key);
-                            insertValues += string.Format(", @{0}", kvp.Key);
-                        }
-                        else
-                        {
-                            insertColumns += string.Format("{0}", kvp.Key);
-                            insertValues += string.Format("@{0}", kvp.Key);
-                        }
-                        ++i;
-                    }
-                }
+                string insertColumns = string.Join(", ", columns);
+                string insertValues = string.Join(", ", columns.Select(c => "@" + c));
 
-                string insertStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2})", this.GetType().Name, insertColumns, insertValues);
-                insertGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
-                SxmSqlStatements.addInsertDefinition(insertGuidDict[this.GetType().Name], this.GetType().Name, insertStatement);
-            }
+                string insertStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2})", tableName, insertColumns, insertValues);
+                string newGuid = Guid.NewGuid().ToString();
+                SxmSqlStatements.addInsertDefinition(newGuid, tableName, insertStatement);
+                return newGuid;
+            });
         }
 
         /// <summary>
@@ -298,28 +308,25 @@ namespace SQLiteXM
         /// </summary>
         private void buildUpdateSql()
         {
-            if (updateGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
+            string tableName = this.GetType().Name;
+
+            // The per-type column map must already exist. Fail fast if not.
+            if (!columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
+                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Call initialize() before building SQL.");
+
+            // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
+            updateGuidDict.GetOrAdd(tableName, _ =>
             {
-                string insertColumns = string.Empty;
+                var columns = perTypeColumns.Keys.Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase)).ToArray();
 
-                int i = 0;
-                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
-                {
-                    if (!kvp.Key.Equals("synchId") && !kvp.Key.Equals("id"))
-                    {
-                        if (i > 0)
-                            insertColumns += string.Format(", {0}=@{1}", kvp.Key, kvp.Key);
-                        else
-                            insertColumns += string.Format("{0}=@{1}", kvp.Key, kvp.Key);
+                string setClause = string.Join(", ", columns.Select(c => $"{c}=@{c}"));
 
-                        ++i;
-                    }
-                }
+                string updateStatement = string.Format("UPDATE {0} SET {1} WHERE id=@id", tableName, setClause);
+                string newGuid = Guid.NewGuid().ToString();
 
-                string updateStatement = string.Format("UPDATE {0} SET {1} WHERE id=@id", this.GetType().Name, insertColumns);
-                updateGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
-                SxmSqlStatements.addUpdateDefinition(updateGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
-            }
+                SxmSqlStatements.addUpdateDefinition(newGuid, tableName, updateStatement);
+                return newGuid;
+            });
         }
 
         /// <summary>
@@ -327,12 +334,20 @@ namespace SQLiteXM
         /// </summary>
         private void buildDeleteSql()
         {
-            if (deleteGuidDict.GetValueOrDefault(this.GetType().Name) == default(string))
+            string tableName = this.GetType().Name;
+
+            // The per-type column map should exist; if not, fail fast so callers can fix initialization ordering.
+            if (!columnNameAndTypeDict.TryGetValue(tableName, out _))
+                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Call initialize() before building SQL.");
+
+            deleteGuidDict.GetOrAdd(tableName, _ =>
             {
-                string updateStatement = string.Format("DELETE FROM {0} WHERE id=@id", this.GetType().Name);
-                deleteGuidDict.Add(this.GetType().Name, Guid.NewGuid().ToString());
-                SxmSqlStatements.addDeleteDefinition(deleteGuidDict[this.GetType().Name], this.GetType().Name, updateStatement);
-            }
+                string deleteStatement = string.Format("DELETE FROM {0} WHERE id=@id", tableName);
+                string newGuid = Guid.NewGuid().ToString();
+
+                SxmSqlStatements.addDeleteDefinition(newGuid, tableName, deleteStatement);
+                return newGuid;
+            });
         }
 
         /// <summary>
@@ -341,11 +356,13 @@ namespace SQLiteXM
         /// </summary>
         private async Task processtriggerAttributes()
         {
+            string tableName = this.GetType().Name;
+
             try
             {
                 await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
                 {
-                    List<string> ExistingTriggers = await SxmInit.getAllTriggers(sxmTransaction.Connection, this.GetType().Name);
+                    List<string> ExistingTriggers = await SxmInit.getAllTriggers(sxmTransaction.Connection, tableName);
                     foreach (string existingTrigger in ExistingTriggers)
                     {
                         await sxmTransaction.executeCreateTriggerAsync(string.Format("DROP TRIGGER {0}", existingTrigger));
@@ -356,17 +373,15 @@ namespace SQLiteXM
             }
             catch (Exception ex) { }
 
-            Dictionary<string, string> newTriggerNameList = new Dictionary<string, string>();
+            List<string> newTriggerNameList = new List<string>();
             var customAttributes = (CreateTrigger[])this.GetType().GetCustomAttributes(typeof(CreateTrigger), true);
+
             if (customAttributes.Length > 0)
             {
                 foreach (var myAttribute in customAttributes)
                 {
                     string? triggerSql = myAttribute.triggerSql;
-                    string? triggerToBeAdded = default(string?);
-
-                    if ((triggerToBeAdded = extractTriggerName(triggerSql)) != default(string?))
-                        newTriggerNameList.Add(triggerToBeAdded, triggerSql);
+                    newTriggerNameList.Add(triggerSql);
                 }
 
                 if (newTriggerNameList.Count > 0)
@@ -375,8 +390,8 @@ namespace SQLiteXM
                     {
                         await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
                         {
-                            foreach (KeyValuePair<string, string> kvp in newTriggerNameList)
-                                await sxmTransaction.executeCreateTriggerAsync(kvp.Value);
+                            foreach (string trigger in newTriggerNameList)
+                                await sxmTransaction.executeCreateTriggerAsync(trigger);
 
                             await sxmTransaction.commitTransactionAsync();
                         }
@@ -384,61 +399,6 @@ namespace SQLiteXM
                     catch (Exception ex) { }
                 }
             }
-        }
-
-        /// <summary>
-        /// Attempt to parse the table name referenced inside a CREATE TRIGGER SQL string.
-        /// Returns null if a name cannot be extracted.
-        /// This parser is conservative and relies on patterns like "BEFORE/AFTER/INSTEAD ... &lt;table&gt;".
-        /// </summary>
-        /// <param name="triggerSql">The CREATE TRIGGER SQL text.</param>
-        /// <returns>Parsed table name or null if not found.</returns>
-        private string? extractTriggerName(string triggerSql)
-        {
-            int conditionOffset = 0;
-            string? triggerToBeAdded = default(string);
-
-            if ((conditionOffset = triggerSql.IndexOf(" before ", StringComparison.OrdinalIgnoreCase)) == -1)
-            {
-                if ((conditionOffset = triggerSql.IndexOf(" after ", StringComparison.OrdinalIgnoreCase)) == -1)
-                {
-                    conditionOffset = triggerSql.IndexOf(" instead ", StringComparison.OrdinalIgnoreCase);
-                }
-            }
-            if (conditionOffset == -1)
-                return triggerToBeAdded;
-
-            int schemaDivider = triggerSql.IndexOf('.');
-            if (schemaDivider != -1 && schemaDivider < conditionOffset)
-            {
-                int endTableName = triggerSql.IndexOf(' ', schemaDivider);
-                ++schemaDivider;
-                if (triggerSql[endTableName - 1].Equals("'"))
-                    --endTableName;
-
-                triggerToBeAdded = triggerSql.Substring(schemaDivider, endTableName - schemaDivider);
-            }
-            else
-            {
-                --conditionOffset;
-                while (triggerSql[conditionOffset] == ' ')
-                    --conditionOffset;
-
-                int startTableName = conditionOffset;
-                if (!triggerSql[conditionOffset].Equals("'"))
-                    ++conditionOffset;
-
-                while (triggerSql[startTableName] != ' ')
-                    --startTableName;
-                ++startTableName;
-
-                if (triggerSql[startTableName].Equals("'"))
-                    ++startTableName;
-
-                triggerToBeAdded = triggerSql.Substring(startTableName, conditionOffset - startTableName);
-            }
-
-            return triggerToBeAdded;
         }
 
         /// <summary>
@@ -460,12 +420,12 @@ namespace SQLiteXM
             if (indexType == IndexType.standard)
             {
                 firstArray = (CreateIndex[])type.GetCustomAttributes(typeof(CreateIndex), true);
-                secondArray = standardIndexDict.TryGetValue(tableName, out var stdList) ? stdList.ToArray() : Array.Empty<IIndexVars>();
+                secondArray = standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexVars>();
             }
             else if (indexType == IndexType.unique)
             {
                 firstArray = (CreateUniqueIndex[])type.GetCustomAttributes(typeof(CreateUniqueIndex), true);
-                secondArray = uniqueIndexDict.TryGetValue(tableName, out var uniqList) ? uniqList.ToArray() : Array.Empty<IIndexVars>();
+                secondArray = uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexVars>();
 
                 unique = "UNIQUE";
             }
@@ -500,7 +460,7 @@ namespace SQLiteXM
                             ++i;
                         }
 
-                        indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", unique, myAttribute.indexName, type.Name, indexFields));
+                        indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", unique, myAttribute.indexName, tableName, indexFields));
                     }
                 }
 
@@ -540,14 +500,12 @@ namespace SQLiteXM
             {
                 if (indexType == IndexType.standard)
                 {
-                    if (standardIndexDict.GetValueOrDefault(type.Name) != default(List<IndexPropertyAttributes>))
-                        standardIndexDict.Remove(type.Name);
+                    standardIndexDict.TryRemove(tableName, out _);
                 }
 
                 if (indexType == IndexType.unique)
                 {
-                    if (uniqueIndexDict.GetValueOrDefault(type.Name) != default(List<IndexPropertyAttributes>))
-                        uniqueIndexDict.Remove(type.Name);
+                    uniqueIndexDict.TryRemove(tableName, out _);
                 }
             }
         }
@@ -577,9 +535,11 @@ namespace SQLiteXM
         {
             try
             {
+                string tableName = this.GetType().Name;
+
                 await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
                 {
-                    await sxmTransaction.Connection.executeQueryAsync(String.Format("PRAGMA index_list({0})", this.GetType().Name), null as List<object>);
+                    await sxmTransaction.Connection.executeQueryAsync(String.Format("PRAGMA index_list({0})", tableName), null as List<object>);
 
                     while (sxmTransaction.Connection.nextRow() == true)
                     {
@@ -608,24 +568,27 @@ namespace SQLiteXM
         private async Task reconcileTableColumns()
         {
             Type type = this.GetType();
-            Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.getTableColumnNames(databaseName, this.GetType().Name);
+            string tableName = type.Name;
+
+            Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.getTableColumnNames(databaseName, tableName);
 
             try
             {
-                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[type.Name])
+                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[tableName])
                 {
                     if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
                     {
-                        string alterDefinition = string.Format("ALTER TABLE {0} ADD {1} {2}", type.Name, kvp.Key, kvp.Value);
+                        string alterDefinition = string.Format("ALTER TABLE {0} ADD {1} {2}", tableName, kvp.Key, kvp.Value);
 
                         if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
                         {
-                            foreach (ForeignKeyAttributes attribute in foreignKeyAttributeList)
+                            for (int i = 0; i < foreignKeyAttributeList.Count; i++)
                             {
+                                var attribute = foreignKeyAttributeList[i];
                                 if (kvp.Key.Equals(attribute.fieldName))
                                 {
                                     alterDefinition += $" CONSTRAINT fk_{attribute.fieldName} REFERENCES {attribute.foreignTable}(id)";
-                                    foreignKeyAttributeList.Remove(attribute);
+                                    foreignKeyAttributeList.RemoveAt(i);
                                     break;
                                 }
                             }
@@ -645,22 +608,22 @@ namespace SQLiteXM
                         else
                             value = kvp.Value;
 
-                        SxmInit.addColumnNameType(type.Name, kvp.Key, value);
+                        SxmInit.addColumnNameType(tableName, kvp.Key, value);
                     }
                 }
 
                 foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
                 {
-                    if (!columnNameAndTypeDict[type.Name].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
+                    if (!columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
                     {
-                        string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", type.Name, kvp.Key);
+                        string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", tableName, kvp.Key);
                         await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
                         {
                             await sxmTransaction1.executeAlterTableAsync(alterDefinition);
                             await sxmTransaction1.commitTransactionAsync();
                         }
 
-                        SxmInit.removeColumnNameType(this.GetType().Name, kvp.Key);
+                        SxmInit.removeColumnNameType(tableName, kvp.Key);
                     }
                 }
             }
@@ -701,8 +664,10 @@ namespace SQLiteXM
             {
                 if (id > 0)
                 {
-                    string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = {1}", this.GetType().Name, id);
-                    await conn.executeQueryAsync(sqlSelect, default(List<object>)).ConfigureAwait(false);
+                    string tableName = this.GetType().Name;
+
+                    string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = ?", tableName);
+                    await conn.executeQueryAsync(sqlSelect, new List<object> { id }).ConfigureAwait(false);
                     if (conn.hasRows() == true)
                         return true;
                 }
@@ -721,9 +686,11 @@ namespace SQLiteXM
             {
                 if (id > 0)
                 {
+                    string tableName = this.GetType().Name;
+
                     sxmConnection = new SxmConnection(databaseName);
-                    string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = {1}", this.GetType().Name, id);
-                    await sxmConnection.executeQueryAsync(sqlSelect, default(List<object>));
+                    string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = ?", tableName);
+                    await sxmConnection.executeQueryAsync(sqlSelect, new List<object> { id }).ConfigureAwait(false);
                     if (sxmConnection.hasRows() == true)
                         return true;
                 }
@@ -771,11 +738,13 @@ namespace SQLiteXM
         /// </summary>
         private async Task createTable()
         {
-            if (!await SxmInit.doesTableExist(this.GetType().Name, default(SxmConnection)))
-            {
-                string tableStatement = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT", this.GetType().Name);
+            string tableName = this.GetType().Name;
 
-                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[this.GetType().Name])
+            if (!await SxmInit.doesTableExist(tableName, default(SxmConnection)))
+            {
+                string tableStatement = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT", tableName);
+
+                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[tableName])
                     tableStatement += string.Format(", {0} {1}", kvp.Key, kvp.Value);
 
                 if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
@@ -788,8 +757,8 @@ namespace SQLiteXM
 
                 tableStatement += ")";
 
-                SxmSqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, this.GetType().Name), tableStatement);
-                await SxmInit.createTable(this.databaseName, this.GetType().Name);
+                SxmSqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, tableName), tableStatement);
+                await SxmInit.createTable(this.databaseName, tableName);
                 SxmSqlStatements.removeTableDefinitions();
             }
             else
@@ -806,87 +775,84 @@ namespace SQLiteXM
             if (propertyInfoWithAliases != null && propertyInfoWithAliases.Count > 0)
             {
                 var type = GetType();
-                columnNameAndTypeDict.TryAdd(this.GetType().Name, new Dictionary<string, string>());
+                var typeName = type.Name;
+
+                // Ensure per-type column map exists.
+                columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.Ordinal));
+
+                // Get the [Table] attribute to check IsColumnAttributeRequired.
+                TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
+                bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
 
                 foreach (MemberInfoWithAlias propertyInfoWithAlias in propertyInfoWithAliases)
                 {
-                    MemberInfo pi = propertyInfoWithAlias.memberInfo;
-                    string piName = pi.Name;
+                    MemberInfo memberInfo = propertyInfoWithAlias.memberInfo;
+                    string memberInfoName = memberInfo.Name;
 
                     // Skip "id" and "synchId" properties
-                    if (piName is "id" or "synchId")
+                    if (memberInfoName is "id" or "synchId")
                         continue;
 
+                    if (memberInfo is not PropertyInfo propertyInfo)
+                        continue; // defensive: skip non-property members
+
                     // Skip properties marked with [NotColumn].
-                    if (pi.IsDefined(typeof(NotColumnAttribute), false))
+                    if (memberInfo.IsDefined(typeof(NotColumnAttribute), false))
                         continue;
 
                     // Get the [Column] attribute, if present, otherwise it's null.
-                    ColumnAttribute? colAttr = pi.GetCustomAttribute<ColumnAttribute>(inherit: false);
-
-                    // Get the [Table] attribute to check IsColumnAttributeRequired.
-                    TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
-                    bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
+                    ColumnAttribute? colAttr = memberInfo.GetCustomAttribute<ColumnAttribute>(inherit: false);
                     if (columnIsRequired && colAttr == null)
                         continue; // Must have [Column] attribute in order to map to a database, but it's missing.
 
+                    // Typed attribute reads (no dictionary, no strings)
+                    RequiredNotNull? nn = memberInfo.GetCustomAttribute<RequiredNotNull>(inherit: false);
+                    bool hasCreateIndex = memberInfo.IsDefined(typeof(CreateIndex), inherit: false);
+                    bool hasCreateUniqueIndex = memberInfo.IsDefined(typeof(CreateUniqueIndex), inherit: false);
+                    CreateForeignKey? fk = memberInfo.GetCustomAttribute<CreateForeignKey>(inherit: false);
+
                     string notNull = string.Empty;
-                    Dictionary<string, object> propertyAttribute = pi.GetCustomAttributes(false).ToDictionary(a => a.GetType().Name, a => a);
-
-                    if (propertyAttribute.ContainsKey("RequiredNotNull"))
+                    if (nn is not null)
                     {
-                        RequiredNotNull nn = (RequiredNotNull)propertyAttribute["RequiredNotNull"];
-                        if (nn.defaultValue != null)
-                            notNull = $" not null default {nn.defaultValue}";
-                        else
-                            notNull = " not null";
+                        notNull = nn.defaultValue is not null ? $" not null default {nn.defaultValue}" : " not null";
                     }
 
-                    string fkField = piName;
-                    if (!string.IsNullOrEmpty(propertyInfoWithAlias.alias))
-                        fkField = propertyInfoWithAlias.alias;
+                    // Resolve mapped field name once (member name or alias)
+                    string columnName = string.IsNullOrEmpty(propertyInfoWithAlias.alias) ? memberInfoName : propertyInfoWithAlias.alias;
 
-                    if (propertyAttribute.ContainsKey("CreateIndex"))
+                    // CreateIndex
+                    if (hasCreateIndex)
                     {
-                        if (standardIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
-                            standardIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                        standardIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(fkField, type.Name));
+                        var bag = standardIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
+                        bag.Add(new IndexPropertyAttributes(columnName, typeName));
                     }
 
-                    if (propertyAttribute.ContainsKey("CreateUniqueIndex"))
+                    // CreateUniqueIndex
+                    if (hasCreateUniqueIndex)
                     {
-                        if (uniqueIndexDict.GetValueOrDefault(this.GetType().Name) == default(List<IndexPropertyAttributes>))
-                            uniqueIndexDict.Add(this.GetType().Name, new List<IndexPropertyAttributes>());
-                        uniqueIndexDict[this.GetType().Name].Add(new IndexPropertyAttributes(fkField, type.Name));
+                        var bag = uniqueIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
+                        bag.Add(new IndexPropertyAttributes(columnName, typeName));
                     }
-                    if (propertyAttribute.ContainsKey("CreateForeignKey"))
+
+                    // CreateForeignKey
+                    if (fk is not null)
                     {
-                        CreateForeignKey fk = (CreateForeignKey)propertyAttribute["CreateForeignKey"];
+                        foreignKeyAttributeList ??= new List<ForeignKeyAttributes>();
 
-                        if (foreignKeyAttributeList == default(List<ForeignKeyAttributes>))
-                            foreignKeyAttributeList = new List<ForeignKeyAttributes>();
-
-                        if (!string.IsNullOrEmpty(propertyInfoWithAlias.alias))
-                            fkField = propertyInfoWithAlias.alias;
-
-                        foreignKeyAttributeList?.Add(new ForeignKeyAttributes()
+                        foreignKeyAttributeList.Add(new ForeignKeyAttributes
                         {
-                            fieldName = fkField,
+                            fieldName = columnName,
                             foreignTable = fk.foreignTable,
                         });
 
-                        SxmHelpers.CreateAssociation(type, fkField, fk.foreignTable);
+                        SxmHelpers.CreateAssociation(type, columnName, fk.foreignTable);
                     }
 
                     // Safe, null-free (preferred here).
-                    PropertyInfo? propertyInfo = pi as PropertyInfo;
-                    if (propertyInfo == null) continue;  // Should not happen.
                     Type clrType = Nullable.GetUnderlyingType(propertyInfo.PropertyType) ?? propertyInfo.PropertyType;
 
-                    //clrType = Nullable.GetUnderlyingType(pi.GetMemberType()) ?? pi.GetMemberType();
-
                     // Override from ColumnType if specified, for example, [Column(ColumnType = ColumnType.Text)]
-                    string? columnType = colAttr?.DataType switch
+                    string? overrideType = colAttr?.DataType switch
                     {
                         DataType.Text or DataType.NChar or DataType.NVarChar or DataType.Char or DataType.VarChar => "TEXT",
                         DataType.Int16 or DataType.Int32 or DataType.UInt16 or DataType.UInt32 or DataType.Int64 or DataType.Long => "INTEGER",
@@ -898,69 +864,70 @@ namespace SQLiteXM
                         _ => null
                     };
 
-                    if (columnType != null)
+                    if (overrideType is not null)
                     {
-                        if (clrType == typeof(DateTime) || clrType == typeof(DateOnly) || clrType == typeof(TimeSpan) || clrType == typeof(TimeOnly) || clrType == typeof(DateTimeOffset))
-                        {
-                            if (!columnType.Equals("TEXT"))
-                                columnType = null;
-                        }
-                        else if (clrType == typeof(Guid))
-                        {
-                            if (!columnType.Equals("BLOB"))
-                                columnType = null;
-                        }
-                        else
-                            columnType = null;
+                        bool allowed =
+                            (IsTimeType(clrType) && overrideType.Equals("TEXT", StringComparison.OrdinalIgnoreCase)) ||
+                            (clrType == typeof(Guid) && overrideType.Equals("BLOB", StringComparison.OrdinalIgnoreCase));
+
+                        if (!allowed)
+                            overrideType = null;
                     }
 
-                    // Fallback to CLR mapping if ColumnType was Undefined.
-                    if (columnType == null)
-                    {
-                        // Determine CLR (nullable unwrap)
-                        columnType = clrType == typeof(decimal) ? "TEXT" :
-                                     clrType == typeof(string) ? "TEXT" :
-                                     clrType == typeof(ulong) ? "TEXT" :
-                                     clrType == typeof(Guid) ? "TEXT" :
-
-                                     clrType == typeof(DateTimeOffset) ? "INTEGER" :
-                                     clrType == typeof(TimeSpan) ? "INTEGER" :
-                                     clrType == typeof(DateOnly) ? "INTEGER" :
-                                     clrType == typeof(TimeOnly) ? "INTEGER" :
-                                     clrType == typeof(DateTime) ? "INTEGER" :
-                                     clrType == typeof(ushort) ? "INTEGER" :
-                                     clrType == typeof(sbyte) ? "INTEGER" :
-                                     clrType == typeof(short) ? "INTEGER" :
-                                     clrType == typeof(long) ? "INTEGER" :
-                                     clrType == typeof(uint) ? "INTEGER" :
-                                     clrType == typeof(byte) ? "INTEGER" :
-                                     clrType == typeof(bool) ? "INTEGER" :
-                                     clrType == typeof(int) ? "INTEGER" :
-
-                                     clrType == typeof(double) ? "REAL" :
-                                     clrType == typeof(float) ? "REAL" :
-                                     
-                                     clrType == typeof(byte[]) ? "BLOB" :
-                                     null;
-                    }
+                    string? columnType = overrideType ?? ClrTypeToColumnType(clrType);
 
                     if (columnType != null)
                     {
-                        if (string.IsNullOrEmpty(propertyInfoWithAlias.alias))
-                            columnNameAndTypeDict[type.Name].Add(piName, columnType + notNull);
-                        else
-                            columnNameAndTypeDict[type.Name].Add(propertyInfoWithAlias.alias, columnType + notNull);
+                        if (!columnNameAndTypeDict[typeName].TryAdd(columnName, columnType + notNull))
+                        {
+                            throw new InvalidOperationException(
+                                        $"Duplicate mapped column name '{columnName}' on type '{typeName}'. " +
+                                        $"Members '{memberInfoName}' (alias '{propertyInfoWithAlias.alias ?? ""}') " +
+                                        $"and another member resolved to the same mapped name.");
+                        }
                     }
                 }
             }
         }
 
-        private void loadDbValues(Dictionary<string, object?> databaseRecord)
+        private bool IsTimeType(Type clrType)
         {
-            // Delegate to the consolidated helper to avoid duplication.
-            SxmHelpers.loadDbValues(databaseRecord, this);
+            return clrType == typeof(DateTimeOffset) ||
+                   clrType == typeof(TimeSpan) ||
+                   clrType == typeof(DateOnly) ||
+                   clrType == typeof(TimeOnly) ||
+                   clrType == typeof(DateTime);
         }
 
+        private string? ClrTypeToColumnType(Type clrType)
+        {
+            string? columnType = clrType == typeof(decimal) ? "TEXT" :
+                                 clrType == typeof(string) ? "TEXT" :
+                                 clrType == typeof(ulong) ? "TEXT" :
+                                 clrType == typeof(Guid) ? "TEXT" :
+
+                                 clrType == typeof(DateTimeOffset) ? "INTEGER" :
+                                 clrType == typeof(TimeSpan) ? "INTEGER" :
+                                 clrType == typeof(DateOnly) ? "INTEGER" :
+                                 clrType == typeof(TimeOnly) ? "INTEGER" :
+                                 clrType == typeof(DateTime) ? "INTEGER" :
+                                 clrType == typeof(ushort) ? "INTEGER" :
+                                 clrType == typeof(sbyte) ? "INTEGER" :
+                                 clrType == typeof(short) ? "INTEGER" :
+                                 clrType == typeof(long) ? "INTEGER" :
+                                 clrType == typeof(uint) ? "INTEGER" :
+                                 clrType == typeof(byte) ? "INTEGER" :
+                                 clrType == typeof(bool) ? "INTEGER" :
+                                 clrType == typeof(int) ? "INTEGER" :
+
+                                 clrType == typeof(double) ? "REAL" :
+                                 clrType == typeof(float) ? "REAL" :
+
+                                 clrType == typeof(byte[]) ? "BLOB" :
+                                null;
+
+            return columnType;
+        }
 
         // MapAndSave maps properties from the source into this instance and then persists the entity.
         /// <summary>
@@ -982,63 +949,81 @@ namespace SQLiteXM
         /// Indexer properties are ignored. Both properties must be public instance properties and the destination property must be writable.
         /// </summary>
         /// <param name="source">Source object to copy values from.</param>
-        private void MapProperties(object source)
+        public void MapProperties(object source)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            Type srcType = source.GetType();
-            Type dstType = this.GetType();
+            Type sourceType = source.GetType();
+            Type destinationType = this.GetType();
 
-            PropertyInfo[] srcProps = srcType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            TableAttribute? tbl = destinationType.GetCustomAttribute<TableAttribute>(inherit: false);
+            bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false; // Check IsColumnAttributeRequired.
 
-            foreach (PropertyInfo sp in srcProps)
+            var destProps = destinationType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                           .Where(p => p.CanWrite && p.GetIndexParameters().Length == 0)
+                                           .ToDictionary(p => p.Name, p => p, StringComparer.Ordinal);
+            
+            foreach (PropertyInfo sourceProperty in sourceType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                // Skip indexers and non-readable properties
-                if (sp.GetIndexParameters().Length > 0)
-                    continue;
-                if (!sp.CanRead)
+                var destinationProperty = processPropertyInfo(sourceProperty, destProps);
+                if (destinationProperty == null)
                     continue;
 
-                // Ignore id and synchId on source
-                if (string.Equals(sp.Name, "id", StringComparison.OrdinalIgnoreCase) || string.Equals(sp.Name, "synchId", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                ColumnAttribute? colAttr = destinationProperty.GetCustomAttribute<ColumnAttribute>(inherit: false);
+                if (columnIsRequired && colAttr == null)
+                    continue; // Must have [Column] attribute in order to be mapped, but it's missing.
 
-                PropertyInfo? dp = dstType.GetProperty(sp.Name, BindingFlags.Public | BindingFlags.Instance);
-                if (dp == null)
-                    continue;
-                if (dp.GetIndexParameters().Length > 0)
-                    continue;
-                if (!dp.CanWrite)
-                    continue;
-
-                // Ignore destination id and synchId as well
-                if (string.Equals(dp.Name, "id", StringComparison.OrdinalIgnoreCase) || string.Equals(dp.Name, "synchId", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                // Only allow exact type match (no conversions) including nullable status
-                if (dp.PropertyType != sp.PropertyType)
-                    continue;
-
-                object? value = sp.GetValue(source);
+                object? sourcePropertyValue = sourceProperty.GetValue(source);
 
                 // If null, set only if destination accepts null (nullable or reference type)
-                if (value == null)
+                if (sourcePropertyValue == null)
                 {
-                    if (Nullable.GetUnderlyingType(dp.PropertyType) != null || !dp.PropertyType.IsValueType)
-                    {
-                        dp.SetValue(this, null);
-                    }
+                    bool destAllowsNull = !destinationProperty.PropertyType.IsValueType || Nullable.GetUnderlyingType(destinationProperty.PropertyType) != null;
+
+                    if (destAllowsNull) 
+                        destinationProperty.SetValue(this, null);
 
                     continue;
                 }
 
                 // Set value directly (types are identical)
-                dp.SetValue(this, value);
+                destinationProperty.SetValue(this, sourcePropertyValue);
             }
         }
 
-        private static bool IsNullableType(Type t) => Nullable.GetUnderlyingType(t) != null;
+        private PropertyInfo? processPropertyInfo(PropertyInfo srcProp, IDictionary<string, PropertyInfo> destProps)
+        {
+            // Skip indexers and non-readable properties
+            if (srcProp.GetIndexParameters().Length > 0 || !srcProp.CanRead)
+                return null;
 
+            // Ignore id and synchId on source
+            if (IsIgnored(srcProp.Name))
+                return null;
+
+            if (!destProps.TryGetValue(srcProp.Name, out var destProp)) 
+                return null; 
+            
+            if (IsIgnored(destProp.Name)) 
+                return null; 
+            
+            if (destProp.PropertyType != srcProp.PropertyType) 
+                return null; 
+            
+            return destProp;
+        }
+
+        private static bool IsIgnored(string name) => string.Equals(name, "id", StringComparison.OrdinalIgnoreCase) || 
+                                                      string.Equals(name, "synchId", StringComparison.OrdinalIgnoreCase);
+
+        private static string QuoteIdentifier(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Identifier cannot be null or whitespace.", nameof(name));
+
+            // Per SQL standard / SQLite: double internal double-quotes and wrap in double-quotes.
+            return $"\"{name.Replace("\"", "\"\"")}\"";
+        }
     }
 }

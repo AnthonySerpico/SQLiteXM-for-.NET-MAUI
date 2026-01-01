@@ -1,5 +1,6 @@
 ﻿using SQLiteXM.Internal;
 using System.Collections;
+using System.Collections.Concurrent;
 //using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
@@ -14,8 +15,10 @@ namespace SQLiteXM
     /// </remarks>
     public class SxmInit
     {
-        //private static Dictionary<string, Synchronize> synchronized = new Dictionary<string, Synchronize>();
-        private static Dictionary<string, Dictionary<string, string>> columnNameTypes = new Dictionary<string, Dictionary<string, string>>();
+        /// <summary>
+        /// Cache mapping table name -> (column name -> column type) using thread-safe concurrent dictionaries.
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> columnNameTypes = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
 
         private SxmInit() { }
 
@@ -409,8 +412,11 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="databaseName">Name of the database to operate on.</param>
         /// <param name="tableName">Name of the table to create.</param>
-        internal static async Task createTable(string databaseName, string tableName)
+        internal static async Task createTable(string? databaseName, string tableName)
         {
+            if (databaseName == null)
+                return;
+
             string[] parts = { databaseName, tableName };
             string key = string.Format("{0}.{1}", databaseName, tableName);
 
@@ -422,7 +428,7 @@ namespace SQLiteXM
                 if (!await doesTableExist(tableName, sxmConnection))
                 {
                     Hashtable tableNamesMap = new Hashtable();
-                    TableDefinition? tableDefinition = SxmSqlStatements.tableCreateStatements[key] as TableDefinition;
+                    TableDefinition? tableDefinition = SxmSqlStatements.tableCreateStatements![key] as TableDefinition;
 
                     await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                     {
@@ -677,13 +683,19 @@ namespace SQLiteXM
         /// <param name="columnType">Column type as reported by PRAGMA table_info.</param>
         internal static void addColumnNameType(string tableName, string columnName, string columnType)
         {
-            Dictionary<string, string>? columnNameType = default(Dictionary<string, string>);
+            if (string.IsNullOrEmpty(tableName))
+                throw new ArgumentNullException(nameof(tableName));
+            if (string.IsNullOrEmpty(columnName))
+                throw new ArgumentNullException(nameof(columnName));
 
-            if (columnNameTypes.ContainsKey(tableName))
+            if (columnNameTypes.TryGetValue(tableName, out var inner))
             {
-                columnNameType = columnNameTypes[tableName];
-                columnNameType.Add(columnName, columnType);
+                // Preserve original behavior: Dictionary.Add would throw on duplicate;
+                // use TryAdd and throw if the key already exists.
+                if (!inner.TryAdd(columnName, columnType))
+                    throw new InvalidOperationException($"Column '{columnName}' already exists in cache for table '{tableName}'.");
             }
+            // If table not present in cache, intentionally ignore (no creation) — same as original.
         }
 
         /// <summary>
@@ -693,12 +705,14 @@ namespace SQLiteXM
         /// <param name="columnName">Column to remove.</param>
         internal static void removeColumnNameType(string tableName, string columnName)
         {
-            Dictionary<string, string>? columnNameType = default(Dictionary<string, string>);
+            if (string.IsNullOrEmpty(tableName))
+                throw new ArgumentNullException(nameof(tableName));
+            if (string.IsNullOrEmpty(columnName))
+                throw new ArgumentNullException(nameof(columnName));
 
-            if (columnNameTypes.ContainsKey(tableName))
+            if (columnNameTypes.TryGetValue(tableName, out var inner))
             {
-                columnNameType = columnNameTypes[tableName];
-                columnNameType.Remove(columnName);
+                inner.TryRemove(columnName, out _);
             }
         }
 
@@ -707,31 +721,45 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="dbName">Database name, or null to use the default database.</param>
         /// <param name="tableName">Table name whose columns should be returned.</param>
-        /// <returns>Dictionary mapping column name to SQL type.</returns>
+        /// <returns>
+        /// Dictionary mapping column name to SQL type.
+        /// The returned Dictionary is a point-in-time snapshot of the internal cache and does not reflect subsequent concurrent changes.
+        /// </returns>
+        /// <remarks>
+        /// The internal cache is thread-safe; callers receive a snapshot to preserve existing API semantics.
+        /// Callers must not rely on the returned Dictionary reflecting later mutations.
+        /// </remarks>
         internal static async Task<Dictionary<string, string>> getTableColumnNames(string? dbName, string? tableName)
         {
-            if (columnNameTypes.ContainsKey(tableName))
-                return columnNameTypes[tableName];
+            if (string.IsNullOrEmpty(tableName))
+                throw new ArgumentNullException(nameof(tableName));
 
-            Dictionary<string, string> columnNames = new Dictionary<string, string>();
+            // Fast path: if inner exists return a snapshot.
+            if (columnNameTypes.TryGetValue(tableName, out var existingInner))
+                return new Dictionary<string, string>(existingInner, StringComparer.Ordinal);
+
+            // Load into a concurrent inner map.
+            var columnNames = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
 
             SxmConnection sxmConnection = new SxmConnection(dbName);
             await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
             {
                 await sxmConnection.executeQueryAsync(String.Format("PRAGMA table_info({0})", tableName), default(List<object>));
-
                 while (sxmConnection.nextRow() == true)
                 {
                     string? columnName = (string?)sxmConnection.getValue("name");
                     string? columnType = (string?)sxmConnection.getValue("type");
+
                     if (columnName != null && columnType != null)
-                        columnNames.Add(columnName, columnType);
+                        columnNames.TryAdd(columnName, columnType);
                 }
             }
 
-            columnNameTypes.Add(tableName, columnNames);
-            return columnNames;
+            // Install the loaded concurrent inner map as the live cached instance.
+            var winner = columnNameTypes.GetOrAdd(tableName, columnNames);
 
+            // Return a snapshot Dictionary<string,string> so callers continue to get the same concrete type.
+            return new Dictionary<string, string>(winner, StringComparer.Ordinal);
         }
 
         /// <summary>

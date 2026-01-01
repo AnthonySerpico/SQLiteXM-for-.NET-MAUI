@@ -11,11 +11,11 @@ namespace SQLiteXM
         private static ConcurrentDictionary<string, SxmDatabaseDescriptor> dbDescriptors = new();
 
         // Database settings.
-        private string databaseName; // Required.
+        private string? databaseName; // Required.
         /// <summary>
         /// Gets the database file name.
         /// </summary>
-        public string DatabaseName
+        public string? DatabaseName
         {
             get { return databaseName; }
         }
@@ -37,7 +37,7 @@ namespace SQLiteXM
         /// The log file name for this database.
         /// </summary>
         /// <remarks>Default: same as database name with a .log extension.</remarks>
-        public string logfileName; // Optional. Default: Same as database name with .log extension.
+        public string? logfileName; // Optional. Default: Same as database name with .log extension.
 
         /// <summary>
         /// Maximum size in bytes of the log file.
@@ -143,7 +143,7 @@ namespace SQLiteXM
         /// Returns the database name represented by this descriptor.
         /// </summary>
         /// <returns>The database file name.</returns>
-        public override string ToString()
+        public override string? ToString()
         {
             return databaseName;
         }
