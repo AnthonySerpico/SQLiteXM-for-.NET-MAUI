@@ -148,7 +148,8 @@ namespace SQLiteXM
                     else
                     {
                         // Log a warning — popping out-of-order is a programming error.
-                        try { Connection?.log(new InvalidOperationException("Dispose called when transaction is not the ambient/top transaction."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                        if(SxmAmbientTransaction.Current != null)
+                            try { Connection?.log(new InvalidOperationException("Dispose called when transaction is not the ambient/top transaction."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
                         // Do not attempt to pop or auto-commit.
                     }
                 }
@@ -186,7 +187,7 @@ namespace SQLiteXM
                     {
                         await commitTransactionAsync().ConfigureAwait(false);
                     }
-                    else if (SxmAmbientTransaction.Current != this)
+                    else if (SxmAmbientTransaction.Current != null && SxmAmbientTransaction.Current != this)
                     {
                         // Misordered dispose; log it. Do not try to implicitly commit/pop.
                         try { Connection?.log(new InvalidOperationException("DisposeAsync attempted to auto-commit when transaction is not top ambient."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
@@ -219,7 +220,7 @@ namespace SQLiteXM
                             // Attempt best-effort removal if not top.
                             try
                             {
-                                if (!SxmAmbientTransaction.TryRemove(this))
+                                if (SxmAmbientTransaction.Current != null && !SxmAmbientTransaction.TryRemove(this))
                                 {
                                     // If removal failed, just log a warning. Operator can inspect and recover.
                                     try { Connection?.log(new InvalidOperationException("DisposeAsync could not remove non-top ambient transaction; manual recovery may be required."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }

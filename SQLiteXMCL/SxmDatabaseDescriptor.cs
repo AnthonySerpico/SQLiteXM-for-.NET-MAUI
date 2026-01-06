@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
+using System.Xml.Linq;
 
 namespace SQLiteXM
 {
@@ -32,29 +33,11 @@ namespace SQLiteXM
             get { return databaseFolder; }
         }
 
-        // Logging settings.
-        /// <summary>
-        /// The log file name for this database.
-        /// </summary>
-        /// <remarks>Default: same as database name with a .log extension.</remarks>
-        public string? logfileName; // Optional. Default: Same as database name with .log extension.
-
-        /// <summary>
-        /// Maximum size in bytes of the log file.
-        /// </summary>
-        /// <remarks>Default: 1 MB.</remarks>
-        public int logfileMaxSize = 1024 * 1024; // Optional. Default: 1MB.
-
         /// <summary>
         /// Folder used to store the log file.
         /// </summary>
         /// <remarks>Default: <see cref="Environment.SpecialFolder.MyDocuments"/>.</remarks>
         public Environment.SpecialFolder logfileFolder = Environment.SpecialFolder.MyDocuments; // Optional: Environment.SpecialFolder.MyDocuments.
-
-        /// <summary>
-        /// When true, logging is disabled for this database.
-        /// </summary>
-        public bool noLog = false;
 
         /// <summary>
         /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the database name provided by <see cref="SxmProcessSQLStatements.retreiveDatabaseName"/>.
@@ -78,21 +61,31 @@ namespace SQLiteXM
 
                 this.databaseFolder = databaseFolder;
                 this.databaseName = databaseName;
-                logfileName = databaseName + ".log";
 
                 createDB();
 
                 // Add descriptor; if another thread inserted concurrently, skip duplicate registration.
                 if (dbDescriptors.TryAdd(databaseName, this))
                 {
-                    SQLiteXM.SxmLogging logger = new SxmLogging(logfileName, logfileFolder, logfileMaxSize, noLog);
-                    SxmLogging.loggers.TryAdd(databaseName, logger);
+                    RegisterLogger(databaseName);
                 }
             }
             catch (System.Exception ex)
             {
                 throw new SxmException(ex);
             }
+        }
+
+
+        // Example: register logger when constructing a connection (call from your connection/context creation)
+        private void RegisterLogger(string dbName)
+        {
+            const long defaultMaxLogSize = 4 * 1024 * 1024; // 4 MB
+            bool noLog = false; // read from config if applicable
+            string logFileName = dbName + ".log";
+            SxmLogging? logger = new SxmLogging(logFileName, Environment.SpecialFolder.MyDocuments, defaultMaxLogSize, noLog);
+
+            SxmLogging.loggers.TryAdd(dbName, logger);
         }
 
         // Sanity check the database name.

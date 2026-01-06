@@ -14,7 +14,7 @@ namespace SQLiteXM
     /// Helper utilities for SQLiteXM: mapping between database rows and user entities,
     /// runtime association wiring, and SQL statement helpers.
     /// </summary>
-    public class SxmHelpers
+    internal class SxmHelpers
     {
         /// <summary>
         /// Tracks runtime-registered association keys to avoid duplicate registrations.
@@ -22,6 +22,21 @@ namespace SQLiteXM
         /// </summary>
         private static ISet<string> _registeredAssociations = new HashSet<string>();
         private SxmHelpers() { }
+
+        /// <summary>
+        /// Quote a SQL identifier per SQLite/SQL standard: double embedded double-quotes and wrap in double-quotes.
+        /// Throws <see cref="ArgumentException"/> for null/whitespace input.
+        /// </summary>
+        /// <param name="name">Identifier to quote (table, column, index name, etc.).</param>
+        /// <returns>Quoted identifier safe for SQL injection into SQL text.</returns>
+        internal static string QuoteIdentifier(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Identifier cannot be null or whitespace.", nameof(name));
+
+            // Per SQL standard / SQLite: double internal double-quotes and wrap in double-quotes.
+            return $"\"{name.Replace("\"", "\"\"")}\"";
+        }
 
         /// <summary>
         /// Returns the list of user table names discovered in the internal descriptor table.
@@ -778,7 +793,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="g">Source Guid.</param>
         /// <returns>16-byte array in RFC-4122 order.</returns>
-        public static byte[] ToRfc4122Bytes(this Guid g)
+        internal static byte[] ToRfc4122Bytes(this Guid g)
         {
             Span<byte> b = stackalloc byte[16];
             g.TryWriteBytes(b); // CLR layout

@@ -34,7 +34,6 @@ namespace SQLiteXM
         /// IMPORTANT:
         /// The key is derived from the entity type name. Entity classes in different namespaces
         /// MUST NOT share the same class name, or initialization collisions will occur.
-        /// If this constraint cannot be guaranteed, use the fully-qualified type name instead.
         /// </summary>
         private static readonly ConcurrentDictionary<string, Lazy<Task>> initTasks = new();
 
@@ -56,14 +55,28 @@ namespace SQLiteXM
         /// <summary>
         /// Primary key column. Mapped to the SQLite INTEGER PRIMARY KEY AUTOINCREMENT column named "id".
         /// </summary>
+        /// <remarks>
+        /// The database determines this value (AUTOINCREMENT). The ORM reads the generated rowid
+        /// (using SQLite's last_insert_rowid on the same connection/transaction) and populates this
+        /// property immediately after an INSERT. Consumers must not assign this value; the setter is
+        /// internal to prevent external modification. The property is used by the ORM for existence
+        /// checks, WHERE clauses, and relationship linking.
+        /// </remarks>        
         [Column, PrimaryKey, Identity]
-        public virtual long id { get; set; }
+        public virtual long id { get; internal set; }
 
         /// <summary>
         /// Optional synchronization identifier stored in the database as a BLOB.
         /// </summary>
+        /// <remarks>
+        /// This value is managed by the ORM for synchronization purposes. The ORM may generate or
+        /// update the value after insert/update operations and will populate the property from the
+        /// database. Consumers may read this value but must not set it; the setter is internal to
+        /// prevent accidental external modification. Do not rely on setting this property prior to
+        /// Save() unless the ORM is explicitly configured to include it in INSERT statements.
+        /// </remarks>
         [Column(DataType = DataType.Blob)]
-        public virtual Guid? synchId { get; set; }
+        public virtual Guid? synchId { get; internal set; }
 
         // Needs to throw an exception if databaseName is invalid.
         /// <summary>
@@ -107,7 +120,7 @@ namespace SQLiteXM
         /// </summary>
         private void initialize()
         {
-            // NOTE: Entity class names must be globally unique across namespaces.
+            // NOTE: Entity class names must be globally unique across namespaces. Do not drop columns until after processing indexes/triggers.
             string tableName = GetType().Name;
 
             lock (lockObject)
@@ -121,7 +134,9 @@ namespace SQLiteXM
                         var props = getEntityProperties();
                         getColumnNamesAndDataTypes(props);
 
-                        await createTable().ConfigureAwait(false);
+                        bool newTable;
+                        if(!(newTable = await createTable().ConfigureAwait(false)))  // Create the table if it does not already exist.
+                            await addColumns(); // If this is an already existing table in the DB, check to see if new columns were added.
 
                         var std = new List<string>();
                         var uniq = new List<string>();
@@ -129,8 +144,11 @@ namespace SQLiteXM
 
                         await processIndexStatements(IndexType.standard, std).ConfigureAwait(false);
                         await processIndexStatements(IndexType.unique, uniq).ConfigureAwait(false);
-
                         await processtriggerAttributes().ConfigureAwait(false);
+
+                        // If this is an already existing table in the DB, drop columns now that everything else has been reconciled.
+                        if (!newTable)
+                            await dropColumns().ConfigureAwait(false);
                     }),
                     LazyThreadSafetyMode.ExecutionAndPublication
                 )
@@ -282,6 +300,7 @@ namespace SQLiteXM
         {
             Type type = this.GetType();
             string tableName = type.Name;
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             // The per-type column map must already exist. Fail fast if not.
             if (!columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
@@ -291,12 +310,29 @@ namespace SQLiteXM
             // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
             insertGuidDict.GetOrAdd(tableName, _ =>
             {
-                var columns = perTypeColumns.Keys.Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase)).ToArray();
+                var columns = perTypeColumns.Keys
+                .Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(k => k, StringComparer.Ordinal)
+                .ToArray();
 
+                string insertStatement;
+                if (columns.Length == 0)
+                {
+                    insertStatement = $"INSERT INTO {quotedTable} DEFAULT VALUES";
+                }
+                else
+                {
+                    string insertColumns = string.Join(", ", columns.Select(c => SxmHelpers.QuoteIdentifier(c)));
+                    string insertValues = string.Join(", ", columns.Select(c => "@" + c));
+                    insertStatement = $"INSERT INTO {quotedTable} ({insertColumns}) VALUES ({insertValues})";
+                }
+
+                /*
                 string insertColumns = string.Join(", ", columns);
                 string insertValues = string.Join(", ", columns.Select(c => "@" + c));
-
                 string insertStatement = string.Format("INSERT INTO {0} ({1}) VALUES ({2})", tableName, insertColumns, insertValues);
+                */
+
                 string newGuid = Guid.NewGuid().ToString();
                 SxmSqlStatements.addInsertDefinition(newGuid, tableName, insertStatement);
                 return newGuid;
@@ -309,6 +345,7 @@ namespace SQLiteXM
         private void buildUpdateSql()
         {
             string tableName = this.GetType().Name;
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             // The per-type column map must already exist. Fail fast if not.
             if (!columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
@@ -317,12 +354,19 @@ namespace SQLiteXM
             // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
             updateGuidDict.GetOrAdd(tableName, _ =>
             {
-                var columns = perTypeColumns.Keys.Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase)).ToArray();
+                var columns = perTypeColumns.Keys
+                .Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(k => k, StringComparer.Ordinal)
+                .ToArray();
 
-                string setClause = string.Join(", ", columns.Select(c => $"{c}=@{c}"));
-
-                string updateStatement = string.Format("UPDATE {0} SET {1} WHERE id=@id", tableName, setClause);
+                string setClause = string.Join(", ", columns.Select(c => $"{SxmHelpers.QuoteIdentifier(c)}=@{c}"));
+                string updateStatement = $"UPDATE {quotedTable} SET {setClause} WHERE {SxmHelpers.QuoteIdentifier("id")}=@id";
                 string newGuid = Guid.NewGuid().ToString();
+
+
+                /*string setClause = string.Join(", ", columns.Select(c => $"{c}=@{c}"));
+                string updateStatement = string.Format("UPDATE {0} SET {1} WHERE id=@id", tableName, setClause);
+                string newGuid = Guid.NewGuid().ToString();*/
 
                 SxmSqlStatements.addUpdateDefinition(newGuid, tableName, updateStatement);
                 return newGuid;
@@ -335,6 +379,7 @@ namespace SQLiteXM
         private void buildDeleteSql()
         {
             string tableName = this.GetType().Name;
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             // The per-type column map should exist; if not, fail fast so callers can fix initialization ordering.
             if (!columnNameAndTypeDict.TryGetValue(tableName, out _))
@@ -342,7 +387,8 @@ namespace SQLiteXM
 
             deleteGuidDict.GetOrAdd(tableName, _ =>
             {
-                string deleteStatement = string.Format("DELETE FROM {0} WHERE id=@id", tableName);
+                string deleteStatement = $"DELETE FROM {quotedTable} WHERE {SxmHelpers.QuoteIdentifier("id")}=@id";
+                //string deleteStatement = string.Format("DELETE FROM {0} WHERE id=@id", tableName);
                 string newGuid = Guid.NewGuid().ToString();
 
                 SxmSqlStatements.addDeleteDefinition(newGuid, tableName, deleteStatement);
@@ -365,7 +411,7 @@ namespace SQLiteXM
                     List<string> ExistingTriggers = await SxmInit.getAllTriggers(sxmTransaction.Connection, tableName);
                     foreach (string existingTrigger in ExistingTriggers)
                     {
-                        await sxmTransaction.executeCreateTriggerAsync(string.Format("DROP TRIGGER {0}", existingTrigger));
+                        await sxmTransaction.executeCreateTriggerAsync($"DROP TRIGGER {SxmHelpers.QuoteIdentifier(existingTrigger)}");
                     }
 
                     await sxmTransaction.commitTransactionAsync();
@@ -413,6 +459,7 @@ namespace SQLiteXM
             var type = this.GetType();
             string unique = string.Empty;
             string tableName = type.Name;
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             IIndexVars[]? firstArray = default(IIndexVars[]);
             IIndexVars[]? secondArray = default(IIndexVars[]);
@@ -448,7 +495,11 @@ namespace SQLiteXM
                 {
                     if (!existingIndexes.Contains(myAttribute.indexName))
                     {
-                        string[] indexes = myAttribute.indexFields;
+                        string indexFields = string.Join(", ", myAttribute.indexFields.Select(f => SxmHelpers.QuoteIdentifier(f)));
+                        string createIndexSql = $"CREATE {unique} INDEX {SxmHelpers.QuoteIdentifier(myAttribute.indexName)} ON {quotedTable} ({indexFields})";
+                        indexSqlStatements.Add(createIndexSql);
+
+/*                        string[] indexes = myAttribute.indexFields;
                         string indexFields = string.Empty;
                         int i = 0;
                         foreach (string indexField in indexes)
@@ -461,6 +512,7 @@ namespace SQLiteXM
                         }
 
                         indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", unique, myAttribute.indexName, tableName, indexFields));
+*/
                     }
                 }
 
@@ -478,7 +530,8 @@ namespace SQLiteXM
                     }
 
                     if (!found)
-                        indexSqlStatements.Add(string.Format("DROP INDEX {0}", indexName));
+                        indexSqlStatements.Add($"DROP INDEX {SxmHelpers.QuoteIdentifier(indexName)}");
+//                    indexSqlStatements.Add(string.Format("DROP INDEX {0}", indexName));
                 }
 
                 if (indexSqlStatements.Count > 0)
@@ -536,10 +589,11 @@ namespace SQLiteXM
             try
             {
                 string tableName = this.GetType().Name;
+                string pragma = $"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})";
 
                 await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
                 {
-                    await sxmTransaction.Connection.executeQueryAsync(String.Format("PRAGMA index_list({0})", tableName), null as List<object>);
+                    await sxmTransaction.Connection.executeQueryAsync(pragma, null as List<object>);
 
                     while (sxmTransaction.Connection.nextRow() == true)
                     {
@@ -565,10 +619,11 @@ namespace SQLiteXM
         /// <summary>
         /// Ensure table columns in the database match the type definition. Adds missing columns and removes extraneous ones.
         /// </summary>
-        private async Task reconcileTableColumns()
+        private async Task addColumns()
         {
             Type type = this.GetType();
             string tableName = type.Name;
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.getTableColumnNames(databaseName, tableName);
 
@@ -578,21 +633,7 @@ namespace SQLiteXM
                 {
                     if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
                     {
-                        string alterDefinition = string.Format("ALTER TABLE {0} ADD {1} {2}", tableName, kvp.Key, kvp.Value);
-
-                        if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
-                        {
-                            for (int i = 0; i < foreignKeyAttributeList.Count; i++)
-                            {
-                                var attribute = foreignKeyAttributeList[i];
-                                if (kvp.Key.Equals(attribute.fieldName))
-                                {
-                                    alterDefinition += $" CONSTRAINT fk_{attribute.fieldName} REFERENCES {attribute.foreignTable}(id)";
-                                    foreignKeyAttributeList.RemoveAt(i);
-                                    break;
-                                }
-                            }
-                        }
+                        string alterDefinition = $"ALTER TABLE {quotedTable} ADD COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}";
 
                         await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
                         {
@@ -611,12 +652,28 @@ namespace SQLiteXM
                         SxmInit.addColumnNameType(tableName, kvp.Key, value);
                     }
                 }
+            }
+            catch { }
+            finally
+            {
+            }
+        }
 
+        private async Task dropColumns()
+        {
+            Type type = this.GetType();
+            string tableName = type.Name;
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+            Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.getTableColumnNames(databaseName, tableName);
+
+            try
+            {
                 foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
                 {
                     if (!columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
                     {
-                        string alterDefinition = string.Format("ALTER TABLE {0} DROP {1}", tableName, kvp.Key);
+                        string alterDefinition = $"ALTER TABLE {quotedTable} DROP COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)}";
                         await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
                         {
                             await sxmTransaction1.executeAlterTableAsync(alterDefinition);
@@ -666,7 +723,7 @@ namespace SQLiteXM
                 {
                     string tableName = this.GetType().Name;
 
-                    string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = ?", tableName);
+                    string sqlSelect = $"SELECT {SxmHelpers.QuoteIdentifier("id")} FROM {SxmHelpers.QuoteIdentifier(tableName)} WHERE {SxmHelpers.QuoteIdentifier("id")} = @p0";
                     await conn.executeQueryAsync(sqlSelect, new List<object> { id }).ConfigureAwait(false);
                     if (conn.hasRows() == true)
                         return true;
@@ -689,7 +746,7 @@ namespace SQLiteXM
                     string tableName = this.GetType().Name;
 
                     sxmConnection = new SxmConnection(databaseName);
-                    string sqlSelect = string.Format("SELECT id FROM {0} WHERE id = ?", tableName);
+                    string sqlSelect = $"SELECT {SxmHelpers.QuoteIdentifier("id")} FROM {SxmHelpers.QuoteIdentifier(tableName)} WHERE {SxmHelpers.QuoteIdentifier("id")} = @p0";
                     await sxmConnection.executeQueryAsync(sqlSelect, new List<object> { id }).ConfigureAwait(false);
                     if (sxmConnection.hasRows() == true)
                         return true;
@@ -736,33 +793,44 @@ namespace SQLiteXM
         /// <summary>
         /// Create the table for the current type if it does not exist; otherwise reconcile columns.
         /// </summary>
-        private async Task createTable()
+        private async Task<bool> createTable()
         {
+            bool tableCreated = false;
             string tableName = this.GetType().Name;
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             if (!await SxmInit.doesTableExist(tableName, default(SxmConnection)))
             {
-                string tableStatement = String.Format("CREATE TABLE {0} (id INTEGER PRIMARY KEY AUTOINCREMENT", tableName);
+                // Build CREATE TABLE with quoted identifiers.
+                tableCreated = true;
+                var sb = new System.Text.StringBuilder();
+                sb.Append($"CREATE TABLE {quotedTable} (");
+                sb.Append($"{SxmHelpers.QuoteIdentifier("id")} INTEGER PRIMARY KEY AUTOINCREMENT");
 
                 foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[tableName])
-                    tableStatement += string.Format(", {0} {1}", kvp.Key, kvp.Value);
+                {
+                    sb.Append(", ");
+                    sb.Append($"{SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}");
+                }
 
                 if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
                 {
                     foreach (ForeignKeyAttributes attribute in foreignKeyAttributeList)
-                        tableStatement += $", FOREIGN KEY({attribute.fieldName}) REFERENCES {attribute.foreignTable}(id)";
+                    {
+                        sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable)}({SxmHelpers.QuoteIdentifier("id")})");
+                    }
 
                     foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
                 }
 
-                tableStatement += ")";
+                sb.Append(")");
 
-                SxmSqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, tableName), tableStatement);
+                SxmSqlStatements.addTableDefinition(string.Format("{0}.{1}", this.databaseName, tableName), sb.ToString());
                 await SxmInit.createTable(this.databaseName, tableName);
                 SxmSqlStatements.removeTableDefinitions();
             }
-            else
-                await reconcileTableColumns();
+
+            return tableCreated;
         }
 
         /// <summary>
@@ -1016,14 +1084,5 @@ namespace SQLiteXM
 
         private static bool IsIgnored(string name) => string.Equals(name, "id", StringComparison.OrdinalIgnoreCase) || 
                                                       string.Equals(name, "synchId", StringComparison.OrdinalIgnoreCase);
-
-        private static string QuoteIdentifier(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Identifier cannot be null or whitespace.", nameof(name));
-
-            // Per SQL standard / SQLite: double internal double-quotes and wrap in double-quotes.
-            return $"\"{name.Replace("\"", "\"\"")}\"";
-        }
     }
 }
