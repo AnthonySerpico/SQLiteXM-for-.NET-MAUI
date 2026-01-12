@@ -336,46 +336,147 @@ namespace SQLiteXM
         private static string databaseName = string.Empty;
 
         /// <summary>
-        /// Parse SQL statements from a StreamReader. Convenience wrapper that reads the entire stream then parses the string.
+        /// Parse SQL statements from a stream that contains either a JSON or XML SQL-statements file and populate
+        /// the internal <see cref="SxmSqlStatements"/> registry.
         /// </summary>
-        /// <param name="sqlStatementAssets">StreamReader containing the SQL statements file contents.</param>
+        /// <param name="sqlStatementAssets">Stream that contains the JSON or XML document. Must not be null.</param>
+        /// <param name="sqlStatementsFileType">
+        /// The expected file type of the stream. When set to <see cref="SxmDefines.SqlStatementsFileType.unknown"/>
+        /// the method attempts format detection and will try JSON and XML parsing heuristically.
+        /// </param>
         /// <returns>True when parsing completes successfully (throws on error).</returns>
-        public static bool Parse(StreamReader sqlStatementAssets)
-        {
-            string sqlStatements = sqlStatementAssets.ReadToEnd();
-            return Parse(sqlStatements);
-        }
-
-        /// <summary>
-        /// Parse SQL statements from a Stream with an explicitly provided file type (json or xml).
-        /// Populates internal SqlStatements registry according to parsed entries.
-        /// </summary>
-        /// <param name="sqlStatementAssets">Stream that contains the JSON or XML document.</param>
-        /// <param name="sqlStatementsFileType">Indicates whether the stream is JSON or XML.</param>
-        /// <returns>True when parsing completes successfully (throws on error).</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="sqlStatementAssets"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when the content cannot be parsed as the explicitly requested format, or when autodetection
+        /// fails to identify a valid JSON or XML document.
+        /// </exception>
+        /// <exception cref="AggregateException">
+        /// When autodetection is used and both JSON and XML parsing fail, an <see cref="AggregateException"/>
+        /// is thrown containing both parser exceptions as inner exceptions for diagnostics.
+        /// </exception>
+        /// <remarks>
+        /// Implementation notes:
+        /// - The method reads the stream into a string once so both parsers can be attempted safely (avoids stream-position/EOF issues).
+        /// - JSON deserialization is performed with case-insensitive property name matching to be more tolerant of input.
+        /// - XML deserialization uses an <see cref="System.Xml.XmlReader"/> with DTD processing prohibited to reduce attack surface (XXE).
+        /// - If the caller supplies an explicit format (json or xml) only that parser is attempted and its exception is propagated.
+        /// - When <see cref="SxmDefines.SqlStatementsFileType.unknown"/> a small heuristic (first non-whitespace character)
+        ///   is used to prefer XML ('&lt;') or JSON ('{' or '[') before falling back to the other parser.
+        /// - This method mutates static fields (for example <c>databaseName</c> and <c>versionNumber</c>) and is not thread-safe.
+        ///   Callers should synchronize if concurrent parses are possible.
+        /// </remarks>
         public static bool Parse(Stream sqlStatementAssets, SxmDefines.SqlStatementsFileType sqlStatementsFileType)
         {
-            JsonSerializerOptions options = new JsonSerializerOptions
+            if (sqlStatementAssets == null)
+                throw new ArgumentNullException(nameof(sqlStatementAssets));
+
+            if (sqlStatementAssets.CanSeek)
+                sqlStatementAssets.Seek(0, System.IO.SeekOrigin.Begin);
+
+            string content;
+            using (var reader = new System.IO.StreamReader(sqlStatementAssets, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true))
             {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,  // Set camelCase
+                content = reader.ReadToEnd();
+            }
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
             };
 
-            if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.json)
+            Exception? jsonEx = null;
+            Exception? xmlEx = null;
+
+            bool TryParseJson()
             {
-                RootJson? rootJson = JsonSerializer.Deserialize<RootJson>(sqlStatementAssets, options);
-                processJson(rootJson);
-            }
-            else
-            {
-                if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.xml)
+                try
                 {
-                    RootXml? rootXml = (RootXml?)(new XmlSerializer(typeof(RootXml))).Deserialize(sqlStatementAssets);
-                    processXml(rootXml);
+                    RootJson? rootJson = JsonSerializer.Deserialize<RootJson>(content, jsonOptions);
+                    processJson(rootJson);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    jsonEx = ex;
+                    return false;
                 }
             }
 
-            return true;
+            bool TryParseXml()
+            {
+                try
+                {
+                    var serializer = new XmlSerializer(typeof(RootXml));
+                    var settings = new System.Xml.XmlReaderSettings
+                    {
+                        DtdProcessing = System.Xml.DtdProcessing.Prohibit
+                    };
+
+                    using (var sr = new System.IO.StringReader(content))
+                    using (var xr = System.Xml.XmlReader.Create(sr, settings))
+                    {
+                        RootXml? rootXml = (RootXml?)serializer.Deserialize(xr);
+                        processXml(rootXml);
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    xmlEx = ex;
+                    return false;
+                }
+            }
+
+            if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.json)
+            {
+                if (!TryParseJson())
+                    throw jsonEx ?? new ArgumentException("Invalid JSON SQL statements file.");
+                return true;
+            }
+
+            if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.xml)
+            {
+                if (!TryParseXml())
+                    throw xmlEx ?? new ArgumentException("Invalid XML SQL statements file.");
+                return true;
+            }
+
+            // unknown: prefer a heuristic, then fall back
+            char firstNonWs = '\0';
+            for (int i = 0; i < content.Length; i++)
+            {
+                if (!char.IsWhiteSpace(content[i]))
+                {
+                    firstNonWs = content[i];
+                    break;
+                }
+            }
+
+            if (firstNonWs == '<')
+            {
+                if (TryParseXml()) return true;
+                if (TryParseJson()) return true;
+            }
+            else if (firstNonWs == '{' || firstNonWs == '[')
+            {
+                if (TryParseJson()) return true;
+                if (TryParseXml()) return true;
+            }
+            else
+            {
+                if (TryParseJson()) return true;
+                if (TryParseXml()) return true;
+            }
+
+            throw new ArgumentException(
+                "Invalid SQL statements file. The SQL statements file must be valid JSON or XML.",
+                new AggregateException(
+                    jsonEx ?? new Exception("JSON parse failed."),
+                    xmlEx ?? new Exception("XML parse failed.")
+                )
+            );
         }
+
 
         /// <summary>
         /// Process a deserialized XML root object and register each found SQL definition into SqlStatements.
@@ -487,143 +588,6 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Parse SQL statements from a single combined string using header delimiters.
-        /// This method looks for header blocks (database, version, table, etc.) and dispatches to handlers.
-        /// </summary>
-        /// <param name="sqlStatements">The combined SQL statements file content.</param>
-        /// <returns>True when parsing completes successfully (throws on error).</returns>
-        public static bool Parse(string sqlStatements)
-        {
-            int searchOffset = 0;
-
-            while ((searchOffset = getHeader(searchOffset, sqlStatements)) != -1) { }
-            return true;
-        }
-
-        /// <summary>
-        /// Finds the next header delimited by the configured open/close delimiters and parses it.
-        /// </summary>
-        /// <param name="searchOffset">Position in the string to start searching.</param>
-        /// <param name="sqlStatements">The combined SQL statements content.</param>
-        /// <returns>The index immediately after the parsed header block, or -1 when none remain.</returns>
-        private static int getHeader(int searchOffset, string sqlStatements)
-        {
-            int index = sqlStatements.IndexOf(SxmDefines.openStatementDelimeter, searchOffset);
-            if (index != -1)
-            {
-                int sIndex = index + 1;
-                index = sqlStatements.IndexOf(SxmDefines.closeStatementDelimeter, sIndex);
-                if (index != -1)
-                {
-                    if (sIndex == index)
-                        throw new SxmException(SxmErrorMessages.error["missingSQLStatementHeader"]);
-
-                    string header = sqlStatements.Substring(sIndex, index - sIndex).Trim();
-                    index = parseHeader(header, index + 1, sqlStatements);
-                }
-                else
-                    throw new SxmException(SxmErrorMessages.error["invalidSQLStatementFile"]);
-            }
-
-            return index;
-        }
-
-        /// <summary>
-        /// Dispatches parsing based on the header string (e.g. "database", "table", "select").
-        /// </summary>
-        /// <param name="header">Lower-case header token.</param>
-        /// <param name="index">Current index in the source string (position after header).</param>
-        /// <param name="sqlStatements">The combined SQL statements content.</param>
-        /// <returns>Index after the processed header block.</returns>
-        private static int parseHeader(string header, int index, string sqlStatements)
-        {
-            header = header.ToLower();
-
-            switch (header)
-            {
-                case "database":
-                    index = getDatabaseName(index, sqlStatements, ref databaseName);
-                    break;
-
-                case "version":
-                    checkDatabaseName();
-                    index = getVersionNumber(index, sqlStatements);
-                    break;
-
-                case "table":
-                    checkDatabaseName();
-                    index = processTableStatements(index, sqlStatements);
-                    break;
-
-                case "trigger":
-                    checkDatabaseName();
-                    index = processTriggerStatements(index, sqlStatements);
-                    break;
-
-                case "insert":
-                    checkDatabaseName();
-                    index = processInsertStatements(index, sqlStatements);
-                    break;
-
-                case "alter":
-                    checkDatabaseName();
-                    index = processAlterStatements(index, sqlStatements);
-                    break;
-
-                case "index":
-                    checkDatabaseName();
-                    index = processIndexStatements(index, sqlStatements);
-                    break;
-
-                case "select":
-                case "update":
-                case "delete":
-                    checkDatabaseName();
-                    index = processStatement(index, header, sqlStatements);
-                    break;
-
-                default:
-                    throw new SxmException(new ErrorMessage("unknownSQLStatementHeader", header));
-            }
-
-            return index;
-        }
-
-        /// <summary>
-        /// Ensure a database name has been parsed before parsing other content.
-        /// </summary>
-        private static void checkDatabaseName()
-        {
-            if (string.IsNullOrEmpty(databaseName))
-                throw new SxmException(new ErrorMessage("missingDatabaseName", databaseName));
-        }
-
-        /// <summary>
-        /// Reads the database name from the current position using getCommand and validates it.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="name">Source string containing commands.</param>
-        /// <param name="databaseName">Reference to the databaseName field to populate.</param>
-        /// <returns>Index position after reading the database name block.</returns>
-        private static int getDatabaseName(int index, string name, ref string databaseName)
-        {
-            CommandReturn? commandReturn = default(CommandReturn);
-
-            do
-            {
-                commandReturn = getCommand(index, name);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the version statement.
-                    break;
-
-                databaseName = commandReturn.command.Trim();
-            } while (true);
-
-            checkValidDatabaseName();
-            return index;
-        }
-
-        /// <summary>
         /// Validate the parsed database name for invalid filesystem characters or emptiness.
         /// </summary>
         private static void checkValidDatabaseName()
@@ -631,321 +595,6 @@ namespace SQLiteXM
             char[] pattern = Path.GetInvalidFileNameChars();
             if (databaseName.Any(pattern.Contains) || string.IsNullOrEmpty(databaseName))
                 throw new SxmException(new ErrorMessage("invalidDBName", databaseName));
-        }
-
-        /// <summary>
-        /// Read and parse the version number block from the source. Validates numeric format and non-negative value.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="versionStatement">Source content string.</param>
-        /// <returns>Index position after processing the version block.</returns>
-        private static int getVersionNumber(int index, string versionStatement)
-        {
-            CommandReturn commandReturn = null;
-            string version = string.Empty;
-
-            do
-            {
-                commandReturn = getCommand(index, versionStatement);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the version statement.
-                    break;
-
-                version = commandReturn.command;
-            } while (true);
-
-            try
-            {
-                if (!string.IsNullOrEmpty(versionStatement))
-                {
-                    versionNumber = Convert.ToInt32(version);
-                    if (versionNumber < 0)
-                        throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
-                }
-            }
-            catch (System.FormatException)
-            {
-
-                if (version != null)
-                    version = "(is blank)";
-
-                throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
-            }
-            return index;
-        }
-
-        /// <summary>
-        /// Parse consecutive table definition triplets: table name, create statement, synch option.
-        /// Adds each table to the SqlStatements registry.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="sqlStatements">Source content string.</param>
-        /// <returns>Index position after the table block.</returns>
-        private static int processTableStatements(int index, string sqlStatements)
-        {
-            CommandReturn commandReturn = null;
-            string tableName;
-            string sqlStatement;
-            int synch;
-
-            do
-            {
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the table statements.
-                    break;
-                tableName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // The table create statement cannot be empty.
-                {
-                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", "TABLE"));
-                }
-                sqlStatement = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // The synch statement cannot be empty.
-                {
-                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", "TABLE"));
-                }
-                synch = parseSynchCommand(commandReturn.command.ToLower());
-
-                SxmSqlStatements.addTableDefinition(databaseName + "." + tableName, sqlStatement, synch);
-            } while (true);
-
-            return index;
-        }
-
-        /// <summary>
-        /// Parse insert statement blocks of the form: dbName, tableName, sqlStatement.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="sqlStatements">Source content string.</param>
-        /// <returns>Index position after the insert block.</returns>
-        private static int processInsertStatements(int index, string sqlStatements)
-        {
-            CommandReturn commandReturn = null;
-            string sqlStatement;
-            string tableName;
-            string dbName;
-
-            do
-            {
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the insert statements.
-                    break;
-                dbName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                tableName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // The SQL insert statement cannot be empty.
-                {
-                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", "INSERT"));
-                }
-                sqlStatement = commandReturn.command;
-
-                SxmSqlStatements.addInsertDefinition(dbName, tableName, sqlStatement);
-            } while (true);
-
-            return index;
-        }
-
-        /// <summary>
-        /// Parse alter statement blocks of the form: columnName, tableName, sqlStatement.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="sqlStatements">Source content string.</param>
-        /// <returns>Index position after the alter block.</returns>
-        private static int processAlterStatements(int index, string sqlStatements)
-        {
-            CommandReturn commandReturn = null;
-            string tableName;
-            string sqlStatement;
-            string columnName;
-
-            do
-            {
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the alter statements.
-                    break;
-                columnName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                tableName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // The SQL insert statement cannot be empty.
-                {
-                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", "ALTER"));
-                }
-                sqlStatement = commandReturn.command;
-
-                SxmSqlStatements.addAlterDefinition(databaseName + "." + tableName, columnName, sqlStatement);
-            } while (true);
-
-            return index;
-        }
-
-        /// <summary>
-        /// Parse trigger statement blocks of the form: triggerName, sqlStatement.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="sqlStatements">Source content string.</param>
-        /// <returns>Index position after the trigger block.</returns>
-        private static int processTriggerStatements(int index, string sqlStatements)
-        {
-            CommandReturn commandReturn = null;
-            string sqlStatement;
-            string triggerName;
-
-            do
-            {
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the trigger statements.
-                    break;
-                triggerName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // The SQL trigger statement cannot be empty.
-                {
-                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", "TRIGGER"));
-                }
-                sqlStatement = commandReturn.command;
-
-                SxmSqlStatements.addTriggerDefinition(databaseName, triggerName, sqlStatement);
-            } while (true);
-
-            return index;
-        }
-
-        /// <summary>
-        /// Parse index statement blocks of the form: indexName, tableName, sqlStatement.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="sqlStatements">Source content string.</param>
-        /// <returns>Index position after the index block.</returns>
-        private static int processIndexStatements(int index, string sqlStatements)
-        {
-            CommandReturn commandReturn = null;
-            string tableName;
-            string sqlStatement;
-            string indexName;
-
-            do
-            {
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the index statements.
-                    break;
-                indexName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                tableName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // The SQL insert statement cannot be empty.
-                {
-                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", "INDEX"));
-                }
-                sqlStatement = commandReturn.command;
-
-                SxmSqlStatements.addIndexDefinition(databaseName + "." + tableName, indexName, sqlStatement);
-            } while (true);
-
-            return index;
-        }
-
-        /// <summary>
-        /// Generic parser used for select/update/delete statements composed of: statementName, tableName, sqlStatement.
-        /// </summary>
-        /// <param name="index">Current index in the source string.</param>
-        /// <param name="header">Header type ("select", "update", "delete").</param>
-        /// <param name="sqlStatements">Source content string.</param>
-        /// <returns>Index position after the statement block.</returns>
-        private static int processStatement(int index, string header, string sqlStatements)
-        {
-            CommandReturn commandReturn = null;
-            string tableName = default(string);
-            string sqlStatement;
-            string sqlName;
-
-            do
-            {
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // Were finished processing the select statements.
-                    break;
-                sqlName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                tableName = commandReturn.command;
-
-                commandReturn = getCommand(index, sqlStatements);
-                index = commandReturn.index;
-                if (commandReturn.command.Length == 0) // The SQL select statement cannot be empty.
-                {
-                    throw new SxmException(new ErrorMessage("invalidSQLStatementDefinition", header));
-                }
-                sqlStatement = commandReturn.command;
-
-                if (header.Equals("select") == true)
-                    SxmSqlStatements.addSelectDefinition(sqlName, tableName, sqlStatement);
-                if (header.Equals("delete") == true)
-                    SxmSqlStatements.addDeleteDefinition(sqlName, tableName, sqlStatement);
-                if (header.Equals("update") == true)
-                    SxmSqlStatements.addUpdateDefinition(sqlName, tableName, sqlStatement);
-            } while (true);
-
-            return index;
-        }
-
-        /// <summary>
-        /// Retrieve the next delimited command token from the supplied string starting at the specified index.
-        /// This function expects tokens to be surrounded by Defines.openStatementDelimeter and Defines.closeStatementDelimeter.
-        /// </summary>
-        /// <param name="index">Start index for searching the open delimiter.</param>
-        /// <param name="sqlStatements">Source content string.</param>
-        /// <returns>A CommandReturn containing the parsed token and the index after the close delimiter.</returns>
-        private static CommandReturn getCommand(int index, string sqlStatements)
-        {
-            CommandReturn commandReturn = new CommandReturn();
-
-            index = sqlStatements.IndexOf(SxmDefines.openStatementDelimeter, index);
-            if (index != -1)
-            {
-                int sIndex = index + 1;
-                index = sqlStatements.IndexOf(SxmDefines.closeStatementDelimeter, sIndex);
-                if (index != -1)
-                {
-                    if (sIndex != index)
-                        commandReturn.command = sqlStatements.Substring(sIndex, index - sIndex).Trim();
-                    else
-                        commandReturn.command = string.Empty;
-
-                    commandReturn.index = index + 1;
-                }
-                else
-                    throw new SxmException(SxmErrorMessages.error["invalidSQLStatementFile"]);
-            }
-            else
-                throw new SxmException(SxmErrorMessages.error["invalidSQLStatementFile"]);
-
-            return commandReturn;
         }
 
         /// <summary>

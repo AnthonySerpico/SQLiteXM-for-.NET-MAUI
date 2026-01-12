@@ -66,6 +66,33 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Determines whether the provided file path refers to a JSON or XML SQL statements file.
+        /// </summary>
+        /// <param name="filePath">The file path or name to inspect.</param>
+        /// <returns>Returns <see cref="SqlStatementsFileType.json"/>, <see cref="SqlStatementsFileType.xml"/>, or <see cref="SqlStatementsFileType.unknown"/>.</returns>
+        internal static SqlStatementsFileType GetSqlStatementsFileType(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return SqlStatementsFileType.unknown;
+            }
+
+            var ext = System.IO.Path.GetExtension(filePath);
+            if (string.IsNullOrEmpty(ext))
+            {
+                return SqlStatementsFileType.unknown;
+            }
+
+            ext = ext.TrimStart('.').ToLowerInvariant();
+            return ext switch
+            {
+                "json" or "jsn" => SqlStatementsFileType.json,
+                "xml" => SqlStatementsFileType.xml,
+                _ => SqlStatementsFileType.unknown
+            };
+        }
+
+        /// <summary>
         /// Attempts to register a runtime association (navigation property) for a foreign key.
         /// Conditions:
         /// 1. Navigation property CLR type name must match <paramref name="targetTableName"/>.

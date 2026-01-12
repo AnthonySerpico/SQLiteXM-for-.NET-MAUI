@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
+using static SQLiteXM.SxmDefines;
 //using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
@@ -34,9 +35,9 @@ namespace SQLiteXM
         /// <param name="SqlStatementsFileName">Path to the SQL statements file (absolute or relative).</param>
         /// <param name="fileType">Format of the SQL statements file.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        public static async Task initDB(string SqlStatementsFileName, SxmDefines.SqlStatementsFileType fileType)
+        public static async Task initDB(string SqlStatementsFileName)
         {
-            await parseSqlStatementsFile(SqlStatementsFileName, fileType).CAF();
+            await parseSqlStatementsFile(SqlStatementsFileName).CAF();
             await SxmInit.initialize();
         }
 
@@ -46,9 +47,9 @@ namespace SQLiteXM
         /// <param name="stream">Open, readable stream containing SQL statement definitions.</param>
         /// <param name="fileType">Format of the SQL statements contained in the stream.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        public static async Task initDB(Stream stream, SxmDefines.SqlStatementsFileType fileType)
+        public static async Task initDB(Stream stream)
         {
-            await parseSqlStatementsFile(stream, fileType).CAF();
+            await parseSqlStatementsFile(stream, SqlStatementsFileType.unknown).CAF();
             await SxmInit.initialize();
         }
 
@@ -61,7 +62,7 @@ namespace SQLiteXM
         /// <param name="fileType">The format of the SQL definitions (json, xml, or txt).</param>
         /// <exception cref="ArgumentNullException">fileName is null or whitespace.</exception>
         /// <exception cref="FileNotFoundException">The resolved file cannot be found.</exception>
-        private static async Task parseSqlStatementsFile(string fileName, SxmDefines.SqlStatementsFileType fileType)
+        private static async Task parseSqlStatementsFile(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentNullException(nameof(fileName));
@@ -71,6 +72,11 @@ namespace SQLiteXM
             if (!File.Exists(fullPath))
                 throw new FileNotFoundException(
                     $"The SQL statements file '{fileName}' could not be found. Resolved path: {fullPath}", fullPath);
+
+            SqlStatementsFileType fileType = SxmHelpers.GetSqlStatementsFileType(fullPath);
+            if (fileType == SqlStatementsFileType.unknown)
+                throw new ArgumentException(
+                    $"{fileName} is an unknown SQL statements file type. The SQL statements file must be JSON or XML.");
 
             using var stream = File.OpenRead(fullPath);
             await parseSqlStatementsFile(stream, fileType).CAF();
@@ -98,10 +104,9 @@ namespace SQLiteXM
                     SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.xml);
                     break;
 
-                case SxmDefines.SqlStatementsFileType.txt:
+                case SxmDefines.SqlStatementsFileType.unknown:
                 default:
-                    using (var reader = new StreamReader(stream, leaveOpen: false))
-                        SxmProcessSQLStatements.Parse(reader);
+                    SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.unknown);
                     break;
             }
 
@@ -204,7 +209,7 @@ namespace SQLiteXM
 
                     await applyTriggerTableStatements(connectionMap);
                     await dropEntitiesAsync();
-                    storeDbVersionNumber(sqlStatementsVersionNumber);
+                    await storeDbVersionNumber(sqlStatementsVersionNumber);
                     SxmAssociationMapper.InitializeAssociations();
                 }
             }

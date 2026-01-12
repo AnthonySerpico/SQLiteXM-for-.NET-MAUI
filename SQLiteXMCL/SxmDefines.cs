@@ -415,7 +415,7 @@
             /// <summary>
             /// Plain text file.
             /// </summary>
-            txt,
+            unknown,
 
             /// <summary>
             /// JSON file.

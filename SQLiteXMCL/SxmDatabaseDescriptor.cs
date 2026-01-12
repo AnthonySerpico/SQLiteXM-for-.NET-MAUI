@@ -116,6 +116,7 @@ namespace SQLiteXM
         {
             if (dbName == null) return null;
             dbDescriptors.TryGetValue(dbName, out var desc);
+
             return desc;
         }
 
@@ -126,8 +127,9 @@ namespace SQLiteXM
         public static ArrayList getDatabaseNames()
         {
             ArrayList dbNames = new ArrayList();
-            foreach (var key in dbDescriptors.Keys)
-                dbNames.Add(key);
+
+            foreach (string databaseName in dbDescriptors.Keys)
+                dbNames.Add(databaseName);
 
             return dbNames;
         }

@@ -297,6 +297,7 @@ namespace SQLiteXM
                 if (SxmConnection.implicitDatabaseName == null)
                 {
                     ArrayList dbNames = SxmDatabaseDescriptor.getDatabaseNames();
+
                     if (dbNames.Count != 1) // There must be only one descriptor in order to use implicit database naming.
                         throw new SxmException(SxmErrorMessages.error["noImplicitDBDescriptorExists"]);
                     else

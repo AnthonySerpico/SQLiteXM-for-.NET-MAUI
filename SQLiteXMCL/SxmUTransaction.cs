@@ -456,12 +456,39 @@ namespace SQLiteXM
         /// <summary>
         /// Attach all databases described by the DatabaseDescriptor collection to the current connection.
         /// </summary>
-        public void attachDatabase()
+        public async Task attachDatabase()
         {
             ArrayList databaseNames = SxmDatabaseDescriptor.getDatabaseNames();
 
             foreach (string databaseName in databaseNames)
-                attachDatabase(databaseName);
+                await attachDatabase(databaseName);
+        }
+
+        /// <summary>
+        /// Detach all attached databases. This is a best-effort, no-throw cleanup operation.
+        /// </summary>
+        public async Task detachDatabase()
+        {
+            try
+            {
+                await connection.executeQueryAsync("PRAGMA database_list", null as List<object>);
+
+                while (nextRow() == true)
+                {
+                    try
+                    {
+                        string? dbName = (string?)getValue("name");
+                        if (dbName?.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
+                            await detachDatabase(dbName);
+                    }
+                    catch (System.Exception) // Keep trying to detach all databases.
+                    {
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+            }
         }
 
         /// <summary>
@@ -496,33 +523,6 @@ namespace SQLiteXM
                 {
                     throw new SxmException(ex);
                 }
-            }
-        }
-
-        /// <summary>
-        /// Detach all attached databases. This is a best-effort, no-throw cleanup operation.
-        /// </summary>
-        public async Task detachDatabase()
-        {
-            try
-            {
-                await connection.executeQueryAsync("PRAGMA database_list", null as List<object>);
-
-                while (nextRow() == true)
-                {
-                    try
-                    {
-                        string? dbName = (string?)getValue("name");
-                        if (dbName?.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
-                            detachDatabase(dbName);
-                    }
-                    catch (System.Exception) // Keep trying to detach all databases.
-                    {
-                    }
-                }
-            }
-            catch (System.Exception)
-            {
             }
         }
 
