@@ -458,9 +458,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task attachDatabase()
         {
-            ArrayList databaseNames = SxmDatabaseDescriptor.getDatabaseNames();
-
-            foreach (string databaseName in databaseNames)
+            foreach (string databaseName in SxmDatabaseDescriptor.getDatabaseNames())
                 await attachDatabase(databaseName);
         }
 
@@ -501,13 +499,9 @@ namespace SQLiteXM
         {
             if (connection.DatabaseName.Equals(databaseName) == false)
             {
-                SxmDatabaseDescriptor? databaseDescriptor = SxmDatabaseDescriptor.getDescriptor(databaseName);
-                if (databaseDescriptor == null)
-                    throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName));
-
                 try
                 {
-                    string databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+                    string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
                     string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
 
                     if (File.Exists(dbFullyQualifiedPath) == true)
@@ -536,13 +530,9 @@ namespace SQLiteXM
         {
             if (connection.DatabaseName.Equals(databaseName) == false)
             {
-                SxmDatabaseDescriptor? databaseDescriptor = SxmDatabaseDescriptor.getDescriptor(databaseName);
-                if (databaseDescriptor == null)
-                    throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName));
-
                 try
                 {
-                    string databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+                    string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
                     string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
                     if (File.Exists(dbFullyQualifiedPath) == true)
                         await connection.executeNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);

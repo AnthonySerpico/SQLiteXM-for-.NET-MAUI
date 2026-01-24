@@ -1,5 +1,6 @@
 ﻿using LinqToDB;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 
 /// <summary>
@@ -8,8 +9,7 @@ using System.Linq.Expressions;
 /// the main app don't need to reference LinqToDB directly.
 /// </summary>
 /// <typeparam name="T">The entity type for the queryable table.</typeparam>
-public sealed class SxmTable<T> : IQueryable<T>
-    where T : class
+public sealed class SxmTable<T> : IQueryable<T> where T : class
 {
     private readonly IQueryable<T> _inner;
 
@@ -77,7 +77,18 @@ public sealed class SxmTable<T> : IQueryable<T>
     /// Callers that require LinqToDB-specific extensions can call this and check for <c>null</c>.
     /// </remarks>
     /// <returns>The underlying <see cref="ITable{T}"/> if the inner query implements it; otherwise <c>null</c>.</returns>
-    public ITable<T>? AsITable() => _inner as ITable<T>;
+    internal ITable<T>? AsITable() => _inner as ITable<T>;
+
+    /// <summary>
+    /// Try to obtain the underlying LinqToDB <see cref="ITable{T}"/>.
+    /// </summary>
+    /// <param name="table">When this method returns, contains the <see cref="ITable{T}"/> instance if available; otherwise <c>null</c>.</param>
+    /// <returns><c>true</c> if the underlying query implements <see cref="ITable{T}"/>; otherwise <c>false</c>.</returns>
+    internal bool TryGetITable([NotNullWhen(true)] out ITable<T>? table)
+    {
+        table = _inner as ITable<T>;
+        return table != null;
+    }
 
     // IQueryable<T> implementation - delegate to the underlying query
 

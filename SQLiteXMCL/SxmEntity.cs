@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.Intrinsics.Arm;
+using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM
@@ -49,7 +50,7 @@ namespace SQLiteXM
         // Column map per type: nested concurrent dictionary for safe concurrent reads/writes.
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> columnNameAndTypeDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
 
-        private string? databaseName = SxmConnection.ImplicitDatabaseName;
+        private string? databaseName;
         private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
         /// <summary>
@@ -63,7 +64,7 @@ namespace SQLiteXM
         /// checks, WHERE clauses, and relationship linking.
         /// </remarks>        
         [Column, PrimaryKey, Identity]
-        public virtual long id { get; internal set; }
+        public virtual long id { get; set; }
 
         /// <summary>
         /// Optional synchronization identifier stored in the database as a BLOB.
@@ -770,23 +771,15 @@ namespace SQLiteXM
         {
             if (this.databaseName == null)
             {
-                SxmConnection? sxmConnection = default(SxmConnection);
-
-                try
-                {
-                    sxmConnection = new SxmConnection(this.databaseName);  // Creates an implicit database name.
-                }
-                catch (Exception)
-                {
-                }
-                finally
-                {
-                    sxmConnection?.destroyConnection();
-
-                    this.databaseName = SxmConnection.ImplicitDatabaseName;
-                    if (this.databaseName == null)
-                        throw new InvalidDataException("The database name cannot be null.");
-                }
+                this.databaseName = SxmDatabaseDescriptor.DefaultDatabase;
+                if (this.databaseName == null)
+                    throw new InvalidDataException("A default database has not been configured in any of your SQL statements files.");
+            }
+            else
+            {
+                // Check if database name is in the list of databases.
+                if (!SxmDatabaseDescriptor.IsDatabaseDefined(databaseName))
+                    throw new InvalidDataException($"The database '{databaseName}' has not been configured. Check the spelling matches the database name in your SQL statements file.");
             }
         }
 
@@ -799,7 +792,11 @@ namespace SQLiteXM
             string tableName = this.GetType().Name;
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-            if (!await SxmInit.doesTableExist(tableName, default(SxmConnection)))
+            SxmConnection sxmConnection = new SxmConnection(databaseName);
+            bool tableExists = await SxmInit.doesTableExist(tableName, sxmConnection);
+            sxmConnection?.destroyConnection();
+
+            if (!tableExists)
             {
                 // Build CREATE TABLE with quoted identifiers.
                 tableCreated = true;

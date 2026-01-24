@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace SQLiteXM
@@ -9,66 +10,57 @@ namespace SQLiteXM
     /// </summary>
     public class SxmDatabaseDescriptor
     {
-        private static ConcurrentDictionary<string, SxmDatabaseDescriptor> dbDescriptors = new();
+        private static ConcurrentBag<string> dbDescriptors = new();
 
-        // Database settings.
-        private string? databaseName; // Required.
-        /// <summary>
-        /// Gets the database file name.
-        /// </summary>
-        public string? DatabaseName
+        private static string? defaultDatabase;
+        public static string? DefaultDatabase
         {
-            get { return databaseName; }
+            get { return defaultDatabase; }
         }
 
-        private Environment.SpecialFolder databaseFolder; // Optional. Default: Environment.SpecialFolder.MyDocuments.
         /// <summary>
         /// Gets the folder in which the database file is stored.
         /// </summary>
         /// <remarks>
         /// Default: <see cref="Environment.SpecialFolder.MyDocuments"/> unless specified when creating the descriptor.
         /// </remarks>
-        public Environment.SpecialFolder DatabaseFolder
+        private readonly static Environment.SpecialFolder databaseFolder = Environment.SpecialFolder.MyDocuments;
+        public static Environment.SpecialFolder DatabaseFolder
         {
             get { return databaseFolder; }
         }
 
         /// <summary>
-        /// Folder used to store the log file.
-        /// </summary>
-        /// <remarks>Default: <see cref="Environment.SpecialFolder.MyDocuments"/>.</remarks>
-        public Environment.SpecialFolder logfileFolder = Environment.SpecialFolder.MyDocuments; // Optional: Environment.SpecialFolder.MyDocuments.
-
-        /// <summary>
-        /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the database name provided by <see cref="SxmProcessSQLStatements.retreiveDatabaseName"/>.
+        /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the database name provided by <see cref="SxmDatabaseDescriptor.DefaultDatabase"/>.
         /// </summary>
         /// <param name="databaseFolder">Optional folder for the database file. Default is <see cref="Environment.SpecialFolder.MyDocuments"/>.</param>
         /// <remarks>
         /// The constructor avoids double-creation of descriptors, validates the database name, ensures the database file exists,
         /// registers the descriptor, and initializes logging for the database.
         /// </remarks>
-        internal SxmDatabaseDescriptor(Environment.SpecialFolder databaseFolder = Environment.SpecialFolder.MyDocuments)
+        internal SxmDatabaseDescriptor()
         {
-            string databaseName = SxmProcessSQLStatements.retreiveDatabaseName;
+            string databaseName = SxmProcessSQLStatements.getDatabaseName;
 
             try
             {
                 // Avoid double-creation without relying on a coarse lock.
-                if (dbDescriptors.ContainsKey(databaseName))
+                if (dbDescriptors.Contains(databaseName))
                     return;
 
-                validateDBName(databaseName);
+                if (SxmProcessSQLStatements.IsDefaultDatabase)
+                {
+                    if (SxmDatabaseDescriptor.DefaultDatabase != null)
+                        throw new ArgumentException($"Invalid default database. The databse {SxmDatabaseDescriptor.DefaultDatabase} was already set as the default databse when you tried to set the database {databaseName} as the default database. There can only be one default database.");
 
-                this.databaseFolder = databaseFolder;
-                this.databaseName = databaseName;
+                    SxmDatabaseDescriptor.defaultDatabase = databaseName;
+                }
 
-                createDB();
+                createDB(databaseName);
 
                 // Add descriptor; if another thread inserted concurrently, skip duplicate registration.
-                if (dbDescriptors.TryAdd(databaseName, this))
-                {
-                    RegisterLogger(databaseName);
-                }
+                dbDescriptors.Add(databaseName);
+                RegisterLogger(databaseName);
             }
             catch (System.Exception ex)
             {
@@ -78,24 +70,16 @@ namespace SQLiteXM
 
 
         // Example: register logger when constructing a connection (call from your connection/context creation)
-        private void RegisterLogger(string dbName)
+        private void RegisterLogger(string databaseName)
         {
             const long defaultMaxLogSize = 4 * 1024 * 1024; // 4 MB
             bool noLog = false; // read from config if applicable
-            string logFileName = dbName + ".log";
-            SxmLogging? logger = new SxmLogging(logFileName, Environment.SpecialFolder.MyDocuments, defaultMaxLogSize, noLog);
+            string logFileName = databaseName + ".log";
 
-            SxmLogging.loggers.TryAdd(dbName, logger);
+            SxmLogging.SxmLoggingFactory(logFileName, DatabaseFolder, defaultMaxLogSize, noLog);
         }
 
-        // Sanity check the database name.
-        private void validateDBName(string databaseName)
-        {
-            if (string.IsNullOrEmpty(databaseName) || databaseName.ToLower().Equals("main") || databaseName.ToLower().Equals("temp"))
-                throw new SxmException(new ErrorMessage("invalidDBName", databaseName));
-        }
-
-        private void createDB()
+        private void createDB(string databaseName)
         {
             string databaseFolderString = Environment.GetFolderPath(databaseFolder);
 
@@ -107,40 +91,19 @@ namespace SQLiteXM
                 using (File.Create(pathToDatabase)) { }
         }
 
-        /// <summary>
-        /// Gets the descriptor for the named database if it exists.
-        /// </summary>
-        /// <param name="dbName">The database name to look up.</param>
-        /// <returns>The descriptor for the database, or null if not found or if <paramref name="dbName"/> is null.</returns>
-        public static SxmDatabaseDescriptor? getDescriptor(string dbName)
+        public static bool IsDatabaseDefined(string databaseName)
         {
-            if (dbName == null) return null;
-            dbDescriptors.TryGetValue(dbName, out var desc);
-
-            return desc;
+            return dbDescriptors.Contains(databaseName);
         }
 
         /// <summary>
         /// Returns the list of registered database names.
         /// </summary>
         /// <returns>An <see cref="ArrayList"/> containing the database names currently registered.</returns>
-        public static ArrayList getDatabaseNames()
+        public static List<string> getDatabaseNames()
         {
-            ArrayList dbNames = new ArrayList();
-
-            foreach (string databaseName in dbDescriptors.Keys)
-                dbNames.Add(databaseName);
-
-            return dbNames;
-        }
-
-        /// <summary>
-        /// Returns the database name represented by this descriptor.
-        /// </summary>
-        /// <returns>The database file name.</returns>
-        public override string? ToString()
-        {
-            return databaseName;
+            List<string> allItems = dbDescriptors.ToList();
+            return allItems;
         }
     }
 }

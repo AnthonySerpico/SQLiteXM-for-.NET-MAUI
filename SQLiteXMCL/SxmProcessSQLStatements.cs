@@ -1,311 +1,9 @@
 ﻿using System.Text.Json;
 using System.Xml.Serialization;
+using static SQLiteXM.SxmSerialization;
 
 namespace SQLiteXM
 {
-    // using System.Xml.Serialization;
-    // XmlSerializer serializer = new XmlSerializer(typeof(Root));
-    // using (StringReader reader = new StringReader(xml))
-    // {
-    //    var test = (Root)serializer.Deserialize(reader);
-    // }
-
-    /// <summary>
-    /// Represents a table entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "table")]
-    public class Table
-    {
-
-        /// <summary>
-        /// The name of the table (as found in the source SQL definition).
-        /// </summary>
-        [XmlElement(ElementName = "TableName")]
-        public string TableName { get; set; }
-
-        /// <summary>
-        /// The SQL statement text used to create or define the table.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Represents an alter (column) entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "alter")]
-    public class Alter
-    {
-
-        /// <summary>
-        /// The column name affected by the alter command.
-        /// </summary>
-        [XmlElement(ElementName = "ColumnName")]
-        public string ColumnName { get; set; }
-
-        /// <summary>
-        /// The table name associated with the alter command.
-        /// </summary>
-        [XmlElement(ElementName = "TableName")]
-        public string TableName { get; set; }
-
-        /// <summary>
-        /// The SQL alter statement text.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Represents an index definition entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "index")]
-    public class Index
-    {
-
-        /// <summary>
-        /// The index name.
-        /// </summary>
-        [XmlElement(ElementName = "IndexName")]
-        public string IndexName { get; set; }
-
-        /// <summary>
-        /// The table name the index belongs to.
-        /// </summary>
-        [XmlElement(ElementName = "TableName")]
-        public string TableName { get; set; }
-
-        /// <summary>
-        /// The SQL index statement text.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Represents an insert statement entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "insert")]
-    public class Insert
-    {
-
-        /// <summary>
-        /// Optional name for the insert statement.
-        /// </summary>
-        [XmlElement(ElementName = "StatementName")]
-        public string StatementName { get; set; }
-
-        /// <summary>
-        /// The table targeted by the insert.
-        /// </summary>
-        [XmlElement(ElementName = "TableName")]
-        public string TableName { get; set; }
-
-        /// <summary>
-        /// The SQL insert statement text.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Represents a select statement entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "select")]
-    public class Select
-    {
-
-        /// <summary>
-        /// Optional name for the select statement.
-        /// </summary>
-        [XmlElement(ElementName = "StatementName")]
-        public string StatementName { get; set; }
-
-        /// <summary>
-        /// The table targeted by the select.
-        /// </summary>
-        [XmlElement(ElementName = "TableName")]
-        public string TableName { get; set; }
-
-        /// <summary>
-        /// The SQL select statement text.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Represents an update statement entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "update")]
-    public class Update
-    {
-
-        /// <summary>
-        /// Optional name for the update statement.
-        /// </summary>
-        [XmlElement(ElementName = "StatementName")]
-        public string StatementName { get; set; }
-
-        /// <summary>
-        /// The table targeted by the update.
-        /// </summary>
-        [XmlElement(ElementName = "TableName")]
-        public string TableName { get; set; }
-
-        /// <summary>
-        /// The SQL update statement text.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Represents a delete statement entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "delete")]
-    public class Delete
-    {
-
-        /// <summary>
-        /// Optional name for the delete statement.
-        /// </summary>
-        [XmlElement(ElementName = "StatementName")]
-        public string StatementName { get; set; }
-
-        /// <summary>
-        /// The table targeted by the delete.
-        /// </summary>
-        [XmlElement(ElementName = "TableName")]
-        public string TableName { get; set; }
-
-        /// <summary>
-        /// The SQL delete statement text.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Represents a trigger entry in an XML SQL statements file.
-    /// </summary>
-    [XmlRoot(ElementName = "trigger")]
-    public class Trigger
-    {
-
-        /// <summary>
-        /// The trigger name.
-        /// </summary>
-        [XmlElement(ElementName = "TriggerName")]
-        public string TriggerName { get; set; }
-
-        /// <summary>
-        /// The SQL trigger statement text.
-        /// </summary>
-        [XmlElement(ElementName = "Statement")]
-        public string Statement { get; set; }
-    }
-
-    /// <summary>
-    /// Root model for XML formatted SQL statements files.
-    /// Maps top-level XML elements to strongly typed collections.
-    /// </summary>
-    [XmlRoot(ElementName = "rootxml")]
-    public class RootXml
-    {
-
-        /// <summary>
-        /// Database identifier/name included in the SQL statements file.
-        /// </summary>
-        [XmlElement(ElementName = "database")]
-        public string Database { get; set; }
-
-        /// <summary>
-        /// Version number of the SQL statements file format/content.
-        /// </summary>
-        [XmlElement(ElementName = "version")]
-        public long Version { get; set; }
-
-        /// <summary>
-        /// Collection of table definitions.
-        /// </summary>
-        [XmlElement(ElementName = "table")]
-        public List<Table> Table { get; set; }
-
-        /// <summary>
-        /// Collection of alter definitions.
-        /// </summary>
-        [XmlElement(ElementName = "alter")]
-        public List<Alter> Alter { get; set; }
-
-        /// <summary>
-        /// Collection of index definitions.
-        /// </summary>
-        [XmlElement(ElementName = "index")]
-        public List<Index> Index { get; set; }
-
-        /// <summary>
-        /// Collection of insert statements.
-        /// </summary>
-        [XmlElement(ElementName = "insert")]
-        public List<Insert> Insert { get; set; }
-
-        /// <summary>
-        /// Collection of select statements.
-        /// </summary>
-        [XmlElement(ElementName = "select")]
-        public List<Select> Select { get; set; }
-
-        /// <summary>
-        /// Collection of update statements.
-        /// </summary>
-        [XmlElement(ElementName = "update")]
-        public List<Update> Update { get; set; }
-
-        /// <summary>
-        /// Collection of delete statements.
-        /// </summary>
-        [XmlElement(ElementName = "delete")]
-        public List<Delete> Delete { get; set; }
-
-        /// <summary>
-        /// Collection of trigger definitions.
-        /// </summary>
-        [XmlElement(ElementName = "trigger")]
-        public List<Trigger> Trigger { get; set; }
-    }
-
-    // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
-    /// <summary>
-    /// Root model for JSON formatted SQL statements files.
-    /// Uses dictionaries for flexible JSON key names and to match expected payload structure.
-    /// </summary>
-    public class RootJson
-    {
-        /// <summary>
-        /// Database identifier/name included in the SQL statements file.
-        /// </summary>
-        public string database { get; set; }
-
-        /// <summary>
-        /// Version number of the SQL statements file format/content.
-        /// </summary>
-        public long version { get; set; }
-
-        /// <summary>
-        /// Collections of statement entries represented as dictionaries keyed by column names.
-        /// Expected keys differ slightly from XML variant (e.g. "Table Name" vs "TableName").
-        /// </summary>
-        public List<Dictionary<string, string>> Table { get; set; }
-        public List<Dictionary<string, string>> Alter { get; set; }
-        public List<Dictionary<string, string>> Index { get; set; }
-        public List<Dictionary<string, string>> Insert { get; set; }
-        public List<Dictionary<string, string>> Select { get; set; }
-        public List<Dictionary<string, string>> Update { get; set; }
-        public List<Dictionary<string, string>> Delete { get; set; }
-        public List<Dictionary<string, string>> Trigger { get; set; }
-    }
-
     /// <summary>
     /// Parser for SQL statements files. Supports XML and JSON formats and populates the SqlStatements registry.
     /// This class exposes static Parse methods and maintains a version and database name read from the file.
@@ -320,20 +18,26 @@ namespace SQLiteXM
         /// <summary>
         /// Gets the version number found in the last parsed SQL statements file.
         /// </summary>
-        public static long getSqlStatementsVersionNumber { get => versionNumber; }
+        internal static long SqlStatementsVersionNumber { get => versionNumber; }
 
-        /// <summary>
-        /// Internal property used to set/read the stored version number.
-        /// </summary>
-        internal static long setSqlStatementsVersionNumber { set { versionNumber = value; } get => versionNumber; }
+
+        // Backing field for the database name identified in the parsed file.
+        private static string databaseName = string.Empty;
 
         /// <summary>
         /// Gets the database name parsed from the last SQL statements file.
         /// </summary>
-        public static string retreiveDatabaseName { get => databaseName; }
+        internal static string getDatabaseName { get => databaseName; }
 
-        // Backing field for the database name identified in the parsed file.
-        private static string databaseName = string.Empty;
+
+        // Backing field for IsDefaultDatabase flag.
+        private static bool isDefaultDatabase = false;
+
+        /// <summary>
+        /// Gets the defaultdatabase flag.
+        /// </summary>
+        internal static bool IsDefaultDatabase { get => isDefaultDatabase; }
+
 
         /// <summary>
         /// Parse SQL statements from a stream that contains either a JSON or XML SQL-statements file and populate
@@ -477,54 +181,6 @@ namespace SQLiteXM
             );
         }
 
-
-        /// <summary>
-        /// Process a deserialized XML root object and register each found SQL definition into SqlStatements.
-        /// </summary>
-        /// <param name="rootXml">Deserialized XML root object (may be null).</param>
-        private static void processXml(RootXml? rootXml)
-        {
-            if (rootXml != default)
-            {
-                databaseName = rootXml.Database.Trim();
-                checkValidDatabaseName();
-
-                setVersionNumber(rootXml.Version);
-
-                if (rootXml?.Table != default)
-                    foreach (Table tableEntry in rootXml.Table)
-                        SxmSqlStatements.addTableDefinition(databaseName + "." + tableEntry.TableName, tableEntry.Statement);
-
-                if (rootXml?.Index != default)
-                    foreach (Index indexEntry in rootXml.Index)
-                        SxmSqlStatements.addIndexDefinition(databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
-
-                if (rootXml?.Alter != default)
-                    foreach (Alter alterEntry in rootXml.Alter)
-                        SxmSqlStatements.addAlterDefinition(databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
-
-                if (rootXml?.Delete != default)
-                    foreach (Delete deleteEntry in rootXml.Delete)
-                        SxmSqlStatements.addDeleteDefinition(deleteEntry.StatementName, deleteEntry.TableName, deleteEntry.Statement);
-
-                if (rootXml?.Update != default)
-                    foreach (Update updateEntry in rootXml.Update)
-                        SxmSqlStatements.addUpdateDefinition(updateEntry.StatementName, updateEntry.TableName, updateEntry.Statement);
-
-                if (rootXml?.Select != default)
-                    foreach (Select selectEntry in rootXml.Select)
-                        SxmSqlStatements.addSelectDefinition(selectEntry.StatementName, selectEntry.TableName, selectEntry.Statement);
-
-                if (rootXml?.Insert != default)
-                    foreach (Insert insertEntry in rootXml.Insert)
-                        SxmSqlStatements.addInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
-
-                if (rootXml?.Trigger != default)
-                    foreach (Trigger triggerEntry in rootXml.Trigger)
-                        SxmSqlStatements.addTriggerDefinition(databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
-            }
-        }
-
         /// <summary>
         /// Process a deserialized JSON root object and register each found SQL definition into SqlStatements.
         /// JSON uses dictionary entries so keys must match expected textual keys (e.g. "Table Name").
@@ -534,9 +190,8 @@ namespace SQLiteXM
         {
             if (rootJson != default)
             {
-                databaseName = rootJson.database.Trim();
-                checkValidDatabaseName();
-
+                setDatabaseName(rootJson.database.Trim());
+                setIsDefault(rootJson.isDefault);
                 setVersionNumber(rootJson.version);
 
                 if (rootJson?.Table != default)
@@ -574,27 +229,80 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Validate and set the file version number. Throws on invalid versions.
+        /// Process a deserialized XML root object and register each found SQL definition into SqlStatements.
         /// </summary>
-        /// <param name="version">Numeric version parsed from the file.</param>
-        /// <returns>The same version value when successfully set.</returns>
-        private static long setVersionNumber(long version)
+        /// <param name="rootXml">Deserialized XML root object (may be null).</param>
+        private static void processXml(RootXml? rootXml)
         {
-            if (version < 0)
-                throw new SxmException(new ErrorMessage("improperlyFormattedVersionNumber", version));
+            if (rootXml != default)
+            {
+                setDatabaseName(rootXml.Database.Trim());
+                setIsDefault(rootXml.IsDefault);
+                setVersionNumber(rootXml.Version);
 
-            SxmProcessSQLStatements.setSqlStatementsVersionNumber = version;
-            return version;
+                if (rootXml?.Table != default)
+                    foreach (Table tableEntry in rootXml.Table)
+                        SxmSqlStatements.addTableDefinition(databaseName + "." + tableEntry.TableName, tableEntry.Statement);
+
+                if (rootXml?.Index != default)
+                    foreach (SQLiteXM.SxmSerialization.Index indexEntry in rootXml.Index)
+                        SxmSqlStatements.addIndexDefinition(databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
+
+                if (rootXml?.Alter != default)
+                    foreach (Alter alterEntry in rootXml.Alter)
+                        SxmSqlStatements.addAlterDefinition(databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
+
+                if (rootXml?.Delete != default)
+                    foreach (Delete deleteEntry in rootXml.Delete)
+                        SxmSqlStatements.addDeleteDefinition(deleteEntry.StatementName, deleteEntry.TableName, deleteEntry.Statement);
+
+                if (rootXml?.Update != default)
+                    foreach (Update updateEntry in rootXml.Update)
+                        SxmSqlStatements.addUpdateDefinition(updateEntry.StatementName, updateEntry.TableName, updateEntry.Statement);
+
+                if (rootXml?.Select != default)
+                    foreach (Select selectEntry in rootXml.Select)
+                        SxmSqlStatements.addSelectDefinition(selectEntry.StatementName, selectEntry.TableName, selectEntry.Statement);
+
+                if (rootXml?.Insert != default)
+                    foreach (Insert insertEntry in rootXml.Insert)
+                        SxmSqlStatements.addInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
+
+                if (rootXml?.Trigger != default)
+                    foreach (Trigger triggerEntry in rootXml.Trigger)
+                        SxmSqlStatements.addTriggerDefinition(databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
+            }
         }
 
         /// <summary>
         /// Validate the parsed database name for invalid filesystem characters or emptiness.
         /// </summary>
-        private static void checkValidDatabaseName()
+        private static void setDatabaseName(string databaseName)
         {
             char[] pattern = Path.GetInvalidFileNameChars();
-            if (databaseName.Any(pattern.Contains) || string.IsNullOrEmpty(databaseName))
-                throw new SxmException(new ErrorMessage("invalidDBName", databaseName));
+
+            if (string.IsNullOrEmpty(databaseName) || databaseName.Any(pattern.Contains) || databaseName.ToLower().Equals("main") || databaseName.ToLower().Equals("temp"))
+                throw new SxmException(new ErrorMessage("Invalid datanase name. The databse name may not contain invalid characters or be named 'main' or 'temp'.", databaseName));
+
+            SxmProcessSQLStatements.databaseName = databaseName;
+        }
+
+        private static void setIsDefault(bool isDefault)
+        {
+            SxmProcessSQLStatements.isDefaultDatabase = isDefault;
+        }
+
+        /// <summary>
+        /// Validate and set the file version number. Throws on invalid versions.
+        /// </summary>
+        /// <param name="version">Numeric version parsed from the file.</param>
+        /// <returns>The same version value when successfully set.</returns>
+        private static void setVersionNumber(long version)
+        {
+            if (version < 0)
+                throw new SxmException(new ErrorMessage("Improperly formatted database version number. The version number must be a non-negative whole number.", version));
+
+            SxmProcessSQLStatements.versionNumber = version;
         }
 
         /// <summary>

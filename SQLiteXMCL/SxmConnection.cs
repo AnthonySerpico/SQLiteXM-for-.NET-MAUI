@@ -82,15 +82,6 @@ namespace SQLiteXM
         private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
         private static readonly string SQLiteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
 
-        static private string? implicitDatabaseName;
-        /// <summary>
-        /// The implicit database name used when no explicit name was supplied and only
-        /// a single DatabaseDescriptor exists.
-        /// </summary>
-        static internal string? ImplicitDatabaseName
-        {
-            get => implicitDatabaseName;
-        }
         private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
 
         /// <summary>
@@ -170,11 +161,7 @@ namespace SQLiteXM
                 databaseName = SxmConnection.resolveDatabaseName(databaseName);
                 if (!dbConnectionString.TryGetValue(databaseName, out connectionString))
                 {
-                    SxmDatabaseDescriptor? databaseDescriptor = SxmDatabaseDescriptor.getDescriptor(databaseName!);
-                    if (databaseDescriptor == null)
-                        throw new SxmException(new ErrorMessage("noDBDescriptorExists", databaseName!));
-
-                    string databaseFolderPath = Environment.GetFolderPath(databaseDescriptor.DatabaseFolder);
+                    string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
                     string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
                     connectionString = String.Format(SQLiteConnString, pathToDatabase);
 
@@ -289,22 +276,17 @@ namespace SQLiteXM
             }
         }
 
-
         private static string resolveDatabaseName(string? databaseName)
         {
             if (databaseName == null)
             {
-                if (SxmConnection.implicitDatabaseName == null)
-                {
-                    ArrayList dbNames = SxmDatabaseDescriptor.getDatabaseNames();
-
-                    if (dbNames.Count != 1) // There must be only one descriptor in order to use implicit database naming.
-                        throw new SxmException(SxmErrorMessages.error["noImplicitDBDescriptorExists"]);
-                    else
-                        SxmConnection.implicitDatabaseName = dbNames[0] as string;
-                }
-
-                databaseName = SxmConnection.implicitDatabaseName;
+                databaseName = SxmDatabaseDescriptor.DefaultDatabase;
+            }
+            else
+            {
+                // Check if database name is in the list of databases.
+                if(!SxmDatabaseDescriptor.IsDatabaseDefined(databaseName))
+                    throw new InvalidDataException($"The database '{databaseName}' has not been configured. Check the spelling matches the database name in your SQL statements file.");
             }
 
             return databaseName!;

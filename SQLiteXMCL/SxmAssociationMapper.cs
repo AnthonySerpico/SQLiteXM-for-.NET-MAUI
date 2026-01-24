@@ -36,15 +36,13 @@ namespace SQLiteXM
         /// This method enumerates database names using <see cref="SxmDatabaseDescriptor.getDatabaseNames"/>
         /// and calls <see cref="AttachAssociation(string)"/> for each database.
         /// </remarks>
-        internal static void InitializeAssociations()
+        internal static async Task InitializeAssociations()
         {
             if (wasMapped) return;
 
             wasMapped = true;
-            ArrayList databaseNames = SxmDatabaseDescriptor.getDatabaseNames();
-
-            foreach (string databaseName in databaseNames)
-                AttachAssociation(databaseName);
+            foreach (string databaseName in SxmDatabaseDescriptor.getDatabaseNames())
+                await AttachAssociation(databaseName);
         }
 
         /// <summary>

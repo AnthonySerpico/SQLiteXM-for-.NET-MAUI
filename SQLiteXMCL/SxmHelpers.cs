@@ -57,7 +57,7 @@ namespace SQLiteXM
                     while (sxmConnection.nextRow() == true)
                     {
                         foreach (string fieldName in fieldNames)
-                            tableNames.Add(sxmConnection.getValue(fieldName).ToString());
+                            tableNames.Add(sxmConnection.getValue(fieldName)!.ToString()!);
                     }
                 }
             }
@@ -77,7 +77,7 @@ namespace SQLiteXM
                 return SqlStatementsFileType.unknown;
             }
 
-            var ext = System.IO.Path.GetExtension(filePath);
+            string? ext = System.IO.Path.GetExtension(filePath);
             if (string.IsNullOrEmpty(ext))
             {
                 return SqlStatementsFileType.unknown;

@@ -25,8 +25,7 @@ namespace SQLiteXM
         /// <summary>
         /// Map of database name to logger instance.
         /// </summary>
-        internal static readonly ConcurrentDictionary<string, SxmLogging> loggers = new ConcurrentDictionary<string, SxmLogging>();
-
+        private static readonly ConcurrentDictionary<string, SxmLogging> loggers = new ConcurrentDictionary<string, SxmLogging>();
         private readonly Channel<string> writeChannel;
         private readonly CancellationTokenSource cts;
         private readonly Task backgroundWriterTask;
@@ -37,6 +36,17 @@ namespace SQLiteXM
         // Maximum characters retained for exception text to avoid very large queued entries on mobile.
         private const int MaxExceptionTextLength = 2048;
 
+        internal static void SxmLoggingFactory(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize, bool noLog)
+        {
+            string databaseName = Path.GetFileNameWithoutExtension(logFileName);
+            if (!SxmLogging.loggers.TryGetValue(databaseName, out SxmLogging? value))
+            {
+
+                SxmLogging? logger = new SxmLogging(logFileName, logPathSpecialFolder, maxLogSize, noLog);
+                SxmLogging.loggers.TryAdd(databaseName, logger);
+            }
+        }
+
         /// <summary>
         /// Creates a new <see cref="SxmLogging"/> instance that writes to a log file located in the specified special folder.
         /// </summary>
@@ -44,7 +54,7 @@ namespace SQLiteXM
         /// <param name="logPathSpecialFolder">Special folder where the log file will be stored.</param>
         /// <param name="maxLogSize">Maximum allowed log file size in bytes before rotation occurs.</param>
         /// <param name="noLog">If true, logging is disabled for this instance.</param>
-        internal SxmLogging(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize, bool noLog)
+        private SxmLogging(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize, bool noLog)
         {
             this.noLog = noLog;
             this.maxLogSize = maxLogSize;

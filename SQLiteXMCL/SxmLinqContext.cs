@@ -38,7 +38,7 @@ namespace SQLiteXM
         // Advanced users inside the library (or friend assemblies) can still use these helpers.
 
         // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
-        private ITable<T> GetRawTable<T>() where T : class
+        internal ITable<T> GetRawTable<T>() where T : class
         {
             return _linqToDbDataConnection.GetTable<T>();
         }
@@ -165,7 +165,46 @@ namespace SQLiteXM
 
             return results;
         }
-        
+
+        /// <summary>
+        /// Insert or replace the given entity asynchronously.
+        /// </summary>
+        /// <typeparam name="T">Entity type.</typeparam>
+        /// <param name="entity">Entity to insert or replace.</param>
+        /// <returns>Number of affected rows (provider-specific).</returns>
+        public async Task<int> InsertOrReplaceAsync<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (entity is SxmEntity sxm)
+            {
+                // entity is SxmEntity or derived — use sxm
+                await sxm.Save().CAF();
+                return 1;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Entity {nameof(entity)} must be a SxmEntity.");
+            }
+        }
+
+        /// <summary>
+        /// Insert or update the given entity asynchronously.
+        /// </summary>
+        /// <remarks>
+        /// Many providers expose either InsertOrUpdate or InsertOrReplace semantics.
+        /// For the SQLite provider we alias InsertOrUpdate to InsertOrReplace which
+        /// matches the SQLite behavior (INSERT OR REPLACE).
+        /// </remarks>
+        /// <typeparam name="T">Entity type.</typeparam>
+        /// <param name="entity">Entity to insert or update.</param>
+        /// <returns>Number of affected rows (provider-specific).</returns>
+        public async Task<int> InsertOrUpdateAsync<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            // Alias to InsertOrReplace for SQLite; keep surface for consumers.
+            return await InsertOrReplaceAsync(entity);
+        }
+
         // -------------------------
         // Insert APIs (entity-safe)
         // -------------------------
@@ -178,6 +217,12 @@ namespace SQLiteXM
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             await entity.Save().CAF();
         }
+
+        /*public Task InsertAsync<T>(T entity) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return InsertAsync(entity);
+        }*/
 
         // -------------------------
         // Update APIs
