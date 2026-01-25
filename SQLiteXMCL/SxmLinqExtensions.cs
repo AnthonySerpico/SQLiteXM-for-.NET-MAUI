@@ -307,6 +307,36 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// MERGE semantics are not supported by SQLite. This API is intentionally unavailable:
+        /// it emits a compile-time error with guidance to use supported upsert alternatives.
+        /// </summary>
+        /// <typeparam name="T">Entity type.</typeparam>
+        /// <param name="table">The LINQ table wrapper.</param>
+        /// <param name="source">Source items to merge (not used).</param>
+        /// <returns>Never returns; usage results in a compile-time error.</returns>
+        [Obsolete("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync instead.", true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public static Task<int> MergeAsync<T>(this SxmTable<T> table, IEnumerable<T> source) where T : class
+        {
+            throw new NotSupportedException("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync for upsert-like operations.");
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/>.
+        /// </summary>
+        /// <typeparam name="T">Entity type.</typeparam>
+        /// <param name="query">The queryable to merge into.</param>
+        /// <param name="source">Source items to merge (not used).</param>
+        [Obsolete("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync instead.", true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public static Task<int> MergeAsync<T>(this IQueryable<T> query, IEnumerable<T> source) where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (query is SxmTable<T> sxmTable) return sxmTable.MergeAsync(source);
+            throw new NotSupportedException("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync for upsert-like operations.");
+        }
+
+        /// <summary>
         /// Asynchronously materializes the query to a list (forwarding overload for IQueryable).
         /// </summary>
         public static Task<List<T>> ToListAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
