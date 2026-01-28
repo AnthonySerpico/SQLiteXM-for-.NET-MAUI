@@ -79,7 +79,7 @@ namespace SQLiteXM
         /// Throws <see cref="T:SQLiteXM.SxmException"/> when <paramref name="errorName"/> is not found.
         /// The returned text may contain placeholders filled by the <see cref="T:SQLiteXM.ErrorMessage"/> instance.
         /// </remarks>
-        public static string getErrorText(string errorName)
+        public static string GetErrorText(string errorName)
         {
             try
             {
@@ -103,7 +103,7 @@ namespace SQLiteXM
         /// <remarks>
         /// Throws <see cref="T:SQLiteXM.SxmException"/> when <paramref name="errorName"/> is not found.
         /// </remarks>
-        public static SxmDefines.SxmErrorCode getErrorID(string errorName)
+        public static SxmDefines.SxmErrorCode GetErrorID(string errorName)
         {
             try
             {

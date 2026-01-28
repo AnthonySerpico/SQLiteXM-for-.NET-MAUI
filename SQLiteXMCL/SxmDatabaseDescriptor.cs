@@ -56,7 +56,7 @@ namespace SQLiteXM
                     SxmDatabaseDescriptor.defaultDatabase = databaseName;
                 }
 
-                createDB(databaseName);
+                CreateDB(databaseName);
 
                 // Add descriptor; if another thread inserted concurrently, skip duplicate registration.
                 dbDescriptors.Add(databaseName);
@@ -79,7 +79,7 @@ namespace SQLiteXM
             SxmLogging.SxmLoggingFactory(logFileName, DatabaseFolder, defaultMaxLogSize, noLog);
         }
 
-        private void createDB(string databaseName)
+        private void CreateDB(string databaseName)
         {
             string databaseFolderString = Environment.GetFolderPath(databaseFolder);
 
@@ -91,7 +91,7 @@ namespace SQLiteXM
                 using (File.Create(pathToDatabase)) { }
         }
 
-        public static bool IsDatabaseDefined(string databaseName)
+        internal static bool IsDatabaseDefined(string databaseName)
         {
             return dbDescriptors.Contains(databaseName);
         }
@@ -100,7 +100,7 @@ namespace SQLiteXM
         /// Returns the list of registered database names.
         /// </summary>
         /// <returns>An <see cref="ArrayList"/> containing the database names currently registered.</returns>
-        public static List<string> getDatabaseNames()
+        internal static List<string> GetDatabaseNames()
         {
             List<string> allItems = dbDescriptors.ToList();
             return allItems;

@@ -280,11 +280,6 @@
     public class SxmDefines
     {
         /// <summary>
-        /// One minute in milliseconds.
-        /// </summary>
-        public static readonly int ONE_MINUTE = 60000; // One Minutes in milliseconds.
-
-        /// <summary>
         /// Delimiter used to open a statement in SQL statements properties files.
         /// </summary>
         internal static readonly char openStatementDelimeter = '[';
@@ -293,6 +288,16 @@
         /// Delimiter used to close a statement in SQL statements properties files.
         /// </summary>
         internal static readonly char closeStatementDelimeter = ']';
+
+        /// <summary>
+        /// Transaction commit flag.
+        /// </summary>
+        internal static readonly bool commitTransaction = true;
+
+        /// <summary>
+        /// Transaction rollback flag.
+        /// </summary>
+        internal static readonly bool rollbackTransaction = false;
 
         /// <summary>
         /// Cloud synchronization flag indicating no cloud synchronization.
@@ -310,19 +315,9 @@
         public static readonly int CLOUD_MOVE = 2;
 
         /// <summary>
-        /// Transaction commit flag.
-        /// </summary>
-        public static readonly bool commitTransaction = true;
-
-        /// <summary>
-        /// Transaction rollback flag.
-        /// </summary>
-        public static readonly bool rollbackTransaction = false;
-
-        /// <summary>
         /// Types of synchronization errors.
         /// </summary>
-        public enum SynchErrorTypes
+        internal enum SynchErrorTypes
         {
             /// <summary>
             /// Synchronization succeeded.
@@ -343,7 +338,7 @@
         /// <summary>
         /// Index types for database indexes.
         /// </summary>
-        public enum IndexType
+        internal enum IndexType
         {
             /// <summary>
             /// Standard (non-unique) index.
@@ -359,7 +354,7 @@
         /// <summary>
         /// Database operation types.
         /// </summary>
-        public enum SqlStatementType
+        internal enum SqlStatementType
         {
             /// <summary>
             /// Insert statement.
@@ -410,7 +405,7 @@
         /// <summary>
         /// Supported SQL statements file formats.
         /// </summary>
-        public enum SqlStatementsFileType
+        internal enum SqlStatementsFileType
         {
             /// <summary>
             /// Plain text file.

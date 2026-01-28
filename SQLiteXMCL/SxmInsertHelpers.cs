@@ -12,9 +12,9 @@ namespace SQLiteXM
     /// </summary>
     /// <remarks>
     /// These helpers centralize common insert patterns:
-    /// - <see cref="performInsert(string, List{object}, string?)"/> creates its own <see cref="SxmUTransaction"/>,
+    /// - <see cref="PerformInsert(string, List{object}, string?)"/> creates its own <see cref="SxmUTransaction"/>,
     ///   executes the insert and commits the transaction.
-    /// - <see cref="performInsertTrans(string, List{object}, SxmUTransaction)"/> executes an insert using an
+    /// - <see cref="PerformInsertTrans(string, List{object}, SxmUTransaction)"/> executes an insert using an
     ///   existing transaction (does not commit — caller is responsible for commit/rollback).
     /// </remarks>
     internal class SxmInsertHelpers
@@ -38,7 +38,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Any exception thrown by the transaction or statement execution is propagated to the caller.
         /// </exception>
-        internal static async Task<Dictionary<string, object?>> performInsert(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<Dictionary<string, object?>> PerformInsert(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             Dictionary<string, object?> ir;
 
@@ -46,8 +46,8 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    ir = await sxmTransaction.executeInsertAsync(sqlStatementName, sqlStatementParameters);
-                    await sxmTransaction.commitTransactionAsync();
+                    ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters);
+                    await sxmTransaction.CommitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -78,13 +78,13 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Exceptions thrown by the provided transaction's execution are propagated to the caller.
         /// </exception>
-        internal static async Task<Dictionary<string, object?>> performInsertTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<Dictionary<string, object?>> PerformInsertTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             Dictionary<string, object?> ir;
 
             try
             {
-                ir = await sxmTransaction.executeInsertAsync(sqlStatementName, sqlStatementParameters);
+                ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters);
             }
             catch (System.Exception)
             {
@@ -94,7 +94,7 @@ namespace SQLiteXM
             return await Task.FromResult(ir).CAF();
         }
 
-        internal static async Task<Dictionary<string, object?>> performInsertDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<Dictionary<string, object?>> PerformInsertDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             Dictionary<string, object?> ir;
 
@@ -102,8 +102,8 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    ir = await sxmTransaction.executeInsertDirectAsync(sqlStatement, sqlStatementParameters);
-                    await sxmTransaction.commitTransactionAsync();
+                    ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatement, sqlStatementParameters);
+                    await sxmTransaction.CommitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -114,13 +114,13 @@ namespace SQLiteXM
             return await Task.FromResult(ir).CAF();
         }
 
-        internal static async Task<Dictionary<string, object?>> performInsertDirectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<Dictionary<string, object?>> PerformInsertDirectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             Dictionary<string, object?> ir;
 
             try
             {
-                ir = await sxmTransaction.executeInsertDirectAsync(sqlStatementName, sqlStatementParameters);
+                ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatementName, sqlStatementParameters);
             }
             catch (System.Exception)
             {

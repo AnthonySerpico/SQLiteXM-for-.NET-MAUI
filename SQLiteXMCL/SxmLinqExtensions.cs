@@ -1,5 +1,6 @@
 ﻿using LinqToDB;
 using LinqToDB.Linq;
+using SQLiteXM.Internal;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -393,7 +394,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync(query,cancellationToken);
+            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync(query, cancellationToken);
         }
 
         /// <summary>
@@ -438,6 +439,604 @@ namespace SQLiteXM
                 return sxmTable.DeleteAsync(cancellationToken);
 
             return Task.Run(() => LinqToDB.LinqExtensions.Delete<T>(query), cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the average over the provided selector for the supplied <see cref="SxmTable{T}"/> returning double.
+        /// </summary>
+        public static Task<double> AverageAsync<T>(this SxmTable<T> table, Expression<Func<T, double>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the average over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable double.
+        /// </summary>
+        public static Task<double?> AverageAsync<T>(this SxmTable<T> table, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the average over the provided selector for the supplied <see cref="SxmTable{T}"/> returning float.
+        /// </summary>
+        public static Task<float> AverageAsync<T>(this SxmTable<T> table, Expression<Func<T, float>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the average over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable float.
+        /// </summary>
+        public static Task<float?> AverageAsync<T>(this SxmTable<T> table, Expression<Func<T, float?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the average over the provided selector for the supplied <see cref="SxmTable{T}"/> returning decimal.
+        /// </summary>
+        public static Task<decimal> AverageAsync<T>(this SxmTable<T> table, Expression<Func<T, decimal>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the average over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable decimal.
+        /// </summary>
+        public static Task<decimal?> AverageAsync<T>(this SxmTable<T> table, Expression<Func<T, decimal?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        // ---------- forwarding IQueryable overloads ----------
+
+        public static Task<double> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, double>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+        }
+
+        public static Task<double?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+        }
+
+        public static Task<float> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, float>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+        }
+
+        public static Task<float?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, float?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+        }
+
+        public static Task<decimal> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+        }
+
+        public static Task<decimal?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning int.
+        /// </summary>
+        /// <typeparam name="T">Element type.</typeparam>
+        /// <param name="table">Table to query.</param>
+        /// <param name="selector">Selector expression that returns int.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task that returns the sum result.</returns>
+        public static Task<int> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, int>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable int.
+        /// </summary>
+        public static Task<int?> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, int?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning long.
+        /// </summary>
+        public static Task<long> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, long>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable long.
+        /// </summary>
+        public static Task<long?> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, long?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning float.
+        /// </summary>
+        public static Task<float> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, float>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable float.
+        /// </summary>
+        public static Task<float?> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, float?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning double.
+        /// </summary>
+        public static Task<double> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, double>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable double.
+        /// </summary>
+        public static Task<double?> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning decimal.
+        /// </summary>
+        public static Task<decimal> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, decimal>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously computes the sum over the provided selector for the supplied <see cref="SxmTable{T}"/> returning nullable decimal.
+        /// </summary>
+        public static Task<decimal?> SumAsync<T>(this SxmTable<T> table, Expression<Func<T, decimal?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        // ---------- forwarding IQueryable overloads ----------
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (int).
+        /// </summary>
+        public static Task<int> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, int>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (int?).
+        /// </summary>
+        public static Task<int?> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, int?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (long).
+        /// </summary>
+        public static Task<long> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, long>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (long?).
+        /// </summary>
+        public static Task<long?> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, long?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (float).
+        /// </summary>
+        public static Task<float> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, float>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (float?).
+        /// </summary>
+        public static Task<float?> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, float?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (double).
+        /// </summary>
+        public static Task<double> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, double>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (double?).
+        /// </summary>
+        public static Task<double?> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (decimal).
+        /// </summary>
+        public static Task<decimal> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to compute sum asynchronously (decimal?).
+        /// </summary>
+        public static Task<decimal?> SumAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal?>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously materializes the query to a dictionary using the specified key selector.
+        /// </summary>
+        /// <typeparam name="T">Element type.</typeparam>
+        /// <typeparam name="TKey">Key type.</typeparam>
+        /// <param name="table">Table to materialize.</param>
+        /// <param name="keySelector">Key selector expression.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task that returns the dictionary.</returns>
+        public static async Task<Dictionary<TKey, T>> ToDictionaryAsync<T, TKey>(this SxmTable<T> table, Expression<Func<T, TKey>> keySelector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
+
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+
+            // Materialize rows asynchronously then build dictionary client-side to avoid provider overload mismatches.
+            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).CAF();
+            var keyFunc = keySelector.Compile();
+
+            var dict = new Dictionary<TKey, T>();
+            foreach (var item in list)
+            {
+                var k = keyFunc(item);
+                if (dict.ContainsKey(k))
+                    throw new ArgumentException("An item with the same key has already been added.", nameof(keySelector));
+                dict[k] = item;
+            }
+            return dict;
+        }
+
+        /// <summary>
+        /// Asynchronously materializes the query to a dictionary using the specified key and element selectors.
+        /// </summary>
+        /// <typeparam name="T">Element type.</typeparam>
+        /// <typeparam name="TKey">Key type.</typeparam>
+        /// <typeparam name="TElement">Element type.</typeparam>
+        /// <param name="table">Table to materialize.</param>
+        /// <param name="keySelector">Key selector expression.</param>
+        /// <param name="elementSelector">Element selector expression.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task that returns the dictionary.</returns>
+        public static async Task<Dictionary<TKey, TElement>> ToDictionaryAsync<T, TKey, TElement>(this SxmTable<T> table, Expression<Func<T, TKey>> keySelector, Expression<Func<T, TElement>> elementSelector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
+            if (elementSelector == null) throw new ArgumentNullException(nameof(elementSelector));
+
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+
+            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).CAF();
+            var keyFunc = keySelector.Compile();
+            var elemFunc = elementSelector.Compile();
+
+            var dict = new Dictionary<TKey, TElement>();
+            foreach (var item in list)
+            {
+                var k = keyFunc(item);
+                if (dict.ContainsKey(k))
+                    throw new ArgumentException("An item with the same key has already been added.", nameof(keySelector));
+                dict[k] = elemFunc(item);
+            }
+            return dict;
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to produce a dictionary asynchronously.
+        /// </summary>
+        public static async Task<Dictionary<TKey, T>> ToDictionaryAsync<T, TKey>(this IQueryable<T> query, Expression<Func<T, TKey>> keySelector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
+
+            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).CAF();
+            var keyFunc = keySelector.Compile();
+
+            var dict = new Dictionary<TKey, T>();
+            foreach (var item in list)
+            {
+                var k = keyFunc(item);
+                if (dict.ContainsKey(k))
+                    throw new ArgumentException("An item with the same key has already been added.", nameof(keySelector));
+                dict[k] = item;
+            }
+            return dict;
+        }
+
+        /// <summary>
+        /// Forwarding overload for <see cref="IQueryable{T}"/> to produce a dictionary asynchronously with element selector.
+        /// </summary>
+        public static async Task<Dictionary<TKey, TElement>> ToDictionaryAsync<T, TKey, TElement>(this IQueryable<T> query, Expression<Func<T, TKey>> keySelector, Expression<Func<T, TElement>> elementSelector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
+            if (elementSelector == null) throw new ArgumentNullException(nameof(elementSelector));
+
+            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).CAF();
+            var keyFunc = keySelector.Compile();
+            var elemFunc = elementSelector.Compile();
+
+            var dict = new Dictionary<TKey, TElement>();
+            foreach (var item in list)
+            {
+                var k = keyFunc(item);
+                if (dict.ContainsKey(k))
+                    throw new ArgumentException("An item with the same key has already been added.", nameof(keySelector));
+                dict[k] = elemFunc(item);
+            }
+            return dict;
+        }
+
+        // Overloads with predicate.
+
+        /// <summary>
+        /// Asynchronously returns the first element that matches the predicate from the provided <see cref="SxmTable{T}"/>.
+        /// </summary>
+        public static Task<T> FirstAsync<T>(this SxmTable<T> table, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.FirstAsync((IQueryable<T>)itable, predicate, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously returns the first element that matches the predicate or default from the provided <see cref="SxmTable{T}"/>.
+        /// </summary>
+        public static Task<T?> FirstOrDefaultAsync<T>(this SxmTable<T> table, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.FirstOrDefaultAsync((IQueryable<T>)itable, predicate, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously returns the single element that matches the predicate from the provided <see cref="SxmTable{T}"/>.
+        /// </summary>
+        public static Task<T> SingleAsync<T>(this SxmTable<T> table, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SingleAsync((IQueryable<T>)itable, predicate, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously returns the single element that matches the predicate or default from the provided <see cref="SxmTable{T}"/>.
+        /// </summary>
+        public static Task<T?> SingleOrDefaultAsync<T>(this SxmTable<T> table, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync((IQueryable<T>)itable, predicate, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously determines whether any element that matches the predicate exists in the provided <see cref="SxmTable{T}"/>.
+        /// </summary>
+        public static Task<bool> AnyAsync<T>(this SxmTable<T> table, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.AnyAsync((IQueryable<T>)itable, predicate, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously counts elements that match the predicate from the provided <see cref="SxmTable{T}"/>.
+        /// </summary>
+        public static Task<int> CountAsync<T>(this SxmTable<T> table, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.CountAsync((IQueryable<T>)itable, predicate, cancellationToken);
+        }
+
+        // ---------- forwarding IQueryable overloads with predicate ----------
+
+        public static Task<T> FirstAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            return LinqToDB.AsyncExtensions.FirstAsync(query, predicate, cancellationToken);
+        }
+
+        public static Task<T?> FirstOrDefaultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            return LinqToDB.AsyncExtensions.FirstOrDefaultAsync(query, predicate, cancellationToken);
+        }
+
+        public static Task<T> SingleAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            return LinqToDB.AsyncExtensions.SingleAsync(query, predicate, cancellationToken);
+        }
+
+        public static Task<T?> SingleOrDefaultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync(query, predicate, cancellationToken);
+        }
+
+        public static Task<bool> AnyAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            return LinqToDB.AsyncExtensions.AnyAsync(query, predicate, cancellationToken);
+        }
+
+        public static Task<int> CountAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+            return LinqToDB.AsyncExtensions.CountAsync(query, predicate, cancellationToken);
         }
     }
 }

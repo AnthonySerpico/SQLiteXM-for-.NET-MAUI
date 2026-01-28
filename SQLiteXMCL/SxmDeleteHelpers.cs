@@ -27,14 +27,14 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name. If omitted, the default database is used.</param>
         /// <returns>A task that completes when the delete and commit operations have finished.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task performDelete(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task PerformDelete(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.executeDeleteAsync(sqlStatementName, sqlStatementParameters);
-                    await sxmTransaction.commitTransactionAsync();
+                    await sxmTransaction.ExecuteDeleteAsync(sqlStatementName, sqlStatementParameters);
+                    await sxmTransaction.CommitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -54,11 +54,11 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">An already-created <see cref="SxmUTransaction"/>. This method will not commit or dispose it.</param>
         /// <returns>A task that completes when the delete has been executed on the provided transaction.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task performDeleteTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task PerformDeleteTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {
-                await sxmTransaction.executeDeleteAsync(sqlStatementName, sqlStatementParameters);
+                await sxmTransaction.ExecuteDeleteAsync(sqlStatementName, sqlStatementParameters);
             }
             catch (System.Exception)
             {
@@ -76,14 +76,14 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name. If omitted, the default database is used.</param>
         /// <returns>A task that completes when the delete and commit operations have finished.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task performDeleteDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task PerformDeleteDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.executeDeleteDirectAsync(sqlStatement, sqlStatementParameters);
-                    await sxmTransaction.commitTransactionAsync();
+                    await sxmTransaction.ExecuteDeleteDirectAsync(sqlStatement, sqlStatementParameters);
+                    await sxmTransaction.CommitTransactionAsync();
                 }
             }
             catch (System.Exception)
@@ -102,11 +102,11 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">An already-created <see cref="SxmUTransaction"/>. This method will not commit or dispose it.</param>
         /// <returns>A task that completes when the delete has been executed on the provided transaction.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task performDeleteDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task PerformDeleteDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {
-                await sxmTransaction.executeDeleteDirectAsync(sqlStatement, sqlStatementParameters);
+                await sxmTransaction.ExecuteDeleteDirectAsync(sqlStatement, sqlStatementParameters);
             }
             catch (System.Exception)
             {

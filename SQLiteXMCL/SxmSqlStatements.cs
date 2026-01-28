@@ -87,7 +87,7 @@ namespace SQLiteXM
         /// <param name="insertName">The name used to reference the insert statement.</param>
         /// <param name="tableName">The target table name for the insert.</param>
         /// <param name="insertSQL">The SQL text of the insert statement.</param>
-        internal static void addInsertDefinition(string insertName, string tableName, string insertSQL)
+        internal static void AddInsertDefinition(string insertName, string tableName, string insertSQL)
         {
             insertName = insertName.Trim();
 
@@ -101,7 +101,7 @@ namespace SQLiteXM
         /// <param name="selectName">The name used to reference the select statement.</param>
         /// <param name="tableName">The table that the select targets.</param>
         /// <param name="selectSQL">The SQL text of the select statement.</param>
-        internal static void addSelectDefinition(string selectName, string tableName, string selectSQL)
+        internal static void AddSelectDefinition(string selectName, string tableName, string selectSQL)
         {
             selectName = selectName.Trim();
 
@@ -115,7 +115,7 @@ namespace SQLiteXM
         /// <param name="updateName">The name used to reference the update statement.</param>
         /// <param name="tableName">The table that the update targets.</param>
         /// <param name="updateSQL">The SQL text of the update statement.</param>
-		internal static void addUpdateDefinition(string updateName, string tableName, string updateSQL)
+		internal static void AddUpdateDefinition(string updateName, string tableName, string updateSQL)
         {
             updateName = updateName.Trim();
 
@@ -129,7 +129,7 @@ namespace SQLiteXM
         /// <param name="deleteName">The name used to reference the delete statement.</param>
         /// <param name="tableName">The table that the delete targets.</param>
         /// <param name="deleteSQL">The SQL text of the delete statement.</param>
-		internal static void addDeleteDefinition(string deleteName, string tableName, string deleteSQL)
+		internal static void AddDeleteDefinition(string deleteName, string tableName, string deleteSQL)
         {
             deleteName = deleteName.Trim();
 
@@ -143,7 +143,7 @@ namespace SQLiteXM
         /// <param name="dbAndTableName">The combined database and table name used as the key.</param>
         /// <param name="indexName">The name of the index.</param>
         /// <param name="sqlStatement">The SQL text that creates the index.</param>
-		internal static void addIndexDefinition(string dbAndTableName, string indexName, string sqlStatement)
+		internal static void AddIndexDefinition(string dbAndTableName, string indexName, string sqlStatement)
         {
             dbAndTableName = dbAndTableName.Trim();
             sqlStatement = sqlStatement.Trim();
@@ -165,7 +165,7 @@ namespace SQLiteXM
         /// <summary>
         /// Removes all index definitions and resets the index store to uninitialized.
         /// </summary>
-        internal static void removeIndexDefinitions()
+        internal static void RemoveIndexDefinitions()
         {
             if (indexStatements != default(Dictionary<string, List<IndexDefinition>>))
             {
@@ -180,7 +180,7 @@ namespace SQLiteXM
         /// <param name="dbName">The database name the trigger belongs to.</param>
         /// <param name="triggerName">The trigger name.</param>
         /// <param name="sqlStatement">The SQL text of the trigger.</param>
-        internal static void addTriggerDefinition(string dbName, string triggerName, string sqlStatement)
+        internal static void AddTriggerDefinition(string dbName, string triggerName, string sqlStatement)
         {
             sqlStatement = sqlStatement.Trim();
             triggerName = triggerName.Trim();
@@ -202,7 +202,7 @@ namespace SQLiteXM
         /// <summary>
         /// Removes all trigger definitions and resets the trigger store to uninitialized.
         /// </summary>
-        internal static void removeTriggerDefinitions()
+        internal static void RemoveTriggerDefinitions()
         {
             if (triggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
             {
@@ -217,7 +217,7 @@ namespace SQLiteXM
         /// <param name="dbAndTableName">The combined database and table name used as the key.</param>
         /// <param name="columnName">The column being altered.</param>
         /// <param name="sqlStatement">The SQL text of the ALTER operation.</param>
-        internal static void addAlterDefinition(string dbAndTableName, string columnName, string sqlStatement)
+        internal static void AddAlterDefinition(string dbAndTableName, string columnName, string sqlStatement)
         {
             dbAndTableName = dbAndTableName.Trim();
             sqlStatement = sqlStatement.Trim();
@@ -241,12 +241,12 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="dbAndTableName">The combined database and table name used as the key.</param>
         /// <param name="tableSQL">The SQL text that creates the table.</param>
-        internal static void addTableDefinition(string dbAndTableName, string tableSQL)
+        internal static void AddTableDefinition(string dbAndTableName, string tableSQL)
         {
             dbAndTableName = dbAndTableName.Trim();
             tableSQL = tableSQL.Trim();
 
-            addTableDefinition(dbAndTableName, tableSQL, SxmDefines.NO_CLOUD_SYNCH);
+            AddTableDefinition(dbAndTableName, tableSQL, SxmDefines.NO_CLOUD_SYNCH);
         }
 
         /// <summary>
@@ -255,7 +255,7 @@ namespace SQLiteXM
         /// <param name="dbAndTableName">The combined database and table name used as the key.</param>
         /// <param name="tableSQL">The SQL text that creates the table.</param>
         /// <param name="cloudPush">Cloud push flag from <see cref="T:SQLiteXM.SxmDefines"/>.</param>
-        internal static void addTableDefinition(string dbAndTableName, string tableSQL, int cloudPush)
+        internal static void AddTableDefinition(string dbAndTableName, string tableSQL, int cloudPush)
         {
             dbAndTableName = dbAndTableName.Trim();
             tableSQL = tableSQL.Trim();
@@ -269,7 +269,7 @@ namespace SQLiteXM
         /// <summary>
         /// Removes all table definitions and resets the table store to uninitialized.
         /// </summary>
-        internal static void removeTableDefinitions()
+        internal static void RemoveTableDefinitions()
         {
             if (tableCreateStatements != default(Dictionary<string, TableDefinition>))
             {
@@ -281,7 +281,7 @@ namespace SQLiteXM
         /// <summary>
         /// Clears in-memory stores for alters, tables, indexes, and triggers.
         /// </summary>
-        internal static void clearStatementTables()
+        internal static void ClearStatementTables()
         {
             if (alterStatements != default(Dictionary<string, List<AlterDefinition>>))
             {

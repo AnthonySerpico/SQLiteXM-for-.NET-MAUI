@@ -313,14 +313,14 @@ namespace SQLiteXM
             /// Collections of statement entries represented as dictionaries keyed by column names.
             /// Expected keys differ slightly from XML variant (e.g. "Table Name" vs "TableName").
             /// </summary>
-            public List<Dictionary<string, string>> Table { get; set; }
-            public List<Dictionary<string, string>> Alter { get; set; }
-            public List<Dictionary<string, string>> Index { get; set; }
-            public List<Dictionary<string, string>> Insert { get; set; }
-            public List<Dictionary<string, string>> Select { get; set; }
-            public List<Dictionary<string, string>> Update { get; set; }
-            public List<Dictionary<string, string>> Delete { get; set; }
-            public List<Dictionary<string, string>> Trigger { get; set; }
+            public List<Dictionary<string, string>>? Table { get; set; }
+            public List<Dictionary<string, string>>? Alter { get; set; }
+            public List<Dictionary<string, string>>? Index { get; set; }
+            public List<Dictionary<string, string>>? Insert { get; set; }
+            public List<Dictionary<string, string>>? Select { get; set; }
+            public List<Dictionary<string, string>>? Update { get; set; }
+            public List<Dictionary<string, string>>? Delete { get; set; }
+            public List<Dictionary<string, string>>? Trigger { get; set; }
         }
 
     }

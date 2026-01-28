@@ -33,7 +33,7 @@ namespace SQLiteXM
         /// metadata. Safe to call multiple times; registration only runs once.
         /// </summary>
         /// <remarks>
-        /// This method enumerates database names using <see cref="SxmDatabaseDescriptor.getDatabaseNames"/>
+        /// This method enumerates database names using <see cref="SxmDatabaseDescriptor.GetDatabaseNames"/>
         /// and calls <see cref="AttachAssociation(string)"/> for each database.
         /// </remarks>
         internal static async Task InitializeAssociations()
@@ -41,7 +41,7 @@ namespace SQLiteXM
             if (wasMapped) return;
 
             wasMapped = true;
-            foreach (string databaseName in SxmDatabaseDescriptor.getDatabaseNames())
+            foreach (string databaseName in SxmDatabaseDescriptor.GetDatabaseNames())
                 await AttachAssociation(databaseName);
         }
 
@@ -53,7 +53,7 @@ namespace SQLiteXM
         /// <remarks>
         /// This method:
         /// - Opens an <see cref="SxmConnection"/> for <paramref name="databaseName"/>.
-        /// - Reads all user table names via <see cref="SxmHelpers.getAllUserTableNames"/>.
+        /// - Reads all user table names via <see cref="SxmHelpers.GetAllUserTableNames"/>.
         /// - For each table, runs <c>PRAGMA foreign_key_list(table)</c> to discover foreign keys.
         /// - Locates the CLR source type by table name (types deriving from <see cref="SxmEntity"/>)
         ///   and calls <see cref="SxmHelpers.CreateAssociation(Type, string, string)"/> to register the
@@ -61,14 +61,14 @@ namespace SQLiteXM
         /// 
         /// Note: Exceptions are swallowed and connections are always cleaned up in the finally block.
         /// </remarks>
-        public static async Task AttachAssociation(string databaseName)
+        internal static async Task AttachAssociation(string databaseName)
         {
             SxmConnection? sxmConnection = default;
 
             try
             {
                 sxmConnection = new SxmConnection(databaseName);
-                List<string> tableNames = await SxmHelpers.getAllUserTableNames(sxmConnection);
+                List<string> tableNames = await SxmHelpers.GetAllUserTableNames(sxmConnection);
 
                 if (tableNames.Count > 0)
                 {
@@ -76,12 +76,12 @@ namespace SQLiteXM
                     {
                         foreach (string tableName in tableNames)
                         {
-                            await sxmConnection.executeQueryAsync(String.Format("PRAGMA foreign_key_list({0})", tableName), default(List<object>));
+                            await sxmConnection.ExecuteQueryAsync(String.Format("PRAGMA foreign_key_list({0})", tableName), default(List<object>));
 
-                            if (sxmConnection.nextRow() == true)
+                            if (sxmConnection.NextRow() == true)
                             {
-                                string? targetTableName = (string?)sxmConnection.getValue("table");
-                                string? sourceKey = (string?)sxmConnection.getValue("from");
+                                string? targetTableName = (string?)sxmConnection.GetValue("table");
+                                string? sourceKey = (string?)sxmConnection.GetValue("from");
 
                                 // How this could fail. If you have different namespaces that include a class with the same name that both inherit the SXMEntity class.
                                 // The rule: assign unique names to classes that inherit from SxmEntity, even if they are in different namespaces.
@@ -91,7 +91,7 @@ namespace SQLiteXM
                                 if (sourceType != default)
                                 {
                                     SxmHelpers.CreateAssociation(sourceType, sourceKey!, targetTableName!);
-                                    string? to = (string?)sxmConnection.getValue("to");
+                                    string? to = (string?)sxmConnection.GetValue("to");
                                 }
                             }
                         }
@@ -101,7 +101,7 @@ namespace SQLiteXM
             catch (System.Exception) { }
             finally
             {
-                sxmConnection?.destroyConnection();
+                sxmConnection?.DestroyConnection();
             }
         }
 
@@ -123,7 +123,7 @@ namespace SQLiteXM
         /// 
         /// The method finalizes the registration by calling <c>builder.Build()</c> so subsequent contexts see the mapping.
         /// </remarks>
-        public static void ConfigureAssociation(
+        internal static void ConfigureAssociation(
             Type sourceType,
             string navigationPropertyName,
             string thisKey,

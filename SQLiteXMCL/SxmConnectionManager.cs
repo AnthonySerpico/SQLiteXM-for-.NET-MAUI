@@ -70,7 +70,7 @@ namespace SQLiteXM
         /// among all leases for the same database name. The method increments the per-entry reference
         /// count and returns a lease that must be disposed to decrement the count.
         /// </remarks>
-        public ConnectionLease AcquireConnectionLease(string databaseName)
+        internal ConnectionLease AcquireConnectionLease(string databaseName)
         {
             var entry = _map.GetOrAdd(databaseName, _ => new Entry());
 
@@ -146,8 +146,8 @@ namespace SQLiteXM
                     {
                         try
                         {
-                            entry.Connection?.releaseConnection(destroy: true);
-                            entry.Connection?.destroyConnection();
+                            entry.Connection?.ReleaseConnection(destroy: true);
+                            entry.Connection?.DestroyConnection();
                         }
                         finally
                         {
@@ -172,8 +172,8 @@ namespace SQLiteXM
             {
                 try
                 {
-                    entry.Connection?.releaseConnection(destroy: true);
-                    entry.Connection?.destroyConnection();
+                    entry.Connection?.ReleaseConnection(destroy: true);
+                    entry.Connection?.DestroyConnection();
                 }
                 finally
                 {
@@ -248,7 +248,7 @@ namespace SQLiteXM
         /// </remarks>
         public readonly struct ConnectionLease : IAsyncDisposable
         {
-            private readonly SxmConnectionManager _manager;
+            private readonly SxmConnectionManager manager;
 
             /// <summary>
             /// The shared <see cref="SxmConnection"/> instance for the acquired lease.
@@ -262,7 +262,7 @@ namespace SQLiteXM
 
             internal ConnectionLease(SxmConnectionManager manager, string dbName, SxmConnection conn)
             {
-                _manager = manager;
+                this.manager = manager;
                 Connection = conn;
                 DatabaseName = dbName;
             }
@@ -273,7 +273,7 @@ namespace SQLiteXM
             /// <returns>A completed <see cref="ValueTask"/>. The operation is synchronous.</returns>
             public ValueTask DisposeAsync()
             {
-                _manager.Release(DatabaseName);
+                manager.Release(DatabaseName);
                 return ValueTask.CompletedTask;
             }
         }

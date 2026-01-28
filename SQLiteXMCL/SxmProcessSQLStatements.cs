@@ -69,7 +69,7 @@ namespace SQLiteXM
         /// - This method mutates static fields (for example <c>databaseName</c> and <c>versionNumber</c>) and is not thread-safe.
         ///   Callers should synchronize if concurrent parses are possible.
         /// </remarks>
-        public static bool Parse(Stream sqlStatementAssets, SxmDefines.SqlStatementsFileType sqlStatementsFileType)
+        internal static bool Parse(Stream sqlStatementAssets, SxmDefines.SqlStatementsFileType sqlStatementsFileType)
         {
             if (sqlStatementAssets == null)
                 throw new ArgumentNullException(nameof(sqlStatementAssets));
@@ -96,7 +96,7 @@ namespace SQLiteXM
                 try
                 {
                     RootJson? rootJson = JsonSerializer.Deserialize<RootJson>(content, jsonOptions);
-                    processJson(rootJson);
+                    ProcessJson(rootJson);
                     return true;
                 }
                 catch (Exception ex)
@@ -120,7 +120,7 @@ namespace SQLiteXM
                     using (var xr = System.Xml.XmlReader.Create(sr, settings))
                     {
                         RootXml? rootXml = (RootXml?)serializer.Deserialize(xr);
-                        processXml(rootXml);
+                        ProcessXml(rootXml);
                     }
                     return true;
                 }
@@ -186,45 +186,45 @@ namespace SQLiteXM
         /// JSON uses dictionary entries so keys must match expected textual keys (e.g. "Table Name").
         /// </summary>
         /// <param name="rootJson">Deserialized JSON root object (may be null).</param>
-        private static void processJson(RootJson? rootJson)
+        private static void ProcessJson(RootJson? rootJson)
         {
             if (rootJson != default)
             {
-                setDatabaseName(rootJson.database.Trim());
-                setIsDefault(rootJson.isDefault);
-                setVersionNumber(rootJson.version);
+                SetDatabaseName(rootJson.database.Trim());
+                SetIsDefault(rootJson.isDefault);
+                SetVersionNumber(rootJson.version);
 
                 if (rootJson?.Table != default)
                     foreach (Dictionary<string, string> tableEntry in rootJson.Table)
-                        SxmSqlStatements.addTableDefinition(databaseName + "." + tableEntry["Table Name"], tableEntry["Statement"]);
+                        SxmSqlStatements.AddTableDefinition(databaseName + "." + tableEntry["Table Name"], tableEntry["Statement"]);
 
                 if (rootJson?.Index != default)
                     foreach (Dictionary<string, string> indexEntry in rootJson.Index)
-                        SxmSqlStatements.addIndexDefinition(databaseName + "." + indexEntry["Table Name"], indexEntry["Index Name"], indexEntry["Statement"]);
+                        SxmSqlStatements.AddIndexDefinition(databaseName + "." + indexEntry["Table Name"], indexEntry["Index Name"], indexEntry["Statement"]);
 
                 if (rootJson?.Alter != default)
                     foreach (Dictionary<string, string> alterEntry in rootJson.Alter)
-                        SxmSqlStatements.addAlterDefinition(databaseName + "." + alterEntry["Table Name"], alterEntry["Column Name"], alterEntry["Statement"]);
+                        SxmSqlStatements.AddAlterDefinition(databaseName + "." + alterEntry["Table Name"], alterEntry["Column Name"], alterEntry["Statement"]);
 
                 if (rootJson?.Delete != default)
                     foreach (Dictionary<string, string> deleteEntry in rootJson.Delete)
-                        SxmSqlStatements.addDeleteDefinition(deleteEntry["Statement Name"], deleteEntry["Table Name"], deleteEntry["Statement"]);
+                        SxmSqlStatements.AddDeleteDefinition(deleteEntry["Statement Name"], deleteEntry["Table Name"], deleteEntry["Statement"]);
 
                 if (rootJson?.Update != default)
                     foreach (Dictionary<string, string> updateEntry in rootJson.Update)
-                        SxmSqlStatements.addUpdateDefinition(updateEntry["Statement Name"], updateEntry["Table Name"], updateEntry["Statement"]);
+                        SxmSqlStatements.AddUpdateDefinition(updateEntry["Statement Name"], updateEntry["Table Name"], updateEntry["Statement"]);
 
                 if (rootJson?.Select != default)
                     foreach (Dictionary<string, string> selectEntry in rootJson.Select)
-                        SxmSqlStatements.addSelectDefinition(selectEntry["Statement Name"], selectEntry["Table Name"], selectEntry["Statement"]);
+                        SxmSqlStatements.AddSelectDefinition(selectEntry["Statement Name"], selectEntry["Table Name"], selectEntry["Statement"]);
 
                 if (rootJson?.Insert != default)
                     foreach (Dictionary<string, string> insertEntry in rootJson.Insert)
-                        SxmSqlStatements.addInsertDefinition(insertEntry["Statement Name"], insertEntry["Table Name"], insertEntry["Statement"]);
+                        SxmSqlStatements.AddInsertDefinition(insertEntry["Statement Name"], insertEntry["Table Name"], insertEntry["Statement"]);
 
                 if (rootJson?.Trigger != default)
                     foreach (Dictionary<string, string> triggerEntry in rootJson.Trigger)
-                        SxmSqlStatements.addTriggerDefinition(databaseName, triggerEntry["Trigger Name"], triggerEntry["Statement"]);
+                        SxmSqlStatements.AddTriggerDefinition(databaseName, triggerEntry["Trigger Name"], triggerEntry["Statement"]);
             }
         }
 
@@ -232,52 +232,52 @@ namespace SQLiteXM
         /// Process a deserialized XML root object and register each found SQL definition into SqlStatements.
         /// </summary>
         /// <param name="rootXml">Deserialized XML root object (may be null).</param>
-        private static void processXml(RootXml? rootXml)
+        private static void ProcessXml(RootXml? rootXml)
         {
             if (rootXml != default)
             {
-                setDatabaseName(rootXml.Database.Trim());
-                setIsDefault(rootXml.IsDefault);
-                setVersionNumber(rootXml.Version);
+                SetDatabaseName(rootXml.Database.Trim());
+                SetIsDefault(rootXml.IsDefault);
+                SetVersionNumber(rootXml.Version);
 
                 if (rootXml?.Table != default)
                     foreach (Table tableEntry in rootXml.Table)
-                        SxmSqlStatements.addTableDefinition(databaseName + "." + tableEntry.TableName, tableEntry.Statement);
+                        SxmSqlStatements.AddTableDefinition(databaseName + "." + tableEntry.TableName, tableEntry.Statement);
 
                 if (rootXml?.Index != default)
                     foreach (SQLiteXM.SxmSerialization.Index indexEntry in rootXml.Index)
-                        SxmSqlStatements.addIndexDefinition(databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
+                        SxmSqlStatements.AddIndexDefinition(databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
 
                 if (rootXml?.Alter != default)
                     foreach (Alter alterEntry in rootXml.Alter)
-                        SxmSqlStatements.addAlterDefinition(databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
+                        SxmSqlStatements.AddAlterDefinition(databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
 
                 if (rootXml?.Delete != default)
                     foreach (Delete deleteEntry in rootXml.Delete)
-                        SxmSqlStatements.addDeleteDefinition(deleteEntry.StatementName, deleteEntry.TableName, deleteEntry.Statement);
+                        SxmSqlStatements.AddDeleteDefinition(deleteEntry.StatementName, deleteEntry.TableName, deleteEntry.Statement);
 
                 if (rootXml?.Update != default)
                     foreach (Update updateEntry in rootXml.Update)
-                        SxmSqlStatements.addUpdateDefinition(updateEntry.StatementName, updateEntry.TableName, updateEntry.Statement);
+                        SxmSqlStatements.AddUpdateDefinition(updateEntry.StatementName, updateEntry.TableName, updateEntry.Statement);
 
                 if (rootXml?.Select != default)
                     foreach (Select selectEntry in rootXml.Select)
-                        SxmSqlStatements.addSelectDefinition(selectEntry.StatementName, selectEntry.TableName, selectEntry.Statement);
+                        SxmSqlStatements.AddSelectDefinition(selectEntry.StatementName, selectEntry.TableName, selectEntry.Statement);
 
                 if (rootXml?.Insert != default)
                     foreach (Insert insertEntry in rootXml.Insert)
-                        SxmSqlStatements.addInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
+                        SxmSqlStatements.AddInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
 
                 if (rootXml?.Trigger != default)
                     foreach (Trigger triggerEntry in rootXml.Trigger)
-                        SxmSqlStatements.addTriggerDefinition(databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
+                        SxmSqlStatements.AddTriggerDefinition(databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
             }
         }
 
         /// <summary>
         /// Validate the parsed database name for invalid filesystem characters or emptiness.
         /// </summary>
-        private static void setDatabaseName(string databaseName)
+        private static void SetDatabaseName(string databaseName)
         {
             char[] pattern = Path.GetInvalidFileNameChars();
 
@@ -287,7 +287,7 @@ namespace SQLiteXM
             SxmProcessSQLStatements.databaseName = databaseName;
         }
 
-        private static void setIsDefault(bool isDefault)
+        private static void SetIsDefault(bool isDefault)
         {
             SxmProcessSQLStatements.isDefaultDatabase = isDefault;
         }
@@ -297,7 +297,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="version">Numeric version parsed from the file.</param>
         /// <returns>The same version value when successfully set.</returns>
-        private static void setVersionNumber(long version)
+        private static void SetVersionNumber(long version)
         {
             if (version < 0)
                 throw new SxmException(new ErrorMessage("Improperly formatted database version number. The version number must be a non-negative whole number.", version));
@@ -311,7 +311,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="synchCommand">Lower-cased synch token.</param>
         /// <returns>Integer code representing the synch behavior.</returns>
-        private static int parseSynchCommand(string synchCommand)
+        private static int ParseSynchCommand(string synchCommand)
         {
             if (synchCommand.Equals("synch") == true)
                 return SxmDefines.CLOUD_SYNCH;

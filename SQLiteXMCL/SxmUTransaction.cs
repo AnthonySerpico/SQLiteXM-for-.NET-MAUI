@@ -89,7 +89,7 @@ namespace SQLiteXM
         ///   connection; the connection lock remains held until this transaction is disposed/finalized.
         /// - finalizeTransaction is intentionally best-effort and non-throwing to avoid throwing from finalizers.
         /// </summary>
-        protected void finalizeTransaction()
+        protected void FinalizeTransaction()
         {
             // Centralized, idempotent lock release helper.
             EnsureLockReleased();
@@ -97,13 +97,13 @@ namespace SQLiteXM
             // then cleanup the connection and transaction resources as before
             try
             {
-                connection?.releaseConnection();
+                connection?.ReleaseConnection();
             }
             catch (System.Exception ex) // I don't think there is any way to get here, but just in case.
             {
                 try
                 {
-                    connection?.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                 }
                 catch (Exception) { }
             }
@@ -132,7 +132,7 @@ namespace SQLiteXM
                     }
                     catch (Exception ex)
                     {
-                        try { connection.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                        try { connection.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
                     }
                     finally
                     {
@@ -182,12 +182,12 @@ namespace SQLiteXM
 
             try
             {
-                finalizeTransaction();
+                FinalizeTransaction();
             }
             catch (System.Exception ex)
             {
                 // Best-effort: log and swallow to avoid throwing from Dispose.
-                try { connection?.log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                try { connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
             }
             finally
             {
@@ -205,7 +205,7 @@ namespace SQLiteXM
 
         /********************* INSERT / UPDATE / DELETE wrappers (async implementations) ************************/
 
-        internal async Task<Dictionary<string, object?>> executeInsertDirectAsync(string insertSql, List<object> ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task<Dictionary<string, object?>> ExecuteInsertDirectAsync(string insertSql, List<object> ParameterValues, CancellationToken cancellationToken = default)
         {
             string commandName = new Guid().ToString();
             string? tableName = SxmHelpers.ExtractTableNameFromInsert(insertSql);
@@ -213,7 +213,7 @@ namespace SQLiteXM
             InsertDefinition id = new InsertDefinition(commandName, insertSql);
             SxmSqlStatements.insertStatements.Add(commandName, id);
 
-            Dictionary<string, object?> insertResponse = await executeInsertAsync(commandName, ParameterValues, cancellationToken);
+            Dictionary<string, object?> insertResponse = await ExecuteInsertAsync(commandName, ParameterValues, cancellationToken);
             SxmSqlStatements.insertStatements.Remove(commandName);
             return insertResponse;
         }
@@ -229,7 +229,7 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
         /// <returns>A dictionary containing keys "id" (long) and "synchId" (string).</returns>
         /// <exception cref="SxmException">If the command key is unknown or an underlying DB error occurs.</exception>
-        internal async Task<Dictionary<string, object?>> executeInsertAsync(string command, List<object> ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task<Dictionary<string, object?>> ExecuteInsertAsync(string command, List<object> ParameterValues, CancellationToken cancellationToken = default)
         {
             long recordID = -1;
             string? synchID = default(string);
@@ -238,20 +238,20 @@ namespace SQLiteXM
             if (insertDefinition == null)
                 throw new SxmException(new ErrorMessage("unknownSQLStatement", command));
 
-            await executeNonQueryTransAsync(insertDefinition.InsertSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(insertDefinition.InsertSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
 
             try
             {
                 if (insertDefinition.TableName.Length != 0)
                 {
-                    await executeQueryDirectAsync("select last_insert_rowid() as rowID", null, cancellationToken).ConfigureAwait(false);
-                    Dictionary<string, object?>? nextRow = connection.getNextRow<Dictionary<string, object?>>();
+                    await ExecuteQueryDirectAsync("select last_insert_rowid() as rowID", null, cancellationToken).ConfigureAwait(false);
+                    Dictionary<string, object?>? nextRow = connection.GetNextRow<Dictionary<string, object?>>();
 
                     if (nextRow != default && nextRow.Count > 0)
                         if (nextRow.ContainsKey("rowID") == true)
                         {
                             recordID = (long)nextRow["rowID"]!;
-                            synchID = await getSynchID(insertDefinition.TableName, recordID);
+                            synchID = await GetSynchID(insertDefinition.TableName, recordID);
                         }
 
                     if (synchID == null || synchID.Length == 0)
@@ -260,10 +260,10 @@ namespace SQLiteXM
                     List<object> synchIDPV = new List<object>();
                     synchIDPV.Add(synchID);
                     synchIDPV.Add(recordID);
-                    await executeNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", insertDefinition.TableName), synchIDPV, cancellationToken).ConfigureAwait(false);
+                    await ExecuteNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", insertDefinition.TableName), synchIDPV, cancellationToken).ConfigureAwait(false);
                     synchIDPV.RemoveAt(1);
 
-                    await executeNonQueryAsync(String.Format("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIDPV, cancellationToken).ConfigureAwait(false);
+                    await ExecuteNonQueryAsync(String.Format("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIDPV, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (SxmException)
@@ -288,7 +288,7 @@ namespace SQLiteXM
         /// <param name="tableName">Table name to query.</param>
         /// <param name="recordID">Record id to look up.</param>
         /// <returns>The synchId string if present; otherwise null.</returns>
-        private async Task<string?> getSynchID(string tableName, long recordID)
+        private async Task<string?> GetSynchID(string tableName, long recordID)
         {
             string? synchId = default(string);
 
@@ -297,8 +297,8 @@ namespace SQLiteXM
                 List<object> parameterList = new List<object>();
                 parameterList.Add(recordID);
 
-                await connection.executeQueryAsync(String.Format("SELECT synchId FROM {0} WHERE id = @p0 LIMIT 1", tableName), parameterList);
-                Dictionary<string, object?>? row = connection.getNextRow<Dictionary<string, object?>>();
+                await connection.ExecuteQueryAsync(String.Format("SELECT synchId FROM {0} WHERE id = @p0 LIMIT 1", tableName), parameterList);
+                Dictionary<string, object?>? row = connection.GetNextRow<Dictionary<string, object?>>();
 
                 if (row != null && row.Count > 0)
                     if (row.ContainsKey("synchId") == true)
@@ -311,14 +311,14 @@ namespace SQLiteXM
 
         /// <summary>
         /// Execute a named select statement from the library's statement dictionary.
-        /// Results are available via <see cref="getNextRow{T}"/> / <see cref="getValue(string)"/>.
+        /// Results are available via <see cref="GetNextRow{T}"/> / <see cref="GetValue(string)"/>.
         /// </summary>
         /// <param name="command">Logical command key mapped to a select statement.</param>
         /// <param name="ParameterValues">Parameter values for the query, or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeQueryAsync(string command, List<object>? ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteQueryAsync(string command, List<object>? ParameterValues, CancellationToken cancellationToken = default)
         {
-            await connection.executeQueryAsync(SxmSqlStatements.selectStatements[command].SelectSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await connection.ExecuteQueryAsync(SxmSqlStatements.selectStatements[command].SelectSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -327,9 +327,9 @@ namespace SQLiteXM
         /// <param name="command">Logical command key mapped to an update statement.</param>
         /// <param name="ParameterValues">Parameter values for the update.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeUpdateAsync(string command, List<object> ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteUpdateAsync(string command, List<object> ParameterValues, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryAsync(SxmSqlStatements.updateStatements[command].UpdateSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(SxmSqlStatements.updateStatements[command].UpdateSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -338,9 +338,9 @@ namespace SQLiteXM
         /// <param name="command">Logical command key mapped to a delete statement.</param>
         /// <param name="ParameterValues">Parameter values for the delete.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeDeleteAsync(string command, List<object> ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteDeleteAsync(string command, List<object> ParameterValues, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryAsync(SxmSqlStatements.deleteStatements[command].DeleteSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(SxmSqlStatements.deleteStatements[command].DeleteSQL, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -349,9 +349,9 @@ namespace SQLiteXM
         /// <param name="sqlStatement">SQL select statement to execute.</param>
         /// <param name="ParameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeQueryDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteQueryDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
         {
-            await connection.executeQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await connection.ExecuteQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -361,9 +361,9 @@ namespace SQLiteXM
         /// <param name="sqlStatement">SQL statement to execute.</param>
         /// <param name="ParameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeUpdateDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteUpdateDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -372,9 +372,9 @@ namespace SQLiteXM
         /// <param name="sqlStatement">SQL delete statement to execute.</param>
         /// <param name="ParameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeDeleteDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteDeleteDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -383,9 +383,9 @@ namespace SQLiteXM
         /// <param name="sqlStatement">SQL statement.</param>
         /// <param name="ParameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeSystemUpdateDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteSystemUpdateDirectAsync(string sqlStatement, List<object>? ParameterValues, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryTransAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -393,9 +393,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlStatement">SQL statement.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeTableStatementAsync(string sqlStatement, CancellationToken cancellationToken = default)
+        internal async Task ExecuteTableStatementAsync(string sqlStatement, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -403,9 +403,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlStatement">SQL statement.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeAlterTableAsync(string sqlStatement, CancellationToken cancellationToken = default)
+        internal async Task ExecuteAlterTableAsync(string sqlStatement, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -413,9 +413,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlStatement">SQL statement.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeIndexAsync(string sqlStatement, CancellationToken cancellationToken = default)
+        internal async Task ExecuteIndexAsync(string sqlStatement, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -423,9 +423,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlStatement">SQL statement.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task executeCreateTriggerAsync(string sqlStatement, CancellationToken cancellationToken = default)
+        internal async Task ExecuteCreateTriggerAsync(string sqlStatement, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(sqlStatement, null, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -435,9 +435,9 @@ namespace SQLiteXM
         /// <param name="sqlStatement">SQL statement to execute.</param>
         /// <param name="ParameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        private async Task executeNonQueryAsync(string sqlStatement, List<object>? ParameterValues = null, CancellationToken cancellationToken = default)
+        private async Task ExecuteNonQueryAsync(string sqlStatement, List<object>? ParameterValues = null, CancellationToken cancellationToken = default)
         {
-            await executeNonQueryTransAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
             interruptSynchronize = true;
         }
 
@@ -447,37 +447,37 @@ namespace SQLiteXM
         /// <param name="sqlStatement">SQL statement to execute.</param>
         /// <param name="ParameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        private async Task executeNonQueryTransAsync(string sqlStatement, List<object>? ParameterValues = null, CancellationToken cancellationToken = default)
+        private async Task ExecuteNonQueryTransAsync(string sqlStatement, List<object>? ParameterValues = null, CancellationToken cancellationToken = default)
         {
-            connection.beginTransaction();
-            await connection.executeNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            connection.BeginTransaction();
+            await connection.ExecuteNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Attach all databases described by the DatabaseDescriptor collection to the current connection.
         /// </summary>
-        public async Task attachDatabase()
+        public async Task AttachDatabaseAsync()
         {
-            foreach (string databaseName in SxmDatabaseDescriptor.getDatabaseNames())
-                await attachDatabase(databaseName);
+            foreach (string databaseName in SxmDatabaseDescriptor.GetDatabaseNames())
+                await AttachDatabaseAsync(databaseName);
         }
 
         /// <summary>
         /// Detach all attached databases. This is a best-effort, no-throw cleanup operation.
         /// </summary>
-        public async Task detachDatabase()
+        public async Task DetachDatabaseAsync()
         {
             try
             {
-                await connection.executeQueryAsync("PRAGMA database_list", null as List<object>);
+                await connection.ExecuteQueryAsync("PRAGMA database_list", null as List<object>);
 
-                while (nextRow() == true)
+                while (NextRow() == true)
                 {
                     try
                     {
-                        string? dbName = (string?)getValue("name");
+                        string? dbName = (string?)GetValue("name");
                         if (dbName?.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
-                            await detachDatabase(dbName);
+                            await DetachDatabaseAsync(dbName);
                     }
                     catch (System.Exception) // Keep trying to detach all databases.
                     {
@@ -495,7 +495,7 @@ namespace SQLiteXM
         /// <param name="databaseName">Name of the database to attach.</param>
         /// <returns>A task that completes when the attach completes.</returns>
         /// <exception cref="SxmException">If the database descriptor is missing or the database file does not exist.</exception>
-        public async Task attachDatabase(string databaseName)
+        public async Task AttachDatabaseAsync(string databaseName)
         {
             if (connection.DatabaseName.Equals(databaseName) == false)
             {
@@ -505,7 +505,7 @@ namespace SQLiteXM
                     string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
 
                     if (File.Exists(dbFullyQualifiedPath) == true)
-                        await connection.executeNonQueryAsync(String.Format("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>);
+                        await connection.ExecuteNonQueryAsync(String.Format("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>);
                     else
                         throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
                 }
@@ -526,7 +526,7 @@ namespace SQLiteXM
         /// <param name="databaseName">Name of the database to detach.</param>
         /// <returns>A task that completes when the detach completes.</returns>
         /// <exception cref="SxmException">If the database descriptor is missing or the database file does not exist.</exception>
-        public async Task detachDatabase(string databaseName)
+        public async Task DetachDatabaseAsync(string databaseName)
         {
             if (connection.DatabaseName.Equals(databaseName) == false)
             {
@@ -535,7 +535,7 @@ namespace SQLiteXM
                     string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
                     string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
                     if (File.Exists(dbFullyQualifiedPath) == true)
-                        await connection.executeNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);
+                        await connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);
                     else
                         throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
                 }
@@ -556,9 +556,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="cancellationToken">Cancellation token (currently unused by implementation).</param>
         /// <returns>The SQLite error code returned from finishing the transaction.</returns>
-        public async Task<SQLiteErrorCode> commitTransactionAsync(CancellationToken cancellationToken = default)
+        public async Task<SQLiteErrorCode> CommitTransactionAsync(CancellationToken cancellationToken = default)
         {
-            SQLiteErrorCode ec = await connection.finishTransactionAsync(SQLiteXM.SxmDefines.commitTransaction).ConfigureAwait(false);
+            SQLiteErrorCode ec = await connection.FinishTransactionAsync(SQLiteXM.SxmDefines.commitTransaction).ConfigureAwait(false);
             if (interruptSynchronize == true)
             {
                 //SxmInit.interruptSynchronize (connection.DatabaseName);
@@ -571,18 +571,18 @@ namespace SQLiteXM
         /// Roll back the current SQLite transaction.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token (currently unused by implementation).</param>
-        public async Task rollbackTransactionAsync(CancellationToken cancellationToken = default)
+        public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
         {
-            await connection.finishTransactionAsync(SQLiteXM.SxmDefines.rollbackTransaction).ConfigureAwait(false);
+            await connection.FinishTransactionAsync(SQLiteXM.SxmDefines.rollbackTransaction).ConfigureAwait(false);
             interruptSynchronize = false;
         }
 
         /// <summary>
         /// Returns true when the last executed query has rows to read.
         /// </summary>
-        public bool hasRows()
+        public bool HasRows()
         {
-            return connection.hasRows();
+            return connection.HasRows();
         }
 
         /// <summary>
@@ -590,9 +590,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="fieldName">Field name to read.</param>
         /// <returns>The field value or null.</returns>
-        private object? getValue(string fieldName)
+        private object? GetValue(string fieldName)
         {
-            return connection.getValue(fieldName);
+            return connection.GetValue(fieldName);
         }
 
         /// <summary>
@@ -600,9 +600,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="fieldOrdinal">Zero-based column ordinal.</param>
         /// <returns>The field value or null.</returns>
-        private object? getValue(int fieldOrdinal)
+        private object? GetValue(int fieldOrdinal)
         {
-            return connection.getValue(fieldOrdinal);
+            return connection.GetValue(fieldOrdinal);
         }
 
         /// <summary>
@@ -610,18 +610,18 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="fieldOrdinal">Zero-based column ordinal.</param>
         /// <returns>The field name or null.</returns>
-        private string? getFieldName(int fieldOrdinal)
+        private string? GetFieldName(int fieldOrdinal)
         {
-            return connection.getFieldName(fieldOrdinal);
+            return connection.GetFieldName(fieldOrdinal);
         }
 
         /// <summary>
         /// Get all field names for the current result set.
         /// </summary>
         /// <returns>Array of field names.</returns>
-        private string[] getFieldNames()
+        private string[] GetFieldNames()
         {
-            return connection.getFieldNames();
+            return connection.GetFieldNames();
         }
 
         /// <summary>
@@ -629,9 +629,9 @@ namespace SQLiteXM
         /// </summary>
         /// <typeparam name="T">A dictionary type that maps column names to values.</typeparam>
         /// <returns>An instance of <typeparamref name="T"/> representing the row, or null when no more rows exist.</returns>
-        private T? getNextRow<T>() where T : IDictionary<string, object?>, new()
+        private T? GetNextRow<T>() where T : IDictionary<string, object?>, new()
         {
-            return connection.getNextRow<T>();
+            return connection.GetNextRow<T>();
         }
 
         /// <summary>
@@ -639,12 +639,12 @@ namespace SQLiteXM
         /// </summary>
         /// <typeparam name="T">A dictionary type that maps column names to values.</typeparam>
         /// <returns>List of rows.</returns>
-        internal List<T> getAllRows<T>() where T : IDictionary<string, object?>, new()
+        internal List<T> GetAllRows<T>() where T : IDictionary<string, object?>, new()
         {
             List<T> allRows = new List<T>();
             T? row;
 
-            while ((row = getNextRow<T>()) != null)
+            while ((row = GetNextRow<T>()) != null)
                 allRows.Add(row);
 
             return allRows;
@@ -654,18 +654,18 @@ namespace SQLiteXM
         /// Get the number of columns in the current result set.
         /// </summary>
         /// <returns>Column count.</returns>
-        private int getColumnCount()
+        private int GetColumnCount()
         {
-            return connection.getColumnCount();
+            return connection.GetColumnCount();
         }
 
         /// <summary>
         /// Advance to the next row in the current result set.
         /// </summary>
         /// <returns>True if a row is available; otherwise false.</returns>
-        private bool nextRow()
+        private bool NextRow()
         {
-            return connection.nextRow();
+            return connection.NextRow();
         }
 
         /// <summary>
@@ -673,9 +673,9 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="fieldName">Field name to query.</param>
         /// <returns>CLR <see cref="System.Type"/> of the field or null.</returns>
-        private Type? getType(string fieldName)
+        private Type? GetType(string fieldName)
         {
-            return connection.getType(fieldName);
+            return connection.GetType(fieldName);
         }
     }
 }

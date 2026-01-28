@@ -20,7 +20,7 @@ namespace SQLiteXM
         /// Tracks runtime-registered association keys to avoid duplicate registrations.
         /// Key format: "{SourceType.FullName}.{NavigationPropertyName}".
         /// </summary>
-        private static ISet<string> _registeredAssociations = new HashSet<string>();
+        private static ISet<string> registeredAssociations = new HashSet<string>();
         private SxmHelpers() { }
 
         /// <summary>
@@ -43,21 +43,21 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sxmConnection">Connection to query; may be null.</param>
         /// <returns>List of table names (may be empty).</returns>
-        internal static async Task<List<string>> getAllUserTableNames(SxmConnection? sxmConnection)
+        internal static async Task<List<string>> GetAllUserTableNames(SxmConnection? sxmConnection)
         {
             List<string> tableNames = new List<string>();
 
             if (sxmConnection != null)
             {
-                await sxmConnection.executeQueryAsync("SELECT tableName FROM _systemCloudSynchDescriptor", null as List<object>);
+                await sxmConnection.ExecuteQueryAsync("SELECT tableName FROM _systemCloudSynchDescriptor", null as List<object>);
 
-                if (sxmConnection.hasRows() == true)
+                if (sxmConnection.HasRows() == true)
                 {
-                    string[] fieldNames = sxmConnection.getFieldNames();
-                    while (sxmConnection.nextRow() == true)
+                    string[] fieldNames = sxmConnection.GetFieldNames();
+                    while (sxmConnection.NextRow() == true)
                     {
                         foreach (string fieldName in fieldNames)
-                            tableNames.Add(sxmConnection.getValue(fieldName)!.ToString()!);
+                            tableNames.Add(sxmConnection.GetValue(fieldName)!.ToString()!);
                     }
                 }
             }
@@ -121,7 +121,7 @@ namespace SQLiteXM
                     typeof(SxmEntity).IsAssignableFrom(navProp.PropertyType))
                 {
                     string assocKey = $"{sourceType.FullName}.{navProp.Name}";
-                    if (_registeredAssociations.Add(assocKey))
+                    if (registeredAssociations.Add(assocKey))
                     {
                         // Register runtime association: Source.FK -> Target.id
                         SxmAssociationMapper.ConfigureAssociation(
@@ -529,14 +529,14 @@ namespace SQLiteXM
         /// <typeparam name="TResult">User entity type with a public parameterless constructor.</typeparam>
         /// <param name="databaseRowsList">List of dictionary rows where keys are column/property names.</param>
         /// <returns>List of populated user objects.</returns>
-        internal static List<TResult> populateUserRecord<TResult>(List<Dictionary<string, object?>> databaseRowsList) where TResult : class, new()
+        internal static List<TResult> PopulateUserRecord<TResult>(List<Dictionary<string, object?>> databaseRowsList) where TResult : class, new()
         {
             List<TResult> userObjectList = new List<TResult>();
 
             foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
                 TResult userObject = new TResult();
-                loadDbValues(databaseRecord, userObject);
+                LoadDbValues(databaseRecord, userObject);
                 userObjectList.Add(userObject);
             }
 
@@ -551,7 +551,7 @@ namespace SQLiteXM
         /// <param name="userObject">Destination object to populate.</param>
         /// <exception cref="ArgumentNullException">If <paramref name="userObject"/> or <paramref name="databaseRecord"/> is null.</exception>
         /// <exception cref="ArgumentException">If a database value cannot be cast to the target property type.</exception>
-        internal static void loadDbValues(Dictionary<string, object?> databaseRecord, object userObject)
+        internal static void LoadDbValues(Dictionary<string, object?> databaseRecord, object userObject)
         {
             if (userObject == null) throw new ArgumentNullException(nameof(userObject));
             if (databaseRecord == null) throw new ArgumentNullException(nameof(databaseRecord));
@@ -703,7 +703,7 @@ namespace SQLiteXM
         /// <param name="userObject">The user entity instance to read values from.</param>
         /// <returns>Dictionary mapping column names to values ready for DB insertion/update. Null values are represented by <see cref="DBNull.Value"/>.</returns>
         /// <exception cref="ArgumentException">Propagates if property access or conversion fails.</exception>
-        internal static Dictionary<string, object?> loadParamaterValues(Dictionary<string, string> dbColumnNameType, object userObject)
+        internal static Dictionary<string, object?> LoadParamaterValues(Dictionary<string, string> dbColumnNameType, object userObject)
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
             foreach (KeyValuePair<string, string> kvp in dbColumnNameType)  // Process each entry (column) in the Dictionary.

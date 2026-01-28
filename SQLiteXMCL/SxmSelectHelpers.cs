@@ -30,7 +30,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while creating the transaction or executing the query.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> performSelect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
 
@@ -38,8 +38,8 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.executeQueryAsync(sqlStatementName, sqlStatementParameters);
-                    selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+                    await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters);
+                    selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
                 }
             }
             catch (System.Exception)
@@ -64,14 +64,14 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while executing the query on the provided transaction.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> performSelectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 
             try
             {
-                await sxmTransaction.executeQueryAsync(sqlStatementName, sqlStatementParameters);
-                selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+                await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters);
+                selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
             }
             catch (System.Exception)
             {
@@ -95,7 +95,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while creating the transaction or executing the query.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> performSelectDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
 
@@ -103,8 +103,8 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.executeQueryDirectAsync(sqlStatement, sqlStatementParameters);
-                    selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+                    await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters);
+                    selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
                 }
             }
             catch (System.Exception)
@@ -129,14 +129,14 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while executing the query on the provided transaction.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> performSelectDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 
             try
             {
-                await sxmTransaction.executeQueryDirectAsync(sqlStatement, sqlStatementParameters);
-                selectedRows = sxmTransaction.getAllRows<Dictionary<string, object?>>();
+                await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters);
+                selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
             }
             catch (System.Exception)
             {

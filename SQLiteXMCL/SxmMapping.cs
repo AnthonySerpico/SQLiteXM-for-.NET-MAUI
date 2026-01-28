@@ -21,14 +21,14 @@ namespace SQLiteXM
         /// <summary>
         /// Lazily-built <see cref="MappingSchema"/> instance. Construction is deferred until first use.
         /// </summary>
-        private static readonly Lazy<MappingSchema> _schema = new(Build);
+        private static readonly Lazy<MappingSchema> schema = new(Build);
 
         /// <summary>
         /// The shared <see cref="MappingSchema"/> with all custom converters registered.
         /// Use this when creating contexts or configuring Linq2DB so the same conversion rules
         /// apply everywhere in the library.
         /// </summary>
-        public static MappingSchema Schema => _schema.Value;
+        public static MappingSchema Schema => schema.Value;
 
         /// <summary>
         /// Build the <see cref="MappingSchema"/> and register all custom converters.

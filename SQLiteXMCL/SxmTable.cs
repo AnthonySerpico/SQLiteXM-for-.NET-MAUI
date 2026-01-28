@@ -11,7 +11,7 @@ using System.Linq.Expressions;
 /// <typeparam name="T">The entity type for the queryable table.</typeparam>
 public sealed class SxmTable<T> : IQueryable<T> where T : class
 {
-    private readonly IQueryable<T> _inner;
+    private readonly IQueryable<T> inner;
 
     /// <summary>
     /// Create a new <see cref="SxmTable{T}"/> that wraps the provided queryable.
@@ -20,7 +20,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// <exception cref="ArgumentNullException"><paramref name="inner"/> is <c>null</c>.</exception>
     public SxmTable(IQueryable<T> inner)
     {
-        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
     }
 
     /// <summary>
@@ -35,7 +35,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// </returns>
     public SxmTable<T> LoadWith<TProperty>(Expression<Func<T, TProperty>> navigationProperty)
     {
-        if (_inner is ITable<T> table)
+        if (inner is ITable<T> table)
         {
             // This resolves LinqToDB's LoadWith extension for ITable<T>
             var newQuery = table.LoadWith(navigationProperty);
@@ -58,7 +58,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// </returns>
     public SxmTable<T> LoadWith(params Expression<Func<T, object>>[] navigationProperties)
     {
-        if (_inner is ITable<T> table)
+        if (inner is ITable<T> table)
         {
             IQueryable<T> q = table;
             foreach (var prop in navigationProperties)
@@ -77,7 +77,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// Callers that require LinqToDB-specific extensions can call this and check for <c>null</c>.
     /// </remarks>
     /// <returns>The underlying <see cref="ITable{T}"/> if the inner query implements it; otherwise <c>null</c>.</returns>
-    internal ITable<T>? AsITable() => _inner as ITable<T>;
+    internal ITable<T>? AsITable() => inner as ITable<T>;
 
     /// <summary>
     /// Try to obtain the underlying LinqToDB <see cref="ITable{T}"/>.
@@ -86,7 +86,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// <returns><c>true</c> if the underlying query implements <see cref="ITable{T}"/>; otherwise <c>false</c>.</returns>
     internal bool TryGetITable([NotNullWhen(true)] out ITable<T>? table)
     {
-        table = _inner as ITable<T>;
+        table = inner as ITable<T>;
         return table != null;
     }
 
@@ -95,28 +95,28 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// <summary>
     /// Gets the element type of the underlying query.
     /// </summary>
-    public Type ElementType => _inner.ElementType;
+    public Type ElementType => inner.ElementType;
 
     /// <summary>
     /// Gets the expression tree that is associated with the instance of <see cref="IQueryable{T}"/>.
     /// </summary>
-    public Expression Expression => _inner.Expression;
+    public Expression Expression => inner.Expression;
 
     /// <summary>
     /// Gets the query provider used to execute the underlying query.
     /// </summary>
-    public IQueryProvider Provider => _inner.Provider;
+    public IQueryProvider Provider => inner.Provider;
 
     /// <summary>
     /// Get an enumerator that iterates through the results of the underlying query.
     /// </summary>
     /// <returns>An enumerator for the query results.</returns>
-    public IEnumerator<T> GetEnumerator() => _inner.GetEnumerator();
+    public IEnumerator<T> GetEnumerator() => inner.GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)_inner).GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)inner).GetEnumerator();
 
     /// <summary>
     /// Returns the string representation of the underlying query (for debugging and diagnostics).
     /// </summary>
-    public override string? ToString() => _inner.ToString();
+    public override string? ToString() => inner.ToString();
 }

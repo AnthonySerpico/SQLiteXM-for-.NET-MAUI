@@ -10,12 +10,12 @@ namespace SQLiteXM
     {
         private bool isDisposed = false;
         private readonly SqliteConnection dConnection;
-        private readonly SxmChangeSet _changeSet = new SxmChangeSet();
+        private readonly SxmChangeSet changeSet = new SxmChangeSet();
         private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
 
         public SxmLinqContext(string? databaseName = null)
         {
-            string connStr = SxmConnection.getConnectionString(ref databaseName);
+            string connStr = SxmConnection.GetConnectionString(ref databaseName);
             dConnection = new SqliteConnection(connStr);
             dConnection.Open();
 
@@ -23,7 +23,7 @@ namespace SQLiteXM
             _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
         }
 
-        public SxmChangeSet GetChangeSet() => _changeSet;
+        public SxmChangeSet GetChangeSet() => changeSet;
 
         // LinqToDB table access
         public SxmTable<T> GetTable<T>() where T : class
@@ -178,7 +178,7 @@ namespace SQLiteXM
             if (entity is SxmEntity sxm)
             {
                 // entity is SxmEntity or derived — use sxm
-                await sxm.Save().CAF();
+                await sxm.SaveAsync().CAF();
                 return 1;
             }
             else
@@ -215,14 +215,8 @@ namespace SQLiteXM
         public async Task InsertAsync(SxmEntity entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            await entity.Save().CAF();
+            await entity.SaveAsync().CAF();
         }
-
-        /*public Task InsertAsync<T>(T entity) where T : class
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return InsertAsync(entity);
-        }*/
 
         // -------------------------
         // Update APIs
@@ -235,7 +229,7 @@ namespace SQLiteXM
         public Task UpdateAsync(SxmEntity entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return entity.Save();
+            return entity.SaveAsync();
         }
 
         /// <summary>
@@ -260,7 +254,7 @@ namespace SQLiteXM
         public Task DeleteAsync(SxmEntity entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return entity.Delete();
+            return entity.DeleteAsync();
         }
 
         /// <summary>
@@ -281,34 +275,48 @@ namespace SQLiteXM
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            _changeSet.Add(entity, ChangeType.Insert);
+            changeSet.Add(entity, ChangeType.Insert);
         }
 
         public void UpdateOnSubmit<T>(T entity) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            _changeSet.Add(entity, ChangeType.Update);
+            changeSet.Add(entity, ChangeType.Update);
         }
 
         public void DeleteOnSubmit<T>(T entity) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            _changeSet.Add(entity, ChangeType.Delete);
+            changeSet.Add(entity, ChangeType.Delete);
+        }
+
+        public void InsertOrReplaceOnSubmit<T>(T entity) where T : SxmEntity
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+
+            changeSet.Add(entity, ChangeType.InsertOrReplace);
+        }
+
+        public void InsertOrUpdateOnSubmit<T>(T entity) where T : SxmEntity
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+
+            changeSet.Add(entity, ChangeType.InsertOrUpdate);
         }
 
         // ---------- SubmitChanges ------------------------
         // Default now uses RollbackOnAnyFailure (strict atomic behavior).
-        public async Task<SubmitChangesResult> SubmitChanges()
+        public async Task<SubmitChangesResult> SubmitChangesAsync()
         {
-            return await SubmitChanges(ConflictMode.RollbackOnAnyFailure).CAF();
+            return await SubmitChangesAsync(ConflictMode.RollbackOnAnyFailure).CAF();
         }
 
-        public async Task<SubmitChangesResult> SubmitChanges(ConflictMode conflictMode)
+        public async Task<SubmitChangesResult> SubmitChangesAsync(ConflictMode conflictMode)
         {
             var report = new SubmitChangesResult();
-            if (_changeSet.IsEmpty)
+            if (changeSet.IsEmpty)
             {
                 report.AllSucceeded = true;
                 return report;
@@ -322,7 +330,7 @@ namespace SQLiteXM
             {
                 try
                 {
-                    List<ChangeAction> actions = _changeSet.GetOrderedActions().ToList();
+                    List<ChangeAction> actions = changeSet.GetOrderedActions().ToList();
 
                     foreach (ChangeAction action in actions)
                     {
@@ -333,11 +341,19 @@ namespace SQLiteXM
                                 case ChangeType.Insert:
                                 case ChangeType.Update:
                                     // Save decides insert vs update based on existence; use transaction-aware overload.
-                                    await action.Entity.Save(sxmTrans).CAF();
+                                    await action.Entity.SaveAsync(sxmTrans).CAF();
                                     break;
 
                                 case ChangeType.Delete:
-                                    await action.Entity.Delete(sxmTrans).CAF();
+                                    await action.Entity.DeleteAsync(sxmTrans).CAF();
+                                    break;
+
+                                case ChangeType.InsertOrReplace:
+                                    await action.Entity.InsertOrReplaceAsync(sxmTrans).CAF();
+                                    break;
+
+                                case ChangeType.InsertOrUpdate:
+                                    await action.Entity.InsertOrUpdateAsync(sxmTrans).CAF();
                                     break;
                             }
 
@@ -380,7 +396,7 @@ namespace SQLiteXM
                     if (conflictMode == ConflictMode.ContinueOnConflict)
                     {
                         // commit whatever succeeded (partial commit)
-                        await sxmTrans.commitTransactionAsync();
+                        await sxmTrans.CommitTransactionAsync();
                         committed = true;
                     }
                     else if (conflictMode == ConflictMode.FailOnFirstConflict)
@@ -388,12 +404,12 @@ namespace SQLiteXM
                         // If any failure happened we must rollback; otherwise commit.
                         if (anyFailure)
                         {
-                            await sxmTrans.rollbackTransactionAsync();
+                            await sxmTrans.RollbackTransactionAsync();
                             committed = false;
                         }
                         else
                         {
-                            await sxmTrans.commitTransactionAsync();
+                            await sxmTrans.CommitTransactionAsync();
                             committed = true;
                         }
                     }
@@ -401,12 +417,12 @@ namespace SQLiteXM
                     {
                         if (anyFailure)
                         {
-                            await sxmTrans.rollbackTransactionAsync();
+                            await sxmTrans.RollbackTransactionAsync();
                             committed = false;
                         }
                         else
                         {
-                            await sxmTrans.commitTransactionAsync();
+                            await sxmTrans.CommitTransactionAsync();
                             committed = true;
                         }
                     }
@@ -416,7 +432,7 @@ namespace SQLiteXM
                     // Best-effort rollback if commit/processing failed.
                     try
                     {
-                        await sxmTrans.rollbackTransactionAsync();
+                        await sxmTrans.RollbackTransactionAsync();
                     }
                     catch
                     {
@@ -429,7 +445,7 @@ namespace SQLiteXM
                 {
                     // Only clear the change set when commit succeeded.
                     if (committed)
-                        _changeSet.Clear();
+                        changeSet.Clear();
                 }
             }
 

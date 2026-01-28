@@ -22,7 +22,17 @@ namespace SQLiteXM
         /// <summary>
         /// An existing entity will be deleted.
         /// </summary>
-        Delete
+        Delete,
+
+        /// <summary>
+        /// New entity will be added, an existing entity will be updated.
+        /// </summary>
+        InsertOrReplace,
+
+        /// <summary>
+        /// New entity will be added, an existing entity will be updated.
+        /// </summary>
+        InsertOrUpdate
     }
 
     /// <summary>
@@ -147,7 +157,7 @@ namespace SQLiteXM
         /// <param name="entity">The entity that the change targets. Must not be null.</param>
         /// <param name="type">The type of change to record.</param>
         /// <exception cref="ArgumentNullException"><paramref name="entity"/> is null.</exception>
-        public void Add(SxmEntity entity, ChangeType type)
+        internal void Add(SxmEntity entity, ChangeType type)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
@@ -158,6 +168,6 @@ namespace SQLiteXM
         /// Returns a read-only snapshot of the internal ordered actions list.
         /// </summary>
         /// <returns>A read-only list that reflects the current ordering of recorded actions.</returns>
-        public IReadOnlyList<ChangeAction> GetOrderedActions() => _actions.AsReadOnly();
+        internal IReadOnlyList<ChangeAction> GetOrderedActions() => _actions.AsReadOnly();
     }
 }

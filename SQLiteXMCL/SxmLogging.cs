@@ -86,12 +86,12 @@ namespace SQLiteXM
         /// <param name="ex">The exception to log.</param>
         /// <param name="method">Optional name of the method where the exception originated.</param>
         /// <param name="logLevel">Optional log level label (defaults to "Error").</param>
-        static internal void log(string dbName, System.Exception ex, string? method, string logLevel = "Error")
+        static internal void Log(string dbName, System.Exception ex, string? method, string logLevel = "Error")
         {
             if (dbName == null) return;
 
             if (loggers.TryGetValue(dbName, out var log))
-                log.log(ex, method, logLevel);
+                log.Log(ex, method, logLevel);
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace SQLiteXM
         /// Very large exception text is trimmed to avoid excessive memory use on mobile devices.
         /// Exceptions thrown while attempting to enqueue are swallowed to avoid throwing while handling another exception.
         /// </remarks>
-        private void log(System.Exception ex, string? method, string logLevel = "Error")
+        private void Log(System.Exception ex, string? method, string logLevel = "Error")
         {
             if (noLog || string.IsNullOrEmpty(method))
                 return;

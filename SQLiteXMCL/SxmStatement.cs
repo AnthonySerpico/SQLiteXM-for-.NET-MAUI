@@ -29,7 +29,7 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>The first result record mapped to <typeparamref name="TResult"/>.</returns>
         /// <exception cref="ArgumentException">Thrown when the referenced statement is not an insert.</exception>
-        public static async Task<TResult> Insert<T, TResult>(string sqlStatementName, T userObjectParameters, string? dbName = default) where TResult : class, new()
+        public static async Task<TResult> InsertAsync<T, TResult>(string sqlStatementName, T userObjectParameters, string? dbName = default) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -47,7 +47,7 @@ namespace SQLiteXM
         /// <param name="userObjectParameters">User object whose properties will be used as statement parameters.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>A dictionary representing the inserted record (column name -> value).</returns>
-        public static async Task<Dictionary<string, object?>> Insert<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
+        public static async Task<Dictionary<string, object?>> InsertAsync<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -65,7 +65,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">Dictionary of parameter name -> value to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>The first result record mapped to <typeparamref name="TResult"/>.</returns>
-        public static async Task<TResult> Insert<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where TResult : class, new()
+        public static async Task<TResult> InsertAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -82,7 +82,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">Dictionary of parameter name -> value to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>A dictionary representing the inserted record (column name -> value).</returns>
-        public static async Task<Dictionary<string, object?>> Insert(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
+        public static async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -100,7 +100,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>The first result record mapped to <typeparamref name="TResult"/>.</returns>
-        public static async Task<TResult> Insert<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where TResult : class, new()
+        public static async Task<TResult> InsertAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -117,7 +117,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>A dictionary representing the inserted record (column name -> value).</returns>
-        public static async Task<Dictionary<string, object?>> Insert(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        public static async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.insert)
@@ -138,7 +138,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
         /// <param name="userObjectParameters">User object whose properties will be used as statement parameters.</param>
         /// <param name="dbName">Optional database name override.</param>
-        public static async Task Update<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
+        public static async Task UpdateAsync<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.update && statementType != SqlStatementType.updateDirect)
@@ -153,7 +153,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
         /// <param name="sqlStatementParameters">Dictionary of parameter name -> value to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
-        public static async Task Update(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
+        public static async Task UpdateAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.update && statementType != SqlStatementType.updateDirect)
@@ -168,7 +168,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
         /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
-        public static async Task Update(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        public static async Task UpdateAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.update && statementType != SqlStatementType.updateDirect)
@@ -190,7 +190,7 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>List of mapped records of type <typeparamref name="TResult"/>.</returns>
         /// <exception cref="ArgumentException">Thrown when the referenced statement is not a select.</exception>
-        public static async Task<List<TResult>> Select<T, TResult>(string sqlStatementName, T userObjectParameters, string? dbName = default) where TResult : class, new()
+        public static async Task<List<TResult>> SelectAsync<T, TResult>(string sqlStatementName, T userObjectParameters, string? dbName = default) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -207,7 +207,7 @@ namespace SQLiteXM
         /// <param name="userObjectParameters">User object whose properties will be used as statement parameters.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>List of dictionaries where each dictionary represents a result row (column name -> value).</returns>
-        public static async Task<List<Dictionary<string, object?>>> Select<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> SelectAsync<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -222,7 +222,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">Dictionary of parameter name -> value to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>List of dictionaries where each dictionary represents a result row (column name -> value).</returns>
-        public static async Task<List<Dictionary<string, object?>>> Select(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> SelectAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -238,7 +238,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">Dictionary of parameter name -> value to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>List of mapped records of type <typeparamref name="TResult"/>.</returns>
-        public static async Task<List<TResult>> Select<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where TResult : class, new()
+        public static async Task<List<TResult>> SelectAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -254,7 +254,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>List of mapped records of type <typeparamref name="TResult"/>.</returns>
-        public static async Task<List<TResult>> Select<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where TResult : class, new()
+        public static async Task<List<TResult>> SelectAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -269,7 +269,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
         /// <returns>List of dictionaries where each dictionary represents a result row (column name -> value).</returns>
-        public static async Task<List<Dictionary<string, object?>>> Select(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        public static async Task<List<Dictionary<string, object?>>> SelectAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.select && statementType != SqlStatementType.selectDirect)
@@ -288,7 +288,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
         /// <param name="userObjectParameters">User object whose properties will be used as statement parameters.</param>
         /// <param name="dbName">Optional database name override.</param>
-        public static async Task Delete<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
+        public static async Task DeleteAsync<T>(string sqlStatementName, T userObjectParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.delete && statementType != SqlStatementType.deleteDirect)
@@ -303,7 +303,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
         /// <param name="sqlStatementParameters">Dictionary of parameter name -> value to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
-        public static async Task Delete(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
+        public static async Task DeleteAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.delete && statementType != SqlStatementType.deleteDirect)
@@ -318,7 +318,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
         /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
         /// <param name="dbName">Optional database name override.</param>
-        public static async Task Delete(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        public static async Task DeleteAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.delete && statementType != SqlStatementType.deleteDirect)
@@ -347,10 +347,10 @@ namespace SQLiteXM
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
-            Dictionary<string, string> columnNames = await SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
-            Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues(columnNames, userObjectParameters);
+            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNames(databaseName, sqlStatementName, statementType);
+            Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParamaterValues(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await RunStatement(sqlStatementName, selectParameterValues, databaseName).CAF();
-            List<TResult> userRecordList = SxmHelpers.populateUserRecord<TResult>(select);
+            List<TResult> userRecordList = SxmHelpers.PopulateUserRecord<TResult>(select);
 
             return userRecordList;
         }
@@ -367,7 +367,7 @@ namespace SQLiteXM
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters, databaseName).CAF();
 
-            return SxmHelpers.populateUserRecord<TResult>(runSqlStatementResponse);
+            return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
         }
 
         /// <summary>
@@ -386,8 +386,8 @@ namespace SQLiteXM
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
-            Dictionary<string, string> columnNames = await SxmInit.getTableColumnNames(databaseName, sqlStatementName, statementType);
-            Dictionary<string, object?> selectParameterValues = SxmHelpers.loadParamaterValues(columnNames, userObjectParameters);
+            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNames(databaseName, sqlStatementName, statementType);
+            Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParamaterValues(columnNames, userObjectParameters);
 
             return await RunStatement(sqlStatementName, selectParameterValues, databaseName).CAF();
         }
@@ -404,7 +404,7 @@ namespace SQLiteXM
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatement(sqlStatementName, sqlStatementParameters, databaseName).CAF();
 
-            return SxmHelpers.populateUserRecord<TResult>(runSqlStatementResponse);
+            return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
         }
 
         /// <summary>
@@ -439,38 +439,38 @@ namespace SQLiteXM
                     switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
                     {
                         case SqlStatementType.select:
-                            recordData = await SxmSelectHelpers.performSelect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
+                            recordData = await SxmSelectHelpers.PerformSelect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
                         case SqlStatementType.update:
-                            await SxmUpdateHelpers.performUpdate(sqlStatementName, sqlStatementParameters, databaseName).CAF();
+                            await SxmUpdateHelpers.PerformUpdate(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
                         case SqlStatementType.delete:
-                            await SxmDeleteHelpers.performDelete(sqlStatementName, sqlStatementParameters, databaseName).CAF();
+                            await SxmDeleteHelpers.PerformDelete(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
                         case SqlStatementType.insert:
                             recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.performInsert(sqlStatementName, sqlStatementParameters, databaseName).CAF());
+                            recordData.Add(await SxmInsertHelpers.PerformInsert(sqlStatementName, sqlStatementParameters, databaseName).CAF());
                             break;
 
                         // Direct SQL statement queries are processed here.
                         case SqlStatementType.selectDirect:
-                            recordData = await SxmSelectHelpers.performSelectDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
+                            recordData = await SxmSelectHelpers.PerformSelectDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
                         case SqlStatementType.updateDirect:
-                            await SxmUpdateHelpers.performUpdateDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
+                            await SxmUpdateHelpers.PerformUpdateDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
                         case SqlStatementType.deleteDirect:
-                            await SxmDeleteHelpers.performDeleteDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
+                            await SxmDeleteHelpers.PerformDeleteDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF();
                             break;
 
                         case SqlStatementType.insertDirect:
                             recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.performInsertDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF());
+                            recordData.Add(await SxmInsertHelpers.PerformInsertDirect(sqlStatementName, sqlStatementParameters, databaseName).CAF());
                             break;
                         default: break;
                     }
