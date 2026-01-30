@@ -22,11 +22,11 @@ namespace SQLiteXM
         /// a library <see cref="ErrorMessage"/>. The message text is used as the
         /// exception message and the library error ID is stored in <see cref="Exception.Data"/>.
         /// </summary>
-        /// <param name="ErrorMessage">The library error message object containing text and an ID.</param>
-        public SxmException(ErrorMessage ErrorMessage)
-            : base(ErrorMessage.ErrorText)
+        /// <param name="errorMessage">The library error message object containing text and an ID.</param>
+        public SxmException(ErrorMessage errorMessage)
+            : base(errorMessage.ErrorText)
         {
-            this.Data.Add("sxmErrorCode", ErrorMessage.ErrorID);
+            this.Data.Add("sxmErrorCode", errorMessage.ErrorID);
         }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace SQLiteXM
         public SxmException(Exception inner)
             : base(inner.Message, inner)
         {
-            this.Data.Add("sxmErrorCode", SxmErrorMessages.error["innerException"].ErrorID);
+            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error["innerException"].ErrorID);
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace SQLiteXM
         public SxmException(Microsoft.Data.Sqlite.SqliteException sqliteException)
             : base(sqliteException.Message)
         {
-            this.Data.Add("sxmErrorCode", SxmErrorMessages.error["SqliteException"].ErrorID);
+            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error["SqliteException"].ErrorID);
             this.Data.Add("sqliteErrorCode", sqliteException.ErrorCode);
         }
 
@@ -60,15 +60,16 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="ex">The exception to inspect.</param>
         /// <returns>The deepest (innermost) <see cref="Exception"/> found in the chain.</returns>
-        public static Exception getInnermostException(Exception ex)
+        public static Exception GetInnermostException(Exception ex)
         {
+            if (ex is null) throw new ArgumentNullException(nameof(ex));
+
             // Walk the InnerException chain to the last exception and return it.
-            Exception iEX = ex;
+            Exception inner = ex;
+            while (inner.InnerException != null)
+                inner = inner.InnerException;
 
-            while (iEX?.InnerException != null)
-                iEX = iEX.InnerException;
-
-            return iEX;
+            return inner;
         }
     }
 }

@@ -6,24 +6,24 @@
     /// </summary>
     public class SxmInsertResponse
     {
-        private long recordID;
+        private long _recordID;
 
         /// <summary>
         /// Gets the database-assigned record identifier.
         /// </summary>
         public long RecordID
         {
-            get { return recordID; }
+            get { return _recordID; }
         }
 
-        private string synchID;
+        private string _synchID;
 
         /// <summary>
         /// Gets the synchronization identifier associated with the inserted record.
         /// </summary>
         public string SynchID
         {
-            get { return synchID; }
+            get { return _synchID; }
         }
 
         /// <summary>
@@ -33,8 +33,8 @@
         /// <param name="synchID">The synchronization identifier for the record.</param>
         internal SxmInsertResponse(long recordID, string synchID)
         {
-            this.recordID = recordID;
-            this.synchID = synchID;
+            this._recordID = recordID;
+            this._synchID = synchID;
         }
     }
 }

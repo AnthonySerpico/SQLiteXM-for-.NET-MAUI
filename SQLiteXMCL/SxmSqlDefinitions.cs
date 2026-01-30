@@ -6,22 +6,22 @@
     /// </summary>
     public class TableDefinition
     {
-        private string tableSQL;
+        private string _tableSQL;
         /// <summary>
         /// Gets the SQL used to create the table.
         /// </summary>
         public string TableSQL
         {
-            get { return tableSQL; }
+            get { return _tableSQL; }
         }
-        private int cloudSynch;
+        private int _cloudSynch;
         /// <summary>
         /// Gets the cloud synchronization indicator for this table.
         /// The interpretation of the integer value is determined by the caller.
         /// </summary>
         public int CloudSynch
         {
-            get { return cloudSynch; }
+            get { return _cloudSynch; }
         }
 
         /// <summary>
@@ -31,8 +31,8 @@
         /// <param name="cloudSynch">An integer indicating cloud synchronization behavior.</param>
         internal TableDefinition(string tableSQL, int cloudSynch)
         {
-            this.tableSQL = tableSQL;
-            this.cloudSynch = cloudSynch;
+            this._tableSQL = tableSQL;
+            this._cloudSynch = cloudSynch;
         }
     }
 

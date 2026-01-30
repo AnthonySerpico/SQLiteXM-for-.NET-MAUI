@@ -20,53 +20,53 @@ namespace SQLiteXM
         /// Each value is an <see cref="T:SQLiteXM.ErrorMessage"/> describing an error text template and its code.
         /// This field is readonly and populated in the static constructor.
         /// </remarks>
-        public static readonly Dictionary<string, ErrorMessage> error = new Dictionary<string, ErrorMessage>();
+        public static readonly Dictionary<string, ErrorMessage> Error = new Dictionary<string, ErrorMessage>();
 
         static SxmErrorMessages()
         {
-            error.Add("missingSQL", new ErrorMessage("Missing SQL Query.",
+            Error.Add("missingSQL", new ErrorMessage("Missing SQL Query.",
                 SxmDefines.SxmErrorCode.missingSQL));
-            error.Add("lockDB", new ErrorMessage("Unable to lock connection to the database: '{0}'.",
+            Error.Add("lockDB", new ErrorMessage("Unable to lock connection to the database: '{0}'.",
                 SxmDefines.SxmErrorCode.lockDB));
-            error.Add("dbDescriptorExists", new ErrorMessage("A descriptor already exists for the database: '{0}'.",
+            Error.Add("dbDescriptorExists", new ErrorMessage("A descriptor already exists for the database: '{0}'.",
                 SxmDefines.SxmErrorCode.dbDescriptorExists));
-            error.Add("noDBDescriptorExists", new ErrorMessage("A descriptor could not be found for the database: '{0}'.",
+            Error.Add("noDBDescriptorExists", new ErrorMessage("A descriptor could not be found for the database: '{0}'.",
                 SxmDefines.SxmErrorCode.noDBDescriptorExists));
-            error.Add("invalidTableName", new ErrorMessage("The table name '{0}' is invalid.",
+            Error.Add("invalidTableName", new ErrorMessage("The table name '{0}' is invalid.",
                 SxmDefines.SxmErrorCode.invalidTableName));
-            error.Add("noDatabaseExists", new ErrorMessage("The database '{0}' does not exist.",
+            Error.Add("noDatabaseExists", new ErrorMessage("The database '{0}' does not exist.",
                 SxmDefines.SxmErrorCode.noDatabaseExists));
-            error.Add("missingSQLStatementHeader", new ErrorMessage("A header in the SQL statements properties file is missing.",
+            Error.Add("missingSQLStatementHeader", new ErrorMessage("A header in the SQL statements properties file is missing.",
                 SxmDefines.SxmErrorCode.missingSQLStatementHeader));
-            error.Add("unknownSQLStatementHeader", new ErrorMessage("The header '{0}' in the SQL statements properties file is invalid.",
+            Error.Add("unknownSQLStatementHeader", new ErrorMessage("The header '{0}' in the SQL statements properties file is invalid.",
                 SxmDefines.SxmErrorCode.unknownSQLStatementHeader));
-            error.Add("invalidSQLStatementFile", new ErrorMessage("The SQL statements properties file is improperly formatted.",
+            Error.Add("invalidSQLStatementFile", new ErrorMessage("The SQL statements properties file is improperly formatted.",
                 SxmDefines.SxmErrorCode.invalidSQLStatementFile));
-            error.Add("unknownSynchCommand", new ErrorMessage("The table synch command '{0}' is not recognized.",
+            Error.Add("unknownSynchCommand", new ErrorMessage("The table synch command '{0}' is not recognized.",
                 SxmDefines.SxmErrorCode.unknownSynchCommand));
-            error.Add("invalidSQLStatementDefinition", new ErrorMessage("An '{0}' statement in the SQL statements properties file is improperly formatted.",
+            Error.Add("invalidSQLStatementDefinition", new ErrorMessage("An '{0}' statement in the SQL statements properties file is improperly formatted.",
                 SxmDefines.SxmErrorCode.invalidSQLStatementDefinition));
-            error.Add("noImplicitDBDescriptorExists", new ErrorMessage("An implicit database descriptor could not be found. Did you define more than one database?",
+            Error.Add("noImplicitDBDescriptorExists", new ErrorMessage("An implicit database descriptor could not be found. Did you define more than one database?",
                 SxmDefines.SxmErrorCode.noImplicitDBDescriptorExists));
-            error.Add("unknownErrorName", new ErrorMessage("The error '{0}' could not be fund.",
+            Error.Add("unknownErrorName", new ErrorMessage("The error '{0}' could not be fund.",
                 SxmDefines.SxmErrorCode.unknownErrorName));
-            error.Add("innerException", new ErrorMessage("", // Error message from inner exception.
+            Error.Add("innerException", new ErrorMessage("", // Error message from inner exception.
                 SxmDefines.SxmErrorCode.innerException));
-            error.Add("unknownSQLStatement", new ErrorMessage("The SQL statement '{0}' could not be found in the SQL statements properties file.",
+            Error.Add("unknownSQLStatement", new ErrorMessage("The SQL statement '{0}' could not be found in the SQL statements properties file.",
                 SxmDefines.SxmErrorCode.unknownSQLStatement));
-            error.Add("invalidDBName", new ErrorMessage("The database name '{0}' is not valid.",
+            Error.Add("invalidDBName", new ErrorMessage("The database name '{0}' is not valid.",
                 SxmDefines.SxmErrorCode.invalidDBName));
-            error.Add("SqliteException", new ErrorMessage("",
+            Error.Add("SqliteException", new ErrorMessage("",
                 SxmDefines.SxmErrorCode.sqliteException)); // Error message from SQLite.
-            error.Add("userDefined", new ErrorMessage("",
+            Error.Add("userDefined", new ErrorMessage("",
                 SxmDefines.SxmErrorCode.userDefined)); // Error message from user.
-            error.Add("threadLockError", new ErrorMessage("The current thread already has an active instance of SxmSTransaction.",
+            Error.Add("threadLockError", new ErrorMessage("The current thread already has an active instance of SxmSTransaction.",
                 SxmDefines.SxmErrorCode.threadLockError));
-            error.Add("sxmSTransactionTimeout", new ErrorMessage("Timeout trying to acquire the SxmSTransaction lock.",
+            Error.Add("sxmSTransactionTimeout", new ErrorMessage("Timeout trying to acquire the SxmSTransaction lock.",
                 SxmDefines.SxmErrorCode.sxmSTransactionTimeout));
-            error.Add("improperlyFormattedVersionNumber", new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double greater than 0.",
+            Error.Add("improperlyFormattedVersionNumber", new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double greater than 0.",
                 SxmDefines.SxmErrorCode.dbVersionFormatError));
-            error.Add("missingDatabaseName", new ErrorMessage("The database name is missing or is in the wrong spot in the SQL statements file. The database name must be the first field in the SQL statementd file.",
+            Error.Add("missingDatabaseName", new ErrorMessage("The database name is missing or is in the wrong spot in the SQL statements file. The database name must be the first field in the SQL statementd file.",
                 SxmDefines.SxmErrorCode.dbVersionFormatError));
         }
 
@@ -83,7 +83,7 @@ namespace SQLiteXM
         {
             try
             {
-                return ((ErrorMessage)SxmErrorMessages.error[errorName]).ErrorText;
+                return ((ErrorMessage)SxmErrorMessages.Error[errorName]).ErrorText;
 
             }
 #pragma warning disable 0168
@@ -107,7 +107,7 @@ namespace SQLiteXM
         {
             try
             {
-                return ((ErrorMessage)SxmErrorMessages.error[errorName]).ErrorID;
+                return ((ErrorMessage)SxmErrorMessages.Error[errorName]).ErrorID;
             }
 #pragma warning disable 0168
             catch (SystemException notUsed)
@@ -128,18 +128,18 @@ namespace SQLiteXM
     /// </summary>
     public class ErrorMessage
     {
-        private SxmDefines.SxmErrorCode errorID;
-        private string errorText;
+        private SxmDefines.SxmErrorCode _errorID;
+        private string _errorText;
 
         /// <summary>
         /// Creates a new <see cref="T:SQLiteXM.ErrorMessage"/> with a static text and associated error code.
         /// </summary>
         /// <param name="errorText">The error text template. May contain format placeholders.</param>
-        /// <param name="errorID">The <see cref="T:SQLiteXM.SxmDefines.SxmErrorCode"/> representing the error type.</param>
-        public ErrorMessage(string errorText, SxmDefines.SxmErrorCode errorID)
+        /// <param name="errorId">The <see cref="T:SQLiteXM.SxmDefines.SxmErrorCode"/> representing the error type.</param>
+        public ErrorMessage(string errorText, SxmDefines.SxmErrorCode errorId)
         {
-            this.errorText = errorText;
-            this.errorID = errorID;
+            this._errorText = errorText;
+            this._errorID = errorId;
         }
 
         /// <summary>
@@ -152,8 +152,8 @@ namespace SQLiteXM
         /// </remarks>
         public ErrorMessage(string errorName, params object[] list)
         {
-            this.errorText = String.Format(SxmErrorMessages.error[errorName].ErrorText, list);
-            this.errorID = SxmErrorMessages.error[errorName].ErrorID;
+            this._errorText = String.Format(SxmErrorMessages.Error[errorName].ErrorText, list);
+            this._errorID = SxmErrorMessages.Error[errorName].ErrorID;
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace SQLiteXM
         /// </summary>
         public SxmDefines.SxmErrorCode ErrorID
         {
-            get { return errorID; }
+            get { return _errorID; }
         }
 
         /// <summary>
@@ -169,7 +169,7 @@ namespace SQLiteXM
         /// </summary>
         public string ErrorText
         {
-            get { return errorText; }
+            get { return _errorText; }
         }
     }
 }

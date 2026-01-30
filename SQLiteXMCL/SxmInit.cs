@@ -20,7 +20,7 @@ namespace SQLiteXM
         /// <summary>
         /// Cache mapping table name -> (column name -> column type) using thread-safe concurrent dictionaries.
         /// </summary>
-        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> columnNameTypes = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _columnNameTypes = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
 
         private SxmInit() { }
 
@@ -34,7 +34,7 @@ namespace SQLiteXM
         {
             string fullPathToSqlStatementsFile = ResolveSqlStatementsFile(sqlStatementsFileName);
             SqlStatementsFileType fileType = SxmHelpers.GetSqlStatementsFileType(fullPathToSqlStatementsFile);
-            if (fileType == SqlStatementsFileType.unknown)
+            if (fileType == SqlStatementsFileType.Unknown)
                 throw new ArgumentException(
                     $"'{sqlStatementsFileName}' is an unknown SQL statements file type. The SQL statements file must be JSON or XML.");
 
@@ -43,7 +43,7 @@ namespace SQLiteXM
                 await ParseSqlStatementsFile(stream, fileType).CAF();
             }
 
-            await SxmInit.Initialize();
+            await SxmInit.InitializeAsync();
         }
 
         /// <summary>
@@ -54,8 +54,8 @@ namespace SQLiteXM
         /// <returns>A task that completes when initialization is finished.</returns>
         public static async Task InitDbAsync(Stream stream)
         {
-            await ParseSqlStatementsFile(stream, SqlStatementsFileType.unknown).CAF();
-            await SxmInit.Initialize();
+            await ParseSqlStatementsFile(stream, SqlStatementsFileType.Unknown).CAF();
+            await SxmInit.InitializeAsync();
         }
 
         /// <summary>
@@ -95,17 +95,17 @@ namespace SQLiteXM
 
             switch (fileType)
             {
-                case SxmDefines.SqlStatementsFileType.json:
-                    SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.json);
+                case SxmDefines.SqlStatementsFileType.Json:
+                    SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.Json);
                     break;
 
-                case SxmDefines.SqlStatementsFileType.xml:
-                    SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.xml);
+                case SxmDefines.SqlStatementsFileType.Xml:
+                    SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.Xml);
                     break;
 
-                case SxmDefines.SqlStatementsFileType.unknown:
+                case SxmDefines.SqlStatementsFileType.Unknown:
                 default:
-                    SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.unknown);
+                    SxmProcessSQLStatements.Parse(stream, SxmDefines.SqlStatementsFileType.Unknown);
                     break;
             }
 
@@ -156,11 +156,11 @@ namespace SQLiteXM
         /// Initialize the database schema and auxiliary structures using the currently parsed SQL statements.
         /// </summary>
         /// <returns>True on success.</returns>
-        private static async Task<bool> Initialize()
+        private static async Task<bool> InitializeAsync()
         {
             // At this point, the SQL statements file has been parsed, the database name, default status, and version have been loaded into SxmProcessSQLStatements.
             new SxmDatabaseDescriptor();
-            string databaseName = SxmProcessSQLStatements.getDatabaseName;
+            string databaseName = SxmProcessSQLStatements.DatabaseName;
 
             try
             {
@@ -170,7 +170,7 @@ namespace SQLiteXM
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
-                    await CreateSystemTables(databaseName);
+                    await CreateSystemTablesAsync(databaseName);
 
                     if (SxmSqlStatements.tableCreateStatements != default(Dictionary<string, TableDefinition>))
                     {
@@ -182,30 +182,30 @@ namespace SQLiteXM
                             if (key.Split('.').Length != 2)
                                 throw new SxmException(new ErrorMessage("invalidTableName", key));
 
-                            if (!await DoesTableExist(key, connectionMap, tableNamesMap))
+                            if (!await DoesTableExistAsync(key, connectionMap, tableNamesMap))
                             {
                                 TableDefinition tableDefinition = SxmSqlStatements.tableCreateStatements[key] as TableDefinition;
                                 if (tableDefinition.TableSQL.StartsWith("CREATE ", true, null) == true)
-                                    await ApplyCreateTableStatement(key, connectionMap, tableDefinition);
+                                    await ApplyCreateTableStatementAsync(key, connectionMap, tableDefinition);
                             }
                             else
                             {
                                 TableDefinition tableDefinition = SxmSqlStatements.tableCreateStatements[key] as TableDefinition;
                                 if (tableDefinition.TableSQL.StartsWith("DROP ", true, null) == true)
-                                    await ApplyDropTableStatement(key, connectionMap, tableDefinition);
+                                    await ApplyDropTableStatementAsync(key, connectionMap, tableDefinition);
                                 else
                                 {
-                                    await ApplyAlterTableStatements(key, connectionMap);
-                                    await ApplyIndexTableStatements(key, connectionMap);
+                                    await ApplyAlterTableStatementsAsync(key, connectionMap);
+                                    await ApplyIndexTableStatementsAsync(key, connectionMap);
                                 }
                             }
                         }
                     }
 
-                    await ApplyTriggerTableStatements(databaseName);
-                    await DropUnusedEntities(databaseName);
-                    await StoreDbVersionNumber(sqlStatementsVersionNumber, databaseName);
-                    await SxmAssociationMapper.InitializeAssociations();  // Calling this here might be an error when supporting multiple databases.
+                    await ApplyTriggerTableStatementsAsync(databaseName);
+                    await DropUnusedEntitiesAsync(databaseName);
+                    await StoreDbVersionNumberAsync(sqlStatementsVersionNumber, databaseName);
+                    await SxmAssociationMapper.InitializeAssociationsAsync();  // Calling this here might be an error when supporting multiple databases.
                                                                           // The call might need to be made after ALL databases are initialized.
                 }
             }
@@ -232,7 +232,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="databaseName">Optional database name to operate on. If null the implicit database is used.</param>
         /// <returns>A task that completes when all drop operations have finished.</returns>
-        private static async Task DropUnusedEntities(string databaseName)
+        private static async Task DropUnusedEntitiesAsync(string databaseName)
         {
             try
             {
@@ -276,16 +276,16 @@ namespace SQLiteXM
             }
         }
 
-        private static async Task CreateSystemTables(string databaseName)
+        private static async Task CreateSystemTablesAsync(string databaseName)
         {
             SxmConnection sxmConnection = new SxmConnection(databaseName);
             await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
             {
-                if (!await DoesTableExist("_systemCloudSynchDescriptor", sxmConnection))
-                    await CreateCloudSyncDescriptor(sxmTransaction);
+                if (!await DoesTableExistAsync("_systemCloudSynchDescriptor", sxmConnection))
+                    await CreateCloudSyncDescriptorAsync(sxmTransaction);
 
-                if (!await DoesTableExist("_systemCloudSynch", sxmConnection))
-                    await CreateCloudSynchTable(sxmTransaction);
+                if (!await DoesTableExistAsync("_systemCloudSynch", sxmConnection))
+                    await CreateCloudSynchTableAsync(sxmTransaction);
 
                 await sxmTransaction.CommitTransactionAsync();
             }
@@ -399,7 +399,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="versionNumber">Version number to store.</param>
         /// <returns>A task that completes when the PRAGMA has been set.</returns>
-        private static async Task StoreDbVersionNumber(long versionNumber, string databaseName)
+        private static async Task StoreDbVersionNumberAsync(long versionNumber, string databaseName)
         {
             SxmConnection? sxmConnection = default;
 
@@ -425,7 +425,7 @@ namespace SQLiteXM
         /// <param name="connectionMap">Map of database name to active connection.</param>
         /// <param name="tableDefinition">Table definition containing DDL and flags.</param>
         /// <param name="tableNamesMap">Map used to track created table names per database.</param>
-        private static async Task ApplyCreateTableStatement(string key, Hashtable connectionMap, TableDefinition tableDefinition)
+        private static async Task ApplyCreateTableStatementAsync(string key, Hashtable connectionMap, TableDefinition tableDefinition)
         {
             SxmConnection? sxmConnection = null;
 
@@ -445,15 +445,15 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                 {
                     await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL);
-                    await AddSynchID(parts, sxmTransaction);
+                    await AddSynchIdAsync(parts, sxmTransaction);
 
-                    await InsertIntoSystemCloudSyncDescriptor(key, databaseName, tableName, sxmTransaction);
+                    await InsertIntoSystemCloudSyncDescriptorAsync(key, databaseName, tableName, sxmTransaction);
 
-                    await CreateCloudSynchTriggers(key, sxmTransaction);
+                    await CreateCloudSynchTriggersAsync(key, sxmTransaction);
                     await sxmTransaction.CommitTransactionAsync();
                 }
 
-                await ApplyIndexTableStatements(key, connectionMap);
+                await ApplyIndexTableStatementsAsync(key, connectionMap);
             }
 #pragma warning disable 0168
             catch (SxmException ex)
@@ -475,7 +475,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="databaseName">Name of the database to operate on.</param>
         /// <param name="tableName">Name of the table to create.</param>
-        internal static async Task CreateTable(string? databaseName, string tableName)
+        internal static async Task CreateTableAsync(string? databaseName, string tableName)
         {
             if (databaseName == null)
                 return;
@@ -488,7 +488,7 @@ namespace SQLiteXM
             try
             {
                 sxmConnection = new SxmConnection(databaseName);
-                if (!await DoesTableExist(tableName, sxmConnection))
+                if (!await DoesTableExistAsync(tableName, sxmConnection))
                 {
                     Hashtable tableNamesMap = new Hashtable();
                     TableDefinition? tableDefinition = SxmSqlStatements.tableCreateStatements![key] as TableDefinition;
@@ -496,9 +496,9 @@ namespace SQLiteXM
                     await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                     {
                         await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL);
-                        await SxmInit.AddSynchID(parts, sxmTransaction);
+                        await SxmInit.AddSynchIdAsync(parts, sxmTransaction);
 
-                        await SxmInit.InsertIntoSystemCloudSyncDescriptor(key, databaseName, parts[1], sxmTransaction);
+                        await SxmInit.InsertIntoSystemCloudSyncDescriptorAsync(key, databaseName, parts[1], sxmTransaction);
 
                         //await SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
 
@@ -529,7 +529,7 @@ namespace SQLiteXM
         /// <param name="tableName">Table name to check.</param>
         /// <param name="sxmConnection">Optional existing connection. If null, a connection is created for the current database.</param>
         /// <returns>True if the table exists; otherwise false.</returns>
-        internal static async Task<bool> DoesTableExist(string tableName, SxmConnection sxmConnection)
+        internal static async Task<bool> DoesTableExistAsync(string tableName, SxmConnection sxmConnection)
         {
             try
             {
@@ -553,7 +553,7 @@ namespace SQLiteXM
         /// <param name="key">Qualified key in the form "database.table".</param>
         /// <param name="connectionMap">Map of database name to active connection.</param>
         /// <param name="tableDefinition">Table definition containing drop SQL.</param>
-        private static async Task ApplyDropTableStatement(string key, Hashtable connectionMap, TableDefinition tableDefinition)
+        private static async Task ApplyDropTableStatementAsync(string key, Hashtable connectionMap, TableDefinition tableDefinition)
         {
             SxmConnection? sxmConnection = null;
 
@@ -600,7 +600,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="key">Qualified key in the form "database.table".</param>
         /// <param name="connectionMap">Map of database name to active connection (updated when new connections are created).</param>
-        private static async Task ApplyAlterTableStatements(string key, Hashtable connectionMap)
+        private static async Task ApplyAlterTableStatementsAsync(string key, Hashtable connectionMap)
         {
             SxmConnection? sxmConnection = null;
             List<AlterDefinition>? alterStatementsList = null;
@@ -705,7 +705,7 @@ namespace SQLiteXM
         /// <param name="queryName">Name of the SQL statement defined in the SQL statements file.</param>
         /// <param name="sqlStatementType">Type of SQL statement (select/insert/update/delete).</param>
         /// <returns>Dictionary mapping column name to column type.</returns>
-        internal static async Task<Dictionary<string, string>> GetTableColumnNames(string? dbName, string queryName, SxmDefines.SqlStatementType sqlStatementType)
+        internal static async Task<Dictionary<string, string>> GetTableColumnNamesAsync(string? dbName, string queryName, SxmDefines.SqlStatementType sqlStatementType)
         {
             string? tableName = default(string);
 
@@ -730,7 +730,7 @@ namespace SQLiteXM
             if (sqlStatementType == SxmDefines.SqlStatementType.unknown || string.IsNullOrEmpty(tableName))
                 throw new SxmException(new ErrorMessage("unknownSQLStatement", queryName));
 
-            return await GetTableColumnNames(dbName, tableName);
+            return await GetTableColumnNamesAsync(dbName, tableName);
         }
 
         /// <summary>
@@ -746,7 +746,7 @@ namespace SQLiteXM
             if (string.IsNullOrEmpty(columnName))
                 throw new ArgumentNullException(nameof(columnName));
 
-            if (columnNameTypes.TryGetValue(tableName, out var inner))
+            if (_columnNameTypes.TryGetValue(tableName, out var inner))
             {
                 // Preserve original behavior: Dictionary.Add would throw on duplicate;
                 // use TryAdd and throw if the key already exists.
@@ -768,7 +768,7 @@ namespace SQLiteXM
             if (string.IsNullOrEmpty(columnName))
                 throw new ArgumentNullException(nameof(columnName));
 
-            if (columnNameTypes.TryGetValue(tableName, out var inner))
+            if (_columnNameTypes.TryGetValue(tableName, out var inner))
             {
                 inner.TryRemove(columnName, out _);
             }
@@ -787,13 +787,13 @@ namespace SQLiteXM
         /// The internal cache is thread-safe; callers receive a snapshot to preserve existing API semantics.
         /// Callers must not rely on the returned Dictionary reflecting later mutations.
         /// </remarks>
-        internal static async Task<Dictionary<string, string>> GetTableColumnNames(string? dbName, string? tableName)
+        internal static async Task<Dictionary<string, string>> GetTableColumnNamesAsync(string? dbName, string? tableName)
         {
             if (string.IsNullOrEmpty(tableName))
                 throw new ArgumentNullException(nameof(tableName));
 
             // Fast path: if inner exists return a snapshot.
-            if (columnNameTypes.TryGetValue(tableName, out var existingInner))
+            if (_columnNameTypes.TryGetValue(tableName, out var existingInner))
                 return new Dictionary<string, string>(existingInner, StringComparer.Ordinal);
 
             // Load into a concurrent inner map.
@@ -814,7 +814,7 @@ namespace SQLiteXM
             }
 
             // Install the loaded concurrent inner map as the live cached instance.
-            var winner = columnNameTypes.GetOrAdd(tableName, columnNames);
+            var winner = _columnNameTypes.GetOrAdd(tableName, columnNames);
 
             // Return a snapshot Dictionary<string,string> so callers continue to get the same concrete type.
             return new Dictionary<string, string>(winner, StringComparer.Ordinal);
@@ -825,7 +825,7 @@ namespace SQLiteXM
         /// Existing triggers are dropped before new ones are created.
         /// </summary>
         /// <param name="connectionMap">Map of database name to active connection. If null, connections will be created as needed.</param>
-        private static async Task ApplyTriggerTableStatements(string databaseName)
+        private static async Task ApplyTriggerTableStatementsAsync(string databaseName)
         {
             List<TriggerDefinition>? triggerStatementsList = default(List<TriggerDefinition>);
 
@@ -838,7 +838,7 @@ namespace SQLiteXM
                     SxmConnection sxmConnection = new SxmConnection(databaseName);
                     await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                     {
-                        List<string> ExistingTriggers = await SxmInit.GetAllTriggers(sxmTransaction.Connection, string.Empty);
+                        List<string> ExistingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty);
                         foreach (string existingTrigger in ExistingTriggers)
                         {
                             await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER {SxmHelpers.QuoteIdentifier(existingTrigger)}");
@@ -869,7 +869,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="key">Qualified key in the form "database.table".</param>
         /// <param name="connectionMap">Map of database name to active connection (updated when new connections are created).</param>
-        private static async Task ApplyIndexTableStatements(string key, Hashtable connectionMap)
+        private static async Task ApplyIndexTableStatementsAsync(string key, Hashtable connectionMap)
         {
             List<IndexDefinition>? indexStatementsList = default(List<IndexDefinition>);
 
@@ -983,7 +983,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="parts">Array with two elements: [0] = database name, [1] = table name.</param>
         /// <param name="sxmTransaction">Active transaction used to execute the ALTER statement.</param>
-        private static async Task AddSynchID(string[] parts, SxmUTransaction sxmTransaction)
+        private static async Task AddSynchIdAsync(string[] parts, SxmUTransaction sxmTransaction)
         {
             string alterSQL = $"ALTER TABLE {SxmHelpers.QuoteIdentifier(parts[1])} ADD COLUMN {SxmHelpers.QuoteIdentifier("synchId")} TEXT NOT NULL DEFAULT ''";
             await sxmTransaction.ExecuteTableStatementAsync(alterSQL);
@@ -995,7 +995,7 @@ namespace SQLiteXM
         /// <param name="key">Qualified key "database.table".</param>
         /// <param name="tableNamesMap">Map used to track created table names per database.</param>
         /// <param name="sxmTransaction">Active transaction used to execute DDL and inserts.</param>
-        private static async Task CreateCloudSyncDescriptor(SxmUTransaction sxmTransaction)
+        private static async Task CreateCloudSyncDescriptorAsync(SxmUTransaction sxmTransaction)
         {
             string databaseTable = "_systemCloudSynchDescriptor";
 
@@ -1010,7 +1010,7 @@ namespace SQLiteXM
         /// <param name="databaseName">Database name.</param>
         /// <param name="tableName">Table name.</param>
         /// <param name="sxmTransaction">Active transaction used to execute the insert.</param>
-        private static async Task InsertIntoSystemCloudSyncDescriptor(string key, string databaseName, string tableName, SxmUTransaction sxmTransaction)
+        private static async Task InsertIntoSystemCloudSyncDescriptorAsync(string key, string databaseName, string tableName, SxmUTransaction sxmTransaction)
         {
             TableDefinition tableDefinition = SxmSqlStatements.tableCreateStatements[key] as TableDefinition;
             List<object> parameterValues = new List<object>();
@@ -1027,7 +1027,7 @@ namespace SQLiteXM
         /// <param name="key">Qualified key "database.table".</param>
         /// <param name="tableNamesMap">Map used to track created table names per database.</param>
         /// <param name="sxmTransaction">Active transaction used to execute the DDL.</param>
-        private static async Task CreateCloudSynchTable(SxmUTransaction sxmTransaction)
+        private static async Task CreateCloudSynchTableAsync(SxmUTransaction sxmTransaction)
         {
             string databaseTable = "_systemCloudSynch";
 
@@ -1041,7 +1041,7 @@ namespace SQLiteXM
         /// <param name="key">Qualified key "database.table".</param>
         /// <param name="tableNamesMap">Map used to track created table names per database (unused in current implementation).</param>
         /// <param name="sxmTransaction">Active transaction used to create the triggers.</param>
-        private static async Task CreateCloudSynchTriggers(string key, SxmUTransaction sxmTransaction)
+        private static async Task CreateCloudSynchTriggersAsync(string key, SxmUTransaction sxmTransaction)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];
@@ -1078,7 +1078,7 @@ namespace SQLiteXM
             }
         }
 
-        private static async Task<bool> DoesTableExist(string key, Hashtable connectionMap, Hashtable tableNamesMap)
+        private static async Task<bool> DoesTableExistAsync(string key, Hashtable connectionMap, Hashtable tableNamesMap)
         {
             string[] parts = key.Split('.');
             string databaseName = parts[0];
@@ -1131,7 +1131,7 @@ namespace SQLiteXM
         /// <param name="sxmConnection">Connection to query for triggers.</param>
         /// <param name="tableName">Optional table name to filter triggers. Use empty string for no filter.</param>
         /// <returns>List of trigger names.</returns>
-        internal static async Task<List<string>> GetAllTriggers(SxmConnection? sxmConnection, string tableName)
+        internal static async Task<List<string>> GetAllTriggersAsync(SxmConnection? sxmConnection, string tableName)
         {
             List<string> triggerNames = new List<string>();
 

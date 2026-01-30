@@ -21,14 +21,14 @@ namespace SQLiteXM
         /// <summary>
         /// Lazily-built <see cref="MappingSchema"/> instance. Construction is deferred until first use.
         /// </summary>
-        private static readonly Lazy<MappingSchema> schema = new(Build);
+        private static readonly Lazy<MappingSchema> _schema = new(Build);
 
         /// <summary>
         /// The shared <see cref="MappingSchema"/> with all custom converters registered.
         /// Use this when creating contexts or configuring Linq2DB so the same conversion rules
         /// apply everywhere in the library.
         /// </summary>
-        public static MappingSchema Schema => schema.Value;
+        public static MappingSchema Schema => _schema.Value;
 
         /// <summary>
         /// Build the <see cref="MappingSchema"/> and register all custom converters.
@@ -57,48 +57,48 @@ namespace SQLiteXM
             var ms = new MappingSchema();
 
             // decimal TEXT
-            ms.SetConverter<decimal, string>(d => SxmColumnDataConverters.decimalToString(d));
-            ms.SetConverter<string, decimal>(s => SxmColumnDataConverters.decimalFromString(s));
+            ms.SetConverter<decimal, string>(d => SxmColumnDataConverters.DecimalToString(d));
+            ms.SetConverter<string, decimal>(s => SxmColumnDataConverters.DecimalFromString(s));
 
             // ulong TEXT
-            ms.SetConverter<ulong, string>(u => SxmColumnDataConverters.uLongToString(u));
-            ms.SetConverter<string, ulong>(s => SxmColumnDataConverters.uLongFromString(s));
+            ms.SetConverter<ulong, string>(u => SxmColumnDataConverters.ULongToString(u));
+            ms.SetConverter<string, ulong>(s => SxmColumnDataConverters.ULongFromString(s));
 
             // DateTime TEXT (ISO 8601) DateTime ticks (INTEGER)
-            ms.SetConverter<DateTime, string>(d => SxmColumnDataConverters.dateTimeToString(d));
-            ms.SetConverter<string, DateTime>(s => SxmColumnDataConverters.dateTimeFromString(s));
-            ms.SetConverter<DateTime, long>(d => SxmColumnDataConverters.dateTimeToUnixTimeMilliseconds(d));
-            ms.SetConverter<long, DateTime>(t => SxmColumnDataConverters.dateTimeFromUnixTimeMilliseconds(t));
+            ms.SetConverter<DateTime, string>(d => SxmColumnDataConverters.DateTimeToString(d));
+            ms.SetConverter<string, DateTime>(s => SxmColumnDataConverters.DateTimeFromString(s));
+            ms.SetConverter<DateTime, long>(d => SxmColumnDataConverters.DateTimeToUnixTimeMilliseconds(d));
+            ms.SetConverter<long, DateTime>(t => SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(t));
 
             // DateOnly TEXT + numeric (DayNumber)
-            ms.SetConverter<DateOnly, string>(d => SxmColumnDataConverters.dateOnlyToString(d));
-            ms.SetConverter<string, DateOnly>(s => SxmColumnDataConverters.dateOnlyFromString(s));
-            ms.SetConverter<DateOnly, long>(d => SxmColumnDataConverters.dateOnlyToUnixDayNumber(d));
-            ms.SetConverter<long, DateOnly>(l => SxmColumnDataConverters.dateOnlyFromUnixDayNumber(l));
+            ms.SetConverter<DateOnly, string>(d => SxmColumnDataConverters.DateOnlyToString(d));
+            ms.SetConverter<string, DateOnly>(s => SxmColumnDataConverters.DateOnlyFromString(s));
+            ms.SetConverter<DateOnly, long>(d => SxmColumnDataConverters.DateOnlyToUnixDayNumber(d));
+            ms.SetConverter<long, DateOnly>(l => SxmColumnDataConverters.DateOnlyFromUnixDayNumber(l));
 
             // TimeOnly TEXT + numeric (Ticks)
-            ms.SetConverter<TimeOnly, string>(t => SxmColumnDataConverters.timeOnlyToString(t));
-            ms.SetConverter<string, TimeOnly>(s => SxmColumnDataConverters.timeOnlyFromString(s));
-            ms.SetConverter<TimeOnly, long>(t => SxmColumnDataConverters.timeOnlyToTotalMilliseconds(t));
-            ms.SetConverter<long, TimeOnly>(ticks => SxmColumnDataConverters.timeOnlyFromTotalMilliseconds(ticks));
+            ms.SetConverter<TimeOnly, string>(t => SxmColumnDataConverters.TimeOnlyToString(t));
+            ms.SetConverter<string, TimeOnly>(s => SxmColumnDataConverters.TimeOnlyFromString(s));
+            ms.SetConverter<TimeOnly, long>(t => SxmColumnDataConverters.TimeOnlyToTotalMilliseconds(t));
+            ms.SetConverter<long, TimeOnly>(ticks => SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(ticks));
 
             // TimeSpan TEXT + numeric (Ticks)
-            ms.SetConverter<TimeSpan, string>(t => SxmColumnDataConverters.timeSpanToString(t));
-            ms.SetConverter<string, TimeSpan>(s => SxmColumnDataConverters.timeSpanFromString(s));
-            ms.SetConverter<TimeSpan, long>(t => SxmColumnDataConverters.timeSpanToTotalMilliseconds(t));
-            ms.SetConverter<long, TimeSpan>(ticks => SxmColumnDataConverters.timeSpanFromTotalMilliseconds(ticks));
+            ms.SetConverter<TimeSpan, string>(t => SxmColumnDataConverters.TimeSpanToString(t));
+            ms.SetConverter<string, TimeSpan>(s => SxmColumnDataConverters.TimeSpanFromString(s));
+            ms.SetConverter<TimeSpan, long>(t => SxmColumnDataConverters.TimeSpanToTotalMilliseconds(t));
+            ms.SetConverter<long, TimeSpan>(ticks => SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(ticks));
 
             // DateTimeOffset TEXT + numeric (Unix ms)
-            ms.SetConverter<DateTimeOffset, string>(dto => SxmColumnDataConverters.dateTimeOffsetToString(dto));
-            ms.SetConverter<string, DateTimeOffset>(s => SxmColumnDataConverters.dateTimeOffsetFromString(s));
-            ms.SetConverter<DateTimeOffset, long>(dto => SxmColumnDataConverters.dateTimeOffsetToUnixTimeMilliseconds(dto));
-            ms.SetConverter<long, DateTimeOffset>(msVal => SxmColumnDataConverters.dateTimeOffsetFromUnixTimeMilliseconds(msVal));
+            ms.SetConverter<DateTimeOffset, string>(dto => SxmColumnDataConverters.DateTimeOffsetToString(dto));
+            ms.SetConverter<string, DateTimeOffset>(s => SxmColumnDataConverters.DateTimeOffsetFromString(s));
+            ms.SetConverter<DateTimeOffset, long>(dto => SxmColumnDataConverters.DateTimeOffsetToUnixTimeMilliseconds(dto));
+            ms.SetConverter<long, DateTimeOffset>(msVal => SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds(msVal));
 
             // Guid TEXT + byte[]
-            ms.SetConverter<Guid, string>(g => SxmColumnDataConverters.guidToString(g));
-            ms.SetConverter<string, Guid>(s => SxmColumnDataConverters.guidFromString(s));
-            ms.SetConverter<Guid, byte[]>(g => SxmColumnDataConverters.guidToRfc4122Bytes(g));
-            ms.SetConverter<byte[], Guid>(b => SxmColumnDataConverters.guidFromRfc4122Bytes(b));
+            ms.SetConverter<Guid, string>(g => SxmColumnDataConverters.GuidToString(g));
+            ms.SetConverter<string, Guid>(s => SxmColumnDataConverters.GuidFromString(s));
+            ms.SetConverter<Guid, byte[]>(g => SxmColumnDataConverters.GuidToRfc4122Bytes(g));
+            ms.SetConverter<byte[], Guid>(b => SxmColumnDataConverters.GuidFromRfc4122Bytes(b));
 
             return ms;
         }

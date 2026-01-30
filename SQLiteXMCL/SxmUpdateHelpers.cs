@@ -29,7 +29,7 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name/connection identifier. When null the default database is used.</param>
         /// <returns>A task that completes when the update and commit have finished.</returns>
         /// <exception cref="System.Exception">Exceptions thrown by the transaction or execution are propagated to the caller.</exception>
-        internal static async Task PerformUpdate(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task PerformUpdateAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
@@ -56,7 +56,7 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">An active <see cref="SxmUTransaction"/> to execute against.</param>
         /// <returns>A task that completes when the update has finished.</returns>
         /// <exception cref="System.Exception">Exceptions thrown by the transaction or execution are propagated to the caller.</exception>
-        internal static async Task PerformUpdateTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task PerformUpdateTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {
@@ -79,7 +79,7 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name/connection identifier. When null the default database is used.</param>
         /// <returns>A task that completes when the update and commit have finished.</returns>
         /// <exception cref="System.Exception">Exceptions thrown by the transaction or execution are propagated to the caller.</exception>
-        internal static async Task PerformUpdateDirect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task PerformUpdateDirectAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
@@ -106,7 +106,7 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">An active <see cref="SxmUTransaction"/> to execute against.</param>
         /// <returns>A task that completes when the update has finished.</returns>
         /// <exception cref="System.Exception">Exceptions thrown by the transaction or execution are propagated to the caller.</exception>
-        internal static async Task PerformUpdateDirectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task PerformUpdateDirectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {

@@ -27,7 +27,7 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name. If omitted, the default database is used.</param>
         /// <returns>A task that completes when the delete and commit operations have finished.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task PerformDelete(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task PerformDeleteAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
@@ -54,7 +54,7 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">An already-created <see cref="SxmUTransaction"/>. This method will not commit or dispose it.</param>
         /// <returns>A task that completes when the delete has been executed on the provided transaction.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task PerformDeleteTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task PerformDeleteTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {
@@ -76,7 +76,7 @@ namespace SQLiteXM
         /// <param name="dbName">Optional database name. If omitted, the default database is used.</param>
         /// <returns>A task that completes when the delete and commit operations have finished.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task PerformDeleteDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task PerformDeleteDirectAsync(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             try
             {
@@ -102,7 +102,7 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">An already-created <see cref="SxmUTransaction"/>. This method will not commit or dispose it.</param>
         /// <returns>A task that completes when the delete has been executed on the provided transaction.</returns>
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
-        internal static async Task PerformDeleteDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task PerformDeleteDirectTransAsync(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {

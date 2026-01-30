@@ -20,7 +20,7 @@ namespace SQLiteXM
     public class SxmEntity
     {
         // Prevent multiple concurrent initializations for the same entity type.
-        private static readonly object lockObject = new object();
+        private static readonly object _lockObject = new object();
 
         /// <summary>
         /// Per-table initialization gate.
@@ -36,22 +36,22 @@ namespace SQLiteXM
         /// The key is derived from the entity type name. Entity classes in different namespaces
         /// MUST NOT share the same class name, or initialization collisions will occur.
         /// </summary>
-        private static readonly ConcurrentDictionary<string, Lazy<Task>> initTasks = new();
+        private static readonly ConcurrentDictionary<string, Lazy<Task>> _initTasks = new();
 
         // Statement concurrent GUID caches.
-        private static ConcurrentDictionary<string, string> insertGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-        private static ConcurrentDictionary<string, string> updateGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-        private static ConcurrentDictionary<string, string> deleteGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        private static ConcurrentDictionary<string, string> _insertGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        private static ConcurrentDictionary<string, string> _updateGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        private static ConcurrentDictionary<string, string> _deleteGuidDict = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
 
         // Index dictionaries: thread-safe per-type bags of index descriptors.
-        private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> uniqueIndexDict = new ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>>(StringComparer.Ordinal);
-        private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> standardIndexDict = new ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> _uniqueIndexDict = new ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> _standardIndexDict = new ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>>(StringComparer.Ordinal);
 
         // Column map per type: nested concurrent dictionary for safe concurrent reads/writes.
-        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> columnNameAndTypeDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _columnNameAndTypeDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
 
-        private string? databaseName;
-        private List<ForeignKeyAttributes>? foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
+        private string? _databaseName;
+        private List<ForeignKeyAttributes>? _foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
 
         /// <summary>
         /// Primary key column. Mapped to the SQLite INTEGER PRIMARY KEY AUTOINCREMENT column named "id".
@@ -87,7 +87,7 @@ namespace SQLiteXM
         /// <param name="databaseName">Database name to use for initialization. If null, an implicit DB name is created.</param>
         public SxmEntity(string? databaseName)
         {
-            this.databaseName = databaseName;
+            this._databaseName = databaseName;
             Initialize();
         }
         // Needs to throw an exception if databaseName is invalid.
@@ -124,32 +124,32 @@ namespace SQLiteXM
             // NOTE: Entity class names must be globally unique across namespaces. Do not drop columns until after processing indexes/triggers.
             string tableName = GetType().Name;
 
-            lock (lockObject)
+            lock (_lockObject)
             {
                 DbNameValidation();
             }
 
-            var lazyInit = initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
+            var lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
                     () => Task.Run(async () =>
                     {
                         var props = GetEntityProperties();
                         GetColumnNamesAndDataTypes(props);
 
                         bool newTable;
-                        if (!(newTable = await CreateTable().ConfigureAwait(false)))  // Create the table if it does not already exist.
-                            await AddColumns(); // If this is an already existing table in the DB, check to see if new columns were added.
+                        if (!(newTable = await CreateTableAsync().ConfigureAwait(false)))  // Create the table if it does not already exist.
+                            await AddColumnsAsync(); // If this is an already existing table in the DB, check to see if new columns were added.
 
                         var std = new List<string>();
                         var uniq = new List<string>();
-                        await GetIndexTableStatements(std, uniq).ConfigureAwait(false);
+                        await GetIndexTableStatementsAsync(std, uniq).ConfigureAwait(false);
 
-                        await ProcessIndexStatements(IndexType.standard, std).ConfigureAwait(false);
-                        await ProcessIndexStatements(IndexType.unique, uniq).ConfigureAwait(false);
-                        await ProcesstriggerAttributes().ConfigureAwait(false);
+                        await ProcessIndexStatementsAsync(IndexType.standard, std).ConfigureAwait(false);
+                        await ProcessIndexStatementsAsync(IndexType.unique, uniq).ConfigureAwait(false);
+                        await ProcesstriggerAttributesAsync().ConfigureAwait(false);
 
                         // If this is an already existing table in the DB, drop columns now that everything else has been reconciled.
                         if (!newTable)
-                            await DropColumns().ConfigureAwait(false);
+                            await DropColumnsAsync().ConfigureAwait(false);
                     }),
                     LazyThreadSafetyMode.ExecutionAndPublication
                 )
@@ -161,7 +161,7 @@ namespace SQLiteXM
             }
             catch
             {
-                initTasks.TryRemove(tableName, out _); // allow retry on failure
+                _initTasks.TryRemove(tableName, out _); // allow retry on failure
                 throw;
             }
         }
@@ -303,11 +303,11 @@ namespace SQLiteXM
         {
             string tableName = this.GetType().Name;
 
-            if (!await DoesRecordExist(sxmTrans))
+            if (!await DoesRecordExistAsync(sxmTrans))
             {
                 BuildSaveSql();
 
-                if (!insertGuidDict.TryGetValue(tableName, out var insertGuid) || string.IsNullOrEmpty(insertGuid))
+                if (!_insertGuidDict.TryGetValue(tableName, out var insertGuid) || string.IsNullOrEmpty(insertGuid))
                     throw new InvalidOperationException($"Insert statement not found for '{tableName}'.");
 
                 if (sxmTrans == null)
@@ -319,7 +319,7 @@ namespace SQLiteXM
             {
                 BuildUpdateSql();
 
-                if (!updateGuidDict.TryGetValue(tableName, out var updateGuid) || string.IsNullOrEmpty(updateGuid))
+                if (!_updateGuidDict.TryGetValue(tableName, out var updateGuid) || string.IsNullOrEmpty(updateGuid))
                     throw new InvalidOperationException($"Update statement not found for '{tableName}'.");
 
                 if (sxmTrans == null)
@@ -333,7 +333,7 @@ namespace SQLiteXM
         private async Task InsertAsync(string sqlStatementName)
         {
             {
-                Dictionary<string, object?> result = await SxmStatement.InsertAsync<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+                Dictionary<string, object?> result = await SxmStatement.InsertAsync<SxmEntity>(sqlStatementName, this, _databaseName).CAF();
                 SxmHelpers.LoadDbValues(result, this);
             }
         }
@@ -348,7 +348,7 @@ namespace SQLiteXM
         // Update statements.
         private async Task UpdateAsync(string sqlStatementName)
         {
-            await SxmStatement.UpdateAsync<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+            await SxmStatement.UpdateAsync<SxmEntity>(sqlStatementName, this, _databaseName).CAF();
         }
         private async Task UpdateAsync(string sqlStatementName, SxmTransaction sxmTrans)
         {
@@ -372,13 +372,13 @@ namespace SQLiteXM
         {
             // If a transaction/connection is provided, check existence using that connection
             // so we see uncommitted rows that live in the same transaction.
-            if (!await DoesRecordExist(sxmTrans))
+            if (!await DoesRecordExistAsync(sxmTrans))
                 return;
 
             BuildDeleteSql();
             string tableName = this.GetType().Name;
 
-            if (!deleteGuidDict.TryGetValue(tableName, out var deleteGuid) || string.IsNullOrEmpty(deleteGuid))
+            if (!_deleteGuidDict.TryGetValue(tableName, out var deleteGuid) || string.IsNullOrEmpty(deleteGuid))
                 throw new InvalidOperationException($"Delete statement not found for '{tableName}'.");
 
             // If no transaction supplied, perform non-transactional delete; otherwise use the provided transaction.
@@ -391,7 +391,7 @@ namespace SQLiteXM
         // Delete statements.
         private async Task DeleteAsync(string sqlStatementName)
         {
-            await SxmStatement.DeleteAsync<SxmEntity>(sqlStatementName, this, databaseName).CAF();
+            await SxmStatement.DeleteAsync<SxmEntity>(sqlStatementName, this, _databaseName).CAF();
         }
         private async Task DeleteAsync(string sqlStatementName, SxmTransaction sxmTrans)
         {
@@ -409,12 +409,12 @@ namespace SQLiteXM
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             // The per-type column map must already exist. Fail fast if not.
-            if (!columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
+            if (!_columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
                 throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Call initialize() before building SQL.");
 
 
             // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
-            insertGuidDict.GetOrAdd(tableName, _ =>
+            _insertGuidDict.GetOrAdd(tableName, _ =>
             {
                 var columns = perTypeColumns.Keys
                 .Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase))
@@ -454,11 +454,11 @@ namespace SQLiteXM
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             // The per-type column map must already exist. Fail fast if not.
-            if (!columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
+            if (!_columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
                 throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Call initialize() before building SQL.");
 
             // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
-            updateGuidDict.GetOrAdd(tableName, _ =>
+            _updateGuidDict.GetOrAdd(tableName, _ =>
             {
                 var columns = perTypeColumns.Keys
                 .Where(k => !string.Equals(k, "synchId", StringComparison.OrdinalIgnoreCase) && !string.Equals(k, "id", StringComparison.OrdinalIgnoreCase))
@@ -488,10 +488,10 @@ namespace SQLiteXM
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             // The per-type column map should exist; if not, fail fast so callers can fix initialization ordering.
-            if (!columnNameAndTypeDict.TryGetValue(tableName, out _))
+            if (!_columnNameAndTypeDict.TryGetValue(tableName, out _))
                 throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Call initialize() before building SQL.");
 
-            deleteGuidDict.GetOrAdd(tableName, _ =>
+            _deleteGuidDict.GetOrAdd(tableName, _ =>
             {
                 string deleteStatement = $"DELETE FROM {quotedTable} WHERE {SxmHelpers.QuoteIdentifier("id")}=@id";
                 //string deleteStatement = string.Format("DELETE FROM {0} WHERE id=@id", tableName);
@@ -506,15 +506,15 @@ namespace SQLiteXM
         /// Recreate triggers specified by the CreateTrigger attributes on the type.
         /// Existing triggers for the table are dropped before new ones are created.
         /// </summary>
-        private async Task ProcesstriggerAttributes()
+        private async Task ProcesstriggerAttributesAsync()
         {
             string tableName = this.GetType().Name;
 
             try
             {
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                 {
-                    List<string> ExistingTriggers = await SxmInit.GetAllTriggers(sxmTransaction.Connection, tableName);
+                    List<string> ExistingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, tableName);
                     foreach (string existingTrigger in ExistingTriggers)
                     {
                         await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER {SxmHelpers.QuoteIdentifier(existingTrigger)}");
@@ -540,7 +540,7 @@ namespace SQLiteXM
                 {
                     try
                     {
-                        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
+                        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                         {
                             foreach (string trigger in newTriggerNameList)
                                 await sxmTransaction.ExecuteCreateTriggerAsync(trigger);
@@ -558,7 +558,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="indexType">Index type (standard or unique).</param>
         /// <param name="existingIndexes">List of existing index names for the table.</param>
-        private async Task ProcessIndexStatements(IndexType indexType, List<string> existingIndexes)
+        private async Task ProcessIndexStatementsAsync(IndexType indexType, List<string> existingIndexes)
         {
             List<string> indexSqlStatements = new List<string>();
 
@@ -573,12 +573,12 @@ namespace SQLiteXM
             if (indexType == IndexType.standard)
             {
                 firstArray = (CreateIndex[])type.GetCustomAttributes(typeof(CreateIndex), true);
-                secondArray = standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexVars>();
+                secondArray = _standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexVars>();
             }
             else if (indexType == IndexType.unique)
             {
                 firstArray = (CreateUniqueIndex[])type.GetCustomAttributes(typeof(CreateUniqueIndex), true);
-                secondArray = uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexVars>();
+                secondArray = _uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexVars>();
 
                 unique = "UNIQUE";
             }
@@ -642,7 +642,7 @@ namespace SQLiteXM
 
                 if (indexSqlStatements.Count > 0)
                 {
-                    await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
+                    await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                     {
                         foreach (string indexStatement in indexSqlStatements)
                             await sxmTransaction1.ExecuteIndexAsync(indexStatement);
@@ -659,12 +659,12 @@ namespace SQLiteXM
             {
                 if (indexType == IndexType.standard)
                 {
-                    standardIndexDict.TryRemove(tableName, out _);
+                    _standardIndexDict.TryRemove(tableName, out _);
                 }
 
                 if (indexType == IndexType.unique)
                 {
-                    uniqueIndexDict.TryRemove(tableName, out _);
+                    _uniqueIndexDict.TryRemove(tableName, out _);
                 }
             }
         }
@@ -690,14 +690,14 @@ namespace SQLiteXM
         /// <summary>
         /// Query the database for the list of index names on the table and populate the provided lists.
         /// </summary>
-        private async Task GetIndexTableStatements(List<string> existingStandardIndexes, List<string> existingUniqueIndexes)
+        private async Task GetIndexTableStatementsAsync(List<string> existingStandardIndexes, List<string> existingUniqueIndexes)
         {
             try
             {
                 string tableName = this.GetType().Name;
                 string pragma = $"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})";
 
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                 {
                     await sxmTransaction.Connection.ExecuteQueryAsync(pragma, null as List<object>);
 
@@ -725,23 +725,23 @@ namespace SQLiteXM
         /// <summary>
         /// Ensure table columns in the database match the type definition. Adds missing columns and removes extraneous ones.
         /// </summary>
-        private async Task AddColumns()
+        private async Task AddColumnsAsync()
         {
             Type type = this.GetType();
             string tableName = type.Name;
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-            Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNames(databaseName, tableName);
+            Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(_databaseName, tableName);
 
             try
             {
-                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[tableName])
+                foreach (KeyValuePair<string, string> kvp in _columnNameAndTypeDict[tableName])
                 {
                     if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
                     {
                         string alterDefinition = $"ALTER TABLE {quotedTable} ADD COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}";
 
-                        await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
+                        await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                         {
                             await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition);
                             await sxmTransaction1.CommitTransactionAsync();
@@ -765,22 +765,22 @@ namespace SQLiteXM
             }
         }
 
-        private async Task DropColumns()
+        private async Task DropColumnsAsync()
         {
             Type type = this.GetType();
             string tableName = type.Name;
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-            Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNames(databaseName, tableName);
+            Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(_databaseName, tableName);
 
             try
             {
                 foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
                 {
-                    if (!columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
+                    if (!_columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
                     {
                         string alterDefinition = $"ALTER TABLE {quotedTable} DROP COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)}";
-                        await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)))
+                        await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                         {
                             await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition);
                             await sxmTransaction1.CommitTransactionAsync();
@@ -801,17 +801,17 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sxmTrans">Optional transaction to examine; if provided the check will use the transaction's connection.</param>
         /// <returns>True if a row with the current id exists, otherwise false.</returns>
-        private async Task<bool> DoesRecordExist(SxmTransaction? sxmTrans)
+        private async Task<bool> DoesRecordExistAsync(SxmTransaction? sxmTrans)
         {
             bool exists = false;
 
             if (sxmTrans != null && sxmTrans.Connection != null)
             {
-                exists = await DoesRecordExist(sxmTrans.Connection).ConfigureAwait(false);
+                exists = await DoesRecordExistAsync(sxmTrans.Connection).ConfigureAwait(false);
             }
             else
             {
-                exists = await DoesRecordExist().ConfigureAwait(false);
+                exists = await DoesRecordExistAsync().ConfigureAwait(false);
             }
 
             return exists;
@@ -819,7 +819,7 @@ namespace SQLiteXM
 
 
         // New helper: check existence using provided connection (uses same connection/transaction)
-        private async Task<bool> DoesRecordExist(SxmConnection conn)
+        private async Task<bool> DoesRecordExistAsync(SxmConnection conn)
         {
             if (conn == null) return false;
 
@@ -842,7 +842,7 @@ namespace SQLiteXM
             return false;
         }
 
-        private async Task<bool> DoesRecordExist()
+        private async Task<bool> DoesRecordExistAsync()
         {
             SxmConnection? sxmConnection = default(SxmConnection);
             try
@@ -851,7 +851,7 @@ namespace SQLiteXM
                 {
                     string tableName = this.GetType().Name;
 
-                    sxmConnection = new SxmConnection(databaseName);
+                    sxmConnection = new SxmConnection(_databaseName);
                     string sqlSelect = $"SELECT {SxmHelpers.QuoteIdentifier("id")} FROM {SxmHelpers.QuoteIdentifier(tableName)} WHERE {SxmHelpers.QuoteIdentifier("id")} = @p0";
                     await sxmConnection.ExecuteQueryAsync(sqlSelect, new List<object> { id }).ConfigureAwait(false);
                     if (sxmConnection.HasRows() == true)
@@ -874,31 +874,31 @@ namespace SQLiteXM
         /// </summary>
         private void DbNameValidation()
         {
-            if (this.databaseName == null)
+            if (this._databaseName == null)
             {
-                this.databaseName = SxmDatabaseDescriptor.DefaultDatabase;
-                if (this.databaseName == null)
+                this._databaseName = SxmDatabaseDescriptor.DefaultDatabase;
+                if (this._databaseName == null)
                     throw new InvalidDataException("A default database has not been configured in any of your SQL statements files.");
             }
             else
             {
                 // Check if database name is in the list of databases.
-                if (!SxmDatabaseDescriptor.IsDatabaseDefined(databaseName))
-                    throw new InvalidDataException($"The database '{databaseName}' has not been configured. Check the spelling matches the database name in your SQL statements file.");
+                if (!SxmDatabaseDescriptor.IsDatabaseDefined(_databaseName))
+                    throw new InvalidDataException($"The database '{_databaseName}' has not been configured. Check the spelling matches the database name in your SQL statements file.");
             }
         }
 
         /// <summary>
         /// Create the table for the current type if it does not exist; otherwise reconcile columns.
         /// </summary>
-        private async Task<bool> CreateTable()
+        private async Task<bool> CreateTableAsync()
         {
             bool tableCreated = false;
             string tableName = this.GetType().Name;
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-            SxmConnection sxmConnection = new SxmConnection(databaseName);
-            bool tableExists = await SxmInit.DoesTableExist(tableName, sxmConnection);
+            SxmConnection sxmConnection = new SxmConnection(_databaseName);
+            bool tableExists = await SxmInit.DoesTableExistAsync(tableName, sxmConnection);
             sxmConnection?.DestroyConnection();
 
             if (!tableExists)
@@ -909,26 +909,26 @@ namespace SQLiteXM
                 sb.Append($"CREATE TABLE {quotedTable} (");
                 sb.Append($"{SxmHelpers.QuoteIdentifier("id")} INTEGER PRIMARY KEY AUTOINCREMENT");
 
-                foreach (KeyValuePair<string, string> kvp in columnNameAndTypeDict[tableName])
+                foreach (KeyValuePair<string, string> kvp in _columnNameAndTypeDict[tableName])
                 {
                     sb.Append(", ");
                     sb.Append($"{SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}");
                 }
 
-                if (foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
+                if (_foreignKeyAttributeList != default(List<ForeignKeyAttributes>))
                 {
-                    foreach (ForeignKeyAttributes attribute in foreignKeyAttributeList)
+                    foreach (ForeignKeyAttributes attribute in _foreignKeyAttributeList)
                     {
                         sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable)}({SxmHelpers.QuoteIdentifier("id")})");
                     }
 
-                    foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
+                    _foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
                 }
 
                 sb.Append(")");
 
-                SxmSqlStatements.AddTableDefinition(string.Format("{0}.{1}", this.databaseName, tableName), sb.ToString());
-                await SxmInit.CreateTable(this.databaseName, tableName);
+                SxmSqlStatements.AddTableDefinition(string.Format("{0}.{1}", this._databaseName, tableName), sb.ToString());
+                await SxmInit.CreateTableAsync(this._databaseName, tableName);
                 SxmSqlStatements.RemoveTableDefinitions();
             }
 
@@ -948,7 +948,7 @@ namespace SQLiteXM
                 var typeName = type.Name;
 
                 // Ensure per-type column map exists.
-                columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.Ordinal));
+                _columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.Ordinal));
 
                 // Get the [Table] attribute to check IsColumnAttributeRequired.
                 TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
@@ -993,23 +993,23 @@ namespace SQLiteXM
                     // CreateIndex
                     if (hasCreateIndex)
                     {
-                        var bag = standardIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
+                        var bag = _standardIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
                         bag.Add(new IndexPropertyAttributes(columnName, typeName));
                     }
 
                     // CreateUniqueIndex
                     if (hasCreateUniqueIndex)
                     {
-                        var bag = uniqueIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
+                        var bag = _uniqueIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
                         bag.Add(new IndexPropertyAttributes(columnName, typeName));
                     }
 
                     // CreateForeignKey
                     if (fk is not null)
                     {
-                        foreignKeyAttributeList ??= new List<ForeignKeyAttributes>();
+                        _foreignKeyAttributeList ??= new List<ForeignKeyAttributes>();
 
-                        foreignKeyAttributeList.Add(new ForeignKeyAttributes
+                        _foreignKeyAttributeList.Add(new ForeignKeyAttributes
                         {
                             fieldName = columnName,
                             foreignTable = fk.foreignTable,
@@ -1048,7 +1048,7 @@ namespace SQLiteXM
 
                     if (columnType != null)
                     {
-                        if (!columnNameAndTypeDict[typeName].TryAdd(columnName, columnType + notNull))
+                        if (!_columnNameAndTypeDict[typeName].TryAdd(columnName, columnType + notNull))
                         {
                             throw new InvalidOperationException(
                                         $"Duplicate mapped column name '{columnName}' on type '{typeName}'. " +
@@ -1107,7 +1107,7 @@ namespace SQLiteXM
         /// <param name="mapSource">Source object to map values from.</param>
         public async Task MapAndSaveAsync(object mapSource)
         {
-            MapPropertiesAsync(mapSource);
+            MapProperties(mapSource);
             // Persist the entity after mapping. Use CAF() to follow project's await pattern.
             await SaveAsync().CAF();
         }
@@ -1119,7 +1119,7 @@ namespace SQLiteXM
         /// Indexer properties are ignored. Both properties must be public instance properties and the destination property must be writable.
         /// </summary>
         /// <param name="source">Source object to copy values from.</param>
-        public void MapPropertiesAsync(object source)
+        public void MapProperties(object source)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));

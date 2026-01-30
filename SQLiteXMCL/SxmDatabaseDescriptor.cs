@@ -10,12 +10,12 @@ namespace SQLiteXM
     /// </summary>
     public class SxmDatabaseDescriptor
     {
-        private static ConcurrentBag<string> dbDescriptors = new();
+        private static ConcurrentBag<string> _dbDescriptors = new();
 
-        private static string? defaultDatabase;
+        private static string? _defaultDatabase;
         public static string? DefaultDatabase
         {
-            get { return defaultDatabase; }
+            get { return _defaultDatabase; }
         }
 
         /// <summary>
@@ -24,10 +24,10 @@ namespace SQLiteXM
         /// <remarks>
         /// Default: <see cref="Environment.SpecialFolder.MyDocuments"/> unless specified when creating the descriptor.
         /// </remarks>
-        private readonly static Environment.SpecialFolder databaseFolder = Environment.SpecialFolder.MyDocuments;
+        private readonly static Environment.SpecialFolder _databaseFolder = Environment.SpecialFolder.MyDocuments;
         public static Environment.SpecialFolder DatabaseFolder
         {
-            get { return databaseFolder; }
+            get { return _databaseFolder; }
         }
 
         /// <summary>
@@ -40,12 +40,12 @@ namespace SQLiteXM
         /// </remarks>
         internal SxmDatabaseDescriptor()
         {
-            string databaseName = SxmProcessSQLStatements.getDatabaseName;
+            string databaseName = SxmProcessSQLStatements.DatabaseName;
 
             try
             {
                 // Avoid double-creation without relying on a coarse lock.
-                if (dbDescriptors.Contains(databaseName))
+                if (_dbDescriptors.Contains(databaseName))
                     return;
 
                 if (SxmProcessSQLStatements.IsDefaultDatabase)
@@ -53,13 +53,13 @@ namespace SQLiteXM
                     if (SxmDatabaseDescriptor.DefaultDatabase != null)
                         throw new ArgumentException($"Invalid default database. The databse {SxmDatabaseDescriptor.DefaultDatabase} was already set as the default databse when you tried to set the database {databaseName} as the default database. There can only be one default database.");
 
-                    SxmDatabaseDescriptor.defaultDatabase = databaseName;
+                    SxmDatabaseDescriptor._defaultDatabase = databaseName;
                 }
 
                 CreateDB(databaseName);
 
                 // Add descriptor; if another thread inserted concurrently, skip duplicate registration.
-                dbDescriptors.Add(databaseName);
+                _dbDescriptors.Add(databaseName);
                 RegisterLogger(databaseName);
             }
             catch (System.Exception ex)
@@ -81,7 +81,7 @@ namespace SQLiteXM
 
         private void CreateDB(string databaseName)
         {
-            string databaseFolderString = Environment.GetFolderPath(databaseFolder);
+            string databaseFolderString = Environment.GetFolderPath(_databaseFolder);
 
             if (Directory.Exists(databaseFolderString) == false)
                 Directory.CreateDirectory(databaseFolderString);
@@ -93,7 +93,7 @@ namespace SQLiteXM
 
         internal static bool IsDatabaseDefined(string databaseName)
         {
-            return dbDescriptors.Contains(databaseName);
+            return _dbDescriptors.Contains(databaseName);
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace SQLiteXM
         /// <returns>An <see cref="ArrayList"/> containing the database names currently registered.</returns>
         internal static List<string> GetDatabaseNames()
         {
-            List<string> allItems = dbDescriptors.ToList();
+            List<string> allItems = _dbDescriptors.ToList();
             return allItems;
         }
     }

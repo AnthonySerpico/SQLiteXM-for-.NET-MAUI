@@ -30,7 +30,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while creating the transaction or executing the query.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelect(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
 
@@ -64,7 +64,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while executing the query on the provided transaction.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectTrans(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 
@@ -95,7 +95,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while creating the transaction or executing the query.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirect(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectAsync(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
 
@@ -129,7 +129,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while executing the query on the provided transaction.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectTrans(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectTransAsync(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 

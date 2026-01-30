@@ -12,7 +12,7 @@ namespace SQLiteXM
         /// <summary>
         /// Table create definitions keyed by "database.table".
         /// </summary>
-        internal static Dictionary<string, TableDefinition>? tableCreateStatements = new Dictionary<string, TableDefinition>();
+        internal static Dictionary<string, TableDefinition> tableCreateStatements = new Dictionary<string, TableDefinition>();
 
         /// <summary>
         /// ALTER statements keyed by "database.table".

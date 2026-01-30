@@ -224,7 +224,7 @@ namespace SQLiteXM
             /// Database identifier/name included in the SQL statements file.
             /// </summary>
             [XmlElement(ElementName = "database")]
-            public string Database { get; set; }
+            public string? Database { get; set; }
 
             /// <summary>
             /// Is default database flag.
@@ -242,49 +242,49 @@ namespace SQLiteXM
             /// Collection of table definitions.
             /// </summary>
             [XmlElement(ElementName = "table")]
-            public List<Table> Table { get; set; }
+            public List<Table>? Table { get; set; }
 
             /// <summary>
             /// Collection of alter definitions.
             /// </summary>
             [XmlElement(ElementName = "alter")]
-            public List<Alter> Alter { get; set; }
+            public List<Alter>? Alter { get; set; }
 
             /// <summary>
             /// Collection of index definitions.
             /// </summary>
             [XmlElement(ElementName = "index")]
-            public List<Index> Index { get; set; }
+            public List<Index>? Index { get; set; }
 
             /// <summary>
             /// Collection of insert statements.
             /// </summary>
             [XmlElement(ElementName = "insert")]
-            public List<Insert> Insert { get; set; }
+            public List<Insert>? Insert { get; set; }
 
             /// <summary>
             /// Collection of select statements.
             /// </summary>
             [XmlElement(ElementName = "select")]
-            public List<Select> Select { get; set; }
+            public List<Select>? Select { get; set; }
 
             /// <summary>
             /// Collection of update statements.
             /// </summary>
             [XmlElement(ElementName = "update")]
-            public List<Update> Update { get; set; }
+            public List<Update>? Update { get; set; }
 
             /// <summary>
             /// Collection of delete statements.
             /// </summary>
             [XmlElement(ElementName = "delete")]
-            public List<Delete> Delete { get; set; }
+            public List<Delete>? Delete { get; set; }
 
             /// <summary>
             /// Collection of trigger definitions.
             /// </summary>
             [XmlElement(ElementName = "trigger")]
-            public List<Trigger> Trigger { get; set; }
+            public List<Trigger>? Trigger { get; set; }
         }
 
         // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
@@ -297,7 +297,7 @@ namespace SQLiteXM
             /// <summary>
             /// Database identifier/name included in the SQL statements file.
             /// </summary>
-            public string database { get; set; }
+            public string? database { get; set; }
 
             /// <summary>
             /// Default database flag.

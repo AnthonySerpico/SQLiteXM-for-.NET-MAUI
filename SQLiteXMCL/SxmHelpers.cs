@@ -20,7 +20,7 @@ namespace SQLiteXM
         /// Tracks runtime-registered association keys to avoid duplicate registrations.
         /// Key format: "{SourceType.FullName}.{NavigationPropertyName}".
         /// </summary>
-        private static ISet<string> registeredAssociations = new HashSet<string>();
+        private static ISet<string> _registeredAssociations = new HashSet<string>();
         private SxmHelpers() { }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sxmConnection">Connection to query; may be null.</param>
         /// <returns>List of table names (may be empty).</returns>
-        internal static async Task<List<string>> GetAllUserTableNames(SxmConnection? sxmConnection)
+        internal static async Task<List<string>> GetAllUserTableNamesAsync(SxmConnection? sxmConnection)
         {
             List<string> tableNames = new List<string>();
 
@@ -69,26 +69,26 @@ namespace SQLiteXM
         /// Determines whether the provided file path refers to a JSON or XML SQL statements file.
         /// </summary>
         /// <param name="filePath">The file path or name to inspect.</param>
-        /// <returns>Returns <see cref="SqlStatementsFileType.json"/>, <see cref="SqlStatementsFileType.xml"/>, or <see cref="SqlStatementsFileType.unknown"/>.</returns>
+        /// <returns>Returns <see cref="SqlStatementsFileType.Json"/>, <see cref="SqlStatementsFileType.Xml"/>, or <see cref="SqlStatementsFileType.Unknown"/>.</returns>
         internal static SqlStatementsFileType GetSqlStatementsFileType(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
-                return SqlStatementsFileType.unknown;
+                return SqlStatementsFileType.Unknown;
             }
 
             string? ext = System.IO.Path.GetExtension(filePath);
             if (string.IsNullOrEmpty(ext))
             {
-                return SqlStatementsFileType.unknown;
+                return SqlStatementsFileType.Unknown;
             }
 
             ext = ext.TrimStart('.').ToLowerInvariant();
             return ext switch
             {
-                "json" or "jsn" => SqlStatementsFileType.json,
-                "xml" => SqlStatementsFileType.xml,
-                _ => SqlStatementsFileType.unknown
+                "json" or "jsn" => SqlStatementsFileType.Json,
+                "xml" => SqlStatementsFileType.Xml,
+                _ => SqlStatementsFileType.Unknown
             };
         }
 
@@ -121,7 +121,7 @@ namespace SQLiteXM
                     typeof(SxmEntity).IsAssignableFrom(navProp.PropertyType))
                 {
                     string assocKey = $"{sourceType.FullName}.{navProp.Name}";
-                    if (registeredAssociations.Add(assocKey))
+                    if (_registeredAssociations.Add(assocKey))
                     {
                         // Register runtime association: Source.FK -> Target.id
                         SxmAssociationMapper.ConfigureAssociation(
@@ -603,19 +603,19 @@ namespace SQLiteXM
                                 pi.SetValue(userObject, kvp.Value.ToString());
 
                             else if (piType == typeof(decimal).Name)    // Large values will overflow if not text in DB.
-                                pi.SetValue(userObject, SxmColumnDataConverters.decimalFromString(kvp.Value.ToString()!));
+                                pi.SetValue(userObject, SxmColumnDataConverters.DecimalFromString(kvp.Value.ToString()!));
 
                             else if (piType == typeof(ulong).Name)    // Large values will overflow if not text in DB.
-                                pi.SetValue(userObject, SxmColumnDataConverters.uLongFromString((string)kvp.Value));
+                                pi.SetValue(userObject, SxmColumnDataConverters.ULongFromString((string)kvp.Value));
 
                             else if (piType == typeof(Guid).Name)
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(byte[]).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.guidFromRfc4122Bytes((byte[])kvp.Value));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.GuidFromRfc4122Bytes((byte[])kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.guidFromString((string)kvp.Value));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.GuidFromString((string)kvp.Value));
                             }
 
                             else if (piType == typeof(bool).Name)
@@ -630,50 +630,50 @@ namespace SQLiteXM
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(long).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.dateTimeFromUnixTimeMilliseconds((long)kvp.Value));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.dateTimeFromString(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.DateTimeFromString(kvp.Value.ToString()!));
                             }
 
                             else if (piType == typeof(DateTimeOffset).Name)  // Can be either text or INTEGER (unix ms).
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(long).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.dateTimeOffsetFromUnixTimeMilliseconds((long)kvp.Value));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.dateTimeOffsetFromString(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.DateTimeOffsetFromString(kvp.Value.ToString()!));
                             }
 
                             else if (piType == typeof(TimeSpan).Name)  // Can be either text or TIMESPAN ticks.
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(long).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.timeSpanFromTotalMilliseconds((long)kvp.Value));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.TimeSpanFromTotalMilliseconds((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.timeSpanFromString(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.TimeSpanFromString(kvp.Value.ToString()!));
                             }
 
                             else if (piType == typeof(DateOnly).Name)  // Can be text, long (dayNumber) or int.
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(long).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.dateOnlyFromUnixDayNumber((long)kvp.Value));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.DateOnlyFromUnixDayNumber((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.dateOnlyFromString(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.DateOnlyFromString(kvp.Value.ToString()!));
                             }
 
                             else if (piType == typeof(TimeOnly).Name)    // Can be either text or ticks (long).
                             {
                                 string typeName = kvp.Value.GetType().Name;
                                 if (typeName == typeof(long).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.timeOnlyFromTotalMilliseconds((long)kvp.Value));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds((long)kvp.Value));
 
                                 else if (typeName == typeof(string).Name)
-                                    pi.SetValue(userObject, SxmColumnDataConverters.timeOnlyFromString(kvp.Value.ToString()!));
+                                    pi.SetValue(userObject, SxmColumnDataConverters.TimeOnlyFromString(kvp.Value.ToString()!));
                             }
 
                             else
@@ -703,7 +703,7 @@ namespace SQLiteXM
         /// <param name="userObject">The user entity instance to read values from.</param>
         /// <returns>Dictionary mapping column names to values ready for DB insertion/update. Null values are represented by <see cref="DBNull.Value"/>.</returns>
         /// <exception cref="ArgumentException">Propagates if property access or conversion fails.</exception>
-        internal static Dictionary<string, object?> LoadParamaterValues(Dictionary<string, string> dbColumnNameType, object userObject)
+        internal static Dictionary<string, object?> LoadParameterValues(Dictionary<string, string> dbColumnNameType, object userObject)
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
             foreach (KeyValuePair<string, string> kvp in dbColumnNameType)  // Process each entry (column) in the Dictionary.
@@ -727,66 +727,66 @@ namespace SQLiteXM
 
                             if (userObjectType == typeof(decimal).Name)  // Is the data type for the column in the user object a decimal?
                             {
-                                returnDictionary.Add(columnName, SxmColumnDataConverters.decimalToString((decimal)userSuppliedObjectData));
+                                returnDictionary.Add(columnName, SxmColumnDataConverters.DecimalToString((decimal)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(ulong).Name)  // Is the data type for the column in the user object a ulong?
                             {
-                                returnDictionary.Add(columnName, SxmColumnDataConverters.uLongToString((ulong)userSuppliedObjectData));
+                                returnDictionary.Add(columnName, SxmColumnDataConverters.ULongToString((ulong)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(Guid).Name)  // Is the data type for the column in the user object a DateTime?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.guidToString((Guid)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.GuidToString((Guid)userSuppliedObjectData));
 
                                 else if (kvp.Value.ToUpper().Equals("BLOB"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.guidToRfc4122Bytes((Guid)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.GuidToRfc4122Bytes((Guid)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.dateTimeToString((DateTime)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeToString((DateTime)userSuppliedObjectData));
 
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.dateTimeToUnixTimeMilliseconds((DateTime)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeToUnixTimeMilliseconds((DateTime)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(DateOnly).Name)  // Is the data type for the column in the user object a DateOnly?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.dateOnlyToString((DateOnly)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateOnlyToString((DateOnly)userSuppliedObjectData));
 
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.dateOnlyToUnixDayNumber((DateOnly)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateOnlyToUnixDayNumber((DateOnly)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(DateTimeOffset).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.dateTimeOffsetToString((DateTimeOffset)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeOffsetToString((DateTimeOffset)userSuppliedObjectData));
 
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.dateTimeOffsetToUnixTimeMilliseconds((DateTimeOffset)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeOffsetToUnixTimeMilliseconds((DateTimeOffset)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(TimeSpan).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.timeSpanToString((TimeSpan)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeSpanToString((TimeSpan)userSuppliedObjectData));
 
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.timeSpanToTotalMilliseconds((TimeSpan)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeSpanToTotalMilliseconds((TimeSpan)userSuppliedObjectData));
                             }
 
                             else if (userObjectType == typeof(TimeOnly).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.timeOnlyToString((TimeOnly)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeOnlyToString((TimeOnly)userSuppliedObjectData));
 
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.timeOnlyToTotalMilliseconds((TimeOnly)userSuppliedObjectData));
+                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeOnlyToTotalMilliseconds((TimeOnly)userSuppliedObjectData));
                             }
                             else
                             {

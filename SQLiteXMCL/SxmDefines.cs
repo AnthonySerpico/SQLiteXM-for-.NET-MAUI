@@ -322,17 +322,17 @@
             /// <summary>
             /// Synchronization succeeded.
             /// </summary>
-            success,
+            Success,
 
             /// <summary>
             /// An exception occurred during synchronization.
             /// </summary>
-            exception,
+            Exception,
 
             /// <summary>
             /// A processing error occurred during synchronization.
             /// </summary>
-            processing
+            Processing
         };
 
         /// <summary>
@@ -410,17 +410,17 @@
             /// <summary>
             /// Plain text file.
             /// </summary>
-            unknown,
+            Unknown,
 
             /// <summary>
             /// JSON file.
             /// </summary>
-            json,
+            Json,
 
             /// <summary>
             /// XML file.
             /// </summary>
-            xml
+            Xml
         }
 
         /// <summary>

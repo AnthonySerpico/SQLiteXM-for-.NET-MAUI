@@ -26,7 +26,7 @@ namespace SQLiteXM
         /// <summary>
         /// Guard to ensure database scanning / registration runs only once per process.
         /// </summary>
-        private static bool wasMapped = false;
+        private static bool _wasMapped = false;
 
         /// <summary>
         /// Scans all configured databases and attaches associations found from their foreign key
@@ -34,15 +34,15 @@ namespace SQLiteXM
         /// </summary>
         /// <remarks>
         /// This method enumerates database names using <see cref="SxmDatabaseDescriptor.GetDatabaseNames"/>
-        /// and calls <see cref="AttachAssociation(string)"/> for each database.
+        /// and calls <see cref="AttachAssociationAsync(string)"/> for each database.
         /// </remarks>
-        internal static async Task InitializeAssociations()
+        internal static async Task InitializeAssociationsAsync()
         {
-            if (wasMapped) return;
+            if (_wasMapped) return;
 
-            wasMapped = true;
+            _wasMapped = true;
             foreach (string databaseName in SxmDatabaseDescriptor.GetDatabaseNames())
-                await AttachAssociation(databaseName);
+                await AttachAssociationAsync(databaseName);
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace SQLiteXM
         /// <remarks>
         /// This method:
         /// - Opens an <see cref="SxmConnection"/> for <paramref name="databaseName"/>.
-        /// - Reads all user table names via <see cref="SxmHelpers.GetAllUserTableNames"/>.
+        /// - Reads all user table names via <see cref="SxmHelpers.GetAllUserTableNamesAsync"/>.
         /// - For each table, runs <c>PRAGMA foreign_key_list(table)</c> to discover foreign keys.
         /// - Locates the CLR source type by table name (types deriving from <see cref="SxmEntity"/>)
         ///   and calls <see cref="SxmHelpers.CreateAssociation(Type, string, string)"/> to register the
@@ -61,14 +61,14 @@ namespace SQLiteXM
         /// 
         /// Note: Exceptions are swallowed and connections are always cleaned up in the finally block.
         /// </remarks>
-        internal static async Task AttachAssociation(string databaseName)
+        internal static async Task AttachAssociationAsync(string databaseName)
         {
             SxmConnection? sxmConnection = default;
 
             try
             {
                 sxmConnection = new SxmConnection(databaseName);
-                List<string> tableNames = await SxmHelpers.GetAllUserTableNames(sxmConnection);
+                List<string> tableNames = await SxmHelpers.GetAllUserTableNamesAsync(sxmConnection);
 
                 if (tableNames.Count > 0)
                 {

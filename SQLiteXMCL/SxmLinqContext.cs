@@ -8,22 +8,22 @@ namespace SQLiteXM
 {
     public class SxmLinqContext : IDisposable
     {
-        private bool isDisposed = false;
-        private readonly SqliteConnection dConnection;
-        private readonly SxmChangeSet changeSet = new SxmChangeSet();
+        private bool _isDisposed = false;
+        private readonly SqliteConnection _dConnection;
+        private readonly SxmChangeSet _changeSet = new SxmChangeSet();
         private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
 
         public SxmLinqContext(string? databaseName = null)
         {
             string connStr = SxmConnection.GetConnectionString(ref databaseName);
-            dConnection = new SqliteConnection(connStr);
-            dConnection.Open();
+            _dConnection = new SqliteConnection(connStr);
+            _dConnection.Open();
 
-            _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), dConnection);
+            _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _dConnection);
             _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
         }
 
-        public SxmChangeSet GetChangeSet() => changeSet;
+        public SxmChangeSet GetChangeSet() => _changeSet;
 
         // LinqToDB table access
         public SxmTable<T> GetTable<T>() where T : class
@@ -136,7 +136,7 @@ namespace SQLiteXM
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
 
             // Use the owned SqliteConnection directly (safe — still not exposing it).
-            await using var cmd = dConnection.CreateCommand();
+            await using var cmd = _dConnection.CreateCommand();
             cmd.CommandText = sql;
 
             // Add parameters named @p0, @p1, ... to keep the API simple.
@@ -275,35 +275,35 @@ namespace SQLiteXM
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            changeSet.Add(entity, ChangeType.Insert);
+            _changeSet.Add(entity, ChangeType.Insert);
         }
 
         public void UpdateOnSubmit<T>(T entity) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            changeSet.Add(entity, ChangeType.Update);
+            _changeSet.Add(entity, ChangeType.Update);
         }
 
         public void DeleteOnSubmit<T>(T entity) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            changeSet.Add(entity, ChangeType.Delete);
+            _changeSet.Add(entity, ChangeType.Delete);
         }
 
         public void InsertOrReplaceOnSubmit<T>(T entity) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            changeSet.Add(entity, ChangeType.InsertOrReplace);
+            _changeSet.Add(entity, ChangeType.InsertOrReplace);
         }
 
         public void InsertOrUpdateOnSubmit<T>(T entity) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            changeSet.Add(entity, ChangeType.InsertOrUpdate);
+            _changeSet.Add(entity, ChangeType.InsertOrUpdate);
         }
 
         // ---------- SubmitChanges ------------------------
@@ -316,7 +316,7 @@ namespace SQLiteXM
         public async Task<SubmitChangesResult> SubmitChangesAsync(ConflictMode conflictMode)
         {
             var report = new SubmitChangesResult();
-            if (changeSet.IsEmpty)
+            if (_changeSet.IsEmpty)
             {
                 report.AllSucceeded = true;
                 return report;
@@ -330,7 +330,7 @@ namespace SQLiteXM
             {
                 try
                 {
-                    List<ChangeAction> actions = changeSet.GetOrderedActions().ToList();
+                    List<ChangeAction> actions = _changeSet.GetOrderedActions().ToList();
 
                     foreach (ChangeAction action in actions)
                     {
@@ -445,7 +445,7 @@ namespace SQLiteXM
                 {
                     // Only clear the change set when commit succeeded.
                     if (committed)
-                        changeSet.Clear();
+                        _changeSet.Clear();
                 }
             }
 
@@ -463,15 +463,15 @@ namespace SQLiteXM
 
         protected virtual void Dispose(bool disposing)
         {
-            if (isDisposed) return;
+            if (_isDisposed) return;
 
             if (disposing)
             {
-                dConnection?.Dispose();
+                _dConnection?.Dispose();
                 _linqToDbDataConnection?.Dispose();
             }
 
-            isDisposed = true;
+            _isDisposed = true;
         }
     }
 

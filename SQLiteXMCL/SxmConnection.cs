@@ -49,40 +49,40 @@ namespace SQLiteXM
     {
         // true => connection is shared / reused across callers
         // false => connection is non-shared / private to the creator
-        private bool shared;
+        private bool _shared;
         /// <summary>
         /// Indicates whether the underlying connection is shared (true) or private (false).
         /// Shared connections may be reused across callers and support reentrant locking via owner tokens.
         /// </summary>
-        public bool Shared => shared;
+        public bool Shared => _shared;
 
-        private string? databaseName;
+        private string? _databaseName;
         /// <summary>
         /// The resolved database name for this connection instance.
         /// Can be null for an implicit single-descriptor scenario.
         /// </summary>
         public string? DatabaseName
         {
-            get { return databaseName; }
+            get { return _databaseName; }
         }
-        private DbCommand? connCommand;
-        private DbDataReader? connDataReader;
-        private Microsoft.Data.Sqlite.SqliteConnection? dbConn;
-        private Microsoft.Data.Sqlite.SqliteTransaction? dbConnTransaction;
+        private DbCommand? _connCommand;
+        private DbDataReader? _connDataReader;
+        private Microsoft.Data.Sqlite.SqliteConnection? _dbConn;
+        private Microsoft.Data.Sqlite.SqliteTransaction? _dbConnTransaction;
 
-        private static readonly object synchLock = new object();
+        private static readonly object _synchLock = new object();
 
         // Semaphore used to guard concurrent access. Use ownership + reentrancy to avoid accidentally
         // releasing someone else's lock and to allow a logical owner to re-enter.
-        private readonly SemaphoreSlim asyncLock = new SemaphoreSlim(1, 1);
-        private readonly object ownerSync = new object();
-        private Guid? lockOwner;
-        private int lockReentrancy = 0;
+        private readonly SemaphoreSlim _asyncLock = new SemaphoreSlim(1, 1);
+        private readonly object _ownerSync = new object();
+        private Guid? _lockOwner;
+        private int _lockReentrancy = 0;
 
-        private static Dictionary<string, string> dbConnectionString = new Dictionary<string, string>();
-        private static readonly string sqLiteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
+        private static Dictionary<string, string> _dbConnectionString = new Dictionary<string, string>();
+        private static readonly string _sqliteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
 
-        private enum DbParametersDataType { list, tupleList, twoDArray, oneDArray, hashTable, dictionary }
+        private enum DbParametersDataType { List, TupleList, TwoDArray, OneDArray, HashTable, Dictionary }
 
         /// <summary>
         /// Create a new SxmConnection for the specified databaseName.
@@ -95,8 +95,8 @@ namespace SQLiteXM
         {
             try
             {
-                this.databaseName = databaseName;
-                this.shared = shared;
+                this._databaseName = databaseName;
+                this._shared = shared;
 
                 CreateNewConnection();
             }
@@ -112,19 +112,19 @@ namespace SQLiteXM
             }
         }
 
-        internal void Log(System.Exception ex, string? method)
+        internal void Log(System.Exception ex, [System.Runtime.CompilerServices.CallerMemberName] string? method = null)
         {
-            if (this.databaseName != default(string))
-                SxmLogging.Log(this.databaseName, ex, method);
+            if (this._databaseName != default(string))
+                SxmLogging.Log(this._databaseName, ex, method);
         }
 
         private void CreateNewConnection()
         {
             try
             {
-                string? connectionString = SxmConnection.GetConnectionString(ref this.databaseName);
-                dbConn = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
-                dbConn.Open();
+                string? connectionString = SxmConnection.GetConnectionString(ref this._databaseName);
+                _dbConn = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
+                _dbConn.Open();
 
                 // execute PRAGMA using async ADO but block here because we're in ctor
                 // This is initialization; prefer to run the async call and block synchronously once.
@@ -156,16 +156,16 @@ namespace SQLiteXM
         {
             string? connectionString = default(string);
 
-            lock (synchLock)
+            lock (_synchLock)
             {
                 databaseName = SxmConnection.ResolveDatabaseName(databaseName);
-                if (!dbConnectionString.TryGetValue(databaseName, out connectionString))
+                if (!_dbConnectionString.TryGetValue(databaseName, out connectionString))
                 {
                     string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
                     string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
-                    connectionString = String.Format(sqLiteConnString, pathToDatabase);
+                    connectionString = String.Format(_sqliteConnString, pathToDatabase);
 
-                    dbConnectionString.Add(databaseName, connectionString);
+                    _dbConnectionString.Add(databaseName, connectionString);
                 }
             }
 
@@ -179,51 +179,51 @@ namespace SQLiteXM
         /// and the method returns true immediately.
         /// </summary>
         /// <param name="millisecondsTimeout">Timeout in milliseconds to wait for the lock (default 100ms).</param>
-        /// <param name="ct">Cancellation token to abort waiting.</param>
+        /// <param name="cancellationToken">Cancellation token to abort waiting.</param>
         /// <param name="ownerId">Optional owner token to support reentrancy/ownership semantics.</param>
         /// <returns>True when the lock was acquired; false otherwise.</returns>
-        internal async Task<bool> LockAsync(int millisecondsTimeout = 100, CancellationToken ct = default, Guid? ownerId = null)
+        internal async Task<bool> LockAsync(int millisecondsTimeout = 100, CancellationToken cancellationToken = default, Guid? ownerId = null)
         {
             try
             {
                 // Fast path: if caller supplied an ownerId that already owns the lock, allow re-entrancy.
                 if (ownerId.HasValue)
                 {
-                    lock (ownerSync)
+                    lock (_ownerSync)
                     {
-                        if (lockOwner.HasValue && lockOwner.Value == ownerId.Value)
+                        if (_lockOwner.HasValue && _lockOwner.Value == ownerId.Value)
                         {
                             // Re-entrant acquire
-                            lockReentrancy++;
+                            _lockReentrancy++;
                             return true;
                         }
                     }
                 }
 
-                if (dbConn == null) return false;
+                if (_dbConn == null) return false;
 
                 // Wait for the semaphore with timeout/cancellation.
-                if (await asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), ct).ConfigureAwait(false))
+                if (await _asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), cancellationToken).ConfigureAwait(false))
                 {
-                    lock (ownerSync)
+                    lock (_ownerSync)
                     {
                         // Set owner (use provided ownerId if given; otherwise create a token for best-effort ownership).
-                        lockOwner = ownerId ?? Guid.NewGuid();
-                        lockReentrancy = 1;
+                        _lockOwner = ownerId ?? Guid.NewGuid();
+                        _lockReentrancy = 1;
                     }
 
                     // If underlying connection was in a bad state, attempt to repair it.
-                    if (dbConn.State == System.Data.ConnectionState.Broken)
+                    if (_dbConn.State == System.Data.ConnectionState.Broken)
                     {
                         try
                         {
-                            dbConn.Close();
-                            dbConn.Open();
+                            _dbConn.Close();
+                            _dbConn.Open();
                         }
                         catch (Exception ex)
                         {
                             // If we can't reopen, release the acquired semaphore and rethrow wrapped exception.
-                            ReleaseLock(lockOwner);
+                            ReleaseLock(_lockOwner);
                             Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
                             throw new SxmException(ex);
                         }
@@ -245,26 +245,26 @@ namespace SQLiteXM
         {
             try
             {
-                lock (ownerSync)
+                lock (_ownerSync)
                 {
                     // Nothing to release
-                    if (!lockOwner.HasValue)
+                    if (!_lockOwner.HasValue)
                         return;
 
                     // If caller provided ownerId and it doesn't match, log and ignore release attempt.
-                    if (ownerId.HasValue && lockOwner.Value != ownerId.Value)
+                    if (ownerId.HasValue && _lockOwner.Value != ownerId.Value)
                     {
                         try { Log(new InvalidOperationException("Attempt to release lock by non-owner."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
                         return;
                     }
 
                     // Decrement reentrancy and only release semaphore when 0.
-                    lockReentrancy--;
-                    if (lockReentrancy <= 0)
+                    _lockReentrancy--;
+                    if (_lockReentrancy <= 0)
                     {
-                        lockReentrancy = 0;
-                        lockOwner = null;
-                        try { asyncLock.Release(); } catch { /* best-effort */ }
+                        _lockReentrancy = 0;
+                        _lockOwner = null;
+                        try { _asyncLock.Release(); } catch { /* best-effort */ }
                     }
 
                     return;
@@ -312,11 +312,11 @@ namespace SQLiteXM
         /// <param name="destroy">Force destruction of the underlying connection (default false).</param>
         public void ReleaseConnection(bool destroy = false)
         {
-            if (dbConn != null)
+            if (_dbConn != null)
             {
                 try
                 {
-                    if (dbConnTransaction != null)
+                    if (_dbConnTransaction != null)
                         // ensure rollback is completed; block here to preserve previous behavior
                         DoCommitAsync(SQLiteXM.SxmDefines.rollbackTransaction).GetAwaiter().GetResult();
                 }
@@ -327,7 +327,7 @@ namespace SQLiteXM
                 {
                     try
                     {
-                        if (!shared || destroy == true)
+                        if (!_shared || destroy == true)
                             DestroyConnection();
                         else
                             ReleaseConnectionResources();
@@ -348,7 +348,7 @@ namespace SQLiteXM
         {
             SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
-            if (dbConn != null && dbConnTransaction != null)
+            if (_dbConn != null && _dbConnTransaction != null)
                 sqLiteErrorCode = await DoCommitAsync(commitFlag).ConfigureAwait(false);
 
             return sqLiteErrorCode;
@@ -359,16 +359,16 @@ namespace SQLiteXM
         {
             SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
-            if (dbConnTransaction != null)
+            if (_dbConnTransaction != null)
             {
                 try
                 {
                     if (commitFlag == SQLiteXM.SxmDefines.commitTransaction)
-                        await dbConnTransaction.CommitAsync().ConfigureAwait(false);
+                        await _dbConnTransaction.CommitAsync().ConfigureAwait(false);
                     else
-                        await dbConnTransaction.RollbackAsync().ConfigureAwait(false);
+                        await _dbConnTransaction.RollbackAsync().ConfigureAwait(false);
 
-                    dbConnTransaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
+                    _dbConnTransaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
                 }
                 catch (Microsoft.Data.Sqlite.SqliteException ex)
                 {
@@ -402,32 +402,32 @@ namespace SQLiteXM
         /// </summary>
         public void DestroyConnection()
         {
-            if (dbConn != null)
+            if (_dbConn != null)
             {
                 ReleaseConnectionResources();
 
-                dbConn.Close();
-                dbConn.Dispose();
-                dbConn = default(Microsoft.Data.Sqlite.SqliteConnection);
+                _dbConn.Close();
+                _dbConn.Dispose();
+                _dbConn = default(Microsoft.Data.Sqlite.SqliteConnection);
             }
         }
 
         private void ReleaseConnectionResources()
         {
-            if (connCommand != null)
+            if (_connCommand != null)
             {
                 ReleaseDataReader();
-                connCommand.Dispose();
-                connCommand = default(DbCommand);
+                _connCommand.Dispose();
+                _connCommand = default(DbCommand);
             }
         }
 
         private void ReleaseDataReader()
         {
-            if (connDataReader != null && connDataReader.IsClosed == false)
+            if (_connDataReader != null && _connDataReader.IsClosed == false)
             {
-                connDataReader.Close();
-                connDataReader = default(DbDataReader);
+                _connDataReader.Close();
+                _connDataReader = default(DbDataReader);
             }
         }
 
@@ -442,27 +442,27 @@ namespace SQLiteXM
         internal async Task ExecuteQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(SxmErrorMessages.error["missingSQL"]);
+                throw new SxmException(SxmErrorMessages.Error["missingSQL"]);
 
             try
             {
-                if (connCommand == null)
-                    connCommand = dbConn.CreateCommand();
+                if (_connCommand == null)
+                    _connCommand = _dbConn.CreateCommand();
                 else
                     ReleaseDataReader();
 
-                connCommand.CommandText = command;
-                connCommand.CommandType = System.Data.CommandType.Text;
+                _connCommand.CommandText = command;
+                _connCommand.CommandType = System.Data.CommandType.Text;
                 AddCommandParameters(parameterValues);
 
-                if (connCommand is DbCommand dbCmd)
+                if (_connCommand is DbCommand dbCmd)
                 {
-                    connDataReader = await dbCmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                    _connDataReader = await dbCmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     // Fallback to sync if something unexpected: keep behavior but log
-                    connDataReader = connCommand.ExecuteReader();
+                    _connDataReader = _connCommand.ExecuteReader();
                 }
             }
 #pragma warning disable 0168
@@ -498,28 +498,28 @@ namespace SQLiteXM
         internal async Task ExecuteNonQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(SxmErrorMessages.error["missingSQL"]);
+                throw new SxmException(SxmErrorMessages.Error["missingSQL"]);
 
             try
             {
-                if (connCommand == null)
-                    connCommand = dbConn.CreateCommand();
+                if (_connCommand == null)
+                    _connCommand = _dbConn.CreateCommand();
                 else
                     if (command.StartsWith("DELETE FROM companyReg WHERE companyRegPK") == false)
                     ReleaseDataReader();
 
-                connCommand.CommandText = command;
-                connCommand.CommandType = System.Data.CommandType.Text;
+                _connCommand.CommandText = command;
+                _connCommand.CommandType = System.Data.CommandType.Text;
                 AddCommandParameters(parameterValues);
 
-                if (connCommand is DbCommand dbCmd)
+                if (_connCommand is DbCommand dbCmd)
                 {
                     await dbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     // Fallback synchronous
-                    connCommand.ExecuteNonQuery();
+                    _connCommand.ExecuteNonQuery();
                 }
             }
 #pragma warning disable 0168
@@ -547,45 +547,45 @@ namespace SQLiteXM
 
         private void AddCommandParameters(List<object>? parameterValues)
         {
-            connCommand.Parameters.Clear();
+            _connCommand.Parameters.Clear();
 
             if (parameterValues != null)
             {
                 DbParametersDataType dbParametersDataType = GetDbParameterType(ref parameterValues);
 
-                if (dbParametersDataType == DbParametersDataType.dictionary)
+                if (dbParametersDataType == DbParametersDataType.Dictionary)
                 {
                     Dictionary<string, object>? dict = (Dictionary<string, object>?)parameterValues[0];
                     if (dict != default)
                     {
                         foreach (KeyValuePair<string, object> kvp in dict)
                         {
-                            DbParameter dbParameter = connCommand.CreateParameter();
+                            DbParameter dbParameter = _connCommand.CreateParameter();
 
                             dbParameter.ParameterName = "@" + kvp.Key;
                             dbParameter.Value = kvp.Value;
 
-                            connCommand.Parameters.Add(dbParameter);
+                            _connCommand.Parameters.Add(dbParameter);
                         }
                     }
 
                     return;
                 }
 
-                if (dbParametersDataType == DbParametersDataType.list)
+                if (dbParametersDataType == DbParametersDataType.List)
                 {
-                    int cntr = 0;
+                    int counter = 0;
 
                     foreach (Object parameterValue in parameterValues)
                     {
-                        DbParameter dbParameter = connCommand.CreateParameter();
+                        DbParameter dbParameter = _connCommand.CreateParameter();
 
                         dbParameter.Value = parameterValue;
-                        dbParameter.ParameterName = "@p" + cntr.ToString();
+                        dbParameter.ParameterName = "@p" + counter.ToString();
 
-                        connCommand.Parameters.Add(dbParameter);
+                        _connCommand.Parameters.Add(dbParameter);
 
-                        ++cntr;
+                        ++counter;
                     }
                 }
             }
@@ -593,24 +593,24 @@ namespace SQLiteXM
 
         private DbParametersDataType GetDbParameterType(ref List<object> parameterValues)
         {
-            Type? pvt = parameterValues[0]?.GetType();
+            Type? parameterValueType = parameterValues[0]?.GetType();
 
-            if (pvt == typeof(Tuple<string, object>))
-                return DbParametersDataType.tupleList;
+            if (parameterValueType == typeof(Tuple<string, object>))
+                return DbParametersDataType.TupleList;
 
-            if (pvt == typeof(object[]))
-                return DbParametersDataType.oneDArray;
+            if (parameterValueType == typeof(object[]))
+                return DbParametersDataType.OneDArray;
 
-            if (pvt == typeof(object[,]))
-                return DbParametersDataType.twoDArray;
+            if (parameterValueType == typeof(object[,]))
+                return DbParametersDataType.TwoDArray;
 
-            if (pvt == typeof(Hashtable))
-                return DbParametersDataType.hashTable;
+            if (parameterValueType == typeof(Hashtable))
+                return DbParametersDataType.HashTable;
 
-            if (pvt == typeof(Dictionary<string, object>))
-                return DbParametersDataType.dictionary;
+            if (parameterValueType == typeof(Dictionary<string, object>))
+                return DbParametersDataType.Dictionary;
 
-            return DbParametersDataType.list;
+            return DbParametersDataType.List;
         }
 
         /// <summary>
@@ -621,12 +621,12 @@ namespace SQLiteXM
         {
             try
             {
-                if (dbConnTransaction == null)
+                if (_dbConnTransaction == null)
                 {
-                    dbConnTransaction = dbConn.BeginTransaction();
-                    if (connCommand == null)
-                        connCommand = dbConn.CreateCommand();
-                    connCommand.Transaction = dbConnTransaction;
+                    _dbConnTransaction = _dbConn.BeginTransaction();
+                    if (_connCommand == null)
+                        _connCommand = _dbConn.CreateCommand();
+                    _connCommand.Transaction = _dbConnTransaction;
                 }
 
             }
@@ -646,8 +646,8 @@ namespace SQLiteXM
         /// <returns>True if a data reader is present and has rows; otherwise false.</returns>
         public bool HasRows()
         {
-            if (connDataReader != null)
-                return connDataReader.HasRows;
+            if (_connDataReader != null)
+                return _connDataReader.HasRows;
 
             return false;
         }
@@ -664,9 +664,9 @@ namespace SQLiteXM
             {
                 if (HasRows() == true)
                 {
-                    int ordinal = connDataReader.GetOrdinal(fieldName);
+                    int ordinal = _connDataReader.GetOrdinal(fieldName);
                     if (ordinal != -1)
-                        return connDataReader.GetValue(ordinal);
+                        return _connDataReader.GetValue(ordinal);
                 }
             }
             catch (System.Exception ex)
@@ -687,7 +687,7 @@ namespace SQLiteXM
             try
             {
                 if (HasRows() == true)
-                    return connDataReader.GetValue(fieldOrdinal);
+                    return _connDataReader.GetValue(fieldOrdinal);
             }
             catch (System.Exception ex)
             {
@@ -707,7 +707,7 @@ namespace SQLiteXM
             try
             {
                 if (HasRows() == true)
-                    return connDataReader.GetName(fieldOrdinal);
+                    return _connDataReader.GetName(fieldOrdinal);
             }
             catch (System.Exception ex)
             {
@@ -727,9 +727,9 @@ namespace SQLiteXM
 
             if (HasRows() == true)
             {
-                fieldNames = new string[connDataReader.FieldCount];
-                for (int i = 0; i < connDataReader.FieldCount; i++)
-                    fieldNames[i] = connDataReader.GetName(i);
+                fieldNames = new string[_connDataReader.FieldCount];
+                for (int i = 0; i < _connDataReader.FieldCount; i++)
+                    fieldNames[i] = _connDataReader.GetName(i);
             }
             else
                 fieldNames = new string[0];
@@ -752,9 +752,9 @@ namespace SQLiteXM
                 int numColumns = GetColumnCount();
                 for (int i = 0; i < numColumns; i++)
                 {
-                    object columnValue = connDataReader.GetValue(i);
+                    object columnValue = _connDataReader.GetValue(i);
                     //Type type = columnValue.GetType();
-                    row.Add(connDataReader.GetName(i), columnValue == DBNull.Value ? default : columnValue);
+                    row.Add(_connDataReader.GetName(i), columnValue == DBNull.Value ? default : columnValue);
                 }
             }
 
@@ -768,7 +768,7 @@ namespace SQLiteXM
         internal int GetColumnCount()
         {
             if (HasRows() == true)
-                return connDataReader.FieldCount;
+                return _connDataReader.FieldCount;
 
             return 0;
         }
@@ -783,7 +783,7 @@ namespace SQLiteXM
 
             if (HasRows() == true)
             {
-                anotherRow = connDataReader.Read();
+                anotherRow = _connDataReader.Read();
                 if (anotherRow == false)
                     ReleaseDataReader();
             }
@@ -802,8 +802,8 @@ namespace SQLiteXM
             {
                 if (HasRows() == true)
                 {
-                    int ordinal = connDataReader.GetOrdinal(fieldName);
-                    return connDataReader.GetFieldType(ordinal);
+                    int ordinal = _connDataReader.GetOrdinal(fieldName);
+                    return _connDataReader.GetFieldType(ordinal);
                 }
             }
             catch (System.Exception ex)

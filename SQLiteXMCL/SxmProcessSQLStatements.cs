@@ -13,30 +13,30 @@ namespace SQLiteXM
         private SxmProcessSQLStatements() { }
 
         // Backing field for the currently parsed SQL statements version.
-        private static long versionNumber = 0;
+        private static long _versionNumber = 0;
 
         /// <summary>
         /// Gets the version number found in the last parsed SQL statements file.
         /// </summary>
-        internal static long SqlStatementsVersionNumber { get => versionNumber; }
+        internal static long SqlStatementsVersionNumber { get => _versionNumber; }
 
 
         // Backing field for the database name identified in the parsed file.
-        private static string databaseName = string.Empty;
+        private static string _databaseName = string.Empty;
 
         /// <summary>
         /// Gets the database name parsed from the last SQL statements file.
         /// </summary>
-        internal static string getDatabaseName { get => databaseName; }
+        internal static string DatabaseName { get => _databaseName; }
 
 
         // Backing field for IsDefaultDatabase flag.
-        private static bool isDefaultDatabase = false;
+        private static bool _isDefaultDatabase = false;
 
         /// <summary>
         /// Gets the defaultdatabase flag.
         /// </summary>
-        internal static bool IsDefaultDatabase { get => isDefaultDatabase; }
+        internal static bool IsDefaultDatabase { get => _isDefaultDatabase; }
 
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlStatementAssets">Stream that contains the JSON or XML document. Must not be null.</param>
         /// <param name="sqlStatementsFileType">
-        /// The expected file type of the stream. When set to <see cref="SxmDefines.SqlStatementsFileType.unknown"/>
+        /// The expected file type of the stream. When set to <see cref="SxmDefines.SqlStatementsFileType.Unknown"/>
         /// the method attempts format detection and will try JSON and XML parsing heuristically.
         /// </param>
         /// <returns>True when parsing completes successfully (throws on error).</returns>
@@ -64,7 +64,7 @@ namespace SQLiteXM
         /// - JSON deserialization is performed with case-insensitive property name matching to be more tolerant of input.
         /// - XML deserialization uses an <see cref="System.Xml.XmlReader"/> with DTD processing prohibited to reduce attack surface (XXE).
         /// - If the caller supplies an explicit format (json or xml) only that parser is attempted and its exception is propagated.
-        /// - When <see cref="SxmDefines.SqlStatementsFileType.unknown"/> a small heuristic (first non-whitespace character)
+        /// - When <see cref="SxmDefines.SqlStatementsFileType.Unknown"/> a small heuristic (first non-whitespace character)
         ///   is used to prefer XML ('&lt;') or JSON ('{' or '[') before falling back to the other parser.
         /// - This method mutates static fields (for example <c>databaseName</c> and <c>versionNumber</c>) and is not thread-safe.
         ///   Callers should synchronize if concurrent parses are possible.
@@ -131,14 +131,14 @@ namespace SQLiteXM
                 }
             }
 
-            if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.json)
+            if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.Json)
             {
                 if (!TryParseJson())
                     throw jsonEx ?? new ArgumentException("Invalid JSON SQL statements file.");
                 return true;
             }
 
-            if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.xml)
+            if (sqlStatementsFileType == SxmDefines.SqlStatementsFileType.Xml)
             {
                 if (!TryParseXml())
                     throw xmlEx ?? new ArgumentException("Invalid XML SQL statements file.");
@@ -196,15 +196,15 @@ namespace SQLiteXM
 
                 if (rootJson?.Table != default)
                     foreach (Dictionary<string, string> tableEntry in rootJson.Table)
-                        SxmSqlStatements.AddTableDefinition(databaseName + "." + tableEntry["Table Name"], tableEntry["Statement"]);
+                        SxmSqlStatements.AddTableDefinition(_databaseName + "." + tableEntry["Table Name"], tableEntry["Statement"]);
 
                 if (rootJson?.Index != default)
                     foreach (Dictionary<string, string> indexEntry in rootJson.Index)
-                        SxmSqlStatements.AddIndexDefinition(databaseName + "." + indexEntry["Table Name"], indexEntry["Index Name"], indexEntry["Statement"]);
+                        SxmSqlStatements.AddIndexDefinition(_databaseName + "." + indexEntry["Table Name"], indexEntry["Index Name"], indexEntry["Statement"]);
 
                 if (rootJson?.Alter != default)
                     foreach (Dictionary<string, string> alterEntry in rootJson.Alter)
-                        SxmSqlStatements.AddAlterDefinition(databaseName + "." + alterEntry["Table Name"], alterEntry["Column Name"], alterEntry["Statement"]);
+                        SxmSqlStatements.AddAlterDefinition(_databaseName + "." + alterEntry["Table Name"], alterEntry["Column Name"], alterEntry["Statement"]);
 
                 if (rootJson?.Delete != default)
                     foreach (Dictionary<string, string> deleteEntry in rootJson.Delete)
@@ -224,7 +224,7 @@ namespace SQLiteXM
 
                 if (rootJson?.Trigger != default)
                     foreach (Dictionary<string, string> triggerEntry in rootJson.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(databaseName, triggerEntry["Trigger Name"], triggerEntry["Statement"]);
+                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry["Trigger Name"], triggerEntry["Statement"]);
             }
         }
 
@@ -242,15 +242,15 @@ namespace SQLiteXM
 
                 if (rootXml?.Table != default)
                     foreach (Table tableEntry in rootXml.Table)
-                        SxmSqlStatements.AddTableDefinition(databaseName + "." + tableEntry.TableName, tableEntry.Statement);
+                        SxmSqlStatements.AddTableDefinition(_databaseName + "." + tableEntry.TableName, tableEntry.Statement);
 
                 if (rootXml?.Index != default)
                     foreach (SQLiteXM.SxmSerialization.Index indexEntry in rootXml.Index)
-                        SxmSqlStatements.AddIndexDefinition(databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
+                        SxmSqlStatements.AddIndexDefinition(_databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
 
                 if (rootXml?.Alter != default)
                     foreach (Alter alterEntry in rootXml.Alter)
-                        SxmSqlStatements.AddAlterDefinition(databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
+                        SxmSqlStatements.AddAlterDefinition(_databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
 
                 if (rootXml?.Delete != default)
                     foreach (Delete deleteEntry in rootXml.Delete)
@@ -270,7 +270,7 @@ namespace SQLiteXM
 
                 if (rootXml?.Trigger != default)
                     foreach (Trigger triggerEntry in rootXml.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
+                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
             }
         }
 
@@ -284,12 +284,12 @@ namespace SQLiteXM
             if (string.IsNullOrEmpty(databaseName) || databaseName.Any(pattern.Contains) || databaseName.ToLower().Equals("main") || databaseName.ToLower().Equals("temp"))
                 throw new SxmException(new ErrorMessage("Invalid datanase name. The databse name may not contain invalid characters or be named 'main' or 'temp'.", databaseName));
 
-            SxmProcessSQLStatements.databaseName = databaseName;
+            SxmProcessSQLStatements._databaseName = databaseName;
         }
 
         private static void SetIsDefault(bool isDefault)
         {
-            SxmProcessSQLStatements.isDefaultDatabase = isDefault;
+            SxmProcessSQLStatements._isDefaultDatabase = isDefault;
         }
 
         /// <summary>
@@ -302,7 +302,7 @@ namespace SQLiteXM
             if (version < 0)
                 throw new SxmException(new ErrorMessage("Improperly formatted database version number. The version number must be a non-negative whole number.", version));
 
-            SxmProcessSQLStatements.versionNumber = version;
+            SxmProcessSQLStatements._versionNumber = version;
         }
 
         /// <summary>
