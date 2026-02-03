@@ -101,11 +101,7 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) // I don't think there is any way to get here, but just in case.
             {
-                try
-                {
-                    _connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                }
-                catch (Exception) { }
+                SxmLogging.Log(ex);
             }
             finally
             {
@@ -132,7 +128,7 @@ namespace SQLiteXM
                     }
                     catch (Exception ex)
                     {
-                        try { _connection.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                        SxmLogging.Log(ex);
                     }
                     finally
                     {
@@ -187,7 +183,7 @@ namespace SQLiteXM
             catch (System.Exception ex)
             {
                 // Best-effort: log and swallow to avoid throwing from Dispose.
-                try { _connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                SxmLogging.Log(ex);
             }
             finally
             {

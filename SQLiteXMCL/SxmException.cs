@@ -30,6 +30,19 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="SxmException"/> class with a specified
+        /// error message and a reference to the inner exception that is the cause of this exception.
+        /// Preserves the original exception as the inner exception and adds a library error ID.
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for the exception.</param>
+        /// <param name="inner">The exception that is the cause of the current exception.</param>
+        public SxmException(string message, Exception inner)
+            : base(message, inner)
+        {
+            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error["innerException"].ErrorID);
+        }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="SxmException"/> class that wraps
         /// an existing <see cref="Exception"/>. The original exception is stored as the
         /// inner exception and a library "innerException" error ID is added to <see cref="Exception.Data"/>.

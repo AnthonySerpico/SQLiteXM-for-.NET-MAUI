@@ -1,10 +1,12 @@
-﻿using System.Text;
-using System.Collections.Concurrent;
-using System.IO;
+﻿using System.Collections.Concurrent;
+using System.Drawing;
 using System.Globalization;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace SQLiteXM
 {
@@ -39,12 +41,15 @@ namespace SQLiteXM
         internal static void SxmLoggingFactory(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize, bool noLog)
         {
             string databaseName = Path.GetFileNameWithoutExtension(logFileName);
-            if (!SxmLogging._loggers.TryGetValue(databaseName, out SxmLogging? value))
-            {
 
-                SxmLogging? logger = new SxmLogging(logFileName, logPathSpecialFolder, maxLogSize, noLog);
-                SxmLogging._loggers.TryAdd(databaseName, logger);
+            // Create a database-specific logger only when the extracted name is non-empty.
+            if (!string.IsNullOrEmpty(databaseName))
+            {
+                _loggers.GetOrAdd(databaseName, _ => new SxmLogging(logFileName, logPathSpecialFolder, maxLogSize, noLog));
             }
+
+            // Ensure a default (general) logger exists under the empty-string key.
+            _loggers.GetOrAdd(string.Empty, _ => new SxmLogging("defaultsxmlog.log", logPathSpecialFolder, maxLogSize, noLog));
         }
 
         /// <summary>
@@ -80,18 +85,36 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Routes an exception to the logger associated with the specified database name.
+        /// Routes an exception to the logger instance associated with the supplied database name.
         /// </summary>
-        /// <param name="dbName">The database name used as a key to locate the logger. If null the method returns immediately.</param>
-        /// <param name="ex">The exception to log.</param>
-        /// <param name="method">Optional name of the method where the exception originated.</param>
-        /// <param name="logLevel">Optional log level label (defaults to "Error").</param>
-        static internal void Log(string dbName, System.Exception ex, string? method, string logLevel = "Error")
+        /// <param name="dbName">
+        /// Database name used as the key to locate the logger instance. If <c>null</c> the call is ignored.
+        /// </param>
+        /// <param name="ex">The exception to log. Must not be <c>null</c>.</param>
+        /// <param name="method">
+        /// Optional name of the calling member. When the caller omits this argument the compiler will
+        /// supply the caller member name via <see cref="System.Runtime.CompilerServices.CallerMemberNameAttribute"/>.
+        /// Callers may still pass an explicit value (for example <c>nameof(SomeMethod)</c>) if desired.
+        /// </param>
+        /// <param name="logLevel">Optional log level label (defaults to <c>"Error"</c>).</param>
+        /// <remarks>
+        /// - This helper is a convenience wrapper that resolves the per-database <see cref="_loggers"/> entry
+        ///   and forwards the exception to the instance logger's non-static <see cref="Log(System.Exception,string?,string)"/> method.
+        /// - Using <see cref="System.Runtime.CompilerServices.CallerMemberNameAttribute"/> reduces copy/paste errors
+        ///   because callers can omit the <c>method</c> parameter and have the compiler provide the caller name.
+        /// - Existing call sites that explicitly supply <c>method</c> (for example <c>nameof(...) </c>) remain valid.
+        /// - The method is intentionally tolerant: if <paramref name="dbName"/> is <c>null</c> or no logger exists
+        ///   for the name, the call is a no-op to avoid cascading failures during error handling.
+        /// </remarks>
+        static internal void Log(System.Exception ex, string logLevel = "Error", [System.Runtime.CompilerServices.CallerMemberName] string method = "")
         {
-            if (dbName == null) return;
+            string? dbName = SxmDatabaseDescriptor.DefaultDatabase;
 
-            if (_loggers.TryGetValue(dbName, out var log))
-                log.Log(ex, method, logLevel);
+            if (dbName != null)
+            {
+                if (_loggers.TryGetValue(dbName, out var log))
+                    log.WriteLog(ex, method, logLevel);
+            }
         }
 
         /// <summary>
@@ -105,21 +128,27 @@ namespace SQLiteXM
         /// Very large exception text is trimmed to avoid excessive memory use on mobile devices.
         /// Exceptions thrown while attempting to enqueue are swallowed to avoid throwing while handling another exception.
         /// </remarks>
-        private void Log(System.Exception ex, string? method, string logLevel = "Error")
+        private void WriteLog(System.Exception ex, string? method, string logLevel)
         {
-            if (_noLog || string.IsNullOrEmpty(method))
+            if (_noLog)
                 return;
 
             try
             {
                 // Build trimmed exception text to limit per-entry size.
-                string exceptionText = ex?.ToString() ?? string.Empty;
+                string exceptionText = ex?.ToString() ?? "<unknown exception>";
                 exceptionText = TruncateExceptionText(exceptionText, _MaxExceptionTextLength);
+                method ??= "<unknown>";
 
                 StringBuilder errorLogText = new StringBuilder();
                 errorLogText.AppendFormat("Method: {0}" + Environment.NewLine, method);
                 errorLogText.AppendFormat("Exception: {0}" + Environment.NewLine, exceptionText);
-                errorLogText.AppendFormat("Source: {0}" + Environment.NewLine, ex.Source);
+
+                if(ex != null)
+                {
+                    errorLogText.AppendFormat("Source: {0}" + Environment.NewLine, ex.Source);
+                    //errorLogText.AppendFormat("Call Stack: {0}" + Environment.NewLine, GetExceptionDetails(ex, _MaxExceptionTextLength / 2));
+                }
 
                 StringBuilder entryBuilder = new StringBuilder();
                 entryBuilder.Append("******************************************************* ").Append(logLevel).Append(Environment.NewLine);
@@ -279,6 +308,49 @@ namespace SQLiteXM
             }
         }
 
+        private string GetExceptionDetails(System.Exception ex, int maxText = 2048)
+        {
+            if (ex == null) return string.Empty;
+            var sb = new System.Text.StringBuilder();
+            System.Exception cur = ex;
+            while (cur != null)
+            {
+                sb.AppendLine($"{cur.GetType().FullName}: {cur.Message}");
+                // Fast fallback textual trace
+                if (!string.IsNullOrEmpty(cur.StackTrace))
+                {
+                    sb.AppendLine(cur.StackTrace);
+                }
+                else
+                {
+                    // Structured frames (file/line require PDBs)
+                    var st = new System.Diagnostics.StackTrace(cur, true);
+                    var frames = st.GetFrames();
+                    if (frames != null)
+                    {
+                        foreach (var f in frames)
+                        {
+                            var m = f.GetMethod();
+                            sb.Append("   at ");
+                            sb.Append(m?.DeclaringType?.FullName ?? "<unknown>");
+                            sb.Append(".");
+                            sb.Append(m?.Name ?? "<unknown>");
+                            sb.Append(" in ");
+                            sb.Append(f.GetFileName() ?? "<unknown file>");
+                            sb.Append(":line ");
+                            sb.Append(f.GetFileLineNumber());
+                            sb.AppendLine();
+                        }
+                    }
+                }
+
+                cur = cur.InnerException;
+                if (cur != null) sb.AppendLine("--- Inner Exception ---");
+            }
+
+            var text = sb.ToString();
+            return text.Length <= maxText ? text : text.Substring(0, maxText) + "... [truncated]";
+        }
 
         /// <summary>
         /// Signals the background writer to stop, waits for pending entries to be flushed and releases resources.

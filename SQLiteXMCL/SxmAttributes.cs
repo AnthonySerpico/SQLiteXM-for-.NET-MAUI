@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -66,26 +67,43 @@ namespace SQLiteXM
                     if (Enum.TryParse<DataType>(baseName, out var dt))
                         return dt;
                 }
-                catch { }
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                {
+                    SxmLogging.Log(ex);
+                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                    throw;
+                }
+                catch (System.Exception ex)
+                {
+                    SxmLogging.Log(ex);
+                    throw ExceptionHelper.Wrap(ex, $"Data type mapping failed for datatype '{base.DataType.ToString()}'.");
+                }
                 return DataType.Default;
             }
             set
             {
                 try
                 {
+                    // fallback: if name mismatches, default to base default.
+                    base.DataType = default;
+
                     // map by name to LinqToDB.DataType
                     if (Enum.TryParse(typeof(LinqToDB.DataType), value.ToString(), ignoreCase: false, out var baseDt))
                     {
                         base.DataType = (LinqToDB.DataType)baseDt!;
                         return;
                     }
-
-                    // fallback: if name mismatches, default to base default.
-                    base.DataType = default;
                 }
-                catch
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
-                    base.DataType = default;
+                    SxmLogging.Log(ex);
+                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                    throw;
+                }
+                catch (System.Exception ex)
+                {
+                    SxmLogging.Log(ex);
+                    throw ExceptionHelper.Wrap(ex, $"Data type mapping failed for datatype '{typeof(LinqToDB.DataType)}'.");
                 }
             }
         }

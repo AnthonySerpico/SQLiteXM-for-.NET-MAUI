@@ -100,22 +100,18 @@ namespace SQLiteXM
 
                 CreateNewConnection();
             }
-#pragma warning disable 0168
-            catch (SxmException ex)
-#pragma warning restore 0168
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                SxmLogging.Log(ex, $"Connection failure for database '{this._databaseName}' shared '{this._shared}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                throw new SxmException(ex);
+                string errStr = $"Connection failure for database '{this._databaseName}' shared '{this._shared}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
-        }
-
-        internal void Log(System.Exception ex, [System.Runtime.CompilerServices.CallerMemberName] string? method = null)
-        {
-            if (this._databaseName != default(string))
-                SxmLogging.Log(this._databaseName, ex, method);
         }
 
         private void CreateNewConnection()
@@ -131,17 +127,19 @@ namespace SQLiteXM
                 this.ExecuteNonQueryAsync("PRAGMA foreign_keys = ON", default).GetAwaiter().GetResult();
                 this.ExecuteNonQueryAsync("PRAGMA journal_mode = WAL", default).GetAwaiter().GetResult();
             }
-#pragma warning disable 0168
-            catch (SxmException ex)
-#pragma warning restore 0168
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                DestroyConnection();
+                SxmLogging.Log(ex, $"CreateNewConnection failure for database '{this._databaseName}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
                 DestroyConnection();
-                Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                throw new SxmException(ex);
+                string errStr = $"CreateNewConnection failure for database '{this._databaseName}'.";
+                SxmLogging.Log(ex);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
         }
 
@@ -220,19 +218,27 @@ namespace SQLiteXM
                             _dbConn.Close();
                             _dbConn.Open();
                         }
-                        catch (Exception ex)
+                        catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                         {
-                            // If we can't reopen, release the acquired semaphore and rethrow wrapped exception.
                             ReleaseLock(_lockOwner);
-                            Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                            throw new SxmException(ex);
+                            SxmLogging.Log(ex, "LockAsync failure.");
+                            // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                            throw;
+                        }
+                        catch (System.Exception ex)
+                        {
+                            ReleaseLock(_lockOwner);
+
+                            string errStr = "LockAsync failure.";
+                            SxmLogging.Log(ex, errStr);
+                            throw ExceptionHelper.Wrap(ex, errStr);
                         }
                     }
 
                     return true;
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) { throw; }
             return false;
         }
 
@@ -254,8 +260,8 @@ namespace SQLiteXM
                     // If caller provided ownerId and it doesn't match, log and ignore release attempt.
                     if (ownerId.HasValue && _lockOwner.Value != ownerId.Value)
                     {
-                        try { Log(new InvalidOperationException("Attempt to release lock by non-owner."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
-                        return;
+                        SxmLogging.Log(new InvalidOperationException("Attempt to release lock by non-owner."));
+                        throw new InvalidOperationException("Attempt to release lock by non-owner.");
                     }
 
                     // Decrement reentrancy and only release semaphore when 0.
@@ -264,15 +270,38 @@ namespace SQLiteXM
                     {
                         _lockReentrancy = 0;
                         _lockOwner = null;
-                        try { _asyncLock.Release(); } catch { /* best-effort */ }
+                        try
+                        {
+                            _asyncLock.Release();
+                        }
+                        catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                        {
+                            SxmLogging.Log(ex, "ReleaseLock failure.");
+                            // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                            throw;
+                        }
+                        catch (System.Exception ex)
+                        {
+                            string errStr = "ReleaseLock failure.";
+                            SxmLogging.Log(ex, errStr);
+                            throw ExceptionHelper.Wrap(ex, errStr);
+                        }
                     }
 
                     return;
                 }
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex, "ReleaseLock failure.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
             catch (System.Exception ex)
             {
-                try { Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                string errStr = "ReleaseLock failure.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
         }
 
@@ -320,9 +349,18 @@ namespace SQLiteXM
                         // ensure rollback is completed; block here to preserve previous behavior
                         DoCommitAsync(SQLiteXM.SxmDefines.rollbackTransaction).GetAwaiter().GetResult();
                 }
-#pragma warning disable 0168
-                catch (System.Exception notUsed) { } // Within a handled exception a finally is guaranteed to run. 
-#pragma warning restore 0168        // https://msdn.microsoft.com/en-us/library/zwc8s4fz.aspx   
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                {
+                    SxmLogging.Log(ex, $"ReleaseConnection failure for database '{this._databaseName}'.");
+                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                    throw;
+                }
+                catch (System.Exception ex)
+                {
+                    string errStr = $"ReleaseConnection failure for database '{this._databaseName}'.";
+                    SxmLogging.Log(ex, errStr);
+                    throw ExceptionHelper.Wrap(ex, errStr);
+                }
                 finally
                 {
                     try
@@ -332,9 +370,12 @@ namespace SQLiteXM
                         else
                             ReleaseConnectionResources();
                     }
-#pragma warning disable 0168
-                    catch (System.Exception notUsed) { }
-#pragma warning restore 0168
+                    catch (System.Exception ex) 
+                    {
+                        string errStr = $"ReleaseConnection failure destroying or releasing connection for database '{this._databaseName}' shared '{_shared}' destroy '{destroy}'.";
+                        SxmLogging.Log(ex);
+                        throw ExceptionHelper.Wrap(ex, errStr); ;
+                    }
                 }
             }
         }
@@ -372,7 +413,7 @@ namespace SQLiteXM
                 }
                 catch (Microsoft.Data.Sqlite.SqliteException ex)
                 {
-                    Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    SxmLogging.Log(ex, $"DoCommitAsync failure for database '{this._databaseName}' commit flag '{commitFlag}'.");
                     //if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
 
                     if (commitFlag == SQLiteXM.SxmDefines.commitTransaction)
@@ -382,7 +423,8 @@ namespace SQLiteXM
                 }
                 catch (System.Exception ex)
                 {
-                    Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    string errStr = $"DoCommitAsync failure for database '{this._databaseName}' commit flag '{commitFlag}'.";
+                    SxmLogging.Log(ex, errStr);
                     throw new SxmException(ex);
                 }
             }
@@ -465,16 +507,17 @@ namespace SQLiteXM
                     _connDataReader = _connCommand.ExecuteReader();
                 }
             }
-#pragma warning disable 0168
-            catch (SxmException ex)
-#pragma warning restore 0168
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                SxmLogging.Log(ex, $"ExecuteQueryAsync failure for database '{this._databaseName}' and command '{command}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                throw new SxmException(ex);
+                string errStr = $"ExecuteQueryAsync failure for database '{this._databaseName}' and command '{command}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
         }
 
@@ -522,16 +565,17 @@ namespace SQLiteXM
                     _connCommand.ExecuteNonQuery();
                 }
             }
-#pragma warning disable 0168
-            catch (SxmException ex)
-#pragma warning restore 0168
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                SxmLogging.Log(ex, $"ExecuteNonQueryAsync failure for database '{this._databaseName}' and command '{command}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
-                throw new SxmException(ex);
+                string errStr = $"ExecuteNonQueryAsync failure for database '{this._databaseName}' and command '{command}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
         }
 
@@ -634,7 +678,7 @@ namespace SQLiteXM
             {
                 if (ex.ErrorCode == (int)SQLiteErrorCode.Busy)
                 {
-                    Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString());
+                    SxmLogging.Log(ex);
                 }
                 throw new SxmException(ex);
             }
@@ -669,9 +713,17 @@ namespace SQLiteXM
                         return _connDataReader.GetValue(ordinal);
                 }
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex, $"GetValue failure for database '{this._databaseName}' and field name '{fieldName}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
             catch (System.Exception ex)
             {
-                throw new SxmException(ex);
+                string errStr = $"GetValue failure for database '{this._databaseName}' and field name '{fieldName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return default;
@@ -689,9 +741,17 @@ namespace SQLiteXM
                 if (HasRows() == true)
                     return _connDataReader.GetValue(fieldOrdinal);
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex, $"GetValue failure for database '{this._databaseName}' and field ordinal '{fieldOrdinal}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
             catch (System.Exception ex)
             {
-                throw new SxmException(ex);
+                string errStr = $"GetValue failure for database '{this._databaseName}' and field ordinal '{fieldOrdinal}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return default;
@@ -709,9 +769,17 @@ namespace SQLiteXM
                 if (HasRows() == true)
                     return _connDataReader.GetName(fieldOrdinal);
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex, $"GetFieldName failure for database '{this._databaseName}' and field ordinal '{fieldOrdinal}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
             catch (System.Exception ex)
             {
-                throw new SxmException(ex);
+                string errStr = $"GetFieldName failure for database '{this._databaseName}' and field ordinal '{fieldOrdinal}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return default;
@@ -806,9 +874,17 @@ namespace SQLiteXM
                     return _connDataReader.GetFieldType(ordinal);
                 }
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex, $"GetType failure for database '{this._databaseName}' and field name '{fieldName}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
             catch (System.Exception ex)
             {
-                throw new SxmException(ex);
+                string errStr = $"GetType failure for database '{this._databaseName}' and field name '{fieldName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return default;

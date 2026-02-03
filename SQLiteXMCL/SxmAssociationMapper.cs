@@ -98,7 +98,17 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch (System.Exception) { }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex);
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                SxmLogging.Log(ex);
+                throw ExceptionHelper.Wrap(ex, $"AttachAssociationAsync failed for database '{databaseName}'.");
+            }
             finally
             {
                 sxmConnection?.DestroyConnection();

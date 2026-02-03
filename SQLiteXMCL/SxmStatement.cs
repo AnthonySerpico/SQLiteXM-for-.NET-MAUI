@@ -1,6 +1,8 @@
-﻿using SQLiteXM.Internal;
+﻿using LinqToDB.SqlQuery;
+using SQLiteXM.Internal;
 using System.Data;
 using System.Reflection;
+using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM
@@ -432,11 +434,12 @@ namespace SQLiteXM
         {
             List<Dictionary<string, object?>> recordData = default(List<Dictionary<string, object?>>)!;
 
+            SqlStatementType sqlStatementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             try
             {
                 //await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName))
                 {
-                    switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
+                    switch (sqlStatementType)
                     {
                         case SqlStatementType.select:
                             recordData = await SxmSelectHelpers.PerformSelectAsync(sqlStatementName, sqlStatementParameters, databaseName).CAF();
@@ -476,9 +479,17 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"RunStatementAsync failure for statement '{sqlStatementName}' statement type '{sqlStatementType.ToString()}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"RunStatementAsync failure for statement '{sqlStatementName}' dstatement type '{sqlStatementType.ToString()}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             if (recordData == default(List<Dictionary<string, object?>>))

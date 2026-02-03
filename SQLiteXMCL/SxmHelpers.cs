@@ -1,12 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
-using System;
-
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.SxmDefines;
-using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SQLiteXM
 {
@@ -686,11 +686,23 @@ namespace SQLiteXM
                             pi.SetValue(userObject, default);
                     }
                 }
-                catch (System.ArgumentException)
+                catch (System.ArgumentException ex)
                 {
                     string? userPropertyType = userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString();
                     string? databasePropertyType = kvp.Value?.GetType().ToString();
-                    throw new ArgumentException(string.Format("Could not cast the database column '{0}' type {1} to the provided object property '{2}' type {3}", kvp.Key, databasePropertyType, userObject.GetType().ToString() + "." + kvp.Key, userPropertyType));
+
+                    string errStr = string.Format("LoadDbValues failure. Could not cast the database column '{0}' type '{1}' to the provided object property '{2}' type '{3}'", kvp.Key, databasePropertyType, userObject.GetType().ToString() + "." + kvp.Key, userPropertyType);
+                    SxmLogging.Log(ex, errStr);
+                    throw new ArgumentException(errStr);
+                }
+                catch (System.Exception ex) 
+                {
+                    string? userPropertyType = userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString();
+                    string? databasePropertyType = kvp.Value?.GetType().ToString();
+                    
+                    string errStr = $"LoadDbValues failure for column '{kvp.Key}' type '{databasePropertyType}' to provided property '{userObject.GetType().ToString() + "." + kvp.Key}' type '{userPropertyType}'.";
+                    SxmLogging.Log(ex, errStr);
+                    throw ExceptionHelper.Wrap(ex, errStr);
                 }
             }
         }
@@ -797,13 +809,17 @@ namespace SQLiteXM
                             returnDictionary.Add(columnName, DBNull.Value);
                     }
                 }
-                catch (System.ArgumentException)
+                catch (System.ArgumentException ex)
                 {
-                    throw;
+                    string errStr = $"LoadParameterValues failure for column '{kvp.Key}' type '{userObject.GetType().GetProperty(kvp.Key)?.PropertyType.Name}' could not convert the entity's property.";
+                    SxmLogging.Log(ex, errStr);
+                    throw new ArgumentException(errStr);
                 }
-                catch (System.Exception)
+                catch (System.Exception ex)
                 {
-                    throw;
+                    string errStr = $"LoadParameterValues failure for column '{kvp.Key}' type '{userObject.GetType().GetProperty(kvp.Key)?.PropertyType.Name}' could not convert the entity's property.";
+                    SxmLogging.Log(ex, errStr);
+                    throw ExceptionHelper.Wrap(ex, errStr);
                 }
             }
             return returnDictionary;

@@ -42,9 +42,17 @@ namespace SQLiteXM
                     selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformSelectAsync failure for statement '{sqlStatementName}' db '{dbName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformSelectAsync failure for statement '{sqlStatementName}' db '{dbName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(selectedRows).CAF();
@@ -73,9 +81,17 @@ namespace SQLiteXM
                 await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters);
                 selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformSelectTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformSelectTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(selectedRows).CAF();
@@ -107,9 +123,17 @@ namespace SQLiteXM
                     selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformSelectDirectAsync failure for statement '{sqlStatement}' db '{dbName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformSelectDirectAsync failure for statement '{sqlStatement}' db '{dbName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(selectedRows).CAF();
@@ -138,9 +162,17 @@ namespace SQLiteXM
                 await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters);
                 selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformSelectDirectTransAsync failure for statement '{sqlStatement}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformSelectDirectTransAsync failure for statement '{sqlStatement}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(selectedRows).CAF();

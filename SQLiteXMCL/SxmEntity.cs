@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.Intrinsics.Arm;
+using System.Xml.Linq;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 
@@ -523,7 +524,18 @@ namespace SQLiteXM
                     await sxmTransaction.CommitTransactionAsync();
                 }
             }
-            catch (Exception ex) { }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"ProcesstriggerAttributesAsync failure for table '{tableName}'.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"ProcesstriggerAttributesAsync failure for table '{tableName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
+            }
 
             List<string> newTriggerNameList = new List<string>();
             var customAttributes = (CreateTrigger[])this.GetType().GetCustomAttributes(typeof(CreateTrigger), true);
@@ -548,7 +560,18 @@ namespace SQLiteXM
                             await sxmTransaction.CommitTransactionAsync();
                         }
                     }
-                    catch (Exception ex) { }
+                    catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                    {
+                        // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                        SxmLogging.Log(ex, $"ProcesstriggerAttributesAsync failure for table '{tableName}'.");
+                        throw;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        string errStr = $"ProcesstriggerAttributesAsync failure for table '{tableName}'.";
+                        SxmLogging.Log(ex, errStr);
+                        throw ExceptionHelper.Wrap(ex, errStr);
+                    }
                 }
             }
         }
@@ -604,21 +627,6 @@ namespace SQLiteXM
                         string indexFields = string.Join(", ", myAttribute.indexFields.Select(f => SxmHelpers.QuoteIdentifier(f)));
                         string createIndexSql = $"CREATE {unique} INDEX {SxmHelpers.QuoteIdentifier(myAttribute.indexName)} ON {quotedTable} ({indexFields})";
                         indexSqlStatements.Add(createIndexSql);
-
-                        /*                        string[] indexes = myAttribute.indexFields;
-                                                string indexFields = string.Empty;
-                                                int i = 0;
-                                                foreach (string indexField in indexes)
-                                                {
-                                                    if (i == 0)
-                                                        indexFields += indexField;
-                                                    else
-                                                        indexFields += ", " + indexField;
-                                                    ++i;
-                                                }
-
-                                                indexSqlStatements.Add(string.Format("CREATE {0} INDEX {1} ON {2} ({3})", unique, myAttribute.indexName, tableName, indexFields));
-                        */
                     }
                 }
 
@@ -637,7 +645,6 @@ namespace SQLiteXM
 
                     if (!found)
                         indexSqlStatements.Add($"DROP INDEX {SxmHelpers.QuoteIdentifier(indexName)}");
-                    //                    indexSqlStatements.Add(string.Format("DROP INDEX {0}", indexName));
                 }
 
                 if (indexSqlStatements.Count > 0)
@@ -651,9 +658,17 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                // Throw an exception here.
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"ProcessIndexStatementsAsync failure for table '{tableName}'.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"ProcessIndexStatementsAsync failure for table '{tableName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
             finally
             {
@@ -692,10 +707,11 @@ namespace SQLiteXM
         /// </summary>
         private async Task GetIndexTableStatementsAsync(List<string> existingStandardIndexes, List<string> existingUniqueIndexes)
         {
+            string tableName = this.GetType().Name;
+            string pragma = $"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})";
+
             try
             {
-                string tableName = this.GetType().Name;
-                string pragma = $"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})";
 
                 await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                 {
@@ -716,7 +732,18 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch (Exception ex) { }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"GetIndexTableStatementsAsync failure for table '{tableName}.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"GetIndexTableStatementsAsync failure for table '{tableName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
+            }
             finally
             {
             }
@@ -759,7 +786,18 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"AddColumnsAsync failure for table '{tableName}.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"AddColumnsAsync failure for table '{tableName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
+            }
             finally
             {
             }
@@ -790,7 +828,18 @@ namespace SQLiteXM
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"DropColumnsAsync failure for table '{tableName}.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"DropColumnsAsync failure for table '{tableName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
+            }
             finally
             {
             }
@@ -835,8 +884,17 @@ namespace SQLiteXM
                         return true;
                 }
             }
-            catch
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{conn.DatabaseName} table '{this.GetType().Name}'.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"DoesRecordExistAsync failure for table '{conn.DatabaseName}' table '{this.GetType().Name}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return false;
@@ -858,8 +916,17 @@ namespace SQLiteXM
                         return true;
                 }
             }
-            catch (Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{sxmConnection?.DatabaseName} table '{this.GetType().Name}'.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"DoesRecordExistAsync failure for table '{sxmConnection?.DatabaseName}' table '{this.GetType().Name}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
             finally
             {

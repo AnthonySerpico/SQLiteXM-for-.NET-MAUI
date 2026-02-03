@@ -1,4 +1,5 @@
-﻿using SQLiteXM.Internal;
+﻿using LinqToDB.SqlQuery;
+using SQLiteXM.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,9 +40,17 @@ namespace SQLiteXM
                     await sxmTransaction.CommitTransactionAsync();
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformUpdateAsync failure for statement '{sqlStatementName}' db '{dbName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformUpdateAsync failure for statement '{sqlStatementName}' db '{dbName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             await Task.CompletedTask.CAF();
@@ -62,9 +71,17 @@ namespace SQLiteXM
             {
                 await sxmTransaction.ExecuteUpdateAsync(sqlStatementName, sqlStatementParameters);
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformUpdateTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformUpdateTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             await Task.CompletedTask.CAF();
@@ -89,9 +106,17 @@ namespace SQLiteXM
                     await sxmTransaction.CommitTransactionAsync();
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformUpdateDirectAsync failure for statement '{sqlStatementName}' db '{dbName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformUpdateDirectAsync failure for statement '{sqlStatementName}' db '{dbName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             await Task.CompletedTask.CAF();
@@ -112,9 +137,17 @@ namespace SQLiteXM
             {
                 await sxmTransaction.ExecuteUpdateDirectAsync(sqlStatementName, sqlStatementParameters);
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformUpdateDirectTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformUpdateDirectTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             await Task.CompletedTask.CAF();

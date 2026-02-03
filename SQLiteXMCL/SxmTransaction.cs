@@ -140,7 +140,7 @@ namespace SQLiteXM
                         catch (Exception ex)
                         {
                             // Log but do not rethrow from Dispose to avoid masking other cleanup.
-                            try { Connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                            try { SxmLogging.Log(ex); } catch { }
                             // Try a best-effort removal to recover the ambient stack.
                             try { SxmAmbientTransaction.TryRemove(this); } catch { }
                         }
@@ -149,13 +149,13 @@ namespace SQLiteXM
                     {
                         // Log a warning — popping out-of-order is a programming error.
                         if(SxmAmbientTransaction.Current != null)
-                            try { Connection?.Log(new InvalidOperationException("Dispose called when transaction is not the ambient/top transaction."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                            try { SxmLogging.Log(new InvalidOperationException("Dispose called when transaction is not the ambient/top transaction.")); } catch { }
                         // Do not attempt to pop or auto-commit.
                     }
                 }
                 catch (Exception ex)
                 {
-                    try { Connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                    SxmLogging.Log(ex);
                     // Do not rethrow; keep disposing to allow base cleanup.
                 }
 
@@ -190,12 +190,12 @@ namespace SQLiteXM
                     else if (SxmAmbientTransaction.Current != null && SxmAmbientTransaction.Current != this)
                     {
                         // Misordered dispose; log it. Do not try to implicitly commit/pop.
-                        try { Connection?.Log(new InvalidOperationException("DisposeAsync attempted to auto-commit when transaction is not top ambient."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                        try { SxmLogging.Log(new InvalidOperationException("DisposeAsync attempted to auto-commit when transaction is not top ambient.")); } catch { }
                     }
                 }
                 catch (Exception ex)
                 {
-                    try { Connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                    SxmLogging.Log(ex);
                     throw;
                 }
                 finally
@@ -211,7 +211,7 @@ namespace SQLiteXM
                             catch (Exception ex)
                             {
                                 // Log and attempt best-effort removal; do not rethrow.
-                                try { Connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                                SxmLogging.Log(ex);
                                 try { SxmAmbientTransaction.TryRemove(this); } catch { }
                             }
                         }
@@ -223,18 +223,18 @@ namespace SQLiteXM
                                 if (SxmAmbientTransaction.Current != null && !SxmAmbientTransaction.TryRemove(this))
                                 {
                                     // If removal failed, just log a warning. Operator can inspect and recover.
-                                    try { Connection?.Log(new InvalidOperationException("DisposeAsync could not remove non-top ambient transaction; manual recovery may be required."), System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                                    try { SxmLogging.Log(new InvalidOperationException("DisposeAsync could not remove non-top ambient transaction; manual recovery may be required.")); } catch { }
                                 }
                             }
                             catch (Exception ex)
                             {
-                                try { Connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                                SxmLogging.Log(ex);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        try { Connection?.Log(ex, System.Reflection.MethodBase.GetCurrentMethod()?.ToString()); } catch { }
+                        SxmLogging.Log(ex);
                         // Do not rethrow from final cleanup
                     }
                 }
@@ -559,9 +559,11 @@ namespace SQLiteXM
 
             if (!_encounteredError)
             {
+                SqlStatementType sqlStatementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+
                 try
                 {
-                    switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
+                    switch (sqlStatementType)
                     {
                         case SqlStatementType.select:
                             recordData = await SxmSelectHelpers.PerformSelectTransAsync(sqlStatementName, sqlStatementParameters, this).CAF();
@@ -601,11 +603,23 @@ namespace SQLiteXM
                         default: break;
                     }
                 }
-                catch (System.Exception)
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
                     // Record Error
                     _encounteredError = true;
+
+                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                    SxmLogging.Log(ex, $"RunStatementAsync failure for statement '{sqlStatementName}' statement type '{sqlStatementType.ToString()}'.");
                     throw;
+                }
+                catch (System.Exception ex)
+                {
+                    // Record Error
+                    _encounteredError = true;
+
+                    string errStr = $"RunStatementAsync failure for statement '{sqlStatementName}' dstatement type '{sqlStatementType.ToString()}'.";
+                    SxmLogging.Log(ex, errStr);
+                    throw ExceptionHelper.Wrap(ex, errStr);
                 }
             }
 

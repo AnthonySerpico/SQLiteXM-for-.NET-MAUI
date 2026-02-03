@@ -1,4 +1,5 @@
-﻿using SQLiteXM.Internal;
+﻿using LinqToDB.SqlQuery;
+using SQLiteXM.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,17 +43,27 @@ namespace SQLiteXM
         {
             Dictionary<string, object?> ir;
 
+            string? databaseName = null;
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
+                    databaseName = sxmTransaction.Connection?.DatabaseName;
                     ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters);
                     await sxmTransaction.CommitTransactionAsync();
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformInsertAsync failure for SQL Statement '{sqlStatementName}' database '{databaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformInsertAsync failure for SQL Statement '{sqlStatementName}' database '{databaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(ir).CAF();
@@ -81,14 +92,24 @@ namespace SQLiteXM
         internal static async Task<Dictionary<string, object?>> PerformInsertTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             Dictionary<string, object?> ir;
+            string? databaseName = default;
 
             try
             {
+                databaseName = sxmTransaction.Connection?.DatabaseName;
                 ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters);
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformInsertTransAsync failure for SQL Statement '{sqlStatementName}' database '{databaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformInsertTransAsync failure for SQL Statement '{sqlStatementName}' database '{databaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(ir).CAF();
@@ -97,18 +118,28 @@ namespace SQLiteXM
         internal static async Task<Dictionary<string, object?>> PerformInsertDirectAsync(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
             Dictionary<string, object?> ir;
+            string? databaseName = default;
 
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
+                    databaseName = sxmTransaction.Connection?.DatabaseName;
                     ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatement, sqlStatementParameters);
                     await sxmTransaction.CommitTransactionAsync();
                 }
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformInsertDirectAsync failure for SQL Statement '{sqlStatement}' database '{databaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformInsertDirectAsync failure for SQL Statement '{sqlStatement}' database '{databaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(ir).CAF();
@@ -117,14 +148,24 @@ namespace SQLiteXM
         internal static async Task<Dictionary<string, object?>> PerformInsertDirectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             Dictionary<string, object?> ir;
+            string? databaseName = default;
 
             try
             {
+                databaseName = sxmTransaction.Connection?.DatabaseName;
                 ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatementName, sqlStatementParameters);
             }
-            catch (System.Exception)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"PerformInsertDirectTransAsync failure for SQL Statement '{sqlStatementName}' database '{databaseName}'.");
                 throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"PerformInsertDirectTransAsync failure for SQL Statement '{sqlStatementName}' database '{databaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             return await Task.FromResult(ir).CAF();

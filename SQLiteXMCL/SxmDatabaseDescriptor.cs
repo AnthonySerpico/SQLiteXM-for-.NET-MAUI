@@ -62,9 +62,17 @@ namespace SQLiteXM
                 _dbDescriptors.Add(databaseName);
                 RegisterLogger(databaseName);
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex, $"Ctor failure for class SxmDatabaseDescriptor for database '{databaseName}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
             catch (System.Exception ex)
             {
-                throw new SxmException(ex);
+                string errStr = $"Ctor failure for class SxmDatabaseDescriptor for database '{databaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
         }
 
