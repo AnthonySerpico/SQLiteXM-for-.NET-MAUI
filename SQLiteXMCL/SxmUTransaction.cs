@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
+using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
 {
@@ -27,7 +28,14 @@ namespace SQLiteXM
         // Private ctor used by the async factory. Connection lock already acquired.
         private protected SxmUTransaction(SxmConnection conn, bool ownsLock, Guid? ownerId = null)
         {
-            this._connection = conn;
+            if ((this._connection = conn) == default)
+            {
+                string errStr = $"SxmUTransaction ctor failure. SxmConnection 'conn' is null.";
+                ArgumentNullException argumentNullException = new ArgumentNullException(errStr);
+                SxmLogging.Log(argumentNullException, errStr);
+                throw argumentNullException;
+            }
+
             this._ownsAsyncLock = ownsLock;
             this._lockOwnerId = ownerId;
         }
@@ -99,9 +107,17 @@ namespace SQLiteXM
             {
                 _connection?.ReleaseConnection();
             }
-            catch (System.Exception ex) // I don't think there is any way to get here, but just in case.
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex);
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"FinalizeTransaction failure for database '{_connection?.DatabaseName}'.");
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"FinalizeTransaction failure for database '{_connection?.DatabaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
             finally
             {
@@ -240,6 +256,11 @@ namespace SQLiteXM
             {
                 if (insertDefinition.TableName.Length != 0)
                 {
+                    if (_connection is null)
+                    {
+                        throw new ArgumentNullException($"ExecuteInsertAsync failure. SxmConnection '_connection' is null.");
+                    }
+
                     await ExecuteQueryDirectAsync("select last_insert_rowid() as rowID", null, cancellationToken).ConfigureAwait(false);
                     Dictionary<string, object?>? nextRow = _connection.GetNextRow<Dictionary<string, object?>>();
 
@@ -262,13 +283,17 @@ namespace SQLiteXM
                     await ExecuteNonQueryAsync(String.Format("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIDPV, cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (SxmException)
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"ExecuteInsertAsync failure for database '{_connection?.DatabaseName}' table '{insertDefinition.TableName}' SQL statement '{insertDefinition.InsertSQL}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                throw new SxmException(ex);
+                string errStr = $"ExecuteInsertAsync failure for database '{_connection?.DatabaseName}' table '{insertDefinition.TableName}' SQL statement '{insertDefinition.InsertSQL}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
             }
 
             Dictionary<string, object?> ir = new Dictionary<string, object?>();
@@ -287,6 +312,14 @@ namespace SQLiteXM
         private async Task<string?> GetSynchIdAsync(string tableName, long recordID)
         {
             string? synchId = default(string);
+
+            if (_connection is null)
+            {
+                string errStr = $"GetSynchIdAsync failure. SxmConnection '_connection' is null.";
+                ArgumentNullException argumentNullException = new ArgumentNullException(errStr);
+                SxmLogging.Log(argumentNullException, errStr);
+                throw argumentNullException;
+            }
 
             try
             {
@@ -314,6 +347,10 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token.</param>
         internal async Task ExecuteQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"ExecuteQueryAsync failure. SxmConnection '_connection' is null.");
+            }
             await _connection.ExecuteQueryAsync(SxmSqlStatements.selectStatements[command].SelectSQL, parameterValues, cancellationToken).ConfigureAwait(false);
         }
 
@@ -347,6 +384,10 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token.</param>
         internal async Task ExecuteQueryDirectAsync(string sqlStatement, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"ExecuteQueryDirectAsync failure. SxmConnection '_connection' is null.");
+            }
             await _connection.ExecuteQueryAsync(sqlStatement, parameterValues, cancellationToken).ConfigureAwait(false);
         }
 
@@ -445,6 +486,10 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token.</param>
         private async Task ExecuteNonQueryTransAsync(string sqlStatement, List<object>? ParameterValues = null, CancellationToken cancellationToken = default)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"ExecuteNonQueryTransAsync failure. SxmConnection '_connection' is null.");
+            }
             _connection.BeginTransaction();
             await _connection.ExecuteNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
         }
@@ -463,25 +508,23 @@ namespace SQLiteXM
         /// </summary>
         public async Task DetachDatabaseAsync()
         {
-            try
+            if (_connection is null)
             {
-                await _connection.ExecuteQueryAsync("PRAGMA database_list", null as List<object>);
-
-                while (NextRow() == true)
-                {
-                    try
-                    {
-                        string? dbName = (string?)GetValue("name");
-                        if (dbName?.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
-                            await DetachDatabaseAsync(dbName);
-                    }
-                    catch (System.Exception) // Keep trying to detach all databases.
-                    {
-                    }
-                }
+                throw new ArgumentNullException($"DetachDatabaseAsync failure. SxmConnection '_connection' is null.");
             }
-            catch (System.Exception)
+            await _connection.ExecuteQueryAsync("PRAGMA database_list", null as List<object>);
+
+            while (NextRow() == true)
             {
+                try
+                {
+                    string? dbName = (string?)GetValue("name");
+                    if (dbName?.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
+                        await DetachDatabaseAsync(dbName);
+                }
+                catch (System.Exception) // Keep trying to detach all databases.
+                {
+                }
             }
         }
 
@@ -493,26 +536,24 @@ namespace SQLiteXM
         /// <exception cref="SxmException">If the database descriptor is missing or the database file does not exist.</exception>
         public async Task AttachDatabaseAsync(string databaseName)
         {
-            if (_connection.DatabaseName.Equals(databaseName) == false)
+            if (_connection is null)
             {
-                try
-                {
-                    string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
-                    string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
+                throw new ArgumentNullException($"AttachDatabaseAsync failure. SxmConnection '_connection' is null.");
+            }
+            if (_connection.DatabaseName is null)
+            {
+                throw new ArgumentNullException($"AttachDatabaseAsync failure. '_connection.DatabaseName' is null.");
+            }
 
-                    if (File.Exists(dbFullyQualifiedPath) == true)
-                        await _connection.ExecuteNonQueryAsync(String.Format("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>);
-                    else
-                        throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
-                }
-                catch (SxmException)
-                {
-                    throw;
-                }
-                catch (System.Exception ex)
-                {
-                    throw new SxmException(ex);
-                }
+            if (_connection.DatabaseName?.Equals(databaseName) == false)
+            {
+                string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
+                string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
+
+                if (File.Exists(dbFullyQualifiedPath) == true)
+                    await _connection.ExecuteNonQueryAsync(String.Format("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>);
+                else
+                    throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
             }
         }
 
@@ -524,25 +565,23 @@ namespace SQLiteXM
         /// <exception cref="SxmException">If the database descriptor is missing or the database file does not exist.</exception>
         public async Task DetachDatabaseAsync(string databaseName)
         {
-            if (_connection.DatabaseName.Equals(databaseName) == false)
+            if (_connection is null)
             {
-                try
-                {
-                    string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
-                    string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
-                    if (File.Exists(dbFullyQualifiedPath) == true)
-                        await _connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);
-                    else
-                        throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
-                }
-                catch (SxmException)
-                {
-                    throw;
-                }
-                catch (System.Exception ex)
-                {
-                    throw new SxmException(ex);
-                }
+                throw new ArgumentNullException($"DetachDatabaseAsync failure. SxmConnection '_connection' is null.");
+            }
+            if (_connection.DatabaseName is null)
+            {
+                throw new ArgumentNullException($"DetachDatabaseAsync failure. '_connection.DatabaseName' is null.");
+            }
+
+            if (_connection.DatabaseName?.Equals(databaseName) == false)
+            {
+                string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
+                string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
+                if (File.Exists(dbFullyQualifiedPath) == true)
+                    await _connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);
+                else
+                    throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
             }
         }
 
@@ -554,6 +593,11 @@ namespace SQLiteXM
         /// <returns>The SQLite error code returned from finishing the transaction.</returns>
         public async Task<SQLiteErrorCode> CommitTransactionAsync(CancellationToken cancellationToken = default)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"CommitTransactionAsync failure. SxmConnection '_connection' is null.");
+            }
+
             SQLiteErrorCode ec = await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.commitTransaction).ConfigureAwait(false);
             if (_interruptSynchronize == true)
             {
@@ -569,6 +613,11 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token (currently unused by implementation).</param>
         public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"RollbackTransactionAsync failure. SxmConnection '_connection' is null.");
+            }
+
             await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.rollbackTransaction).ConfigureAwait(false);
             _interruptSynchronize = false;
         }
@@ -578,6 +627,11 @@ namespace SQLiteXM
         /// </summary>
         public bool HasRows()
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"HasRows failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.HasRows();
         }
 
@@ -588,6 +642,11 @@ namespace SQLiteXM
         /// <returns>The field value or null.</returns>
         private object? GetValue(string fieldName)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetValue failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.GetValue(fieldName);
         }
 
@@ -598,6 +657,11 @@ namespace SQLiteXM
         /// <returns>The field value or null.</returns>
         private object? GetValue(int fieldOrdinal)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetValue failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.GetValue(fieldOrdinal);
         }
 
@@ -608,6 +672,11 @@ namespace SQLiteXM
         /// <returns>The field name or null.</returns>
         private string? GetFieldName(int fieldOrdinal)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetFieldName failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.GetFieldName(fieldOrdinal);
         }
 
@@ -617,6 +686,11 @@ namespace SQLiteXM
         /// <returns>Array of field names.</returns>
         private string[] GetFieldNames()
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetFieldNames failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.GetFieldNames();
         }
 
@@ -627,6 +701,11 @@ namespace SQLiteXM
         /// <returns>An instance of <typeparamref name="T"/> representing the row, or null when no more rows exist.</returns>
         private T? GetNextRow<T>() where T : IDictionary<string, object?>, new()
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetNextRow failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.GetNextRow<T>();
         }
 
@@ -652,6 +731,11 @@ namespace SQLiteXM
         /// <returns>Column count.</returns>
         private int GetColumnCount()
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetColumnCount failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.GetColumnCount();
         }
 
@@ -661,6 +745,11 @@ namespace SQLiteXM
         /// <returns>True if a row is available; otherwise false.</returns>
         private bool NextRow()
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"NextRow failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.NextRow();
         }
 
@@ -671,6 +760,11 @@ namespace SQLiteXM
         /// <returns>CLR <see cref="System.Type"/> of the field or null.</returns>
         private Type? GetType(string fieldName)
         {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetType failure. SxmConnection '_connection' is null.");
+            }
+
             return _connection.GetType(fieldName);
         }
     }
