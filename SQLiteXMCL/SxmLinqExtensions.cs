@@ -73,7 +73,7 @@ namespace SQLiteXM
     public static class SxmLinqExtensions
     {
         // Use DataConnection's assembly as a stable LinqToDB assembly reference.
-        private static readonly Assembly LinqToDbAssembly = typeof(LinqToDB.Data.DataConnection).Assembly;
+        private static readonly Assembly _linqToDbAssembly = typeof(LinqToDB.Data.DataConnection).Assembly;
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="SxmTable{T}"/>.
@@ -271,14 +271,14 @@ namespace SQLiteXM
                 .ToList();
 
             // prefer the DataConnection assembly
-            if (!assemblies.Contains(LinqToDbAssembly))
+            if (!assemblies.Contains(_linqToDbAssembly))
             {
-                assemblies.Insert(0, LinqToDbAssembly);
+                assemblies.Insert(0, _linqToDbAssembly);
             }
             else
             {
-                assemblies.Remove(LinqToDbAssembly);
-                assemblies.Insert(0, LinqToDbAssembly);
+                assemblies.Remove(_linqToDbAssembly);
+                assemblies.Insert(0, _linqToDbAssembly);
             }
 
             Debug.WriteLine($"[SxmLinqExtensions] DumpProviderCandidates('{methodName}') scanning {assemblies.Count} assembly(ies).");

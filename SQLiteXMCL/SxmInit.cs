@@ -908,8 +908,8 @@ namespace SQLiteXM
                     SxmConnection sxmConnection = new SxmConnection(databaseName);
                     await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                     {
-                        List<string> ExistingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty);
-                        foreach (string existingTrigger in ExistingTriggers)
+                        List<string> existingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty);
+                        foreach (string existingTrigger in existingTriggers)
                         {
                             await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER {SxmHelpers.QuoteIdentifier(existingTrigger)}");
                         }

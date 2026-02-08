@@ -14,6 +14,7 @@
         {
             get { return _tableSQL; }
         }
+
         private int _cloudSynch;
         /// <summary>
         /// Gets the cloud synchronization indicator for this table.

@@ -15,12 +15,12 @@ namespace SQLiteXM
         /// Uses <see cref="AsyncLocal{T}"/> so the stack flows with async/await and logical execution context.
         /// Null when there are no ambient transactions.
         /// </summary>
-        static readonly AsyncLocal<Stack<SxmTransaction>?> slot = new();
+        static readonly AsyncLocal<Stack<SxmTransaction>?> _slot = new();
 
         /// <summary>
         /// Gets the current (top-most) ambient <see cref="SxmTransaction"/> or null when none exists.
         /// </summary>
-        internal static SxmTransaction? Current => slot.Value != null && slot.Value.Count > 0 ? slot.Value.Peek() : null;
+        internal static SxmTransaction? Current => _slot.Value != null && _slot.Value.Count > 0 ? _slot.Value.Peek() : null;
 
         /// <summary>
         /// Pushes the supplied transaction onto the ambient transaction stack.
@@ -30,11 +30,11 @@ namespace SQLiteXM
         internal static void Push(SxmTransaction tx)
         {
             if (tx == null) throw new ArgumentNullException(nameof(tx));
-            var stack = slot.Value;
+            var stack = _slot.Value;
             if (stack == null)
             {
                 stack = new Stack<SxmTransaction>();
-                slot.Value = stack;
+                _slot.Value = stack;
             }
             stack.Push(tx);
         }
@@ -51,7 +51,7 @@ namespace SQLiteXM
         /// </exception>
         internal static void Pop(SxmTransaction tx)
         {
-            var stack = slot.Value;
+            var stack = _slot.Value;
             if (stack == null || stack.Count == 0)
                 throw new InvalidOperationException("No ambient transaction to pop.");
 
@@ -60,7 +60,7 @@ namespace SQLiteXM
 
             stack.Pop();
             if (stack.Count == 0)
-                slot.Value = null;
+                _slot.Value = null;
         }
 
 
@@ -76,7 +76,7 @@ namespace SQLiteXM
         internal static bool TryRemove(SxmTransaction tx)
         {
             if (tx == null) throw new ArgumentNullException(nameof(tx));
-            var stack = slot.Value;
+            var stack = _slot.Value;
             if (stack == null || stack.Count == 0)
                 return false;
 
@@ -114,7 +114,7 @@ namespace SQLiteXM
                 while (temp.Count > 0)
                     rebuilt.Push(temp.Pop());
 
-                slot.Value = rebuilt.Count > 0 ? rebuilt : null;
+                _slot.Value = rebuilt.Count > 0 ? rebuilt : null;
                 return removed;
             }
             catch

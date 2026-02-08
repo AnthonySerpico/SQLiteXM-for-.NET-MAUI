@@ -128,7 +128,7 @@ namespace SQLiteXM
     /// </summary>
     public class ErrorMessage
     {
-        private SxmDefines.SxmErrorCode _errorID;
+        private SxmDefines.SxmErrorCode _errorId;
         private string _errorText;
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace SQLiteXM
         public ErrorMessage(string errorText, SxmDefines.SxmErrorCode errorId)
         {
             this._errorText = errorText;
-            this._errorID = errorId;
+            this._errorId = errorId;
         }
 
         /// <summary>
@@ -153,7 +153,7 @@ namespace SQLiteXM
         public ErrorMessage(string errorName, params object[] list)
         {
             this._errorText = String.Format(SxmErrorMessages.Error[errorName].ErrorText, list);
-            this._errorID = SxmErrorMessages.Error[errorName].ErrorID;
+            this._errorId = SxmErrorMessages.Error[errorName].ErrorID;
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace SQLiteXM
         /// </summary>
         public SxmDefines.SxmErrorCode ErrorID
         {
-            get { return _errorID; }
+            get { return _errorId; }
         }
 
         /// <summary>

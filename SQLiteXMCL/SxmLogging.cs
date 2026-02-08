@@ -35,7 +35,7 @@ namespace SQLiteXM
         private long _droppedCount;
 
         // Maximum characters retained for exception text to avoid very large queued entries on mobile.
-        private const int _MaxExceptionTextLength = 2048;
+        private const int _maxExceptionTextLength = 2048;
 
         internal static void SxmLoggingFactory(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize)
         {
@@ -131,7 +131,7 @@ namespace SQLiteXM
             {
                 // Build trimmed exception text to limit per-entry size.
                 string exceptionText = ex?.ToString() ?? "<unknown exception>";
-                exceptionText = TruncateExceptionText(exceptionText, _MaxExceptionTextLength);
+                exceptionText = TruncateExceptionText(exceptionText, _maxExceptionTextLength);
                 method ??= "<unknown>";
 
                 StringBuilder errorLogText = new StringBuilder();

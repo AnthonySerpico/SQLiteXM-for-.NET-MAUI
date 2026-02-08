@@ -149,7 +149,7 @@ namespace SQLiteXM
 
                         await ProcessIndexStatementsAsync(IndexType.standard, std).ConfigureAwait(false);
                         await ProcessIndexStatementsAsync(IndexType.unique, uniq).ConfigureAwait(false);
-                        await ProcesstriggerAttributesAsync().ConfigureAwait(false);
+                        await ProcessTriggerAttributesAsync().ConfigureAwait(false);
 
                         // If this is an already existing table in the DB, drop columns now that everything else has been reconciled.
                         if (!newTable)
@@ -510,7 +510,7 @@ namespace SQLiteXM
         /// Recreate triggers specified by the CreateTrigger attributes on the type.
         /// Existing triggers for the table are dropped before new ones are created.
         /// </summary>
-        private async Task ProcesstriggerAttributesAsync()
+        private async Task ProcessTriggerAttributesAsync()
         {
             string tableName = this.GetType().Name;
 
@@ -518,8 +518,8 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                 {
-                    List<string> ExistingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, tableName);
-                    foreach (string existingTrigger in ExistingTriggers)
+                    List<string> existingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, tableName);
+                    foreach (string existingTrigger in existingTriggers)
                     {
                         await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER {SxmHelpers.QuoteIdentifier(existingTrigger)}");
                     }

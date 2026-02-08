@@ -85,8 +85,8 @@ namespace SQLiteXM
 
                                 // How this could fail. If you have different namespaces that include a class with the same name that both inherit the SXMEntity class.
                                 // The rule: assign unique names to classes that inherit from SxmEntity, even if they are in different namespaces.
-                                Type BaseType = typeof(SxmEntity);
-                                Type? sourceType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).Where(x => x.Name == tableName && x.Namespace?.Equals("SQLiteXM", StringComparison.Ordinal) != true && BaseType.IsAssignableFrom(x) && x != BaseType).FirstOrDefault();
+                                Type baseType = typeof(SxmEntity);
+                                Type? sourceType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).Where(x => x.Name == tableName && x.Namespace?.Equals("SQLiteXM", StringComparison.Ordinal) != true && baseType.IsAssignableFrom(x) && x != baseType).FirstOrDefault();
 
                                 if (sourceType != default)
                                 {

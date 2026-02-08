@@ -470,11 +470,11 @@ namespace SQLiteXM
         /// so callers know synchronization may need to be interrupted.
         /// </summary>
         /// <param name="sqlStatement">SQL statement to execute.</param>
-        /// <param name="ParameterValues">Parameter values or null.</param>
+        /// <param name="parameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        private async Task ExecuteNonQueryAsync(string sqlStatement, List<object>? ParameterValues = null, CancellationToken cancellationToken = default)
+        private async Task ExecuteNonQueryAsync(string sqlStatement, List<object>? parameterValues = null, CancellationToken cancellationToken = default)
         {
-            await ExecuteNonQueryTransAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryTransAsync(sqlStatement, parameterValues, cancellationToken).ConfigureAwait(false);
             _interruptSynchronize = true;
         }
 
@@ -482,16 +482,16 @@ namespace SQLiteXM
         /// Internal helper to begin a transaction and execute a non-query on the connection.
         /// </summary>
         /// <param name="sqlStatement">SQL statement to execute.</param>
-        /// <param name="ParameterValues">Parameter values or null.</param>
+        /// <param name="parameterValues">Parameter values or null.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        private async Task ExecuteNonQueryTransAsync(string sqlStatement, List<object>? ParameterValues = null, CancellationToken cancellationToken = default)
+        private async Task ExecuteNonQueryTransAsync(string sqlStatement, List<object>? parameterValues = null, CancellationToken cancellationToken = default)
         {
             if (_connection is null)
             {
                 throw new ArgumentNullException($"ExecuteNonQueryTransAsync failure. SxmConnection '_connection' is null.");
             }
             _connection.BeginTransaction();
-            await _connection.ExecuteNonQueryAsync(sqlStatement, ParameterValues, cancellationToken).ConfigureAwait(false);
+            await _connection.ExecuteNonQueryAsync(sqlStatement, parameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

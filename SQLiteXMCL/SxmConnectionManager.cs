@@ -248,7 +248,7 @@ namespace SQLiteXM
         /// </remarks>
         public readonly struct ConnectionLease : IAsyncDisposable
         {
-            private readonly SxmConnectionManager manager;
+            private readonly SxmConnectionManager _manager;
 
             /// <summary>
             /// The shared <see cref="SxmConnection"/> instance for the acquired lease.
@@ -262,7 +262,7 @@ namespace SQLiteXM
 
             internal ConnectionLease(SxmConnectionManager manager, string dbName, SxmConnection conn)
             {
-                this.manager = manager;
+                this._manager = manager;
                 Connection = conn;
                 DatabaseName = dbName;
             }
@@ -273,7 +273,7 @@ namespace SQLiteXM
             /// <returns>A completed <see cref="ValueTask"/>. The operation is synchronous.</returns>
             public ValueTask DisposeAsync()
             {
-                manager.Release(DatabaseName);
+                _manager.Release(DatabaseName);
                 return ValueTask.CompletedTask;
             }
         }
