@@ -20,7 +20,7 @@ namespace SQLiteXM
         /// <summary>
         /// Gets the current (top-most) ambient <see cref="SxmTransaction"/> or null when none exists.
         /// </summary>
-        public static SxmTransaction? Current => slot.Value != null && slot.Value.Count > 0 ? slot.Value.Peek() : null;
+        internal static SxmTransaction? Current => slot.Value != null && slot.Value.Count > 0 ? slot.Value.Peek() : null;
 
         /// <summary>
         /// Pushes the supplied transaction onto the ambient transaction stack.

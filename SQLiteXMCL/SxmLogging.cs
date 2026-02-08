@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -15,12 +16,10 @@ namespace SQLiteXM
     /// </summary>
     /// <remarks>
     /// Instances are stored in the <see cref="_loggers"/> dictionary keyed by database name.
-    /// Logging may be disabled via the constructor parameter <c>noLog</c>.
     /// Logging entries are queued and flushed to disk by a single background writer task.
     /// </remarks>
     public class SxmLogging : System.IDisposable
     {
-        private readonly bool _noLog;
         private readonly long _maxLogSize;
         private readonly string _logPath;
 
@@ -38,18 +37,18 @@ namespace SQLiteXM
         // Maximum characters retained for exception text to avoid very large queued entries on mobile.
         private const int _MaxExceptionTextLength = 2048;
 
-        internal static void SxmLoggingFactory(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize, bool noLog)
+        internal static void SxmLoggingFactory(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize)
         {
             string databaseName = Path.GetFileNameWithoutExtension(logFileName);
 
             // Create a database-specific logger only when the extracted name is non-empty.
             if (!string.IsNullOrEmpty(databaseName))
             {
-                _loggers.GetOrAdd(databaseName, _ => new SxmLogging(logFileName, logPathSpecialFolder, maxLogSize, noLog));
+                _loggers.GetOrAdd(databaseName, _ => new SxmLogging(logFileName, logPathSpecialFolder, maxLogSize));
             }
 
             // Ensure a default (general) logger exists under the empty-string key.
-            _loggers.GetOrAdd(string.Empty, _ => new SxmLogging("defaultsxmlog.log", logPathSpecialFolder, maxLogSize, noLog));
+            _loggers.GetOrAdd(string.Empty, _ => new SxmLogging("defaultsxmlog.log", logPathSpecialFolder, maxLogSize));
         }
 
         /// <summary>
@@ -58,10 +57,8 @@ namespace SQLiteXM
         /// <param name="logFileName">The log file name (for example "app.log").</param>
         /// <param name="logPathSpecialFolder">Special folder where the log file will be stored.</param>
         /// <param name="maxLogSize">Maximum allowed log file size in bytes before rotation occurs.</param>
-        /// <param name="noLog">If true, logging is disabled for this instance.</param>
-        private SxmLogging(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize, bool noLog)
+        private SxmLogging(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize)
         {
-            this._noLog = noLog;
             this._maxLogSize = maxLogSize;
             string folder = Environment.GetFolderPath(logPathSpecialFolder);
             if (!string.IsNullOrEmpty(folder))
@@ -106,6 +103,7 @@ namespace SQLiteXM
         /// - The method is intentionally tolerant: if <paramref name="dbName"/> is <c>null</c> or no logger exists
         ///   for the name, the call is a no-op to avoid cascading failures during error handling.
         /// </remarks>
+        [Conditional("SXM_DEBUG")]
         static internal void Log(System.Exception ex, string logLevel = "Error", [System.Runtime.CompilerServices.CallerMemberName] string method = "")
         {
             string? dbName = SxmDatabaseDescriptor.DefaultDatabase;
@@ -124,15 +122,11 @@ namespace SQLiteXM
         /// <param name="method">The method name associated with the exception.</param>
         /// <param name="logLevel">Label indicating the log level.</param>
         /// <remarks>
-        /// This method mirrors the original behavior: logging occurs only when <c>!noLog</c> and <c>method</c> is not null or empty.
         /// Very large exception text is trimmed to avoid excessive memory use on mobile devices.
         /// Exceptions thrown while attempting to enqueue are swallowed to avoid throwing while handling another exception.
         /// </remarks>
         private void WriteLog(System.Exception ex, string? method, string logLevel)
         {
-            if (_noLog)
-                return;
-
             try
             {
                 // Build trimmed exception text to limit per-entry size.

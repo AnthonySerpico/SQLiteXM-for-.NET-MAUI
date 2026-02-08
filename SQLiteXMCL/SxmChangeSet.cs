@@ -98,7 +98,7 @@ namespace SQLiteXM
         /// <param name="entity">The entity to change. Must not be null.</param>
         /// <param name="type">The type of change.</param>
         /// <exception cref="ArgumentNullException"><paramref name="entity"/> is null.</exception>
-        public ChangeAction(SxmEntity entity, ChangeType type)
+        internal ChangeAction(SxmEntity entity, ChangeType type)
         {
             Entity = entity ?? throw new ArgumentNullException(nameof(entity));
             Type = type;
@@ -120,32 +120,42 @@ namespace SQLiteXM
         /// <summary>
         /// All recorded actions in the order they were added. Read-only wrapper of the internal list.
         /// </summary>
-        public IReadOnlyList<ChangeAction> Actions => _actions.AsReadOnly();
+        internal IReadOnlyList<ChangeAction> Actions => _actions.AsReadOnly();
 
         /// <summary>
         /// Enumerates entities scheduled for insert operations in insertion order.
         /// </summary>
-        public IEnumerable<SxmEntity> Inserts => _actions.Where(a => a.Type == ChangeType.Insert).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> Inserts => _actions.Where(a => a.Type == ChangeType.Insert).Select(a => a.Entity);
 
         /// <summary>
         /// Enumerates entities scheduled for update operations in the order their actions were recorded.
         /// </summary>
-        public IEnumerable<SxmEntity> Updates => _actions.Where(a => a.Type == ChangeType.Update).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> Updates => _actions.Where(a => a.Type == ChangeType.Update).Select(a => a.Entity);
 
         /// <summary>
         /// Enumerates entities scheduled for delete operations in the order their actions were recorded.
         /// </summary>
-        public IEnumerable<SxmEntity> Deletes => _actions.Where(a => a.Type == ChangeType.Delete).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> Deletes => _actions.Where(a => a.Type == ChangeType.Delete).Select(a => a.Entity);
+
+        /// <summary>
+        /// Enumerates entities scheduled for insert or replace  operations in the order their actions were recorded.
+        /// </summary>
+        internal IEnumerable<SxmEntity> InsertOrReplaces => _actions.Where(a => a.Type == ChangeType.InsertOrReplace).Select(a => a.Entity);
+
+        /// <summary>
+        /// Enumerates entities scheduled for insert or update  operations in the order their actions were recorded.
+        /// </summary>
+        internal IEnumerable<SxmEntity> InsertOrUpdates => _actions.Where(a => a.Type == ChangeType.InsertOrUpdate).Select(a => a.Entity);
 
         /// <summary>
         /// True when no actions have been recorded.
         /// </summary>
-        public bool IsEmpty => _actions.Count == 0;
+        internal bool IsEmpty => _actions.Count == 0;
 
         /// <summary>
         /// Remove all recorded actions from the change set.
         /// </summary>
-        public void Clear() => _actions.Clear();
+        internal void Clear() => _actions.Clear();
 
         /// <summary>
         /// Record the action exactly as submitted by the user.

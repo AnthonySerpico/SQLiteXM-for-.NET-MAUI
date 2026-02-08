@@ -8,6 +8,7 @@ using System.Runtime.Intrinsics.Arm;
 using System.Xml.Linq;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SQLiteXM
 {
@@ -64,6 +65,7 @@ namespace SQLiteXM
         /// internal to prevent external modification. The property is used by the ORM for existence
         /// checks, WHERE clauses, and relationship linking.
         /// </remarks>        
+        [SuppressMessage("Naming", "IDE1006:Naming Styles", Justification = "Public column name preserved to match DB schema and external consumers.")]
         [Column, PrimaryKey, Identity]
         public virtual long id { get; set; }
 
@@ -77,6 +79,7 @@ namespace SQLiteXM
         /// prevent accidental external modification. Do not rely on setting this property prior to
         /// Save() unless the ORM is explicitly configured to include it in INSERT statements.
         /// </remarks>
+        [SuppressMessage("Naming", "IDE1006:Naming Styles", Justification = "Public column name preserved to match DB schema and external consumers.")]
         [Column(DataType = DataType.Blob)]
         public virtual Guid? synchId { get; internal set; }
 

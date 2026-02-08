@@ -322,25 +322,5 @@ namespace SQLiteXM
 
             throw new SxmException(new ErrorMessage("unknownSynchCommand", synchCommand));
         }
-
-        /// <summary>
-        /// Internal helper used to return both a parsed command string and the next index to resume parsing.
-        /// </summary>
-        class CommandReturn
-        {
-            /// <summary>
-            /// Next index in the source string after the parsed token.
-            /// </summary>
-            public int index;
-            /// <summary>
-            /// The parsed token string (empty when token represented termination).
-            /// </summary>
-            public string command;
-
-            public CommandReturn()
-            {
-            }
-        }
     }
-
 }

@@ -81,10 +81,9 @@ namespace SQLiteXM
         private void RegisterLogger(string databaseName)
         {
             const long defaultMaxLogSize = 4 * 1024 * 1024; // 4 MB
-            bool noLog = false; // read from config if applicable
             string logFileName = databaseName + ".log";
 
-            SxmLogging.SxmLoggingFactory(logFileName, DatabaseFolder, defaultMaxLogSize, noLog);
+            SxmLogging.SxmLoggingFactory(logFileName, DatabaseFolder, defaultMaxLogSize);
         }
 
         private void CreateDB(string databaseName)

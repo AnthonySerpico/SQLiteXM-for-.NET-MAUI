@@ -11,7 +11,7 @@ namespace SQLiteXM
         /// Returns true for exceptions that should NOT be wrapped by SxmException.
         /// This includes cancellation, fatal runtime-host exceptions and CLR API-usage exceptions.
         /// </summary>
-        public static bool IsNonWrappable(Exception ex)
+        internal static bool IsNonWrappable(Exception ex)
         {
             return ex is SxmException
                    || ex is OperationCanceledException
@@ -31,7 +31,7 @@ namespace SQLiteXM
         /// <summary>
         /// Wraps the supplied exception in an <see cref="SxmException"/>, preserving the original as InnerException.
         /// </summary>
-        public static SxmException Wrap(Exception ex, string? message = null)
+        internal static SxmException Wrap(Exception ex, string? message = null)
         {
             if (string.IsNullOrEmpty(message))
                 return new SxmException(ex);

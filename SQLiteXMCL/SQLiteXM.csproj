@@ -14,6 +14,10 @@
 		<Description>SQLiteXM makes using SQLite with .NET a snap.</Description>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DefineConstants>$(DefineConstants);SXM_DEBUG</DefineConstants>
+	</PropertyGroup>
+
 	<ItemGroup>
 	  <Compile Remove="Platforms\**" />
 	  <EmbeddedResource Remove="Platforms\**" />
