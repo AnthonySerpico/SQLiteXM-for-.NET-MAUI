@@ -41,6 +41,24 @@ namespace SQLiteXM
     }
 
     /// <summary>
+    /// Lease handle returned when a caller acquires exclusive access to a shared connection.
+    /// Disposing the lease releases the connection lock.
+    /// </summary>
+    internal interface ISxmConnectionLease : IAsyncDisposable
+    {
+        /// <summary>
+        /// The connection instance the lease protects.
+        /// </summary>
+        SxmConnection Connection { get; }
+
+        /// <summary>
+        /// The owner token associated with this lease.
+        /// </summary>
+        Guid OwnerId { get; }
+    }
+
+
+    /// <summary>
     /// Lightweight connection wrapper around <c>Microsoft.Data.Sqlite.SqliteConnection</c>.
     /// Provides convenience APIs for shared/non-shared connections, parameter handling,
     /// transaction management and simple reader helpers used throughout SQLiteXM.
@@ -111,6 +129,68 @@ namespace SQLiteXM
                 string errStr = $"Connection failure for database '{this._databaseName}' shared '{this._shared}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
+            }
+        }
+
+        /// <summary>
+        /// Acquire a lease that owns the connection lock. The returned lease must be disposed (await using) to release the lock.
+        /// Throws <see cref="SxmException"/> when the lock cannot be acquired in the requested time.
+        /// </summary>
+        /// <param name="millisecondsTimeout">Wait time in milliseconds (use -1 for infinite).</param>
+        /// <param name="cancellationToken">Cancellation token to abort waiting.</param>
+        /// <param name="requestedOwnerId">Optional owner id to use for reentrancy; if null a new Guid is created.</param>
+        /// <returns>An <see cref="ISxmConnectionLease"/> that will release the lock when disposed.</returns>
+        internal async Task<ISxmConnectionLease> AcquireLeaseAsync(int millisecondsTimeout = 100, CancellationToken cancellationToken = default, Guid? requestedOwnerId = null)
+        {
+            Guid ownerId = requestedOwnerId ?? Guid.NewGuid();
+
+            bool locked = await LockAsync(millisecondsTimeout, cancellationToken, ownerId).ConfigureAwait(false);
+            if (!locked)
+            {
+                // Preserve existing behavior: surface a lock failure as a library exception.
+                throw new SxmException(new ErrorMessage("lockDB", this._databaseName));
+            }
+
+            return new ConnectionLease(this, ownerId);
+        }
+
+        /// <summary>
+        /// Small lease implementation that releases the connection lock when disposed.
+        /// </summary>
+        private sealed class ConnectionLease : ISxmConnectionLease
+        {
+            private readonly SxmConnection _connection;
+            private bool _disposed;
+
+            /// <inheritdoc/>
+            public SxmConnection Connection => _connection;
+
+            /// <inheritdoc/>
+            public Guid OwnerId { get; }
+
+            internal ConnectionLease(SxmConnection connection, Guid ownerId)
+            {
+                _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+                OwnerId = ownerId;
+            }
+
+            /// <inheritdoc/>
+            public ValueTask DisposeAsync()
+            {
+                if (!_disposed)
+                {
+                    _disposed = true;
+                    try
+                    {
+                        // best-effort release; swallow to avoid throwing during cleanup
+                        _connection.ReleaseLock(OwnerId);
+                    }
+                    catch
+                    {
+                        // intentionally ignore - release should never crash callers during cleanup
+                    }
+                }
+                return ValueTask.CompletedTask;
             }
         }
 
@@ -347,7 +427,7 @@ namespace SQLiteXM
                 {
                     if (_dbConnTransaction != null)
                         // ensure rollback is completed; block here to preserve previous behavior
-                        DoCommitAsync(SQLiteXM.SxmDefines.rollbackTransaction).GetAwaiter().GetResult();
+                        DoCommitAsync(SQLiteXM.SxmDefines.RollbackTransaction).GetAwaiter().GetResult();
                 }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
@@ -404,7 +484,7 @@ namespace SQLiteXM
             {
                 try
                 {
-                    if (commitFlag == SQLiteXM.SxmDefines.commitTransaction)
+                    if (commitFlag == SQLiteXM.SxmDefines.CommitTransaction)
                         await _dbConnTransaction.CommitAsync().ConfigureAwait(false);
                     else
                         await _dbConnTransaction.RollbackAsync().ConfigureAwait(false);
@@ -416,7 +496,7 @@ namespace SQLiteXM
                     SxmLogging.Log(ex, $"DoCommitAsync failure for database '{this._databaseName}' commit flag '{commitFlag}'.");
                     //if (ex.ErrorCode == SQLiteErrorCode.Busy) {/* May do something here.*/}
 
-                    if (commitFlag == SQLiteXM.SxmDefines.commitTransaction)
+                    if (commitFlag == SQLiteXM.SxmDefines.CommitTransaction)
                         sqLiteErrorCode = (SQLiteErrorCode)ex.ErrorCode;
                     else
                         throw new SxmException(ex);

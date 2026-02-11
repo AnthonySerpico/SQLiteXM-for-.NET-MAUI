@@ -172,25 +172,25 @@ namespace SQLiteXM
                 {
                     await CreateSystemTablesAsync(databaseName);
 
-                    if (SxmSqlStatements.tableCreateStatements != default(Dictionary<string, TableDefinition>))
+                    if (SxmSqlStatements.TableCreateStatements != default(Dictionary<string, TableDefinition>))
                     {
                         Hashtable connectionMap = new();
                         Hashtable tableNamesMap = new();
 
-                        foreach (string key in SxmSqlStatements.tableCreateStatements.Keys) // the 'key' string value is 'DatabaseName.TableName'
+                        foreach (string key in SxmSqlStatements.TableCreateStatements.Keys) // the 'key' string value is 'DatabaseName.TableName'
                         {
                             if (key.Split('.').Length != 2)
                                 throw new SxmException(new ErrorMessage("invalidTableName", key));
 
                             if (!await DoesTableExistAsync(key, connectionMap, tableNamesMap))
                             {
-                                TableDefinition tableDefinition = SxmSqlStatements.tableCreateStatements[key] as TableDefinition;
+                                TableDefinition tableDefinition = SxmSqlStatements.TableCreateStatements[key] as TableDefinition;
                                 if (tableDefinition.TableSQL.StartsWith("CREATE ", true, null) == true)
                                     await ApplyCreateTableStatementAsync(key, connectionMap, tableDefinition);
                             }
                             else
                             {
-                                TableDefinition tableDefinition = SxmSqlStatements.tableCreateStatements[key] as TableDefinition;
+                                TableDefinition tableDefinition = SxmSqlStatements.TableCreateStatements[key] as TableDefinition;
                                 if (tableDefinition.TableSQL.StartsWith("DROP ", true, null) == true)
                                     await ApplyDropTableStatementAsync(key, connectionMap, tableDefinition);
                                 else
@@ -548,7 +548,7 @@ namespace SQLiteXM
                 if (!await DoesTableExistAsync(tableName, sxmConnection))
                 {
                     Hashtable tableNamesMap = new Hashtable();
-                    TableDefinition? tableDefinition = SxmSqlStatements.tableCreateStatements![key] as TableDefinition;
+                    TableDefinition? tableDefinition = SxmSqlStatements.TableCreateStatements![key] as TableDefinition;
 
                     await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                     {
@@ -674,8 +674,8 @@ namespace SQLiteXM
             SxmConnection? sxmConnection = null;
             List<AlterDefinition>? alterStatementsList = null;
 
-            if (SxmSqlStatements.alterStatements != null)
-                alterStatementsList = SxmSqlStatements.alterStatements[key] as List<AlterDefinition>;
+            if (SxmSqlStatements.AlterStatements != null)
+                alterStatementsList = SxmSqlStatements.AlterStatements[key] as List<AlterDefinition>;
 
             if (alterStatementsList != null)
             {
@@ -779,25 +779,25 @@ namespace SQLiteXM
         {
             string? tableName = default(string);
 
-            if (sqlStatementType == SxmDefines.SqlStatementType.select)
-                tableName = SxmSqlStatements.selectStatements[queryName].TableName;
-            if (sqlStatementType == SxmDefines.SqlStatementType.insert)
-                tableName = SxmSqlStatements.insertStatements[queryName].TableName;
-            if (sqlStatementType == SxmDefines.SqlStatementType.update)
-                tableName = SxmSqlStatements.updateStatements[queryName].TableName;
-            if (sqlStatementType == SxmDefines.SqlStatementType.delete)
-                tableName = SxmSqlStatements.deleteStatements[queryName].TableName;
+            if (sqlStatementType == SxmDefines.SqlStatementType.Select)
+                tableName = SxmSqlStatements.SelectStatements[queryName].TableName;
+            if (sqlStatementType == SxmDefines.SqlStatementType.Insert)
+                tableName = SxmSqlStatements.InsertStatements[queryName].TableName;
+            if (sqlStatementType == SxmDefines.SqlStatementType.Update)
+                tableName = SxmSqlStatements.UpdateStatements[queryName].TableName;
+            if (sqlStatementType == SxmDefines.SqlStatementType.Delete)
+                tableName = SxmSqlStatements.DeleteStatements[queryName].TableName;
 
-            if (sqlStatementType == SxmDefines.SqlStatementType.selectDirect)
+            if (sqlStatementType == SxmDefines.SqlStatementType.SelectDirect)
                 tableName = SxmHelpers.ExtractTableNameFromSelect(queryName);
-            if (sqlStatementType == SxmDefines.SqlStatementType.insertDirect)
+            if (sqlStatementType == SxmDefines.SqlStatementType.InsertDirect)
                 tableName = SxmHelpers.ExtractTableNameFromInsert(queryName);
-            if (sqlStatementType == SxmDefines.SqlStatementType.updateDirect)
+            if (sqlStatementType == SxmDefines.SqlStatementType.UpdateDirect)
                 tableName = SxmHelpers.ExtractTableNameFromUpdate(queryName);
-            if (sqlStatementType == SxmDefines.SqlStatementType.deleteDirect)
+            if (sqlStatementType == SxmDefines.SqlStatementType.DeleteDirect)
                 tableName = SxmHelpers.ExtractTableNameFromDelete(queryName);
 
-            if (sqlStatementType == SxmDefines.SqlStatementType.unknown || string.IsNullOrEmpty(tableName))
+            if (sqlStatementType == SxmDefines.SqlStatementType.Unknown || string.IsNullOrEmpty(tableName))
                 throw new SxmException(new ErrorMessage("unknownSQLStatement", queryName));
 
             return await GetTableColumnNamesAsync(dbName, tableName);
@@ -899,9 +899,9 @@ namespace SQLiteXM
         {
             List<TriggerDefinition>? triggerStatementsList = default(List<TriggerDefinition>);
 
-            if (SxmSqlStatements.triggerStatements != null)
+            if (SxmSqlStatements.TriggerStatements != null)
             {
-                ICollection triggerStatementKeys = SxmSqlStatements.triggerStatements.Keys;
+                ICollection triggerStatementKeys = SxmSqlStatements.TriggerStatements.Keys;
                 foreach (string dbName in triggerStatementKeys)
                 {
                     // Delete all triggers in the database.
@@ -918,7 +918,7 @@ namespace SQLiteXM
                     }
 
                     // Get all triggers in the SQL Statements file and create them.
-                    triggerStatementsList = SxmSqlStatements.triggerStatements[dbName] as List<TriggerDefinition>;
+                    triggerStatementsList = SxmSqlStatements.TriggerStatements[dbName] as List<TriggerDefinition>;
                     if (triggerStatementsList != null)
                     {
                         await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
@@ -943,8 +943,8 @@ namespace SQLiteXM
         {
             List<IndexDefinition>? indexStatementsList = default(List<IndexDefinition>);
 
-            if (SxmSqlStatements.indexStatements != null)
-                indexStatementsList = SxmSqlStatements.indexStatements[key] as List<IndexDefinition>;
+            if (SxmSqlStatements.IndexStatements != null)
+                indexStatementsList = SxmSqlStatements.IndexStatements[key] as List<IndexDefinition>;
 
             if (indexStatementsList != null)
             {
@@ -1083,7 +1083,7 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">Active transaction used to execute the insert.</param>
         private static async Task InsertIntoSystemCloudSyncDescriptorAsync(string key, string databaseName, string tableName, SxmUTransaction sxmTransaction)
         {
-            TableDefinition tableDefinition = SxmSqlStatements.tableCreateStatements[key] as TableDefinition;
+            TableDefinition tableDefinition = SxmSqlStatements.TableCreateStatements[key] as TableDefinition;
             List<object> parameterValues = new List<object>();
             parameterValues.Add(databaseName);
             parameterValues.Add(tableName);
@@ -1118,9 +1118,9 @@ namespace SQLiteXM
             string databaseName = parts[0];
             string databaseTable = parts[1];
 
-            TableDefinition? tableDefinition = SxmSqlStatements.tableCreateStatements?[key] as TableDefinition;
+            TableDefinition? tableDefinition = SxmSqlStatements.TableCreateStatements?[key] as TableDefinition;
 
-            if (tableDefinition?.CloudSynch == SxmDefines.CLOUD_SYNCH || tableDefinition?.CloudSynch == SxmDefines.CLOUD_MOVE)
+            if (tableDefinition?.CloudSynch == SxmDefines.CloudSync || tableDefinition?.CloudSynch == SxmDefines.CloudMove)
             {
                 // Escape values for SQL string literals (used inside VALUES(...)).
                 string safeDbName = databaseName.Replace("'", "''");
@@ -1137,7 +1137,7 @@ namespace SQLiteXM
                     $"VALUES ('{safeDbName}', '{safeTableNameLiteral}', 'update', new.synchId); END;";
                 await sxmTransaction.ExecuteCreateTriggerAsync(triggerUpdateSql);
 
-                if (tableDefinition?.CloudSynch == SxmDefines.CLOUD_SYNCH) // This is weird, needs fixing. How does it make sense for this to be inside this code block?
+                if (tableDefinition?.CloudSynch == SxmDefines.CloudSync) // This is weird, needs fixing. How does it make sense for this to be inside this code block?
                 {
                     string quotedTriggerDelete = SxmHelpers.QuoteIdentifier("delete" + databaseTable);
                     string triggerDeleteSql =

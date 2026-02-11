@@ -147,8 +147,8 @@ namespace SQLiteXM
                         var uniq = new List<string>();
                         await GetIndexTableStatementsAsync(std, uniq).ConfigureAwait(false);
 
-                        await ProcessIndexStatementsAsync(IndexType.standard, std).ConfigureAwait(false);
-                        await ProcessIndexStatementsAsync(IndexType.unique, uniq).ConfigureAwait(false);
+                        await ProcessIndexStatementsAsync(IndexType.Standard, std).ConfigureAwait(false);
+                        await ProcessIndexStatementsAsync(IndexType.Unique, uniq).ConfigureAwait(false);
                         await ProcessTriggerAttributesAsync().ConfigureAwait(false);
 
                         // If this is an already existing table in the DB, drop columns now that everything else has been reconciled.
@@ -596,12 +596,12 @@ namespace SQLiteXM
             IIndexVars[]? firstArray = default(IIndexVars[]);
             IIndexVars[]? secondArray = default(IIndexVars[]);
 
-            if (indexType == IndexType.standard)
+            if (indexType == IndexType.Standard)
             {
                 firstArray = (CreateIndex[])type.GetCustomAttributes(typeof(CreateIndex), true);
                 secondArray = _standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexVars>();
             }
-            else if (indexType == IndexType.unique)
+            else if (indexType == IndexType.Unique)
             {
                 firstArray = (CreateUniqueIndex[])type.GetCustomAttributes(typeof(CreateUniqueIndex), true);
                 secondArray = _uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexVars>();
@@ -675,12 +675,12 @@ namespace SQLiteXM
             }
             finally
             {
-                if (indexType == IndexType.standard)
+                if (indexType == IndexType.Standard)
                 {
                     _standardIndexDict.TryRemove(tableName, out _);
                 }
 
-                if (indexType == IndexType.unique)
+                if (indexType == IndexType.Unique)
                 {
                     _uniqueIndexDict.TryRemove(tableName, out _);
                 }

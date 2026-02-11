@@ -153,13 +153,13 @@ namespace SQLiteXM
         internal static string GetDatabaseStatementTypeName(SqlStatementType statementType)
         {
 
-            if (statementType == SqlStatementType.select || statementType == SqlStatementType.selectDirect)
+            if (statementType == SqlStatementType.Select || statementType == SqlStatementType.SelectDirect)
                 return "SELECT";
-            if (statementType == SqlStatementType.insert || statementType == SqlStatementType.insertDirect)
+            if (statementType == SqlStatementType.Insert || statementType == SqlStatementType.InsertDirect)
                 return "INSERT";
-            if (statementType == SqlStatementType.delete || statementType == SqlStatementType.deleteDirect)
+            if (statementType == SqlStatementType.Delete || statementType == SqlStatementType.DeleteDirect)
                 return "DELETE";
-            if (statementType == SqlStatementType.update || statementType == SqlStatementType.updateDirect)
+            if (statementType == SqlStatementType.Update || statementType == SqlStatementType.UpdateDirect)
                 return "UPDATE";
 
             throw new ArgumentException("The sql statement type could not be found.");
@@ -176,22 +176,22 @@ namespace SQLiteXM
             if (string.IsNullOrEmpty(sqlStatementName))
                 throw new ArgumentException("A sql statement name cannot be null or empty.");
 
-            if (SxmSqlStatements.selectStatements.ContainsKey(sqlStatementName) != default)
-                return SqlStatementType.select;
+            if (SxmSqlStatements.SelectStatements.ContainsKey(sqlStatementName) != default)
+                return SqlStatementType.Select;
 
-            if (SxmSqlStatements.updateStatements.ContainsKey(sqlStatementName) != default)
-                return SqlStatementType.update;
+            if (SxmSqlStatements.UpdateStatements.ContainsKey(sqlStatementName) != default)
+                return SqlStatementType.Update;
 
-            if (SxmSqlStatements.deleteStatements.ContainsKey(sqlStatementName) != default)
-                return SqlStatementType.delete;
+            if (SxmSqlStatements.DeleteStatements.ContainsKey(sqlStatementName) != default)
+                return SqlStatementType.Delete;
 
-            if (SxmSqlStatements.insertStatements.ContainsKey(sqlStatementName) != default)
-                return SqlStatementType.insert;
+            if (SxmSqlStatements.InsertStatements.ContainsKey(sqlStatementName) != default)
+                return SqlStatementType.Insert;
 
             // Not a SQL statement in the SQL statements file? Direct SQL statements are processed here.
             SqlStatementType sqlStatementType = GetSqlStatementType(sqlStatementName);
 
-            if (sqlStatementType == SqlStatementType.unknown)
+            if (sqlStatementType == SqlStatementType.Unknown)
                 throw new ArgumentException(string.Format("The sql statement '{0}' could not be found or identified.", sqlStatementName.Length > 30 ? (sqlStatementName.Substring(0, 29) + "...") : sqlStatementName));
 
             return sqlStatementType;
@@ -496,13 +496,13 @@ namespace SQLiteXM
                         var rest = s[i..].TrimStart();
 
                         if (StartsWithKeyword(rest, "SELECT"))
-                            return SqlStatementType.selectDirect;
+                            return SqlStatementType.SelectDirect;
                         if (StartsWithKeyword(rest, "INSERT") || StartsWithKeyword(rest, "REPLACE"))
-                            return SqlStatementType.insertDirect;
+                            return SqlStatementType.InsertDirect;
                         if (StartsWithKeyword(rest, "UPDATE"))
-                            return SqlStatementType.updateDirect;
+                            return SqlStatementType.UpdateDirect;
                         if (StartsWithKeyword(rest, "DELETE"))
-                            return SqlStatementType.deleteDirect;
+                            return SqlStatementType.DeleteDirect;
                     }
 
                     i++;
@@ -511,15 +511,15 @@ namespace SQLiteXM
 
             // Non-WITH statements
             if (StartsWithKeyword(s, "SELECT"))
-                return SqlStatementType.selectDirect;
+                return SqlStatementType.SelectDirect;
             if (StartsWithKeyword(s, "INSERT") || StartsWithKeyword(s, "REPLACE"))
-                return SqlStatementType.insertDirect;
+                return SqlStatementType.InsertDirect;
             if (StartsWithKeyword(s, "UPDATE"))
-                return SqlStatementType.updateDirect;
+                return SqlStatementType.UpdateDirect;
             if (StartsWithKeyword(s, "DELETE"))
-                return SqlStatementType.deleteDirect;
+                return SqlStatementType.DeleteDirect;
 
-            return SqlStatementType.unknown;
+            return SqlStatementType.Unknown;
         }
 
 

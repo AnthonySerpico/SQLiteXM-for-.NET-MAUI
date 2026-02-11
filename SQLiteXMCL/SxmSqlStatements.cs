@@ -12,42 +12,42 @@ namespace SQLiteXM
         /// <summary>
         /// Table create definitions keyed by "database.table".
         /// </summary>
-        internal static Dictionary<string, TableDefinition> tableCreateStatements = new Dictionary<string, TableDefinition>();
+        internal static Dictionary<string, TableDefinition> TableCreateStatements = new Dictionary<string, TableDefinition>();
 
         /// <summary>
         /// ALTER statements keyed by "database.table".
         /// </summary>
-        internal static Dictionary<string, List<AlterDefinition>>? alterStatements = default(Dictionary<string, List<AlterDefinition>>);
+        internal static Dictionary<string, List<AlterDefinition>>? AlterStatements = default(Dictionary<string, List<AlterDefinition>>);
 
         /// <summary>
         /// Index definitions keyed by "database.table".
         /// </summary>
-		internal static Dictionary<string, List<IndexDefinition>>? indexStatements = default(Dictionary<string, List<IndexDefinition>>);
+		internal static Dictionary<string, List<IndexDefinition>>? IndexStatements = default(Dictionary<string, List<IndexDefinition>>);
 
         /// <summary>
         /// Trigger definitions keyed by database name.
         /// </summary>
-        internal static Dictionary<string, List<TriggerDefinition>>? triggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
+        internal static Dictionary<string, List<TriggerDefinition>>? TriggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
 
         /// <summary>
         /// Insert statements keyed by statement name.
         /// </summary>
-        internal static Dictionary<string, InsertDefinition> insertStatements = new Dictionary<string, InsertDefinition>();
+        internal static Dictionary<string, InsertDefinition> InsertStatements = new Dictionary<string, InsertDefinition>();
 
         /// <summary>
         /// Select statements keyed by statement name.
         /// </summary>
-		internal static Dictionary<string, SelectDefinition> selectStatements = new Dictionary<string, SelectDefinition>();
+		internal static Dictionary<string, SelectDefinition> SelectStatements = new Dictionary<string, SelectDefinition>();
 
         /// <summary>
         /// Update statements keyed by statement name.
         /// </summary>
-		internal static Dictionary<string, UpdateDefinition> updateStatements = new Dictionary<string, UpdateDefinition>();
+		internal static Dictionary<string, UpdateDefinition> UpdateStatements = new Dictionary<string, UpdateDefinition>();
 
         /// <summary>
         /// Delete statements keyed by statement name.
         /// </summary>
-		internal static Dictionary<string, DeleteDefinition> deleteStatements = new Dictionary<string, DeleteDefinition>();
+		internal static Dictionary<string, DeleteDefinition> DeleteStatements = new Dictionary<string, DeleteDefinition>();
 
         /// <summary>
         /// Returns the SQL text for a named statement.
@@ -63,17 +63,17 @@ namespace SQLiteXM
             sqlStatementName = sqlStatementName.Trim();
             switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
             {
-                case SqlStatementType.select:
-                    return selectStatements[sqlStatementName].SelectSQL;
+                case SqlStatementType.Select:
+                    return SelectStatements[sqlStatementName].SelectSQL;
 
-                case SqlStatementType.insert:
-                    return insertStatements[sqlStatementName].InsertSQL;
+                case SqlStatementType.Insert:
+                    return InsertStatements[sqlStatementName].InsertSQL;
 
-                case SqlStatementType.update:
-                    return updateStatements[sqlStatementName].UpdateSQL;
+                case SqlStatementType.Update:
+                    return UpdateStatements[sqlStatementName].UpdateSQL;
 
-                case SqlStatementType.delete:
-                    return deleteStatements[sqlStatementName].DeleteSQL;
+                case SqlStatementType.Delete:
+                    return DeleteStatements[sqlStatementName].DeleteSQL;
 
                 default: break;
             }
@@ -91,8 +91,8 @@ namespace SQLiteXM
         {
             insertName = insertName.Trim();
 
-            if (!insertStatements.ContainsKey(insertName))
-                insertStatements.Add(insertName, new InsertDefinition(tableName.Trim(), insertSQL.Trim()));
+            if (!InsertStatements.ContainsKey(insertName))
+                InsertStatements.Add(insertName, new InsertDefinition(tableName.Trim(), insertSQL.Trim()));
         }
 
         /// <summary>
@@ -105,8 +105,8 @@ namespace SQLiteXM
         {
             selectName = selectName.Trim();
 
-            if (!selectStatements.ContainsKey(selectName))
-                selectStatements.Add(selectName, new SelectDefinition(tableName.Trim(), selectSQL.Trim()));
+            if (!SelectStatements.ContainsKey(selectName))
+                SelectStatements.Add(selectName, new SelectDefinition(tableName.Trim(), selectSQL.Trim()));
         }
 
         /// <summary>
@@ -119,8 +119,8 @@ namespace SQLiteXM
         {
             updateName = updateName.Trim();
 
-            if (!updateStatements.ContainsKey(updateName))
-                updateStatements.Add(updateName, new UpdateDefinition(tableName.Trim(), updateSQL.Trim()));
+            if (!UpdateStatements.ContainsKey(updateName))
+                UpdateStatements.Add(updateName, new UpdateDefinition(tableName.Trim(), updateSQL.Trim()));
         }
 
         /// <summary>
@@ -133,8 +133,8 @@ namespace SQLiteXM
         {
             deleteName = deleteName.Trim();
 
-            if (!deleteStatements.ContainsKey(deleteName))
-                deleteStatements.Add(deleteName, new DeleteDefinition(tableName.Trim(), deleteSQL.Trim()));
+            if (!DeleteStatements.ContainsKey(deleteName))
+                DeleteStatements.Add(deleteName, new DeleteDefinition(tableName.Trim(), deleteSQL.Trim()));
         }
 
         /// <summary>
@@ -149,14 +149,14 @@ namespace SQLiteXM
             sqlStatement = sqlStatement.Trim();
             indexName = indexName.Trim();
 
-            if (indexStatements == null)
-                indexStatements = new Dictionary<string, List<IndexDefinition>>();
+            if (IndexStatements == null)
+                IndexStatements = new Dictionary<string, List<IndexDefinition>>();
 
-            List<IndexDefinition>? indexStatementsList = indexStatements[dbAndTableName] as List<IndexDefinition>;
+            List<IndexDefinition>? indexStatementsList = IndexStatements[dbAndTableName] as List<IndexDefinition>;
             if (indexStatementsList == null)
             {
                 indexStatementsList = new List<IndexDefinition>();
-                indexStatements.Add(dbAndTableName, indexStatementsList);
+                IndexStatements.Add(dbAndTableName, indexStatementsList);
             }
 
             indexStatementsList.Add(new IndexDefinition(indexName, sqlStatement));
@@ -167,10 +167,10 @@ namespace SQLiteXM
         /// </summary>
         internal static void RemoveIndexDefinitions()
         {
-            if (indexStatements != default(Dictionary<string, List<IndexDefinition>>))
+            if (IndexStatements != default(Dictionary<string, List<IndexDefinition>>))
             {
-                indexStatements.Clear();
-                indexStatements = default(Dictionary<string, List<IndexDefinition>>);
+                IndexStatements.Clear();
+                IndexStatements = default(Dictionary<string, List<IndexDefinition>>);
             }
         }
 
@@ -186,14 +186,14 @@ namespace SQLiteXM
             triggerName = triggerName.Trim();
             dbName = dbName.Trim();
 
-            if (triggerStatements == null)
-                triggerStatements = new Dictionary<string, List<TriggerDefinition>>();
+            if (TriggerStatements == null)
+                TriggerStatements = new Dictionary<string, List<TriggerDefinition>>();
 
-            List<TriggerDefinition>? triggerStatementsList = triggerStatements[dbName] as List<TriggerDefinition>;
+            List<TriggerDefinition>? triggerStatementsList = TriggerStatements[dbName] as List<TriggerDefinition>;
             if (triggerStatementsList == null)
             {
                 triggerStatementsList = new List<TriggerDefinition>();
-                triggerStatements.Add(dbName, triggerStatementsList);
+                TriggerStatements.Add(dbName, triggerStatementsList);
             }
 
             triggerStatementsList.Add(new TriggerDefinition(triggerName, sqlStatement));
@@ -204,10 +204,10 @@ namespace SQLiteXM
         /// </summary>
         internal static void RemoveTriggerDefinitions()
         {
-            if (triggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
+            if (TriggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
             {
-                triggerStatements.Clear();
-                triggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
+                TriggerStatements.Clear();
+                TriggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
             }
         }
 
@@ -223,14 +223,14 @@ namespace SQLiteXM
             sqlStatement = sqlStatement.Trim();
             columnName = columnName.Trim();
 
-            if (alterStatements == null)
-                alterStatements = new Dictionary<string, List<AlterDefinition>>();
+            if (AlterStatements == null)
+                AlterStatements = new Dictionary<string, List<AlterDefinition>>();
 
-            List<AlterDefinition>? alterStatementsList = alterStatements[dbAndTableName] as List<AlterDefinition>;
+            List<AlterDefinition>? alterStatementsList = AlterStatements[dbAndTableName] as List<AlterDefinition>;
             if (alterStatementsList == null)
             {
                 alterStatementsList = new List<AlterDefinition>();
-                alterStatements.Add(dbAndTableName, alterStatementsList);
+                AlterStatements.Add(dbAndTableName, alterStatementsList);
             }
 
             alterStatementsList.Add(new AlterDefinition(columnName, sqlStatement));
@@ -246,7 +246,7 @@ namespace SQLiteXM
             dbAndTableName = dbAndTableName.Trim();
             tableSQL = tableSQL.Trim();
 
-            AddTableDefinition(dbAndTableName, tableSQL, SxmDefines.NO_CLOUD_SYNCH);
+            AddTableDefinition(dbAndTableName, tableSQL, SxmDefines.NoCloudSync);
         }
 
         /// <summary>
@@ -260,10 +260,10 @@ namespace SQLiteXM
             dbAndTableName = dbAndTableName.Trim();
             tableSQL = tableSQL.Trim();
 
-            if (tableCreateStatements == null)
-                tableCreateStatements = new Dictionary<string, TableDefinition>();
+            if (TableCreateStatements == null)
+                TableCreateStatements = new Dictionary<string, TableDefinition>();
 
-            tableCreateStatements.Add(dbAndTableName, new TableDefinition(tableSQL, cloudPush));
+            TableCreateStatements.Add(dbAndTableName, new TableDefinition(tableSQL, cloudPush));
         }
 
         /// <summary>
@@ -271,10 +271,10 @@ namespace SQLiteXM
         /// </summary>
         internal static void RemoveTableDefinitions()
         {
-            if (tableCreateStatements != default(Dictionary<string, TableDefinition>))
+            if (TableCreateStatements != default(Dictionary<string, TableDefinition>))
             {
-                tableCreateStatements.Clear();
-                tableCreateStatements = default(Dictionary<string, TableDefinition>);
+                TableCreateStatements.Clear();
+                TableCreateStatements = default(Dictionary<string, TableDefinition>);
             }
         }
 
@@ -283,28 +283,28 @@ namespace SQLiteXM
         /// </summary>
         internal static void ClearStatementTables()
         {
-            if (alterStatements != default(Dictionary<string, List<AlterDefinition>>))
+            if (AlterStatements != default(Dictionary<string, List<AlterDefinition>>))
             {
-                alterStatements.Clear();
-                alterStatements = default(Dictionary<string, List<AlterDefinition>>);
+                AlterStatements.Clear();
+                AlterStatements = default(Dictionary<string, List<AlterDefinition>>);
             }
 
-            if (tableCreateStatements != default(Dictionary<string, TableDefinition>))
+            if (TableCreateStatements != default(Dictionary<string, TableDefinition>))
             {
-                tableCreateStatements?.Clear();
-                tableCreateStatements = default(Dictionary<string, TableDefinition>)!;
+                TableCreateStatements?.Clear();
+                TableCreateStatements = default(Dictionary<string, TableDefinition>)!;
             }
 
-            if (indexStatements != default(Dictionary<string, List<IndexDefinition>>))
+            if (IndexStatements != default(Dictionary<string, List<IndexDefinition>>))
             {
-                indexStatements.Clear();
-                indexStatements = default(Dictionary<string, List<IndexDefinition>>);
+                IndexStatements.Clear();
+                IndexStatements = default(Dictionary<string, List<IndexDefinition>>);
             }
 
-            if (triggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
+            if (TriggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
             {
-                triggerStatements.Clear();
-                triggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
+                TriggerStatements.Clear();
+                TriggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
             }
         }
 

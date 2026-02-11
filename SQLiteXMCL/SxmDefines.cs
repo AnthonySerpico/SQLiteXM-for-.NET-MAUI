@@ -282,37 +282,37 @@
         /// <summary>
         /// Delimiter used to open a statement in SQL statements properties files.
         /// </summary>
-        internal static readonly char openStatementDelimeter = '[';
+        internal static readonly char OpenStatementDelimeter = '[';
 
         /// <summary>
         /// Delimiter used to close a statement in SQL statements properties files.
         /// </summary>
-        internal static readonly char closeStatementDelimeter = ']';
+        internal static readonly char CloseStatementDelimeter = ']';
 
         /// <summary>
         /// Transaction commit flag.
         /// </summary>
-        internal static readonly bool commitTransaction = true;
+        internal static readonly bool CommitTransaction = true;
 
         /// <summary>
         /// Transaction rollback flag.
         /// </summary>
-        internal static readonly bool rollbackTransaction = false;
+        internal static readonly bool RollbackTransaction = false;
 
         /// <summary>
         /// Cloud synchronization flag indicating no cloud synchronization.
         /// </summary>
-        public static readonly int NO_CLOUD_SYNCH = 0;
+        public static readonly int NoCloudSync = 0;
 
         /// <summary>
         /// Cloud synchronization flag indicating cloud synchronization is enabled.
         /// </summary>
-        public static readonly int CLOUD_SYNCH = 1;
+        public static readonly int CloudSync = 1;
 
         /// <summary>
         /// Cloud synchronization flag indicating a cloud move operation.
         /// </summary>
-        public static readonly int CLOUD_MOVE = 2;
+        public static readonly int CloudMove = 2;
 
         /// <summary>
         /// Types of synchronization errors.
@@ -343,12 +343,12 @@
             /// <summary>
             /// Standard (non-unique) index.
             /// </summary>
-            standard,
+            Standard,
 
             /// <summary>
             /// Unique index.
             /// </summary>
-            unique
+            Unique
         }
 
         /// <summary>
@@ -359,47 +359,47 @@
             /// <summary>
             /// Insert statement.
             /// </summary>
-            insert,
+            Insert,
 
             /// <summary>
             /// Delete statement.
             /// </summary>
-            delete,
+            Delete,
 
             /// <summary>
             /// Update statement.
             /// </summary>
-            update,
+            Update,
 
             /// <summary>
             /// Select statement.
             /// </summary>
-            select,
+            Select,
 
             /// <summary>
             /// Direct insert statement.
             /// </summary>
-            insertDirect,
+            InsertDirect,
 
             /// <summary>
             /// Direct select statement.
             /// </summary>
-            selectDirect,
+            SelectDirect,
 
             /// <summary>
             /// Direct delete statement.
             /// </summary>
-            deleteDirect,
+            DeleteDirect,
 
             /// <summary>
             /// Direct update statement.
             /// </summary>
-            updateDirect,
+            UpdateDirect,
 
             /// <summary>
             /// Unknown statement type.
             /// </summary>
-            unknown
+            Unknown
         };
 
         /// <summary>
@@ -431,112 +431,112 @@
             /// <summary>
             /// SQLite exception occurred.
             /// </summary>
-            sqliteException,
+            SqliteException,
 
             /// <summary>
             /// Inner exception occurred.
             /// </summary>
-            innerException,
+            InnerException,
 
             /// <summary>
             /// Missing SQL.
             /// </summary>
-            missingSQL,
+            MissingSQL,
 
             /// <summary>
             /// Database is locked.
             /// </summary>
-            lockDB,
+            LockDb,
 
             /// <summary>
             /// Database descriptor already exists.
             /// </summary>
-            dbDescriptorExists,
+            DbDescriptorExists,
 
             /// <summary>
             /// No database descriptor exists.
             /// </summary>
-            noDBDescriptorExists,
+            NoDbDescriptorExists,
 
             /// <summary>
             /// Invalid table name.
             /// </summary>
-            invalidTableName,
+            InvalidTableName,
 
             /// <summary>
             /// No database exists.
             /// </summary>
-            noDatabaseExists,
+            NoDatabaseExists,
 
             /// <summary>
             /// Missing SQL statement header.
             /// </summary>
-            missingSQLStatementHeader,
+            MissingSQLStatementHeader,
 
             /// <summary>
             /// Unknown SQL statement header.
             /// </summary>
-            unknownSQLStatementHeader,
+            UnknownSqlStatementHeader,
 
             /// <summary>
             /// Invalid SQL statement file.
             /// </summary>
-            invalidSQLStatementFile,
+            InvalidSqlStatementFile,
 
             /// <summary>
             /// Unknown synchronization command.
             /// </summary>
-            unknownSynchCommand,
+            UnknownSynchCommand,
 
             /// <summary>
             /// Invalid SQL statement definition.
             /// </summary>
-            invalidSQLStatementDefinition,
+            InvalidSqlStatementDefinition,
 
             /// <summary>
             /// No implicit database descriptor exists.
             /// </summary>
-            noImplicitDBDescriptorExists,
+            NoImplicitDbDescriptorExists,
 
             /// <summary>
             /// Unknown error name.
             /// </summary>
-            unknownErrorName,
+            UnknownErrorName,
 
             /// <summary>
             /// Unknown SQL statement.
             /// </summary>
-            unknownSQLStatement,
+            UnknownSqlStatement,
 
             /// <summary>
             /// Invalid database name.
             /// </summary>
-            invalidDBName,
+            InvalidDBName,
 
             /// <summary>
             /// User defined error.
             /// </summary>
-            userDefined,
+            UserDefined,
 
             /// <summary>
             /// Thread lock error.
             /// </summary>
-            threadLockError,
+            ThreadLockError,
 
             /// <summary>
             /// Transaction timeout occurred.
             /// </summary>
-            sxmSTransactionTimeout,
+            SxmSTransactionTimeout,
 
             /// <summary>
             /// Database version format error.
             /// </summary>
-            dbVersionFormatError,
+            DbVersionFormatError,
 
             /// <summary>
             /// Missing database name.
             /// </summary>
-            missingDatabaseName
+            MissingDatabaseName
         };
 
         /// <summary>

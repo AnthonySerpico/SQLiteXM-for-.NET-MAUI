@@ -25,49 +25,49 @@ namespace SQLiteXM
         static SxmErrorMessages()
         {
             Error.Add("missingSQL", new ErrorMessage("Missing SQL Query.",
-                SxmDefines.SxmErrorCode.missingSQL));
+                SxmDefines.SxmErrorCode.MissingSQL));
             Error.Add("lockDB", new ErrorMessage("Unable to lock connection to the database: '{0}'.",
-                SxmDefines.SxmErrorCode.lockDB));
+                SxmDefines.SxmErrorCode.LockDb));
             Error.Add("dbDescriptorExists", new ErrorMessage("A descriptor already exists for the database: '{0}'.",
-                SxmDefines.SxmErrorCode.dbDescriptorExists));
+                SxmDefines.SxmErrorCode.DbDescriptorExists));
             Error.Add("noDBDescriptorExists", new ErrorMessage("A descriptor could not be found for the database: '{0}'.",
-                SxmDefines.SxmErrorCode.noDBDescriptorExists));
+                SxmDefines.SxmErrorCode.NoDbDescriptorExists));
             Error.Add("invalidTableName", new ErrorMessage("The table name '{0}' is invalid.",
-                SxmDefines.SxmErrorCode.invalidTableName));
+                SxmDefines.SxmErrorCode.InvalidTableName));
             Error.Add("noDatabaseExists", new ErrorMessage("The database '{0}' does not exist.",
-                SxmDefines.SxmErrorCode.noDatabaseExists));
+                SxmDefines.SxmErrorCode.NoDatabaseExists));
             Error.Add("missingSQLStatementHeader", new ErrorMessage("A header in the SQL statements properties file is missing.",
-                SxmDefines.SxmErrorCode.missingSQLStatementHeader));
+                SxmDefines.SxmErrorCode.MissingSQLStatementHeader));
             Error.Add("unknownSQLStatementHeader", new ErrorMessage("The header '{0}' in the SQL statements properties file is invalid.",
-                SxmDefines.SxmErrorCode.unknownSQLStatementHeader));
+                SxmDefines.SxmErrorCode.UnknownSqlStatementHeader));
             Error.Add("invalidSQLStatementFile", new ErrorMessage("The SQL statements properties file is improperly formatted.",
-                SxmDefines.SxmErrorCode.invalidSQLStatementFile));
+                SxmDefines.SxmErrorCode.InvalidSqlStatementFile));
             Error.Add("unknownSynchCommand", new ErrorMessage("The table synch command '{0}' is not recognized.",
-                SxmDefines.SxmErrorCode.unknownSynchCommand));
+                SxmDefines.SxmErrorCode.UnknownSynchCommand));
             Error.Add("invalidSQLStatementDefinition", new ErrorMessage("An '{0}' statement in the SQL statements properties file is improperly formatted.",
-                SxmDefines.SxmErrorCode.invalidSQLStatementDefinition));
+                SxmDefines.SxmErrorCode.InvalidSqlStatementDefinition));
             Error.Add("noImplicitDBDescriptorExists", new ErrorMessage("An implicit database descriptor could not be found. Did you define more than one database?",
-                SxmDefines.SxmErrorCode.noImplicitDBDescriptorExists));
+                SxmDefines.SxmErrorCode.NoImplicitDbDescriptorExists));
             Error.Add("unknownErrorName", new ErrorMessage("The error '{0}' could not be fund.",
-                SxmDefines.SxmErrorCode.unknownErrorName));
+                SxmDefines.SxmErrorCode.UnknownErrorName));
             Error.Add("innerException", new ErrorMessage("", // Error message from inner exception.
-                SxmDefines.SxmErrorCode.innerException));
+                SxmDefines.SxmErrorCode.InnerException));
             Error.Add("unknownSQLStatement", new ErrorMessage("The SQL statement '{0}' could not be found in the SQL statements properties file.",
-                SxmDefines.SxmErrorCode.unknownSQLStatement));
+                SxmDefines.SxmErrorCode.UnknownSqlStatement));
             Error.Add("invalidDBName", new ErrorMessage("The database name '{0}' is not valid.",
-                SxmDefines.SxmErrorCode.invalidDBName));
+                SxmDefines.SxmErrorCode.InvalidDBName));
             Error.Add("SqliteException", new ErrorMessage("",
-                SxmDefines.SxmErrorCode.sqliteException)); // Error message from SQLite.
+                SxmDefines.SxmErrorCode.SqliteException)); // Error message from SQLite.
             Error.Add("userDefined", new ErrorMessage("",
-                SxmDefines.SxmErrorCode.userDefined)); // Error message from user.
+                SxmDefines.SxmErrorCode.UserDefined)); // Error message from user.
             Error.Add("threadLockError", new ErrorMessage("The current thread already has an active instance of SxmSTransaction.",
-                SxmDefines.SxmErrorCode.threadLockError));
+                SxmDefines.SxmErrorCode.ThreadLockError));
             Error.Add("sxmSTransactionTimeout", new ErrorMessage("Timeout trying to acquire the SxmSTransaction lock.",
-                SxmDefines.SxmErrorCode.sxmSTransactionTimeout));
+                SxmDefines.SxmErrorCode.SxmSTransactionTimeout));
             Error.Add("improperlyFormattedVersionNumber", new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double greater than 0.",
-                SxmDefines.SxmErrorCode.dbVersionFormatError));
+                SxmDefines.SxmErrorCode.DbVersionFormatError));
             Error.Add("missingDatabaseName", new ErrorMessage("The database name is missing or is in the wrong spot in the SQL statements file. The database name must be the first field in the SQL statementd file.",
-                SxmDefines.SxmErrorCode.dbVersionFormatError));
+                SxmDefines.SxmErrorCode.DbVersionFormatError));
         }
 
         /// <summary>

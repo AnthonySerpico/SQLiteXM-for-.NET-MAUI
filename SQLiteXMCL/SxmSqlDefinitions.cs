@@ -42,13 +42,13 @@
     /// </summary>
     public class SelectDefinition
     {
-        private string tableName;
+        private string _tableName;
         /// <summary>
         /// Gets the name of the table targeted by the select statement.
         /// </summary>
         public string TableName
         {
-            get { return tableName; }
+            get { return _tableName; }
         }
         private string selectSQL;
         /// <summary>
@@ -66,7 +66,7 @@
         /// <param name="selectSQL">The SELECT SQL statement.</param>
         internal SelectDefinition(string tableName, string selectSQL)
         {
-            this.tableName = tableName;
+            this._tableName = tableName;
             this.selectSQL = selectSQL;
         }
     }
@@ -76,21 +76,21 @@
     /// </summary>
     public class InsertDefinition
     {
-        private string tableName;
+        private string _tableName;
         /// <summary>
         /// Gets the name of the table targeted by the insert statement.
         /// </summary>
         public string TableName
         {
-            get { return tableName; }
+            get { return _tableName; }
         }
-        private string insertSQL;
+        private string _insertSQL;
         /// <summary>
         /// Gets the INSERT SQL statement.
         /// </summary>
         public string InsertSQL
         {
-            get { return insertSQL; }
+            get { return _insertSQL; }
         }
 
         /// <summary>
@@ -100,8 +100,8 @@
         /// <param name="insertSQL">The INSERT SQL statement.</param>
         internal InsertDefinition(string tableName, string insertSQL)
         {
-            this.tableName = tableName;
-            this.insertSQL = insertSQL;
+            this._tableName = tableName;
+            this._insertSQL = insertSQL;
         }
     }
 
@@ -110,13 +110,13 @@
     /// </summary>
     public class UpdateDefinition
     {
-        private string tableName;
+        private string _tableName;
         /// <summary>
         /// Gets the name of the table targeted by the update statement.
         /// </summary>
         public string TableName
         {
-            get { return tableName; }
+            get { return _tableName; }
         }
         private string updateSQL;
         /// <summary>
@@ -134,7 +134,7 @@
         /// <param name="updateSQL">The UPDATE SQL statement.</param>
         internal UpdateDefinition(string tableName, string updateSQL)
         {
-            this.tableName = tableName;
+            this._tableName = tableName;
             this.updateSQL = updateSQL;
         }
     }
@@ -144,13 +144,13 @@
     /// </summary>
     public class DeleteDefinition
     {
-        private string tableName;
+        private string _tableName;
         /// <summary>
         /// Gets the name of the table targeted by the delete statement.
         /// </summary>
         public string TableName
         {
-            get { return tableName; }
+            get { return _tableName; }
         }
         private string deleteSQL;
         /// <summary>
@@ -168,7 +168,7 @@
         /// <param name="deleteSQL">The DELETE SQL statement.</param>
         internal DeleteDefinition(string tableName, string deleteSQL)
         {
-            this.tableName = tableName;
+            this._tableName = tableName;
             this.deleteSQL = deleteSQL;
         }
     }
@@ -178,13 +178,13 @@
     /// </summary>
     public class IndexDefinition
     {
-        private string indexName;
+        private string _indexName;
         /// <summary>
         /// Gets the name of the index.
         /// </summary>
         public string IndexName
         {
-            get { return indexName; }
+            get { return _indexName; }
         }
         private string indexSQL;
         /// <summary>
@@ -202,7 +202,7 @@
         /// <param name="indexSQL">The CREATE INDEX SQL statement.</param>
         internal IndexDefinition(string indexName, string indexSQL)
         {
-            this.indexName = indexName;
+            this._indexName = indexName;
             this.indexSQL = indexSQL;
         }
     }
@@ -212,13 +212,13 @@
     /// </summary>
     public class TriggerDefinition
     {
-        private string triggerName;
+        private string _triggerName;
         /// <summary>
         /// Gets the name of the trigger.
         /// </summary>
         public string TriggerName
         {
-            get { return triggerName; }
+            get { return _triggerName; }
         }
         private string triggerSQL;
         /// <summary>
@@ -236,7 +236,7 @@
         /// <param name="triggerSQL">The CREATE TRIGGER SQL statement.</param>
         internal TriggerDefinition(string triggerName, string triggerSQL)
         {
-            this.triggerName = triggerName;
+            this._triggerName = triggerName;
             this.triggerSQL = triggerSQL;
         }
     }
@@ -246,13 +246,13 @@
     /// </summary>
     public class AlterDefinition
     {
-        private string columnName;
+        private string _columnName;
         /// <summary>
         /// Gets the name of the column being altered.
         /// </summary>
         public string ColumnName
         {
-            get { return columnName; }
+            get { return _columnName; }
         }
         private string alterSQL;
         /// <summary>
@@ -270,7 +270,7 @@
         /// <param name="alterSQL">The ALTER SQL statement.</param>
         internal AlterDefinition(string columnName, string alterSQL)
         {
-            this.columnName = columnName;
+            this._columnName = columnName;
             this.alterSQL = alterSQL;
         }
     }

@@ -314,11 +314,11 @@ namespace SQLiteXM
         private static int ParseSynchCommand(string synchCommand)
         {
             if (synchCommand.Equals("synch") == true)
-                return SxmDefines.CLOUD_SYNCH;
+                return SxmDefines.CloudSync;
             if (synchCommand.Equals("no_synch") == true)
-                return SxmDefines.NO_CLOUD_SYNCH;
+                return SxmDefines.NoCloudSync;
             if (synchCommand.Equals("move") == true)
-                return SxmDefines.CLOUD_MOVE;
+                return SxmDefines.CloudMove;
 
             throw new SxmException(new ErrorMessage("unknownSynchCommand", synchCommand));
         }

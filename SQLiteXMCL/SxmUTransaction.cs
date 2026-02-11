@@ -142,9 +142,10 @@ namespace SQLiteXM
                         // Release only if we are the owner
                         _connection.ReleaseLock(_lockOwnerId);
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        SxmLogging.Log(ex);
+                        // Swallow any exception during lock release to avoid noisy logs from cleanup/finalizer paths.
+                        // If you need diagnostics, enable a debug/verbose option and log there.
                     }
                     finally
                     {
@@ -223,10 +224,10 @@ namespace SQLiteXM
             string? tableName = SxmHelpers.ExtractTableNameFromInsert(insertSql);
 
             InsertDefinition id = new InsertDefinition(commandName, insertSql);
-            SxmSqlStatements.insertStatements.Add(commandName, id);
+            SxmSqlStatements.InsertStatements.Add(commandName, id);
 
             Dictionary<string, object?> insertResponse = await ExecuteInsertAsync(commandName, parameterValues, cancellationToken);
-            SxmSqlStatements.insertStatements.Remove(commandName);
+            SxmSqlStatements.InsertStatements.Remove(commandName);
             return insertResponse;
         }
 
@@ -246,7 +247,7 @@ namespace SQLiteXM
             long recordID = -1;
             string? synchID = default(string);
 
-            InsertDefinition? insertDefinition = SxmSqlStatements.insertStatements[command] as InsertDefinition;
+            InsertDefinition? insertDefinition = SxmSqlStatements.InsertStatements[command] as InsertDefinition;
             if (insertDefinition == null)
                 throw new SxmException(new ErrorMessage("unknownSQLStatement", command));
 
@@ -274,13 +275,13 @@ namespace SQLiteXM
                     if (synchID == null || synchID.Length == 0)
                         synchID = Guid.NewGuid().ToString();
 
-                    List<object> synchIDPV = new List<object>();
-                    synchIDPV.Add(synchID);
-                    synchIDPV.Add(recordID);
-                    await ExecuteNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", insertDefinition.TableName), synchIDPV, cancellationToken).ConfigureAwait(false);
-                    synchIDPV.RemoveAt(1);
+                    List<object> synchIdParams = new List<object>();
+                    synchIdParams.Add(synchID);
+                    synchIdParams.Add(recordID);
+                    await ExecuteNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", insertDefinition.TableName), synchIdParams, cancellationToken).ConfigureAwait(false);
+                    synchIdParams.RemoveAt(1);
 
-                    await ExecuteNonQueryAsync(String.Format("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIDPV, cancellationToken).ConfigureAwait(false);
+                    await ExecuteNonQueryAsync(String.Format("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIdParams, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -351,7 +352,7 @@ namespace SQLiteXM
             {
                 throw new ArgumentNullException($"ExecuteQueryAsync failure. SxmConnection '_connection' is null.");
             }
-            await _connection.ExecuteQueryAsync(SxmSqlStatements.selectStatements[command].SelectSQL, parameterValues, cancellationToken).ConfigureAwait(false);
+            await _connection.ExecuteQueryAsync(SxmSqlStatements.SelectStatements[command].SelectSQL, parameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -362,7 +363,7 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token.</param>
         internal async Task ExecuteUpdateAsync(string command, List<object> parameterValues, CancellationToken cancellationToken = default)
         {
-            await ExecuteNonQueryAsync(SxmSqlStatements.updateStatements[command].UpdateSQL, parameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(SxmSqlStatements.UpdateStatements[command].UpdateSQL, parameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -373,7 +374,7 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token.</param>
         internal async Task ExecuteDeleteAsync(string command, List<object> parameterValues, CancellationToken cancellationToken = default)
         {
-            await ExecuteNonQueryAsync(SxmSqlStatements.deleteStatements[command].DeleteSQL, parameterValues, cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(SxmSqlStatements.DeleteStatements[command].DeleteSQL, parameterValues, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -598,7 +599,7 @@ namespace SQLiteXM
                 throw new ArgumentNullException($"CommitTransactionAsync failure. SxmConnection '_connection' is null.");
             }
 
-            SQLiteErrorCode ec = await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.commitTransaction).ConfigureAwait(false);
+            SQLiteErrorCode ec = await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.CommitTransaction).ConfigureAwait(false);
             if (_interruptSynchronize == true)
             {
                 //SxmInit.interruptSynchronize (connection.DatabaseName);
@@ -618,7 +619,7 @@ namespace SQLiteXM
                 throw new ArgumentNullException($"RollbackTransactionAsync failure. SxmConnection '_connection' is null.");
             }
 
-            await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.rollbackTransaction).ConfigureAwait(false);
+            await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.RollbackTransaction).ConfigureAwait(false);
             _interruptSynchronize = false;
         }
 
