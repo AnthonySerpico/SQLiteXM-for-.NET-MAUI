@@ -278,7 +278,7 @@ namespace SQLiteXM
                     List<object> synchIdParams = new List<object>();
                     synchIdParams.Add(synchID);
                     synchIdParams.Add(recordID);
-                    await ExecuteNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", insertDefinition.TableName), synchIdParams, cancellationToken).ConfigureAwait(false);
+                    await ExecuteNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", SxmHelpers.QuoteIdentifier(insertDefinition.TableName)), synchIdParams, cancellationToken).ConfigureAwait(false);
                     synchIdParams.RemoveAt(1);
 
                     await ExecuteNonQueryAsync(String.Format("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIdParams, cancellationToken).ConfigureAwait(false);
@@ -327,7 +327,7 @@ namespace SQLiteXM
                 List<object> parameterList = new List<object>();
                 parameterList.Add(recordID);
 
-                await _connection.ExecuteQueryAsync(String.Format("SELECT synchId FROM {0} WHERE id = @p0 LIMIT 1", tableName), parameterList);
+                await _connection.ExecuteQueryAsync(String.Format("SELECT synchId FROM {0} WHERE id = @p0 LIMIT 1", SxmHelpers.QuoteIdentifier(tableName)), parameterList);
                 Dictionary<string, object?>? row = _connection.GetNextRow<Dictionary<string, object?>>();
 
                 if (row != null && row.Count > 0)

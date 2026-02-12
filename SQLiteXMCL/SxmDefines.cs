@@ -536,7 +536,12 @@
             /// <summary>
             /// Missing database name.
             /// </summary>
-            MissingDatabaseName
+            MissingDatabaseName,
+
+            /// <summary>
+            /// Cannot acquire lease on shared connection.
+            /// </summary>
+            AcquireLease
         };
 
         /// <summary>

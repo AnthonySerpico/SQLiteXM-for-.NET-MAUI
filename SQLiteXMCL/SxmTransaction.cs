@@ -47,7 +47,7 @@ namespace SQLiteXM
         /// <param name="conn">The underlying <see cref="SxmConnection"/> to execute statements on.</param>
         /// <param name="ownsLock">True when this transaction owns an acquired connection lock.</param>
         /// <param name="ownerId">Optional owner id for lock tracking when the connection is shared.</param>
-        protected SxmTransaction(SxmConnection conn, bool ownsLock, Guid? ownerId = null) : base(conn, ownsLock, ownerId)
+        private SxmTransaction(SxmConnection conn, bool ownsLock, Guid? ownerId = null) : base(conn, ownsLock, ownerId)
         {
             this._databaseName = conn.DatabaseName;
         }
@@ -63,10 +63,10 @@ namespace SQLiteXM
         /// </remarks>
         public new static SxmTransaction Create(string? databaseName = null)
         {
-            var conn = new SxmConnection(databaseName, shared: false);
-            var tx = new SxmTransaction(conn, ownsLock: false, ownerId: null);
-            SxmAmbientTransaction.Push(tx);
-            return tx;
+            SxmConnection conn = new SxmConnection(databaseName, shared: false);
+            SxmTransaction sxmTransaction = new SxmTransaction(conn, ownsLock: false, ownerId: null);
+            SxmAmbientTransaction.Push(sxmTransaction);
+            return sxmTransaction;
         }
 
         /// <summary>

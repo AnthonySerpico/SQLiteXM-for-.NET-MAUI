@@ -68,6 +68,8 @@ namespace SQLiteXM
                 SxmDefines.SxmErrorCode.DbVersionFormatError));
             Error.Add("missingDatabaseName", new ErrorMessage("The database name is missing or is in the wrong spot in the SQL statements file. The database name must be the first field in the SQL statementd file.",
                 SxmDefines.SxmErrorCode.DbVersionFormatError));
+            Error.Add("acquireLease", new ErrorMessage("Connection for '{0}' is closing and cannot be acquired.",
+                SxmDefines.SxmErrorCode.AcquireLease));
         }
 
         /// <summary>

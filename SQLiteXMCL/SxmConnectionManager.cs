@@ -76,8 +76,11 @@ namespace SQLiteXM
 
             lock (entry.Sync)
             {
-                //if (entry.Closing)
-                //throw new SxmException($"Connection for '{databaseName}' is closing and cannot be acquired.");
+                if (entry.Closing)
+                {
+                    string errorText = String.Format(SxmErrorMessages.Error["acquireLease"].ErrorText, databaseName);
+                    throw new SxmException(new ErrorMessage(errorText));
+                }
 
                 if (entry.Connection == null)
                     entry.Connection = new SxmConnection(databaseName, shared: true);
@@ -97,7 +100,7 @@ namespace SQLiteXM
         /// </remarks>
         internal void Release(string databaseName)
         {
-            if (!_map.TryGetValue(databaseName, out var entry))
+            if (!_map.TryGetValue(databaseName, out Entry? entry))
                 return;
 
             lock (entry.Sync)
@@ -125,9 +128,11 @@ namespace SQLiteXM
         /// reaches zero (or <paramref name="ct"/> cancels), then destroys the connection and removes
         /// the entry from the manager.
         /// </remarks>
-        public async Task ShutdownAsync(string databaseName, CancellationToken ct = default)
+        public async Task ShutdownAsync(string? databaseName, CancellationToken ct = default)
         {
-            if (!_map.TryGetValue(databaseName, out var entry))
+            if (databaseName == null) throw new ArgumentNullException(databaseName);
+
+            if (!_map.TryGetValue(databaseName, out Entry? entry))
                 return;
 
             Task? waitTask = null;
@@ -147,7 +152,6 @@ namespace SQLiteXM
                         try
                         {
                             entry.Connection?.ReleaseConnection(destroy: true);
-                            entry.Connection?.DestroyConnection();
                         }
                         finally
                         {
@@ -173,7 +177,6 @@ namespace SQLiteXM
                 try
                 {
                     entry.Connection?.ReleaseConnection(destroy: true);
-                    entry.Connection?.DestroyConnection();
                 }
                 finally
                 {
@@ -195,9 +198,10 @@ namespace SQLiteXM
         /// referenced by the first lease). Workers that require exclusive access must coordinate by using
         /// <see cref="SxmConnection.LockAsync"/> (or equivalent) on the shared connection.
         /// </remarks>
-        public async Task RunWorkersAsync(string databaseName, IEnumerable<Func<SxmConnection, Task>> workers, CancellationToken ct = default)
+        public async Task RunWorkersAsync(string? databaseName, IEnumerable<Func<SxmConnection, Task>> workers, CancellationToken ct = default)
         {
             if (workers == null) throw new ArgumentNullException(nameof(workers));
+            if (databaseName == null) throw new ArgumentNullException(databaseName);
 
             // Acquire leases for all workers up front
             List<ConnectionLease> leases = new List<ConnectionLease>();
@@ -231,9 +235,20 @@ namespace SQLiteXM
             }
             finally
             {
-                // Release all leases (synchronous)
-                foreach (var l in leases)
-                    l.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                // Release all leases asynchronously in reverse acquisition order (LIFO).
+                for (int i = leases.Count - 1; i >= 0; i--)
+                {
+                    var lease = leases[i];
+                    try
+                    {
+                        await lease.DisposeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Best-effort: log and continue releasing remaining leases.
+                        try { SxmLogging.Log(ex, "Connection lease DisposeAsync failure."); } catch { }
+                    }
+                }
             }
         }
 

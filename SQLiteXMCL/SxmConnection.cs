@@ -202,16 +202,20 @@ namespace SQLiteXM
                 _dbConn = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
                 _dbConn.Open();
 
-                // execute PRAGMA using async ADO but block here because we're in ctor
-                // This is initialization; prefer to run the async call and block synchronously once.
-                this.ExecuteNonQueryAsync("PRAGMA foreign_keys = ON", default).GetAwaiter().GetResult();
-                this.ExecuteNonQueryAsync("PRAGMA journal_mode = WAL", default).GetAwaiter().GetResult();
+                // Execute PRAGMA synchronously (very quick) to avoid sync-over-async in ctor.
+                using (var cmd = _dbConn.CreateCommand())
+                {
+                    cmd.CommandText = "PRAGMA foreign_keys = ON";
+                    cmd.ExecuteNonQuery();
+
+                    cmd.CommandText = "PRAGMA journal_mode = WAL";
+                    cmd.ExecuteNonQuery();
+                }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 DestroyConnection();
                 SxmLogging.Log(ex, $"CreateNewConnection failure for database '{this._databaseName}'.");
-                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
@@ -399,18 +403,6 @@ namespace SQLiteXM
             }
 
             return databaseName!;
-        }
-
-        /// <summary>
-        /// Synchronous wrapper to finish a transaction. Returns a SQLiteErrorCode indicating commit/rollback result.
-        /// This method blocks and calls <see cref="FinishTransactionAsync(bool)"/>.
-        /// </summary>
-        /// <param name="commitFlag">True to commit; false to rollback.</param>
-        /// <returns>SQLiteErrorCode representing the operation result.</returns>
-        internal SQLiteErrorCode FinishTransaction(bool commitFlag)
-        {
-            // synchronous wrapper for convenience / compatibility: call async implementation and block.
-            return FinishTransactionAsync(commitFlag).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -629,7 +621,7 @@ namespace SQLiteXM
                     _connCommand = _dbConn.CreateCommand();
                 else
                     if (command.StartsWith("DELETE FROM companyReg WHERE companyRegPK") == false)
-                    ReleaseDataReader();
+                        ReleaseDataReader();
 
                 _connCommand.CommandText = command;
                 _connCommand.CommandType = System.Data.CommandType.Text;

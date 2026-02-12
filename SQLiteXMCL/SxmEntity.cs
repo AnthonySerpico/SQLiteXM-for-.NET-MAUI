@@ -133,7 +133,7 @@ namespace SQLiteXM
                 DbNameValidation();
             }
 
-            var lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
+            Lazy<Task> lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
                     () => Task.Run(async () =>
                     {
                         var props = GetEntityProperties();
@@ -141,7 +141,7 @@ namespace SQLiteXM
 
                         bool newTable;
                         if (!(newTable = await CreateTableAsync().ConfigureAwait(false)))  // Create the table if it does not already exist.
-                            await AddColumnsAsync(); // If this is an already existing table in the DB, check to see if new columns were added.
+                            await AddColumnsAsync().ConfigureAwait(false); // If this is an already existing table in the DB, check to see if new columns were added.
 
                         var std = new List<string>();
                         var uniq = new List<string>();
