@@ -39,7 +39,7 @@ namespace SQLiteXM
         public SxmException(string message, Exception inner)
             : base(message, inner)
         {
-            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error["innerException"].ErrorID);
+            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error[SxmDefines.SxmErrorCode.InnerException].ErrorID);
         }
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace SQLiteXM
         public SxmException(Exception inner)
             : base(inner.Message, inner)
         {
-            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error["innerException"].ErrorID);
+            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error[SxmDefines.SxmErrorCode.InnerException].ErrorID);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace SQLiteXM
         public SxmException(Microsoft.Data.Sqlite.SqliteException sqliteException)
             : base(sqliteException.Message)
         {
-            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error["SqliteException"].ErrorID);
+            this.Data.Add("sxmErrorCode", SxmErrorMessages.Error[SxmDefines.SxmErrorCode.SqliteException].ErrorID);
             this.Data.Add("sqliteErrorCode", sqliteException.ErrorCode);
         }
 

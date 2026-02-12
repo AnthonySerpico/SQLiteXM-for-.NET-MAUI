@@ -77,7 +77,7 @@ namespace SQLiteXM
                 bool locked = await conn.LockAsync(waitMilliseconds, cancellationToken, ownerId).ConfigureAwait(false);
                 if (!locked)
                 {
-                    throw new SxmException(new ErrorMessage("lockDB", conn.DatabaseName));
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.LockDb, conn.DatabaseName));
                 }
                 ownsLock = true;
             }
@@ -249,7 +249,7 @@ namespace SQLiteXM
 
             InsertDefinition? insertDefinition = SxmSqlStatements.InsertStatements[command] as InsertDefinition;
             if (insertDefinition == null)
-                throw new SxmException(new ErrorMessage("unknownSQLStatement", command));
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
 
             await ExecuteNonQueryTransAsync(insertDefinition.InsertSQL, parameterValues, cancellationToken).ConfigureAwait(false);
 
@@ -554,7 +554,7 @@ namespace SQLiteXM
                 if (File.Exists(dbFullyQualifiedPath) == true)
                     await _connection.ExecuteNonQueryAsync(String.Format("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>);
                 else
-                    throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.NoDatabaseExists, databaseName));
             }
         }
 
@@ -582,7 +582,7 @@ namespace SQLiteXM
                 if (File.Exists(dbFullyQualifiedPath) == true)
                     await _connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);
                 else
-                    throw new SxmException(new ErrorMessage("noDatabaseExists", databaseName));
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.NoDatabaseExists, databaseName));
             }
         }
 

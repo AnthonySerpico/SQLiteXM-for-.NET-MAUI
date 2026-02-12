@@ -78,8 +78,7 @@ namespace SQLiteXM
             {
                 if (entry.Closing)
                 {
-                    string errorText = String.Format(SxmErrorMessages.Error["acquireLease"].ErrorText, databaseName);
-                    throw new SxmException(new ErrorMessage(errorText));
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.AcquireLease, databaseName));
                 }
 
                 if (entry.Connection == null)

@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Data.Common;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SQLiteXM
 {
@@ -148,7 +149,7 @@ namespace SQLiteXM
             if (!locked)
             {
                 // Preserve existing behavior: surface a lock failure as a library exception.
-                throw new SxmException(new ErrorMessage("lockDB", this._databaseName));
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.LockDb, this._databaseName));
             }
 
             return new ConnectionLease(this, ownerId);
@@ -245,7 +246,7 @@ namespace SQLiteXM
                 {
                     string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
                     string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
-                    connectionString = String.Format(_sqliteConnString, pathToDatabase);
+                    connectionString = string.Format(_sqliteConnString, pathToDatabase);
 
                     _dbConnectionString.Add(databaseName, connectionString);
                 }
@@ -556,7 +557,7 @@ namespace SQLiteXM
         internal async Task ExecuteQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(SxmErrorMessages.Error["missingSQL"]);
+                throw new SxmException(SxmErrorMessages.Error[SxmDefines.SxmErrorCode.MissingSQL]);
 
             try
             {
@@ -613,7 +614,7 @@ namespace SQLiteXM
         internal async Task ExecuteNonQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(SxmErrorMessages.Error["missingSQL"]);
+                throw new SxmException(SxmErrorMessages.Error[SxmDefines.SxmErrorCode.MissingSQL]);
 
             try
             {
@@ -692,7 +693,7 @@ namespace SQLiteXM
                 {
                     int counter = 0;
 
-                    foreach (Object parameterValue in parameterValues)
+                    foreach (object parameterValue in parameterValues)
                     {
                         DbParameter dbParameter = _connCommand.CreateParameter();
 

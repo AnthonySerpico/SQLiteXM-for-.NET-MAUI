@@ -282,7 +282,7 @@ namespace SQLiteXM
             char[] pattern = Path.GetInvalidFileNameChars();
 
             if (string.IsNullOrEmpty(databaseName) || databaseName.Any(pattern.Contains) || databaseName.ToLower().Equals("main") || databaseName.ToLower().Equals("temp"))
-                throw new SxmException(new ErrorMessage("Invalid datanase name. The databse name may not contain invalid characters or be named 'main' or 'temp'.", databaseName));
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidDBName, databaseName));
 
             SxmProcessSQLStatements._databaseName = databaseName;
         }
@@ -300,7 +300,7 @@ namespace SQLiteXM
         private static void SetVersionNumber(long version)
         {
             if (version < 0)
-                throw new SxmException(new ErrorMessage("Improperly formatted database version number. The version number must be a non-negative whole number.", version));
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.DbVersionFormatError, version));
 
             SxmProcessSQLStatements._versionNumber = version;
         }
@@ -320,7 +320,7 @@ namespace SQLiteXM
             if (synchCommand.Equals("move") == true)
                 return SxmDefines.CloudMove;
 
-            throw new SxmException(new ErrorMessage("unknownSynchCommand", synchCommand));
+            throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSynchCommand, synchCommand));
         }
     }
 }

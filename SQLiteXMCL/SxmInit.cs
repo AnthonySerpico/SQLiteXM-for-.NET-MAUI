@@ -180,7 +180,7 @@ namespace SQLiteXM
                         foreach (string key in SxmSqlStatements.TableCreateStatements.Keys) // the 'key' string value is 'DatabaseName.TableName'
                         {
                             if (key.Split('.').Length != 2)
-                                throw new SxmException(new ErrorMessage("invalidTableName", key));
+                                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidTableName, key));
 
                             if (!await DoesTableExistAsync(key, connectionMap, tableNamesMap))
                             {
@@ -798,7 +798,7 @@ namespace SQLiteXM
                 tableName = SxmHelpers.ExtractTableNameFromDelete(queryName);
 
             if (sqlStatementType == SxmDefines.SqlStatementType.Unknown || string.IsNullOrEmpty(tableName))
-                throw new SxmException(new ErrorMessage("unknownSQLStatement", queryName));
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, queryName));
 
             return await GetTableColumnNamesAsync(dbName, tableName);
         }
