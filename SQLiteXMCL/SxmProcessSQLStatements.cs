@@ -96,6 +96,11 @@ namespace SQLiteXM
                 try
                 {
                     RootJson? rootJson = JsonSerializer.Deserialize<RootJson>(content, jsonOptions);
+                    if (rootJson == null)
+                    {
+                        jsonEx = new ArgumentException("JSON content for SQL statements file deserialized to null.");
+                        return false;
+                    }
                     ProcessJson(rootJson);
                     return true;
                 }
@@ -120,6 +125,11 @@ namespace SQLiteXM
                     using (var xr = System.Xml.XmlReader.Create(sr, settings))
                     {
                         RootXml? rootXml = (RootXml?)serializer.Deserialize(xr);
+                        if (rootXml == null)
+                        {
+                            xmlEx = new ArgumentException("XML content for SQL statements file deserialized to null.");
+                            return false;
+                        }
                         ProcessXml(rootXml);
                     }
                     return true;
@@ -190,7 +200,7 @@ namespace SQLiteXM
         {
             if (rootJson != default)
             {
-                SetDatabaseName(rootJson.database.Trim());
+                SetDatabaseName(rootJson.database?.Trim());
                 SetIsDefault(rootJson.isDefault);
                 SetVersionNumber(rootJson.version);
 
@@ -236,7 +246,7 @@ namespace SQLiteXM
         {
             if (rootXml != default)
             {
-                SetDatabaseName(rootXml.Database.Trim());
+                SetDatabaseName(rootXml.Database?.Trim());
                 SetIsDefault(rootXml.IsDefault);
                 SetVersionNumber(rootXml.Version);
 
@@ -277,12 +287,15 @@ namespace SQLiteXM
         /// <summary>
         /// Validate the parsed database name for invalid filesystem characters or emptiness.
         /// </summary>
-        private static void SetDatabaseName(string databaseName)
+        private static void SetDatabaseName(string? databaseName)
         {
             char[] pattern = Path.GetInvalidFileNameChars();
 
-            if (string.IsNullOrEmpty(databaseName) || databaseName.Any(pattern.Contains) || databaseName.ToLower().Equals("main") || databaseName.ToLower().Equals("temp"))
-                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidDBName, databaseName));
+            if (string.IsNullOrEmpty(databaseName)
+                || databaseName.Any(pattern.Contains)
+                || databaseName.ToLower().Equals("main", StringComparison.OrdinalIgnoreCase)
+                || databaseName.ToLower().Equals("temp", StringComparison.OrdinalIgnoreCase))
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidDBName, databaseName));
 
             SxmProcessSQLStatements._databaseName = databaseName;
         }

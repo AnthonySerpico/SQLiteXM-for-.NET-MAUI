@@ -72,7 +72,7 @@ namespace SQLiteXM
         /// </remarks>
         internal ConnectionLease AcquireConnectionLease(string databaseName)
         {
-            var entry = _map.GetOrAdd(databaseName, _ => new Entry());
+            Entry entry = _map.GetOrAdd(databaseName, _ => new Entry());
 
             lock (entry.Sync)
             {
@@ -129,7 +129,7 @@ namespace SQLiteXM
         /// </remarks>
         public async Task ShutdownAsync(string? databaseName, CancellationToken ct = default)
         {
-            if (databaseName == null) throw new ArgumentNullException(databaseName);
+            if (databaseName == null) throw new ArgumentNullException(nameof(databaseName));
 
             if (!_map.TryGetValue(databaseName, out Entry? entry))
                 return;
@@ -197,16 +197,20 @@ namespace SQLiteXM
         /// referenced by the first lease). Workers that require exclusive access must coordinate by using
         /// <see cref="SxmConnection.LockAsync"/> (or equivalent) on the shared connection.
         /// </remarks>
-        public async Task RunWorkersAsync(string? databaseName, IEnumerable<Func<SxmConnection, Task>> workers, CancellationToken ct = default)
+        public async Task RunWorkersAsync(string? databaseName, IEnumerable<Func<SxmConnection, Task>> workersEnum, CancellationToken ct = default)
         {
-            if (workers == null) throw new ArgumentNullException(nameof(workers));
+            if (workersEnum == null) throw new ArgumentNullException(nameof(workersEnum));
             if (databaseName == null) throw new ArgumentNullException(databaseName);
+
+            // Materialize workers to avoid double-enumeration / side-effects.
+            //List<Func<SxmConnection, Task>> workerList = workersEnum as List<Func<SxmConnection, Task>> ?? workersEnum.ToList();
+            IReadOnlyCollection<Func<SxmConnection, Task>> workerCollection = workersEnum as IReadOnlyCollection<Func<SxmConnection, Task>> ?? workersEnum.ToList();
 
             // Acquire leases for all workers up front
             List<ConnectionLease> leases = new List<ConnectionLease>();
             try
             {
-                foreach (Func<SxmConnection, Task> t in workers)
+                foreach (Func<SxmConnection, Task> t in workerCollection)
                 {
                     // This will throw if the connection is already closing.
                     leases.Add(AcquireConnectionLease(databaseName));
@@ -220,7 +224,7 @@ namespace SQLiteXM
 
                 List<Task> tasks = new List<Task>();
                 int index = 0;
-                foreach (Func<SxmConnection, Task> worker in workers)
+                foreach (Func<SxmConnection, Task> worker in workerCollection)
                 {
                     // Launch each worker using the same sharedConn; workers must still coordinate via SxmConnection.LockAsync if they need exclusive access.
                     tasks.Add(Task.Run(async () =>
@@ -237,7 +241,7 @@ namespace SQLiteXM
                 // Release all leases asynchronously in reverse acquisition order (LIFO).
                 for (int i = leases.Count - 1; i >= 0; i--)
                 {
-                    var lease = leases[i];
+                    ConnectionLease lease = leases[i];
                     try
                     {
                         await lease.DisposeAsync().ConfigureAwait(false);
@@ -245,7 +249,7 @@ namespace SQLiteXM
                     catch (Exception ex)
                     {
                         // Best-effort: log and continue releasing remaining leases.
-                        try { SxmLogging.Log(ex, "Connection lease DisposeAsync failure."); } catch { }
+                        SxmLogging.Log(ex, "Connection lease DisposeAsync failure.");
                     }
                 }
             }
@@ -260,7 +264,7 @@ namespace SQLiteXM
         /// instance in <see cref="Connection"/> and the database name in <see cref="DatabaseName"/>.
         /// Prefer using <c>await using</c> to ensure deterministic release.
         /// </remarks>
-        public readonly struct ConnectionLease : IAsyncDisposable
+        internal readonly struct ConnectionLease : IAsyncDisposable
         {
             private readonly SxmConnectionManager _manager;
 

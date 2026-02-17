@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Reflection;
@@ -20,7 +21,9 @@ namespace SQLiteXM
         /// Tracks runtime-registered association keys to avoid duplicate registrations.
         /// Key format: "{SourceType.FullName}.{NavigationPropertyName}".
         /// </summary>
-        private static ISet<string> _registeredAssociations = new HashSet<string>();
+        private static readonly ConcurrentDictionary<string, byte> _registeredAssociations =
+    new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+
         private SxmHelpers() { }
 
         /// <summary>
@@ -121,7 +124,7 @@ namespace SQLiteXM
                     typeof(SxmEntity).IsAssignableFrom(navProp.PropertyType))
                 {
                     string assocKey = $"{sourceType.FullName}.{navProp.Name}";
-                    if (_registeredAssociations.Add(assocKey))
+                    if (_registeredAssociations.TryAdd(assocKey, 0))
                     {
                         // Register runtime association: Source.FK -> Target.id
                         SxmAssociationMapper.ConfigureAssociation(
@@ -573,37 +576,46 @@ namespace SQLiteXM
                             }
 
                             if (piType == typeof(int).Name)
-                                pi.SetValue(userObject, (int)(long)kvp.Value);
+                                pi.SetValue(userObject, ConvertToInt32(kvp.Value, kvp.Key));
+                                //pi.SetValue(userObject, (int)(long)kvp.Value);
 
                             else if (piType == typeof(long).Name)
-                                pi.SetValue(userObject, (long)kvp.Value);
+                                pi.SetValue(userObject, Convert.ToInt64(kvp.Value, CultureInfo.InvariantCulture));
+                                //pi.SetValue(userObject, (long)kvp.Value);
 
                             else if (piType == typeof(float).Name)
-                                pi.SetValue(userObject, (float)(double)kvp.Value);
+                                pi.SetValue(userObject, ConvertToSingle(kvp.Value, kvp.Key));
+                                //pi.SetValue(userObject, (float)(double)kvp.Value);
 
                             else if (piType == typeof(short).Name)
-                                pi.SetValue(userObject, (short)(long)kvp.Value);
+                                pi.SetValue(userObject, ConvertToInt16(kvp.Value, kvp.Key));
+                                //pi.SetValue(userObject, (short)(long)kvp.Value);
 
                             else if (piType == typeof(ushort).Name)
-                                pi.SetValue(userObject, (ushort)(long)kvp.Value);
+                                pi.SetValue(userObject, ConvertToUInt16(kvp.Value, kvp.Key));
+                                //pi.SetValue(userObject, (ushort)(long)kvp.Value);
 
                             else if (piType == typeof(uint).Name)
-                                pi.SetValue(userObject, (uint)(long)kvp.Value);
+                                pi.SetValue(userObject, ConvertToUInt32(kvp.Value, kvp.Key));
+                                //pi.SetValue(userObject, (uint)(long)kvp.Value);
 
                             else if (piType == typeof(sbyte).Name)
-                                pi.SetValue(userObject, (sbyte)(long)kvp.Value);
+                                pi.SetValue(userObject, ConvertToSByte(kvp.Value, kvp.Key));
+                                //pi.SetValue(userObject, (sbyte)(long)kvp.Value);
 
                             else if (piType == typeof(byte).Name)
-                                pi.SetValue(userObject, (byte)(long)kvp.Value);
+                                pi.SetValue(userObject, ConvertToByte(kvp.Value, kvp.Key));
+                                //pi.SetValue(userObject, (byte)(long)kvp.Value);
 
                             else if (piType == typeof(double).Name)
-                                pi.SetValue(userObject, (double)kvp.Value);
+                                pi.SetValue(userObject, Convert.ToDouble(kvp.Value, CultureInfo.InvariantCulture));
+                                //pi.SetValue(userObject, (double)kvp.Value);
 
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
 
                             else if (piType == typeof(decimal).Name)    // Large values will overflow if not text in DB.
-                                pi.SetValue(userObject, SxmColumnDataConverters.DecimalFromString(kvp.Value.ToString()!));
+                                pi.SetValue(userObject, SxmColumnDataConverters.DecimalFromString((string)kvp.Value));
 
                             else if (piType == typeof(ulong).Name)    // Large values will overflow if not text in DB.
                                 pi.SetValue(userObject, SxmColumnDataConverters.ULongFromString((string)kvp.Value));
@@ -695,17 +707,195 @@ namespace SQLiteXM
                     SxmLogging.Log(ex, errStr);
                     throw new ArgumentException(errStr);
                 }
-                catch (System.Exception ex) 
+                catch (System.Exception ex)
                 {
                     string? userPropertyType = userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString();
                     string? databasePropertyType = kvp.Value?.GetType().ToString();
-                    
+
                     string errStr = $"LoadDbValues failure for column '{kvp.Key}' type '{databasePropertyType}' to provided property '{userObject.GetType().ToString() + "." + kvp.Key}' type '{userPropertyType}'.";
                     SxmLogging.Log(ex, errStr);
                     throw ExceptionHelper.Wrap(ex, errStr);
                 }
             }
         }
+
+        /// <summary>
+        /// Convert boxed provider value to <see cref="ushort"/> with range checking and logging.
+        /// </summary>
+        /// <param name="value">Boxed provider value.</param>
+        /// <param name="columnName">Column name for error context.</param>
+        /// <returns>Converted <see cref="ushort"/>.</returns>
+        private static ushort ConvertToUInt16(object value, string columnName)
+        {
+            try
+            {
+                long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                if (n < ushort.MinValue || n > ushort.MaxValue)
+                {
+                    string msg = $"Value for column '{columnName}' is outside UInt16 range.";
+                    var ex = new OverflowException(msg);
+                    SxmLogging.Log(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, msg);
+                }
+                return (ushort)n;
+            }
+            catch (Exception ex)
+            {
+                string err = $"Failed converting column '{columnName}' value to UInt16.";
+                SxmLogging.Log(ex, err);
+                throw ExceptionHelper.Wrap(ex, err);
+            }
+        }
+
+        /// <summary>
+        /// Convert boxed provider value to Int32 with range check and logging.
+        /// </summary>
+        /// <param name="value">Boxed provider value.</param>
+        /// <param name="columnName">Column name for error context.</param>
+        /// <returns>Converted int.</returns>
+        private static int ConvertToInt32(object value, string columnName)
+        {
+            try
+            {
+                long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                if (n < int.MinValue || n > int.MaxValue)
+                {
+                    string msg = $"Value for column '{columnName}' is outside Int32 range.";
+                    var ex = new OverflowException(msg);
+                    SxmLogging.Log(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, msg);
+                }
+                return (int)n;
+            }
+            catch (Exception ex)
+            {
+                string err = $"Failed converting column '{columnName}' value to Int32.";
+                SxmLogging.Log(ex, err);
+                throw ExceptionHelper.Wrap(ex, err);
+            }
+        }
+
+        /// <summary>
+        /// Convert boxed provider value to <see cref="sbyte"/> with range checking and logging.
+        /// </summary>
+        /// <param name="value">Boxed provider value.</param>
+        /// <param name="columnName">Column name for error context.</param>
+        /// <returns>Converted <see cref="sbyte"/>.</returns>
+        private static sbyte ConvertToSByte(object value, string columnName)
+        {
+            try
+            {
+                long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                if (n < sbyte.MinValue || n > sbyte.MaxValue)
+                {
+                    string msg = $"Value for column '{columnName}' is outside SByte range.";
+                    var ex = new OverflowException(msg);
+                    SxmLogging.Log(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, msg);
+                }
+                return (sbyte)n;
+            }
+            catch (Exception ex)
+            {
+                string err = $"Failed converting column '{columnName}' value to SByte.";
+                SxmLogging.Log(ex, err);
+                throw ExceptionHelper.Wrap(ex, err);
+            }
+        }
+
+        /// <summary>
+        /// Convert boxed provider value to Int16 with range check and logging.
+        /// </summary>
+        private static short ConvertToInt16(object value, string columnName)
+        {
+            try
+            {
+                long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                if (n < short.MinValue || n > short.MaxValue)
+                {
+                    string msg = $"Value for column '{columnName}' is outside Int16 range.";
+                    var ex = new OverflowException(msg);
+                    SxmLogging.Log(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, msg);
+                }
+                return (short)n;
+            }
+            catch (Exception ex)
+            {
+                string err = $"Failed converting column '{columnName}' value to Int16.";
+                SxmLogging.Log(ex, err);
+                throw ExceptionHelper.Wrap(ex, err);
+            }
+        }
+
+        /// <summary>
+        /// Convert boxed provider value to Byte with range check and logging.
+        /// </summary>
+        private static byte ConvertToByte(object value, string columnName)
+        {
+            try
+            {
+                long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                if (n < byte.MinValue || n > byte.MaxValue)
+                {
+                    string msg = $"Value for column '{columnName}' is outside Byte range.";
+                    var ex = new OverflowException(msg);
+                    SxmLogging.Log(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, msg);
+                }
+                return (byte)n;
+            }
+            catch (Exception ex)
+            {
+                string err = $"Failed converting column '{columnName}' value to Byte.";
+                SxmLogging.Log(ex, err);
+                throw ExceptionHelper.Wrap(ex, err);
+            }
+        }
+
+        /// <summary>
+        /// Convert boxed provider value to UInt32 with range check and logging.
+        /// </summary>
+        private static uint ConvertToUInt32(object value, string columnName)
+        {
+            try
+            {
+                long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                if (n < uint.MinValue || n > uint.MaxValue)
+                {
+                    string msg = $"Value for column '{columnName}' is outside UInt32 range.";
+                    var ex = new OverflowException(msg);
+                    SxmLogging.Log(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, msg);
+                }
+                return (uint)n;
+            }
+            catch (Exception ex)
+            {
+                string err = $"Failed converting column '{columnName}' value to UInt32.";
+                SxmLogging.Log(ex, err);
+                throw ExceptionHelper.Wrap(ex, err);
+            }
+        }
+
+        /// <summary>
+        /// Convert boxed provider value to Single(float) with logging.
+        /// </summary>
+        private static float ConvertToSingle(object value, string columnName)
+        {
+            try
+            {
+                double d = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                return (float)d;
+            }
+            catch (Exception ex)
+            {
+                string err = $"Failed converting column '{columnName}' value to Single.";
+                SxmLogging.Log(ex, err);
+                throw ExceptionHelper.Wrap(ex, err);
+            }
+        }
+
 
         /// <summary>
         /// Converts a user entity's properties into a dictionary of parameter values suitable for database commands.
@@ -737,73 +927,110 @@ namespace SQLiteXM
                                 userObjectType = underlyingType.Name;
                             }
 
+                            object? dbValue = null;
+
                             if (userObjectType == typeof(decimal).Name)  // Is the data type for the column in the user object a decimal?
                             {
-                                returnDictionary.Add(columnName, SxmColumnDataConverters.DecimalToString((decimal)userSuppliedObjectData));
+                                string? s = SxmColumnDataConverters.DecimalToString((decimal)userSuppliedObjectData);
+                                dbValue = (object?)s ?? DBNull.Value;
                             }
 
                             else if (userObjectType == typeof(ulong).Name)  // Is the data type for the column in the user object a ulong?
                             {
-                                returnDictionary.Add(columnName, SxmColumnDataConverters.ULongToString((ulong)userSuppliedObjectData));
+                                string? s = SxmColumnDataConverters.ULongToString((ulong)userSuppliedObjectData);
+                                dbValue = (object?)s ?? DBNull.Value;
                             }
 
                             else if (userObjectType == typeof(Guid).Name)  // Is the data type for the column in the user object a DateTime?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.GuidToString((Guid)userSuppliedObjectData));
-
+                                {
+                                    string? s = SxmColumnDataConverters.GuidToString((Guid)userSuppliedObjectData);
+                                    dbValue = (object?)s ?? DBNull.Value;
+                                }
                                 else if (kvp.Value.ToUpper().Equals("BLOB"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.GuidToRfc4122Bytes((Guid)userSuppliedObjectData));
+                                {
+                                    byte[]? b = SxmColumnDataConverters.GuidToRfc4122Bytes((Guid)userSuppliedObjectData);
+                                    dbValue = (object?)b ?? DBNull.Value;
+                                }
                             }
 
                             else if (userObjectType == typeof(DateTime).Name)  // Is the data type for the column in the user object a DateTime?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeToString((DateTime)userSuppliedObjectData));
-
+                                {
+                                    string? s = SxmColumnDataConverters.DateTimeToString((DateTime)userSuppliedObjectData);
+                                    dbValue = (object?)s ?? DBNull.Value;
+                                }
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeToUnixTimeMilliseconds((DateTime)userSuppliedObjectData));
+                                {
+                                    long? l = SxmColumnDataConverters.DateTimeToUnixTimeMilliseconds((DateTime)userSuppliedObjectData);
+                                    dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                                }
                             }
 
                             else if (userObjectType == typeof(DateOnly).Name)  // Is the data type for the column in the user object a DateOnly?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateOnlyToString((DateOnly)userSuppliedObjectData));
-
+                                {
+                                    string? s = SxmColumnDataConverters.DateOnlyToString((DateOnly)userSuppliedObjectData);
+                                    dbValue = (object?)s ?? DBNull.Value;
+                                }
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateOnlyToUnixDayNumber((DateOnly)userSuppliedObjectData));
+                                {
+                                    int? i = SxmColumnDataConverters.DateOnlyToUnixDayNumber((DateOnly)userSuppliedObjectData);
+                                    dbValue = i.HasValue ? (object)i.Value : DBNull.Value;
+                                }
                             }
 
                             else if (userObjectType == typeof(DateTimeOffset).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeOffsetToString((DateTimeOffset)userSuppliedObjectData));
-
+                                {
+                                    string? s = SxmColumnDataConverters.DateTimeOffsetToString((DateTimeOffset)userSuppliedObjectData);
+                                    dbValue = (object?)s ?? DBNull.Value;
+                                }
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.DateTimeOffsetToUnixTimeMilliseconds((DateTimeOffset)userSuppliedObjectData));
+                                {
+                                    long? l = SxmColumnDataConverters.DateTimeOffsetToUnixTimeMilliseconds((DateTimeOffset)userSuppliedObjectData);
+                                    dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                                }
                             }
 
                             else if (userObjectType == typeof(TimeSpan).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeSpanToString((TimeSpan)userSuppliedObjectData));
-
+                                {
+                                    string? s = SxmColumnDataConverters.TimeSpanToString((TimeSpan)userSuppliedObjectData);
+                                    dbValue = (object?)s ?? DBNull.Value;
+                                }
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeSpanToTotalMilliseconds((TimeSpan)userSuppliedObjectData));
+                                {
+                                    long? l = SxmColumnDataConverters.TimeSpanToTotalMilliseconds((TimeSpan)userSuppliedObjectData);
+                                    dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                                }
                             }
 
                             else if (userObjectType == typeof(TimeOnly).Name)  // Is the data type for the column in the user object a decimal?
                             {
                                 if (kvp.Value.ToUpper().Equals("TEXT"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeOnlyToString((TimeOnly)userSuppliedObjectData));
-
+                                {
+                                    string? s = SxmColumnDataConverters.TimeOnlyToString((TimeOnly)userSuppliedObjectData);
+                                    dbValue = (object?)s ?? DBNull.Value;
+                                }
                                 else if (kvp.Value.ToUpper().Equals("INTEGER"))
-                                    returnDictionary.Add(columnName, SxmColumnDataConverters.TimeOnlyToTotalMilliseconds((TimeOnly)userSuppliedObjectData));
+                                {
+                                    long? l = SxmColumnDataConverters.TimeOnlyToTotalMilliseconds((TimeOnly)userSuppliedObjectData);
+                                    dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                                }
                             }
                             else
                             {
-                                returnDictionary.Add(columnName, userObjectPI.GetValue(userObject));
+                                // fallback: property value (should not be null here), but still guard
+                                dbValue = userObjectPI.GetValue(userObject) ?? DBNull.Value;
                             }
+
+                            returnDictionary.Add(columnName, dbValue);
                         }
                         else
                             returnDictionary.Add(columnName, DBNull.Value);

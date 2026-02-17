@@ -771,10 +771,10 @@ namespace SQLiteXM
                     {
                         string alterDefinition = $"ALTER TABLE {quotedTable} ADD COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}";
 
-                        await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
+                        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
                         {
-                            await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition);
-                            await sxmTransaction1.CommitTransactionAsync();
+                            await sxmTransaction.ExecuteAlterTableAsync(alterDefinition);
+                            await sxmTransaction.CommitTransactionAsync();
                         }
 
                         int offset = 0;
@@ -792,7 +792,7 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"AddColumnsAsync failure for table '{tableName}.");
+                SxmLogging.Log(ex, $"AddColumnsAsync failure for table '{tableName}'.");
                 throw;
             }
             catch (System.Exception ex)
@@ -834,7 +834,7 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DropColumnsAsync failure for table '{tableName}.");
+                SxmLogging.Log(ex, $"DropColumnsAsync failure for table '{tableName}'.");
                 throw;
             }
             catch (System.Exception ex)

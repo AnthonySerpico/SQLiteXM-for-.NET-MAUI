@@ -205,19 +205,18 @@ namespace SQLiteXM
                     await ApplyTriggerTableStatementsAsync(databaseName);
                     await DropUnusedEntitiesAsync(databaseName);
                     await StoreDbVersionNumberAsync(sqlStatementsVersionNumber, databaseName);
-                    await SxmAssociationMapper.InitializeAssociationsAsync();  // Calling this here might be an error when supporting multiple databases.
-                                                                          // The call might need to be made after ALL databases are initialized.
+                    await SxmAssociationMapper.InitializeAssociationsAsync(databaseName);
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"InitializeAsync failure for database '{databaseName}.");
+                SxmLogging.Log(ex, $"InitializeAsync failure for database '{databaseName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"InitializeAsync failure for database '{databaseName}.";
+                string errStr = $"InitializeAsync failure for database '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -276,12 +275,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DropUnusedEntitiesAsync failure for table '{tableName}' for database '{databaseName}.");
+                SxmLogging.Log(ex, $"DropUnusedEntitiesAsync failure for table '{tableName}' for database '{databaseName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"DropUnusedEntitiesAsync failure for table '{tableName}' for database '{databaseName}.";
+                string errStr = $"DropUnusedEntitiesAsync failure for table '{tableName}' for database '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -352,12 +351,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"GetDbVersionNumberAsync failure for database '{databaseName}.");
+                SxmLogging.Log(ex, $"GetDbVersionNumberAsync failure for database '{databaseName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"GetDbVersionNumberAsync failure for database '{databaseName}.";
+                string errStr = $"GetDbVersionNumberAsync failure for database '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -389,12 +388,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"SetJournalModeAsync failure for database '{databaseName}.");
+                SxmLogging.Log(ex, $"SetJournalModeAsync failure for database '{databaseName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"SetJournalModeAsync failure for database '{databaseName}.";
+                string errStr = $"SetJournalModeAsync failure for database '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -423,12 +422,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DeleteDbVersionNumberAsync failure for database '{databaseName}.");
+                SxmLogging.Log(ex, $"DeleteDbVersionNumberAsync failure for database '{databaseName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"DeleteDbVersionNumberAsync failure for database '{databaseName}.";
+                string errStr = $"DeleteDbVersionNumberAsync failure for database '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -458,12 +457,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"StoreDbVersionNumberAsync failure for database '{databaseName} version number '{versionNumber}'.");
+                SxmLogging.Log(ex, $"StoreDbVersionNumberAsync failure for database '{databaseName}' version number '{versionNumber}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"StoreDbVersionNumberAsync failure for database '{databaseName} version number '{versionNumber}'.";
+                string errStr = $"StoreDbVersionNumberAsync failure for database '{databaseName}' version number '{versionNumber}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -902,10 +901,11 @@ namespace SQLiteXM
             if (SxmSqlStatements.TriggerStatements != null)
             {
                 ICollection triggerStatementKeys = SxmSqlStatements.TriggerStatements.Keys;
+                SxmConnection sxmConnection = new SxmConnection(databaseName);
+
                 foreach (string dbName in triggerStatementKeys)
                 {
                     // Delete all triggers in the database.
-                    SxmConnection sxmConnection = new SxmConnection(databaseName);
                     await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
                     {
                         List<string> existingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty);

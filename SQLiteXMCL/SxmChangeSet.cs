@@ -70,7 +70,7 @@ namespace SQLiteXM
     /// <summary>
     /// Represents a single change (insert/update/delete) that has been recorded against an entity.
     /// </summary>
-    public class ChangeAction
+    sealed public class ChangeAction
     {
         /// <summary>
         /// The entity the action targets. Never null.
@@ -175,8 +175,14 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Returns a read-only snapshot of the internal ordered actions list.
+        /// Returns a read-only view of the internal ordered actions list.
         /// </summary>
+        /// <remarks>
+        /// This returns a live, read-only wrapper created by <see cref="List{T}.AsReadOnly"/>. Callers
+        /// will observe subsequent mutations made to the change set after the list is obtained.
+        /// If an immutable snapshot is required, create and return a copy, for example:
+        /// <code>return _actions.ToList().AsReadOnly();</code>
+        /// </remarks>
         /// <returns>A read-only list that reflects the current ordering of recorded actions.</returns>
         internal IReadOnlyList<ChangeAction> GetOrderedActions() => _actions.AsReadOnly();
     }

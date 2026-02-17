@@ -782,8 +782,7 @@ namespace SQLiteXM
                 if (HasRows() == true)
                 {
                     int ordinal = _connDataReader.GetOrdinal(fieldName);
-                    if (ordinal != -1)
-                        return _connDataReader.GetValue(ordinal);
+                    return _connDataReader.GetValue(ordinal);
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))

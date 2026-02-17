@@ -15,11 +15,22 @@ namespace SQLiteXM
         /// Uses <see cref="AsyncLocal{T}"/> so the stack flows with async/await and logical execution context.
         /// Null when there are no ambient transactions.
         /// </summary>
+        /// <remarks>
+        /// This field is private to the type and is not synchronized. It is intended to be accessed
+        /// only from code that observes logical execution context flow. Concurrent mutations from
+        /// multiple threads that intentionally share the same logical context are not protected.
+        /// </remarks>
         static readonly AsyncLocal<Stack<SxmTransaction>?> _slot = new();
 
         /// <summary>
         /// Gets the current (top-most) ambient <see cref="SxmTransaction"/> or null when none exists.
         /// </summary>
+        /// <value>The top-most ambient transaction, or <c>null</c> if no ambient transaction is present.</value>
+        /// <remarks>
+        /// The returned instance is the object reference stored on the top of the ambient stack.
+        /// Callers must not assume thread-safety of the returned instance; this property simply
+        /// exposes the current ambient token for the logical execution context.
+        /// </remarks>
         internal static SxmTransaction? Current => _slot.Value != null && _slot.Value.Count > 0 ? _slot.Value.Peek() : null;
 
         /// <summary>
@@ -27,6 +38,12 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="tx">The transaction to push onto the ambient stack. Must not be null.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="tx"/> is null.</exception>
+        /// <remarks>
+        /// If there is no ambient stack for the current logical execution context, a new stack
+        /// is created and assigned to the underlying <see cref="_slot"/>. This method preserves
+        /// strict LIFO semantics — callers should ensure they call <see cref="Pop(SxmTransaction)"/>
+        /// or <see cref="TryRemove(SxmTransaction)"/> to remove the pushed transaction when finished.
+        /// </remarks>
         internal static void Push(SxmTransaction tx)
         {
             if (tx == null) throw new ArgumentNullException(nameof(tx));
@@ -49,6 +66,10 @@ namespace SQLiteXM
         /// Thrown when there is no ambient transaction to pop, or when the supplied transaction
         /// is not the top-most ambient transaction (disposed out of order).
         /// </exception>
+        /// <remarks>
+        /// This method enforces strict stack discipline. If callers dispose transactions out of order,
+        /// prefer <see cref="TryRemove(SxmTransaction)"/> which attempts a best-effort removal without throwing.
+        /// </remarks>
         internal static void Pop(SxmTransaction tx)
         {
             var stack = _slot.Value;
@@ -73,6 +94,13 @@ namespace SQLiteXM
         /// <param name="tx">The transaction to remove from the ambient stack. Must not be null.</param>
         /// <returns><c>true</c> if the transaction was removed; otherwise <c>false</c>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="tx"/> is null.</exception>
+        /// <remarks>
+        /// The method first tries the fast path of popping the top item if it matches the target.
+        /// If that fails or the target is not top-most, it performs a safe rebuild of the stack by
+        /// popping all items into a temporary stack and reconstructing a new stack without the target.
+        /// Any unexpected exception during rebuild is swallowed and <c>false</c> is returned to keep
+        /// behavior conservative. This method mutates the ambient stack for the current logical context.
+        /// </remarks>
         internal static bool TryRemove(SxmTransaction tx)
         {
             if (tx == null) throw new ArgumentNullException(nameof(tx));
