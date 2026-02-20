@@ -21,8 +21,22 @@ namespace SQLiteXM
         /// Tracks runtime-registered association keys to avoid duplicate registrations.
         /// Key format: "{SourceType.FullName}.{NavigationPropertyName}".
         /// </summary>
-        private static readonly ConcurrentDictionary<string, byte> _registeredAssociations =
-    new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, byte> _registeredAssociations = new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Thread-safe cache storing property metadata for each object type.
+        /// 
+        /// Maps a <see cref="Type"/> to a read-only dictionary of property names to their corresponding <see cref="PropertyInfo"/> objects.
+        /// This cache is used to reduce reflection overhead when materializing objects from database records.
+        /// </summary>
+        /// <remarks>
+        /// - Only public instance properties with setters (<c>CanWrite</c>) are included in the cached dictionaries.
+        /// - The dictionaries are read-only (<see cref="IReadOnlyDictionary{String, PropertyInfo}"/>) to prevent accidental modification of cached metadata.
+        /// - Thread-safe: multiple threads can retrieve or add property dictionaries without locking, thanks to <see cref="ConcurrentDictionary{TKey, TValue}"/>.
+        /// - Property lookups are case-sensitive and use ordinal comparison to match database column keys reliably.
+        /// - Improves performance by ensuring reflection is performed at most once per type.
+        /// </remarks>
+        private static readonly ConcurrentDictionary<Type, IReadOnlyDictionary<string, PropertyInfo>> _typePropertyCache = new ConcurrentDictionary<Type, IReadOnlyDictionary<string, PropertyInfo>>();
 
         private SxmHelpers() { }
 
@@ -54,13 +68,12 @@ namespace SQLiteXM
             {
                 await sxmConnection.ExecuteQueryAsync("SELECT tableName FROM _systemCloudSynchDescriptor", null as List<object>);
 
-                if (sxmConnection.HasRows() == true)
+                if (sxmConnection.HasRows())
                 {
-                    string[] fieldNames = sxmConnection.GetFieldNames();
-                    while (sxmConnection.NextRow() == true)
+                    while (sxmConnection.NextRow())
                     {
-                        foreach (string fieldName in fieldNames)
-                            tableNames.Add(sxmConnection.GetValue(fieldName)!.ToString()!);
+                        if (sxmConnection.GetValue("tableName") is string name && name.Length > 0)
+                            tableNames.Add(name);
                     }
                 }
             }
@@ -165,7 +178,7 @@ namespace SQLiteXM
             if (statementType == SqlStatementType.Update || statementType == SqlStatementType.UpdateDirect)
                 return "UPDATE";
 
-            throw new ArgumentException("The sql statement type could not be found.");
+            throw new ArgumentException($"The sql statement type could not be found. Statement type: {statementType.ToString()}");
         }
 
         /// <summary>
@@ -179,16 +192,16 @@ namespace SQLiteXM
             if (string.IsNullOrEmpty(sqlStatementName))
                 throw new ArgumentException("A sql statement name cannot be null or empty.");
 
-            if (SxmSqlStatements.SelectStatements.ContainsKey(sqlStatementName) != default)
+            if (SxmSqlStatements.SelectStatements.ContainsKey(sqlStatementName))
                 return SqlStatementType.Select;
 
-            if (SxmSqlStatements.UpdateStatements.ContainsKey(sqlStatementName) != default)
+            if (SxmSqlStatements.UpdateStatements.ContainsKey(sqlStatementName))
                 return SqlStatementType.Update;
 
-            if (SxmSqlStatements.DeleteStatements.ContainsKey(sqlStatementName) != default)
+            if (SxmSqlStatements.DeleteStatements.ContainsKey(sqlStatementName))
                 return SqlStatementType.Delete;
 
-            if (SxmSqlStatements.InsertStatements.ContainsKey(sqlStatementName) != default)
+            if (SxmSqlStatements.InsertStatements.ContainsKey(sqlStatementName))
                 return SqlStatementType.Insert;
 
             // Not a SQL statement in the SQL statements file? Direct SQL statements are processed here.
@@ -205,6 +218,10 @@ namespace SQLiteXM
         /// Simplified, depth-aware scanner that skips single- and double-quoted literals
         /// and quoted identifiers. Assumes valid SQLite SQL and no comments.
         /// </summary>
+        /// <remarks>
+        /// Assumes valid SQLite SQL input without comments. This method does not attempt
+        /// to parse or ignore SQL comments or malformed statements.
+        /// </remarks>
         /// <param name="insertSql">A SQLite INSERT/REPLACE statement (no comments).</param>
         /// <returns>The bare table name (without schema qualification or quoting).</returns>
         internal static string? ExtractTableNameFromInsert(string insertSql)
@@ -245,6 +262,10 @@ namespace SQLiteXM
         /// Simplified, depth-aware scanner that skips single- and double-quoted literals
         /// and quoted identifiers. Assumes valid SQLite SQL and no comments.
         /// </summary>
+        /// <remarks>
+        /// Assumes valid SQLite SQL input without comments. This method does not attempt
+        /// to parse or ignore SQL comments or malformed statements.
+        /// </remarks>
         /// <param name="updateSql">A SQLite UPDATE statement (no comments).</param>
         /// <returns>The bare table name (without schema qualification or quoting).</returns>
         internal static string ExtractTableNameFromUpdate(string updateSql)
@@ -275,6 +296,10 @@ namespace SQLiteXM
         /// Simplified: finds top-level FROM and parses the following identifier (schema-qualified allowed).
         /// Throws when FROM item is a subquery. Assumes valid SQLite SQL and no comments.
         /// </summary>
+        /// <remarks>
+        /// Assumes valid SQLite SQL input without comments. This method does not attempt
+        /// to parse or ignore SQL comments or malformed statements.
+        /// </remarks>
         /// <param name="selectSql">A SQLite SELECT statement (no comments).</param>
         /// <returns>The bare table name (without schema qualification or quoting).</returns>
         internal static string ExtractTableNameFromSelect(string selectSql)
@@ -299,6 +324,10 @@ namespace SQLiteXM
         /// Simplified, depth-aware scanner that skips single- and double-quoted literals
         /// and quoted identifiers. Assumes valid SQLite SQL and no comments.
         /// </summary>
+        /// <remarks>
+        /// Assumes valid SQLite SQL input without comments. This method does not attempt
+        /// to parse or ignore SQL comments or malformed statements.
+        /// </remarks>
         /// <param name="deleteSql">A SQLite DELETE statement (no comments).</param>
         /// <returns>The bare table name (without schema qualification or quoting).</returns>
         internal static string ExtractTableNameFromDelete(string deleteSql)
@@ -317,6 +346,31 @@ namespace SQLiteXM
 
         /* ----- small shared helpers used by the simplified methods ----- */
 
+        /// <summary>
+        /// Scans the SQL span for the first occurrence of any of the specified keywords
+        /// that appears at the top level (i.e., not inside parentheses) and not inside
+        /// quoted strings or quoted identifiers.
+        /// </summary>
+        /// <param name="s">
+        /// The SQL text to scan.
+        /// </param>
+        /// <param name="keywords">
+        /// One or more keywords to locate (case-insensitive).
+        /// </param>
+        /// <returns>
+        /// The zero-based character index of the first matching keyword occurrence,
+        /// or <c>-1</c> if none is found.
+        /// </returns>
+        /// <remarks>
+        /// This is a lightweight scanner used by table-name and statement-type extraction
+        /// helpers. It tracks parentheses depth and skips:
+        /// <list type="bullet">
+        /// <item><description>Single-quoted string literals (with '' escaping)</description></item>
+        /// <item><description>Double-quoted identifiers (with "" escaping)</description></item>
+        /// </list>
+        /// Assumes valid SQLite SQL input without comments. This method does not attempt
+        /// to parse or ignore SQL comments or malformed SQL.
+        /// </remarks>
         private static int FindTopLevelKeyword(ReadOnlySpan<char> s, params string[] keywords)
         {
             int depth = 0;
@@ -349,6 +403,25 @@ namespace SQLiteXM
             return -1;
         }
 
+        /// <summary>
+        /// Advances an index from the opening single-quote of a SQLite string literal
+        /// to the index of its closing single-quote.
+        /// </summary>
+        /// <param name="s">
+        /// The SQL text span containing the string literal.
+        /// </param>
+        /// <param name="i">
+        /// The index of the opening single-quote character (<c>'</c>).
+        /// </param>
+        /// <returns>
+        /// The index of the closing single-quote character. If no closing quote is found,
+        /// returns the last valid index in the span.
+        /// </returns>
+        /// <remarks>
+        /// SQLite string literals escape a single quote by doubling it (<c>''</c>).
+        /// This method recognizes that escape sequence and continues scanning.
+        /// Assumes valid SQLite SQL input without comments; it is not a general SQL lexer.
+        /// </remarks>
         private static int SkipSingleQuoted(ReadOnlySpan<char> s, int i)
         {
             // i points at opening '
@@ -362,6 +435,25 @@ namespace SQLiteXM
             return s.Length - 1;
         }
 
+        /// <summary>
+        /// Advances an index from the opening double-quote of a quoted SQLite identifier
+        /// to the index of its closing double-quote.
+        /// </summary>
+        /// <param name="s">
+        /// The SQL text span containing the quoted identifier.
+        /// </param>
+        /// <param name="i">
+        /// The index of the opening double-quote character (<c>"</c>).
+        /// </param>
+        /// <returns>
+        /// The index of the closing double-quote character. If no closing quote is found,
+        /// returns the last valid index in the span.
+        /// </returns>
+        /// <remarks>
+        /// SQLite quoted identifiers escape a double quote by doubling it (<c>""</c>).
+        /// This method recognizes that escape sequence and continues scanning.
+        /// Assumes valid SQLite SQL input without comments; it is not a general SQL lexer.
+        /// </remarks>
         private static int SkipDoubleQuoted(ReadOnlySpan<char> s, int i)
         {
             // i points at opening "
@@ -375,6 +467,33 @@ namespace SQLiteXM
             return s.Length - 1;
         }
 
+        /// <summary>
+        /// Determines whether a keyword occurs at the specified position and is delimited
+        /// by token boundaries suitable for SQLite keyword scanning.
+        /// </summary>
+        /// <param name="s">
+        /// The SQL text span.
+        /// </param>
+        /// <param name="pos">
+        /// The position to test for a keyword match.
+        /// </param>
+        /// <param name="keyword">
+        /// The keyword to match (case-insensitive).
+        /// </param>
+        /// <returns>
+        /// <c>true</c> if the keyword matches at <paramref name="pos"/> and is properly delimited;
+        /// otherwise <c>false</c>.
+        /// </returns>
+        /// <remarks>
+        /// This helper enforces simple token-boundary rules:
+        /// <list type="bullet">
+        /// <item><description>The keyword must match case-insensitively at the specified position.</description></item>
+        /// <item><description>The preceding character must be start-of-span or whitespace.</description></item>
+        /// <item><description>The following character must be whitespace or a punctuation character that can begin a token.</description></item>
+        /// </list>
+        /// These rules are intentionally lightweight and designed for trusted, well-formed
+        /// SQLite SQL without comments.
+        /// </remarks>
         private static bool IsKeywordAt(ReadOnlySpan<char> s, int pos, string keyword)
         {
             if (pos + keyword.Length > s.Length) return false;
@@ -390,11 +509,53 @@ namespace SQLiteXM
             return true;
         }
 
+        /// <summary>
+        /// Advances the parsing position past any contiguous whitespace characters.
+        /// </summary>
+        /// <param name="s">
+        /// The SQL text span.
+        /// </param>
+        /// <param name="p">
+        /// The current parsing position. Updated to the first non-whitespace character position.
+        /// </param>
+        /// <remarks>
+        /// This helper centralizes whitespace skipping for lightweight SQL scanning routines.
+        /// Whitespace is determined using <see cref="char.IsWhiteSpace(char)"/>.
+        /// </remarks>
         private static void SkipSpaces(ReadOnlySpan<char> s, ref int p)
         {
             while (p < s.Length && char.IsWhiteSpace(s[p])) p++;
         }
 
+        /// <summary>
+        /// Parses a multipart SQL identifier from the provided span and returns the
+        /// right-most identifier component (for example, extracting <c>TableName</c>
+        /// from <c>schema.TableName</c>).
+        /// </summary>
+        /// <param name="s">
+        /// The SQL text span containing the identifier to parse.
+        /// </param>
+        /// <param name="p">
+        /// The current parsing position within <paramref name="s"/>. The position is
+        /// advanced past the parsed identifier components.
+        /// </param>
+        /// <returns>
+        /// The right-most identifier component, or an empty string if no valid identifier
+        /// could be parsed.
+        /// </returns>
+        /// <remarks>
+        /// Supports SQLite identifier formats including:
+        /// <list type="bullet">
+        /// <item><description>Unquoted identifiers (letters, digits, '_' or '$')</description></item>
+        /// <item><description>Double-quoted identifiers with escaped quotes ("")</description></item>
+        /// <item><description>Bracketed identifiers ([identifier])</description></item>
+        /// <item><description>Backtick-quoted identifiers (`identifier`)</description></item>
+        /// </list>
+        ///
+        /// This method performs lightweight token parsing rather than full SQL parsing.
+        /// Assumes valid SQLite SQL input without comments or malformed identifier syntax.
+        /// Parsing stops at whitespace, parentheses, or when identifier components end.
+        /// </remarks>
         private static string ParseRightMostIdentifier(ReadOnlySpan<char> s, ref int p)
         {
             List<string> parts = new List<string>();
@@ -461,6 +622,27 @@ namespace SQLiteXM
             return parts.Count == 0 ? string.Empty : parts[parts.Count - 1];
         }
 
+        /// <summary>
+        /// Determines the <see cref="SqlStatementType"/> of a SQL command by examining
+        /// the leading SQLite keyword sequence.
+        /// </summary>
+        /// <param name="sql">
+        /// The SQL statement text to analyze.
+        /// </param>
+        /// <returns>
+        /// A <see cref="SqlStatementType"/> representing the detected command type,
+        /// or <see cref="SqlStatementType.Unknown"/> if the statement cannot be classified.
+        /// </returns>
+        /// <remarks>
+        /// This method performs lightweight keyword scanning rather than full SQL parsing.
+        /// It supports direct statements and common table expression (CTE) syntax beginning
+        /// with <c>WITH</c>.
+        ///
+        /// Assumes valid SQLite SQL input without comments. This method does not attempt
+        /// to parse or ignore SQL comments, malformed SQL, or vendor-specific extensions.
+        /// The detection logic relies on token boundaries and balanced parentheses within
+        /// CTE declarations.
+        /// </remarks>
         private static SqlStatementType GetSqlStatementType(string sql)
         {
             ReadOnlySpan<char> s = sql.AsSpan().TrimStart();
@@ -554,7 +736,7 @@ namespace SQLiteXM
         /// <param name="userObject">Destination object to populate.</param>
         /// <exception cref="ArgumentNullException">If <paramref name="userObject"/> or <paramref name="databaseRecord"/> is null.</exception>
         /// <exception cref="ArgumentException">If a database value cannot be cast to the target property type.</exception>
-        internal static void LoadDbValues(Dictionary<string, object?> databaseRecord, object userObject)
+        internal static void LoadDbValuesSafe(Dictionary<string, object?> databaseRecord, object userObject)
         {
             if (userObject == null) throw new ArgumentNullException(nameof(userObject));
             if (databaseRecord == null) throw new ArgumentNullException(nameof(databaseRecord));
@@ -698,14 +880,15 @@ namespace SQLiteXM
                             pi.SetValue(userObject, default);
                     }
                 }
-                catch (System.ArgumentException ex)
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
+                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     string? userPropertyType = userObject.GetType()?.GetProperty(kvp.Key)?.PropertyType.ToString();
                     string? databasePropertyType = kvp.Value?.GetType().ToString();
-
                     string errStr = string.Format("LoadDbValues failure. Could not cast the database column '{0}' type '{1}' to the provided object property '{2}' type '{3}'", kvp.Key, databasePropertyType, userObject.GetType().ToString() + "." + kvp.Key, userPropertyType);
+
                     SxmLogging.Log(ex, errStr);
-                    throw new ArgumentException(errStr);
+                    throw;
                 }
                 catch (System.Exception ex)
                 {
@@ -717,6 +900,293 @@ namespace SQLiteXM
                     throw ExceptionHelper.Wrap(ex, errStr);
                 }
             }
+        }
+
+        /// <summary>
+        /// Populates the writable properties of <paramref name="userObject"/> from the provided database record dictionary.
+        /// 
+        /// The method performs the following for each key/value pair:
+        /// 1. Matches the dictionary key to a public writable property on the target object (case-sensitive, ordinal comparison).
+        /// 2. Handles <c>null</c> or <c>DBNull.Value</c> by assigning <c>default</c> to the property (preserving original behavior).
+        /// 3. Unwraps nullable types to their underlying type before conversion.
+        /// 4. Converts database values to the target property type using strict conversion methods that enforce range and type safety.
+        /// 5. Logs detailed diagnostics for failed conversions, including column name, source type, and target property type.
+        /// 
+        /// Property metadata is cached per type using a thread-safe <see cref="ConcurrentDictionary{TKey, TValue}"/> to reduce reflection overhead.
+        /// This method is safe for multi-threaded usage and preserves all original exception behavior and logging.
+        /// </summary>
+        /// <param name="databaseRecord">Dictionary mapping column names to database values (may contain <c>null</c> or <c>DBNull.Value</c>).</param>
+        /// <param name="userObject">The destination object whose properties will be populated.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="databaseRecord"/> or <paramref name="userObject"/> is <c>null</c>.</exception>
+        /// <exception cref="Exception">
+        /// Any exception thrown by the underlying strict conversion methods, wrapped or logged as appropriate.
+        /// Fatal or non-wrappable exceptions are re-thrown without modification.
+        /// </exception>
+        /// <remarks>
+        /// - The method is fully behavior-preserving with respect to the original implementation.
+        /// - Nullables, numeric ranges, dates, times, GUIDs, and boolean conversions are handled exactly as before.
+        /// - Thread-safe caching ensures performance improvements without altering correctness.
+        /// </remarks>
+        internal static void LoadDbValues(Dictionary<string, object?> databaseRecord, object userObject)
+        {
+            if (userObject == null)
+                throw new ArgumentNullException(nameof(userObject));
+
+            if (databaseRecord == null)
+                throw new ArgumentNullException(nameof(databaseRecord));
+
+            Type objectType = userObject.GetType();
+
+            IReadOnlyDictionary<string, PropertyInfo> properties = GetCachedProperties(objectType);
+
+            foreach (var kvp in databaseRecord)
+            {
+                PropertyInfo? pi = null;
+                object? value = null;
+
+
+                try
+                {
+                    value = kvp.Value;
+                    if (!properties.TryGetValue(kvp.Key, out pi))
+                        continue;
+
+                    if (value == null || value == DBNull.Value)
+                    {
+                        // EXACT original behavior: assign default value (null for ref/nullable; default(T) for value types)
+                        pi.SetValue(userObject, default);
+                        continue;
+                    }
+
+                    Type targetType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
+                    object? converted = ConvertValueStrict(value, targetType, kvp.Key);
+                    pi.SetValue(userObject, converted);
+                }
+                catch (Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                {
+                    string? userPropertyType = pi?.PropertyType.ToString();
+                    string? databasePropertyType = value?.GetType().ToString();
+
+                    string errStr =
+                        $"LoadDbValues failure for column '{kvp.Key}' type '{databasePropertyType}' " +
+                        $"to provided property '{objectType}.{kvp.Key}' type '{userPropertyType}'.";
+
+                    SxmLogging.Log(ex, errStr);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    string? userPropertyType = pi?.PropertyType.ToString();
+                    string? databasePropertyType = value?.GetType().ToString();
+
+                    string errStr =
+                        $"LoadDbValues failure for column '{kvp.Key}' type '{databasePropertyType}' " +
+                        $"to provided property '{objectType}.{kvp.Key}' type '{userPropertyType}'.";
+
+                    SxmLogging.Log(ex, errStr);
+                    throw ExceptionHelper.Wrap(ex, errStr);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Retrieves a cached dictionary of all public, writable properties for the given <paramref name="objectType"/>.
+        /// 
+        /// The dictionary maps property names (case-sensitive, ordinal comparison) to their corresponding <see cref="PropertyInfo"/> objects.
+        /// If the type has not been seen before, the properties are retrieved via reflection and cached for future lookups using a
+        /// thread-safe <see cref="ConcurrentDictionary{TKey, TValue}"/>.
+        /// </summary>
+        /// <param name="objectType">The type whose writable properties are being retrieved.</param>
+        /// <returns>
+        /// An <see cref="IReadOnlyDictionary{String, PropertyInfo}"/> mapping property names to <see cref="PropertyInfo"/> instances.
+        /// </returns>
+        /// <remarks>
+        /// - Only public instance properties with a setter (<c>CanWrite</c>) are included.
+        /// - Thread-safe caching ensures that reflection is performed at most once per type, improving performance on repeated calls.
+        /// - The returned dictionary is read-only to prevent accidental modification of cached metadata.
+        /// - Property name lookups are case-sensitive and use ordinal string comparison to maintain consistency with database keys.
+        /// </remarks>
+        private static IReadOnlyDictionary<string, PropertyInfo> GetCachedProperties(Type objectType)
+        {
+            return _typePropertyCache.GetOrAdd(
+                objectType,
+                type => type
+                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.CanWrite)
+                    .ToDictionary(p => p.Name, StringComparer.Ordinal));
+        }
+
+        /// <summary>
+        /// Converts a boxed provider <paramref name="value"/> to the specified
+        /// <paramref name="targetType"/> using strict, behavior-preserving rules.
+        /// 
+        /// The conversion logic mirrors the original implementation exactly,
+        /// including:
+        /// - Explicit range validation for integer types
+        /// - Custom string-based conversions for <see cref="decimal"/> and <see cref="ulong"/>
+        /// - Special handling for <see cref="Guid"/>, <see cref="DateTime"/>,
+        ///   <see cref="DateTimeOffset"/>, <see cref="TimeSpan"/>,
+        ///   <see cref="DateOnly"/>, and <see cref="TimeOnly"/>
+        /// - Boolean conversion where only the string "1" evaluates to <c>true</c>
+        /// 
+        /// Custom numeric converters perform logging and wrap exceptions
+        /// consistently with the original behavior.
+        /// </summary>
+        /// <param name="value">
+        /// Boxed provider value retrieved from the database record.
+        /// </param>
+        /// <param name="targetType">
+        /// Target CLR type (nullable types should already be unwrapped).
+        /// </param>
+        /// <param name="columnName">
+        /// Column name used for diagnostic logging and error context.
+        /// </param>
+        /// <returns>
+        /// The converted value suitable for assignment to a property of
+        /// type <paramref name="targetType"/>.
+        /// </returns>
+        /// <exception cref="OverflowException">
+        /// Thrown when a numeric value exceeds the range of the target type.
+        /// </exception>
+        /// <exception cref="FormatException">
+        /// Thrown when a value cannot be converted to the target type.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when conversion fails and the error is wrapped.
+        /// </exception>
+        /// <remarks>
+        /// This method intentionally avoids generic conversion helpers such as
+        /// <see cref="Convert.ChangeType(object, Type, IFormatProvider)"/> for integer
+        /// types in order to preserve explicit range checking and diagnostic behavior.
+        /// </remarks>
+        private static object? ConvertValueStrict(object value, Type targetType, string columnName)
+        {
+            // ---- Integer Types (preserve your converters exactly) ----
+
+            if (targetType == typeof(int))
+                return ConvertToInt32(value, columnName);
+
+            if (targetType == typeof(long))
+                return Convert.ToInt64(value, CultureInfo.InvariantCulture);
+
+            if (targetType == typeof(short))
+                return ConvertToInt16(value, columnName);
+
+            if (targetType == typeof(ushort))
+                return ConvertToUInt16(value, columnName);
+
+            if (targetType == typeof(uint))
+                return ConvertToUInt32(value, columnName);
+
+            if (targetType == typeof(sbyte))
+                return ConvertToSByte(value, columnName);
+
+            if (targetType == typeof(byte))
+                return ConvertToByte(value, columnName);
+
+            if (targetType == typeof(ulong))
+            {
+                // original behavior: string-based conversion only
+                if (value is string s)
+                    return SxmColumnDataConverters.ULongFromString(s);
+            }
+
+            // ---- Floating Point ----
+
+            if (targetType == typeof(float))
+                return ConvertToSingle(value, columnName);
+
+            if (targetType == typeof(double))
+                return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+
+            if (targetType == typeof(decimal))
+            {
+                // original: string-based conversion only
+                if (value is string s)
+                    return SxmColumnDataConverters.DecimalFromString(s);
+            }
+
+            // ---- String ----
+
+            if (targetType == typeof(string))
+                return value.ToString();
+
+            // ---- Guid ----
+
+            if (targetType == typeof(Guid))
+            {
+                if (value is byte[] bytes)
+                    return SxmColumnDataConverters.GuidFromRfc4122Bytes(bytes);
+
+                if (value is string s)
+                    return SxmColumnDataConverters.GuidFromString(s);
+            }
+
+            // ---- Bool (EXACT original semantics) ----
+            // Original: if ToString() == "1" => true, else false
+            if (targetType == typeof(bool))
+            {
+                return value.ToString()!.Equals("1");
+            }
+
+            // ---- DateTime ----
+
+            if (targetType == typeof(DateTime))
+            {
+                if (value is long l)
+                    return SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(l);
+
+                if (value is string s)
+                    return SxmColumnDataConverters.DateTimeFromString(s);
+            }
+
+            // ---- DateTimeOffset ----
+
+            if (targetType == typeof(DateTimeOffset))
+            {
+                if (value is long l)
+                    return SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds(l);
+
+                if (value is string s)
+                    return SxmColumnDataConverters.DateTimeOffsetFromString(s);
+            }
+
+            // ---- TimeSpan ----
+
+            if (targetType == typeof(TimeSpan))
+            {
+                if (value is long l)
+                    return SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(l);
+
+                if (value is string s)
+                    return SxmColumnDataConverters.TimeSpanFromString(s);
+            }
+
+            // ---- DateOnly ----
+
+            if (targetType == typeof(DateOnly))
+            {
+                if (value is long l)
+                    return SxmColumnDataConverters.DateOnlyFromUnixDayNumber(l);
+
+                if (value is string s)
+                    return SxmColumnDataConverters.DateOnlyFromString(s);
+            }
+
+            // ---- TimeOnly ----
+
+            if (targetType == typeof(TimeOnly))
+            {
+                if (value is long l)
+                    return SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(l);
+
+                if (value is string s)
+                    return SxmColumnDataConverters.TimeOnlyFromString(s);
+            }
+
+            // ---- Fallback (original final else) ----
+
+            return value;
         }
 
         /// <summary>
@@ -738,6 +1208,13 @@ namespace SQLiteXM
                     throw ExceptionHelper.Wrap(ex, msg);
                 }
                 return (ushort)n;
+            }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                string err = $"Failed converting column '{columnName}' value to UInt16.";
+                SxmLogging.Log(ex, err);
+                throw;
             }
             catch (Exception ex)
             {
@@ -767,6 +1244,13 @@ namespace SQLiteXM
                 }
                 return (int)n;
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                string err = $"Failed converting column '{columnName}' value to Int32.";
+                SxmLogging.Log(ex, err);
+                throw;
+            }
             catch (Exception ex)
             {
                 string err = $"Failed converting column '{columnName}' value to Int32.";
@@ -795,6 +1279,13 @@ namespace SQLiteXM
                 }
                 return (sbyte)n;
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                string err = $"Failed converting column '{columnName}' value to SByte.";
+                SxmLogging.Log(ex, err);
+                throw;
+            }
             catch (Exception ex)
             {
                 string err = $"Failed converting column '{columnName}' value to SByte.";
@@ -819,6 +1310,13 @@ namespace SQLiteXM
                     throw ExceptionHelper.Wrap(ex, msg);
                 }
                 return (short)n;
+            }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                string err = $"Failed converting column '{columnName}' value to Int16.";
+                SxmLogging.Log(ex, err);
+                throw;
             }
             catch (Exception ex)
             {
@@ -845,6 +1343,13 @@ namespace SQLiteXM
                 }
                 return (byte)n;
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                string err = $"Failed converting column '{columnName}' value to Byte.";
+                SxmLogging.Log(ex, err);
+                throw;
+            }
             catch (Exception ex)
             {
                 string err = $"Failed converting column '{columnName}' value to Byte.";
@@ -870,6 +1375,13 @@ namespace SQLiteXM
                 }
                 return (uint)n;
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                string err = $"Failed converting column '{columnName}' value to UInt32.";
+                SxmLogging.Log(ex, err);
+                throw;
+            }
             catch (Exception ex)
             {
                 string err = $"Failed converting column '{columnName}' value to UInt32.";
@@ -888,6 +1400,13 @@ namespace SQLiteXM
                 double d = Convert.ToDouble(value, CultureInfo.InvariantCulture);
                 return (float)d;
             }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                string err = $"Failed converting column '{columnName}' value to Single.";
+                SxmLogging.Log(ex, err);
+                throw;
+            }
             catch (Exception ex)
             {
                 string err = $"Failed converting column '{columnName}' value to Single.";
@@ -901,14 +1420,14 @@ namespace SQLiteXM
         /// Converts a user entity's properties into a dictionary of parameter values suitable for database commands.
         /// Handles type conversions for GUID, DateTime, DateOnly, DateTimeOffset, TimeSpan, TimeOnly and numeric/text encodings.
         /// </summary>
-        /// <param name="dbColumnNameType">Dictionary mapping column name to database type (e.g., "TEXT", "INTEGER", "BLOB").</param>
+        /// <param name="columnsToInclude">Dictionary mapping column name to database type (e.g., "TEXT", "INTEGER", "BLOB").</param>
         /// <param name="userObject">The user entity instance to read values from.</param>
         /// <returns>Dictionary mapping column names to values ready for DB insertion/update. Null values are represented by <see cref="DBNull.Value"/>.</returns>
         /// <exception cref="ArgumentException">Propagates if property access or conversion fails.</exception>
-        internal static Dictionary<string, object?> LoadParameterValues(Dictionary<string, string> dbColumnNameType, object userObject)
+        internal static Dictionary<string, object?> LoadParameterValuesSafe(Dictionary<string, string> columnsToInclude, object userObject)
         {
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
-            foreach (KeyValuePair<string, string> kvp in dbColumnNameType)  // Process each entry (column) in the Dictionary.
+            foreach (KeyValuePair<string, string> kvp in columnsToInclude)  // Process each entry (column) in the Dictionary.
             {
                 try
                 {
@@ -1036,11 +1555,12 @@ namespace SQLiteXM
                             returnDictionary.Add(columnName, DBNull.Value);
                     }
                 }
-                catch (System.ArgumentException ex)
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
+                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     string errStr = $"LoadParameterValues failure for column '{kvp.Key}' type '{userObject.GetType().GetProperty(kvp.Key)?.PropertyType.Name}' could not convert the entity's property.";
                     SxmLogging.Log(ex, errStr);
-                    throw new ArgumentException(errStr);
+                    throw;
                 }
                 catch (System.Exception ex)
                 {
@@ -1050,6 +1570,272 @@ namespace SQLiteXM
                 }
             }
             return returnDictionary;
+        }
+
+        /// <summary>
+        /// Converts an entity's properties into a dictionary of parameter values suitable for database commands.
+        /// Handles storage-type conversions (TEXT, INTEGER, BLOB) for GUID, DateTime, DateOnly,
+        /// DateTimeOffset, TimeSpan, TimeOnly, and specialized numeric encodings.
+        /// </summary>
+        /// <param name="columnsToInclude">
+        /// Dictionary mapping column name to database storage type (e.g., "TEXT", "INTEGER", "BLOB").
+        /// </param>
+        /// <param name="entity">
+        /// The entity instance to read values from.
+        /// </param>
+        /// <returns>
+        /// Dictionary mapping column names to values ready for DB insertion or update.
+        /// Null values are represented by <see cref="DBNull.Value"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if required arguments are null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when property access, conversion, or storage-type mapping fails.
+        /// </exception>
+        internal static Dictionary<string, object?> LoadParameterValues(Dictionary<string, string> columnsToInclude, object entity)
+        {
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            if (columnsToInclude == null)
+                throw new ArgumentNullException(nameof(columnsToInclude));
+
+            Type objectType = entity.GetType();
+            IReadOnlyDictionary<string, PropertyInfo> properties = GetCachedProperties(objectType);
+
+            Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
+
+            foreach (KeyValuePair<string, string> kvp in columnsToInclude)
+            {
+                // Keep these outside try so catch blocks can reference them without extra reflection.
+                PropertyInfo? pi = null;
+                object? value = null;
+
+                // Normalize DB type once per column (avoid repeated ToUpper allocations).
+                string dbType = kvp.Value;
+
+                string columnName = kvp.Key;
+
+                try
+                {
+
+                    // Subset-entity behavior: if property isn't present, omit it from output (caller controls include list).
+                    if (!properties.TryGetValue(columnName, out pi))
+                        continue;
+
+                    value = pi.GetValue(entity);
+
+                    // Null maps to DBNull.Value (same contract as your original method).
+                    if (value == null)
+                    {
+                        returnDictionary[columnName] = DBNull.Value;
+                        continue;
+                    }
+
+                    // Use real types (no .Name string comparisons).
+                    Type targetType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
+
+                    object? dbValue = DBNull.Value;
+
+                    // Decimal and ULong are encoded as TEXT via your converters.
+                    if (targetType == typeof(decimal))
+                    {
+                        string? s = SxmColumnDataConverters.DecimalToString((decimal)value);
+                        dbValue = (object?)s ?? DBNull.Value;
+                    }
+                    else if (targetType == typeof(ulong))
+                    {
+                        string? s = SxmColumnDataConverters.ULongToString((ulong)value);
+                        dbValue = (object?)s ?? DBNull.Value;
+                    }
+
+                    // GUID supports TEXT or BLOB encodings.
+                    else if (targetType == typeof(Guid))
+                    {
+                        if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? s = SxmColumnDataConverters.GuidToString((Guid)value);
+                            dbValue = (object?)s ?? DBNull.Value;
+                        }
+                        else if (dbType.Equals("BLOB", StringComparison.OrdinalIgnoreCase))
+                        {
+                            byte[]? b = SxmColumnDataConverters.GuidToRfc4122Bytes((Guid)value);
+                            dbValue = (object?)b ?? DBNull.Value;
+                        }
+                        else
+                        {
+                            // Unsupported storage type for Guid
+                            throw UnsupportedDbType(dbType, columnName, targetType, objectType);
+                        }
+                    }
+
+                    // DateTime supports TEXT or INTEGER (Unix ms).
+                    else if (targetType == typeof(DateTime))
+                    {
+                        if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? s = SxmColumnDataConverters.DateTimeToString((DateTime)value);
+                            dbValue = (object?)s ?? DBNull.Value;
+                        }
+                        else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            long? l = SxmColumnDataConverters.DateTimeToUnixTimeMilliseconds((DateTime)value);
+                            dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                        }
+                        else
+                        {
+                            // Unsupported storage type for DateTime
+                            throw UnsupportedDbType(dbType, columnName, targetType, objectType);
+                        }
+                    }
+
+                    // DateOnly supports TEXT or INTEGER (Unix day number).
+                    else if (targetType == typeof(DateOnly))
+                    {
+                        if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? s = SxmColumnDataConverters.DateOnlyToString((DateOnly)value);
+                            dbValue = (object?)s ?? DBNull.Value;
+                        }
+                        else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int? i = SxmColumnDataConverters.DateOnlyToUnixDayNumber((DateOnly)value);
+                            dbValue = i.HasValue ? (object)i.Value : DBNull.Value;
+                        }
+                        else
+                        {
+                            // Unsupported storage type for DateOnly
+                            throw UnsupportedDbType(dbType, columnName, targetType, objectType);
+                        }
+                    }
+
+                    // DateTimeOffset supports TEXT or INTEGER (Unix ms).
+                    else if (targetType == typeof(DateTimeOffset))
+                    {
+                        if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? s = SxmColumnDataConverters.DateTimeOffsetToString((DateTimeOffset)value);
+                            dbValue = (object?)s ?? DBNull.Value;
+                        }
+                        else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            long? l = SxmColumnDataConverters.DateTimeOffsetToUnixTimeMilliseconds((DateTimeOffset)value);
+                            dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                        }
+                        else
+                        {
+                            // Unsupported storage type for DateTimeOffset
+                            throw UnsupportedDbType(dbType, columnName, targetType, objectType);
+                        }
+                    }
+
+                    // TimeSpan supports TEXT or INTEGER (total ms).
+                    else if (targetType == typeof(TimeSpan))
+                    {
+                        if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? s = SxmColumnDataConverters.TimeSpanToString((TimeSpan)value);
+                            dbValue = (object?)s ?? DBNull.Value;
+                        }
+                        else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            long? l = SxmColumnDataConverters.TimeSpanToTotalMilliseconds((TimeSpan)value);
+                            dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                        }
+                        else
+                        {
+                            // Unsupported storage type for TimeSpan
+                            throw UnsupportedDbType(dbType, columnName, targetType, objectType);
+                        }
+                    }
+
+                    // TimeOnly supports TEXT or INTEGER (total ms).
+                    else if (targetType == typeof(TimeOnly))
+                    {
+                        if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? s = SxmColumnDataConverters.TimeOnlyToString((TimeOnly)value);
+                            dbValue = (object?)s ?? DBNull.Value;
+                        }
+                        else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            long? l = SxmColumnDataConverters.TimeOnlyToTotalMilliseconds((TimeOnly)value);
+                            dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
+                        }
+                        else
+                        {
+                            // Unsupported storage type for TimeOnly
+                            throw UnsupportedDbType(dbType, columnName, targetType, objectType);
+                        }
+                    }
+                    else
+                    {
+                        // Default: use value directly (keep non-null).
+                        dbValue = value;
+                    }
+
+                    // Ensure we never return null (contract says DBNull.Value represents null).
+                    returnDictionary[columnName] = dbValue ?? DBNull.Value;
+                }
+                catch (Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                {
+                    string? userPropertyType = pi?.PropertyType.ToString();
+                    string? valueType = value?.GetType().ToString();
+
+                    string errStr =
+                        $"LoadParameterValues failure for column '{columnName}' on entity '{objectType}' " +
+                        $"property type '{userPropertyType}' value type '{valueType}' could not convert the entity's property.";
+
+                    SxmLogging.Log(ex, errStr);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    string? userPropertyType = pi?.PropertyType.ToString();
+                    string? valueType = value?.GetType().ToString();
+
+                    string errStr =
+                        $"LoadParameterValues failure for column '{columnName}' on entity '{objectType}' " +
+                        $"property type '{userPropertyType}' value type '{valueType}' could not convert the entity's property.";
+
+                    SxmLogging.Log(ex, errStr);
+                    throw ExceptionHelper.Wrap(ex, errStr);
+                }
+            }
+
+            return returnDictionary;
+        }
+
+        /// <summary>
+        /// Creates an <see cref="ArgumentException"/> indicating that the provided database
+        /// storage type is not supported for the mapped CLR property type.
+        /// </summary>
+        /// <param name="dbType">
+        /// The storage type specified by the database schema or column mapping
+        /// (for example: "TEXT", "INTEGER", "BLOB").
+        /// </param>
+        /// <param name="columnName">
+        /// The database column being processed.
+        /// </param>
+        /// <param name="targetType">
+        /// The CLR type of the entity property being converted.
+        /// </param>
+        /// <returns>
+        /// An <see cref="ArgumentException"/> describing the unsupported mapping.
+        /// </returns>
+        /// <remarks>
+        /// This helper centralizes exception message formatting for unsupported
+        /// storage-type conversions. It ensures consistent diagnostics across
+        /// parameter-loading operations without duplicating string construction
+        /// logic throughout <c>LoadParameterValues</c>.
+        /// </remarks>
+        static ArgumentException UnsupportedDbType(string dbType, string columnName, Type targetType, Type objectType)
+        {
+            // Throwing here signals a configuration or mapping error rather than
+            // a runtime data issue. The caller decides whether to wrap or propagate.
+            return new ArgumentException(
+                $"Unsupported DB type '{dbType}' for column '{columnName}' on entity '{objectType}' mapped to CLR type '{targetType}'.");
         }
     }
 

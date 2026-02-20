@@ -557,7 +557,7 @@ namespace SQLiteXM
         internal async Task ExecuteQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(SxmErrorMessages.Error[SxmDefines.SxmErrorCode.MissingSQL]);
+                throw new SxmException(SxmErrorMessages.Errors[SxmDefines.SxmErrorCode.MissingSQL]);
 
             try
             {
@@ -614,7 +614,7 @@ namespace SQLiteXM
         internal async Task ExecuteNonQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(command))
-                throw new SxmException(SxmErrorMessages.Error[SxmDefines.SxmErrorCode.MissingSQL]);
+                throw new SxmException(SxmErrorMessages.Errors[SxmDefines.SxmErrorCode.MissingSQL]);
 
             try
             {
