@@ -1,5 +1,5 @@
 ﻿using LinqToDB.SqlQuery;
-using SQLiteXM.Internal;
+using SQLiteXM.Internal.Threading;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -66,7 +66,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            return await Task.FromResult(ir).CAF();
+            return await Task.FromResult(ir).ConfigureFalse();
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            return await Task.FromResult(ir).CAF();
+            return await Task.FromResult(ir).ConfigureFalse();
         }
 
         internal static async Task<Dictionary<string, object?>> PerformInsertDirectAsync(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
@@ -142,7 +142,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            return await Task.FromResult(ir).CAF();
+            return await Task.FromResult(ir).ConfigureFalse();
         }
 
         internal static async Task<Dictionary<string, object?>> PerformInsertDirectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
@@ -168,7 +168,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            return await Task.FromResult(ir).CAF();
+            return await Task.FromResult(ir).ConfigureFalse();
         }
 
     }

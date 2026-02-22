@@ -1,14 +1,11 @@
 ﻿using LinqToDB.Mapping;
-using Microsoft.VisualBasic;
-using SQLiteXM.Internal;
+using SQLiteXM.Internal.Threading;
 using System;
 using System.Collections.Concurrent;
-using System.Reflection;
-using System.Runtime.Intrinsics.Arm;
-using System.Xml.Linq;
-using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
-using static SQLiteXM.SxmDefines;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using System.Xml.Serialization;
+using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM
 {
@@ -91,6 +88,7 @@ namespace SQLiteXM
         /// <param name="databaseName">Database name to use for initialization. If null, an implicit DB name is created.</param>
         public SxmEntity(string? databaseName)
         {
+            SxmInit.EnsureInitialized();
             this._databaseName = databaseName;
             Initialize();
         }
@@ -101,6 +99,7 @@ namespace SQLiteXM
         /// </summary>
         public SxmEntity()
         {
+            SxmInit.EnsureInitialized();
             Initialize();
         }
 
@@ -140,20 +139,20 @@ namespace SQLiteXM
                         GetColumnNamesAndDataTypes(props);
 
                         bool newTable;
-                        if (!(newTable = await CreateTableAsync().ConfigureAwait(false)))  // Create the table if it does not already exist.
-                            await AddColumnsAsync().ConfigureAwait(false); // If this is an already existing table in the DB, check to see if new columns were added.
+                        if (!(newTable = await CreateTableAsync().ConfigureFalse()))  // Create the table if it does not already exist.
+                            await AddColumnsAsync().ConfigureFalse(); // If this is an already existing table in the DB, check to see if new columns were added.
 
                         var std = new List<string>();
                         var uniq = new List<string>();
-                        await GetIndexTableStatementsAsync(std, uniq).ConfigureAwait(false);
+                        await GetIndexTableStatementsAsync(std, uniq).ConfigureFalse();
 
-                        await ProcessIndexStatementsAsync(IndexType.Standard, std).ConfigureAwait(false);
-                        await ProcessIndexStatementsAsync(IndexType.Unique, uniq).ConfigureAwait(false);
-                        await ProcessTriggerAttributesAsync().ConfigureAwait(false);
+                        await ProcessIndexStatementsAsync(IndexType.Standard, std).ConfigureFalse();
+                        await ProcessIndexStatementsAsync(IndexType.Unique, uniq).ConfigureFalse();
+                        await ProcessTriggerAttributesAsync().ConfigureFalse();
 
                         // If this is an already existing table in the DB, drop columns now that everything else has been reconciled.
                         if (!newTable)
-                            await DropColumnsAsync().ConfigureAwait(false);
+                            await DropColumnsAsync().ConfigureFalse();
                     }),
                     LazyThreadSafetyMode.ExecutionAndPublication
                 )
@@ -315,9 +314,9 @@ namespace SQLiteXM
                     throw new InvalidOperationException($"Insert statement not found for '{tableName}'.");
 
                 if (sxmTrans == null)
-                    await InsertAsync(insertGuid).CAF();
+                    await InsertAsync(insertGuid).ConfigureFalse();
                 else
-                    await InsertAsync(insertGuid, sxmTrans).CAF();
+                    await InsertAsync(insertGuid, sxmTrans).ConfigureFalse();
             }
             else
             {
@@ -327,36 +326,32 @@ namespace SQLiteXM
                     throw new InvalidOperationException($"Update statement not found for '{tableName}'.");
 
                 if (sxmTrans == null)
-                    await UpdateAsync(updateGuid).CAF();
+                    await UpdateAsync(updateGuid).ConfigureFalse();
                 else
-                    await UpdateAsync(updateGuid, sxmTrans).CAF();
+                    await UpdateAsync(updateGuid, sxmTrans).ConfigureFalse();
             }
         }
 
         // Save Statements.
         private async Task InsertAsync(string sqlStatementName)
         {
-            {
-                Dictionary<string, object?> result = await SxmStatement.InsertAsync<SxmEntity>(sqlStatementName, this, _databaseName).CAF();
-                SxmHelpers.LoadDbValues(result, this);
-            }
+            Dictionary<string, object?> result = await SxmStatement.InsertAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
+            SxmHelpers.LoadDbValues(result, this);
         }
         private async Task InsertAsync(string sqlStatementName, SxmTransaction sxmTrans)
         {
-            {
-                Dictionary<string, object?> result = await sxmTrans.InsertAsync<SxmEntity>(sqlStatementName, this).CAF();
-                SxmHelpers.LoadDbValues(result, this);
-            }
+            Dictionary<string, object?> result = await sxmTrans.InsertAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
+            SxmHelpers.LoadDbValues(result, this);
         }
 
         // Update statements.
         private async Task UpdateAsync(string sqlStatementName)
         {
-            await SxmStatement.UpdateAsync<SxmEntity>(sqlStatementName, this, _databaseName).CAF();
+            await SxmStatement.UpdateAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
         }
         private async Task UpdateAsync(string sqlStatementName, SxmTransaction sxmTrans)
         {
-            await sxmTrans.UpdateAsync<SxmEntity>(sqlStatementName, this).CAF();
+            await sxmTrans.UpdateAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
         }
 
         /// <summary>
@@ -387,19 +382,19 @@ namespace SQLiteXM
 
             // If no transaction supplied, perform non-transactional delete; otherwise use the provided transaction.
             if (sxmTrans == null)
-                await DeleteAsync(deleteGuid).CAF();
+                await DeleteAsync(deleteGuid).ConfigureFalse();
             else
-                await DeleteAsync(deleteGuid, sxmTrans).CAF();
+                await DeleteAsync(deleteGuid, sxmTrans).ConfigureFalse();
         }
 
         // Delete statements.
         private async Task DeleteAsync(string sqlStatementName)
         {
-            await SxmStatement.DeleteAsync<SxmEntity>(sqlStatementName, this, _databaseName).CAF();
+            await SxmStatement.DeleteAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
         }
         private async Task DeleteAsync(string sqlStatementName, SxmTransaction sxmTrans)
         {
-            await sxmTrans.DeleteAsync<SxmEntity>(sqlStatementName, this).CAF();
+            await sxmTrans.DeleteAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
         }
 
         /// <summary>
@@ -859,11 +854,11 @@ namespace SQLiteXM
 
             if (sxmTrans != null && sxmTrans.Connection != null)
             {
-                exists = await DoesRecordExistAsync(sxmTrans.Connection).ConfigureAwait(false);
+                exists = await DoesRecordExistAsync(sxmTrans.Connection).ConfigureFalse();
             }
             else
             {
-                exists = await DoesRecordExistAsync().ConfigureAwait(false);
+                exists = await DoesRecordExistAsync().ConfigureFalse();
             }
 
             return exists;
@@ -882,7 +877,7 @@ namespace SQLiteXM
                     string tableName = this.GetType().Name;
 
                     string sqlSelect = $"SELECT {SxmHelpers.QuoteIdentifier("id")} FROM {SxmHelpers.QuoteIdentifier(tableName)} WHERE {SxmHelpers.QuoteIdentifier("id")} = @p0";
-                    await conn.ExecuteQueryAsync(sqlSelect, new List<object> { id }).ConfigureAwait(false);
+                    await conn.ExecuteQueryAsync(sqlSelect, new List<object> { id }).ConfigureFalse();
                     if (conn.HasRows() == true)
                         return true;
                 }
@@ -914,7 +909,7 @@ namespace SQLiteXM
 
                     sxmConnection = new SxmConnection(_databaseName);
                     string sqlSelect = $"SELECT {SxmHelpers.QuoteIdentifier("id")} FROM {SxmHelpers.QuoteIdentifier(tableName)} WHERE {SxmHelpers.QuoteIdentifier("id")} = @p0";
-                    await sxmConnection.ExecuteQueryAsync(sqlSelect, new List<object> { id }).ConfigureAwait(false);
+                    await sxmConnection.ExecuteQueryAsync(sqlSelect, new List<object> { id }).ConfigureFalse();
                     if (sxmConnection.HasRows() == true)
                         return true;
                 }
@@ -1179,7 +1174,7 @@ namespace SQLiteXM
         {
             MapProperties(mapSource);
             // Persist the entity after mapping. Use CAF() to follow project's await pattern.
-            await SaveAsync().CAF();
+            await SaveAsync().ConfigureFalse();
         }
 
         /// <summary>

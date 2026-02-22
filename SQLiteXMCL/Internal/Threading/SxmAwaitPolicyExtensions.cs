@@ -1,11 +1,11 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace SQLiteXM.Internal
+namespace SQLiteXM.Internal.Threading
 {
     /// <summary>
     /// Provides small extension helpers for quickly calling <see cref="Task.ConfigureAwait(bool)"/> and <see cref="ValueTask.ConfigureAwait(bool)"/>.
     /// </summary>
-    internal static class SxmExtensionClasses
+    internal static class SxmAwaitPolicyExtensions
     {
         /// <summary>
         /// Configures an await on the supplied <see cref="Task"/> to not capture the current synchronization context.
@@ -16,8 +16,7 @@ namespace SQLiteXM.Internal
         /// This is a convenience wrapper for <see cref="Task.ConfigureAwait(bool)"/> with <c>false</c>.
         /// Use to avoid deadlocks and unnecessary context captures in library code.
         /// </remarks>
-        internal static ConfiguredTaskAwaitable CAF(this Task task)
-            => task.ConfigureAwait(false);
+        internal static ConfiguredTaskAwaitable ConfigureFalse(this Task task) => task.ConfigureAwait(false);
 
         /// <summary>
         /// Configures an await on the supplied <see cref="Task{TResult}"/> to not capture the current synchronization context.
@@ -29,8 +28,7 @@ namespace SQLiteXM.Internal
         /// This is a convenience wrapper for <see cref="Task{TResult}.ConfigureAwait(bool)"/> with <c>false</c>.
         /// Use to avoid deadlocks and unnecessary context captures in library code.
         /// </remarks>
-        internal static ConfiguredTaskAwaitable<T> CAF<T>(this Task<T> task)
-            => task.ConfigureAwait(false);
+        internal static ConfiguredTaskAwaitable<T> ConfigureFalse<T>(this Task<T> task) => task.ConfigureAwait(false);
 
         /// <summary>
         /// Configures an await on the supplied <see cref="ValueTask"/> to not capture the current synchronization context.
@@ -41,8 +39,7 @@ namespace SQLiteXM.Internal
         /// This is a convenience wrapper for <see cref="ValueTask.ConfigureAwait(bool)"/> with <c>false</c>.
         /// Prefer <see cref="ValueTask"/> overloads when dealing with value-task-returning APIs.
         /// </remarks>
-        internal static ConfiguredValueTaskAwaitable CAF(this ValueTask task)
-            => task.ConfigureAwait(false);
+        internal static ConfiguredValueTaskAwaitable ConfigureFalse(this ValueTask task) => task.ConfigureAwait(false);
 
         /// <summary>
         /// Configures an await on the supplied <see cref="ValueTask{TResult}"/> to not capture the current synchronization context.
@@ -54,7 +51,6 @@ namespace SQLiteXM.Internal
         /// This is a convenience wrapper for <see cref="ValueTask{TResult}.ConfigureAwait(bool)"/> with <c>false</c>.
         /// Use to avoid deadlocks and unnecessary context captures in library code.
         /// </remarks>
-        internal static ConfiguredValueTaskAwaitable<T> CAF<T>(this ValueTask<T> task)
-            => task.ConfigureAwait(false);
+        internal static ConfiguredValueTaskAwaitable<T> ConfigureFalse<T>(this ValueTask<T> task) => task.ConfigureAwait(false);
     }
 }

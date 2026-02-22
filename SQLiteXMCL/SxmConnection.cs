@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using SQLiteXM.Internal.Threading;
+using System.Collections;
 using System.Data.Common;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -145,7 +146,7 @@ namespace SQLiteXM
         {
             Guid ownerId = requestedOwnerId ?? Guid.NewGuid();
 
-            bool locked = await LockAsync(millisecondsTimeout, cancellationToken, ownerId).ConfigureAwait(false);
+            bool locked = await LockAsync(millisecondsTimeout, cancellationToken, ownerId).ConfigureFalse();
             if (!locked)
             {
                 // Preserve existing behavior: surface a lock failure as a library exception.
@@ -286,7 +287,7 @@ namespace SQLiteXM
                 if (_dbConn == null) return false;
 
                 // Wait for the semaphore with timeout/cancellation.
-                if (await _asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), cancellationToken).ConfigureAwait(false))
+                if (await _asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), cancellationToken).ConfigureFalse())
                 {
                     lock (_ownerSync)
                     {
@@ -463,7 +464,7 @@ namespace SQLiteXM
             SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
             if (_dbConn != null && _dbConnTransaction != null)
-                sqLiteErrorCode = await DoCommitAsync(commitFlag).ConfigureAwait(false);
+                sqLiteErrorCode = await DoCommitAsync(commitFlag).ConfigureFalse();
 
             return sqLiteErrorCode;
         }
@@ -478,9 +479,9 @@ namespace SQLiteXM
                 try
                 {
                     if (commitFlag == SQLiteXM.SxmDefines.CommitTransaction)
-                        await _dbConnTransaction.CommitAsync().ConfigureAwait(false);
+                        await _dbConnTransaction.CommitAsync().ConfigureFalse();
                     else
-                        await _dbConnTransaction.RollbackAsync().ConfigureAwait(false);
+                        await _dbConnTransaction.RollbackAsync().ConfigureFalse();
 
                     _dbConnTransaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
                 }
@@ -572,7 +573,7 @@ namespace SQLiteXM
 
                 if (_connCommand is DbCommand dbCmd)
                 {
-                    _connDataReader = await dbCmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                    _connDataReader = await dbCmd.ExecuteReaderAsync(cancellationToken).ConfigureFalse();
                 }
                 else
                 {
@@ -630,7 +631,7 @@ namespace SQLiteXM
 
                 if (_connCommand is DbCommand dbCmd)
                 {
-                    await dbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    await dbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureFalse();
                 }
                 else
                 {

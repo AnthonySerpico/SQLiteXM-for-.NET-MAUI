@@ -1,6 +1,6 @@
 ﻿using LinqToDB;
 using LinqToDB.Linq;
-using SQLiteXM.Internal;
+using SQLiteXM.Internal.Threading;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -818,7 +818,7 @@ namespace SQLiteXM
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
 
             // Materialize rows asynchronously then build dictionary client-side to avoid provider overload mismatches.
-            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).CAF();
+            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
 
             var dict = new Dictionary<TKey, T>();
@@ -852,7 +852,7 @@ namespace SQLiteXM
 
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
 
-            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).CAF();
+            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
             var elemFunc = elementSelector.Compile();
 
@@ -876,7 +876,7 @@ namespace SQLiteXM
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
 
-            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).CAF();
+            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
 
             var dict = new Dictionary<TKey, T>();
@@ -900,7 +900,7 @@ namespace SQLiteXM
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
             if (elementSelector == null) throw new ArgumentNullException(nameof(elementSelector));
 
-            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).CAF();
+            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
             var elemFunc = elementSelector.Compile();
 

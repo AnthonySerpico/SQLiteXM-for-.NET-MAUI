@@ -1,3 +1,4 @@
+using SQLiteXM.Internal.Threading;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -168,7 +169,7 @@ namespace SQLiteXM
 
             using (ct.Register(() => entry.Tcs?.TrySetCanceled()))
             {
-                await waitTask!.WaitAsync(ct).ConfigureAwait(false);
+                await waitTask!.WaitAsync(ct).ConfigureFalse();
             }
 
             lock (entry.Sync)
@@ -229,12 +230,12 @@ namespace SQLiteXM
                     // Launch each worker using the same sharedConn; workers must still coordinate via SxmConnection.LockAsync if they need exclusive access.
                     tasks.Add(Task.Run(async () =>
                     {
-                        await worker(sharedConn).ConfigureAwait(false);
+                        await worker(sharedConn).ConfigureFalse();
                     }, ct));
                     index++;
                 }
 
-                await Task.WhenAll(tasks).ConfigureAwait(false);
+                await Task.WhenAll(tasks).ConfigureFalse();
             }
             finally
             {
@@ -244,7 +245,7 @@ namespace SQLiteXM
                     ConnectionLease lease = leases[i];
                     try
                     {
-                        await lease.DisposeAsync().ConfigureAwait(false);
+                        await lease.DisposeAsync().ConfigureFalse();
                     }
                     catch (Exception ex)
                     {

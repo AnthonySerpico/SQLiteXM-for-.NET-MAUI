@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using SQLiteXM.Internal.Threading;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
@@ -194,7 +195,7 @@ namespace SQLiteXM
             try
             {
                 var reader = _writeChannel.Reader;
-                while (await reader.WaitToReadAsync(token).ConfigureAwait(false))
+                while (await reader.WaitToReadAsync(token).ConfigureFalse())
                 {
                     while (reader.TryRead(out var entry))
                     {
@@ -205,7 +206,7 @@ namespace SQLiteXM
                             if (dropped > 0)
                             {
                                 string summary = $"*** Dropped {dropped} log entries due to full log queue. ***{Environment.NewLine}";
-                                await File.AppendAllTextAsync(_logPath, summary, Encoding.UTF8, token).ConfigureAwait(false);
+                                await File.AppendAllTextAsync(_logPath, summary, Encoding.UTF8, token).ConfigureFalse();
                             }
 
                             // Ensure directory exists in case it was removed after construction.
@@ -214,7 +215,7 @@ namespace SQLiteXM
                                 Directory.CreateDirectory(directory);
 
                             // Use append semantics for each entry.
-                            await File.AppendAllTextAsync(_logPath, entry, Encoding.UTF8, token).ConfigureAwait(false);
+                            await File.AppendAllTextAsync(_logPath, entry, Encoding.UTF8, token).ConfigureFalse();
 
                             // Rotate if file exceeded the configured max size.
                             try
@@ -222,7 +223,7 @@ namespace SQLiteXM
                                 var fileInfo = new FileInfo(_logPath);
                                 if (fileInfo.Exists && fileInfo.Length > _maxLogSize)
                                 {
-                                    await RotateLogFileAsync(token).ConfigureAwait(false);
+                                    await RotateLogFileAsync(token).ConfigureFalse();
                                 }
                             }
                             catch
@@ -291,7 +292,7 @@ namespace SQLiteXM
 
                     try
                     {
-                        await Task.Delay(delayMs, token).ConfigureAwait(false);
+                        await Task.Delay(delayMs, token).ConfigureFalse();
                     }
                     catch
                     {

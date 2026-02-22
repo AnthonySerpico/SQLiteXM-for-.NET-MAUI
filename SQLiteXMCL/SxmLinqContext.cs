@@ -1,7 +1,7 @@
 ﻿using LinqToDB;
 using LinqToDB.Data;
 using Microsoft.Data.Sqlite;
-using SQLiteXM.Internal;
+using SQLiteXM.Internal.Threading;
 using System;
 
 namespace SQLiteXM
@@ -15,6 +15,8 @@ namespace SQLiteXM
 
         public SxmLinqContext(string? databaseName = null)
         {
+            SxmInit.EnsureInitialized();
+
             string connStr = SxmConnection.GetConnectionString(ref databaseName);
             _dConnection = new SqliteConnection(connStr);
             _dConnection.Open();
@@ -53,7 +55,7 @@ namespace SQLiteXM
         private async Task<T> WithDataConnectionAsync<T>(Func<LinqToDB.Data.DataConnection, Task<T>> action)
         {
             if (action == null) throw new ArgumentNullException(nameof(action));
-            return await action(_linqToDbDataConnection).CAF();
+            return await action(_linqToDbDataConnection).ConfigureFalse();
         }
 
         // -------------------------
@@ -150,14 +152,14 @@ namespace SQLiteXM
 
             var results = new List<Dictionary<string, object?>>();
 
-            await using var reader = await cmd.ExecuteReaderAsync().CAF();
-            while (await reader.ReadAsync().CAF())
+            await using var reader = await cmd.ExecuteReaderAsync().ConfigureFalse();
+            while (await reader.ReadAsync().ConfigureFalse())
             {
                 var row = new Dictionary<string, object?>(StringComparer.Ordinal);
                 for (int i = 0; i < reader.FieldCount; i++)
                 {
                     string name = reader.GetName(i);
-                    object? val = await reader.IsDBNullAsync(i).CAF() ? null : reader.GetValue(i);
+                    object? val = await reader.IsDBNullAsync(i).ConfigureFalse() ? null : reader.GetValue(i);
                     row[name] = val;
                 }
                 results.Add(row);
@@ -178,7 +180,7 @@ namespace SQLiteXM
             if (entity is SxmEntity sxm)
             {
                 // entity is SxmEntity or derived — use sxm
-                await sxm.SaveAsync().CAF();
+                await sxm.SaveAsync().ConfigureFalse();
                 return 1;
             }
             else
@@ -215,7 +217,7 @@ namespace SQLiteXM
         public async Task InsertAsync(SxmEntity entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            await entity.SaveAsync().CAF();
+            await entity.SaveAsync().ConfigureFalse();
         }
 
         // -------------------------
@@ -310,7 +312,7 @@ namespace SQLiteXM
         // Default now uses RollbackOnAnyFailure (strict atomic behavior).
         public async Task<SubmitChangesResult> SubmitChangesAsync()
         {
-            return await SubmitChangesAsync(ConflictMode.RollbackOnAnyFailure).CAF();
+            return await SubmitChangesAsync(ConflictMode.RollbackOnAnyFailure).ConfigureFalse();
         }
 
         public async Task<SubmitChangesResult> SubmitChangesAsync(ConflictMode conflictMode)
@@ -341,19 +343,19 @@ namespace SQLiteXM
                                 case ChangeType.Insert:
                                 case ChangeType.Update:
                                     // Save decides insert vs update based on existence; use transaction-aware overload.
-                                    await action.Entity.SaveAsync(sxmTrans).CAF();
+                                    await action.Entity.SaveAsync(sxmTrans).ConfigureFalse();
                                     break;
 
                                 case ChangeType.Delete:
-                                    await action.Entity.DeleteAsync(sxmTrans).CAF();
+                                    await action.Entity.DeleteAsync(sxmTrans).ConfigureFalse();
                                     break;
 
                                 case ChangeType.InsertOrReplace:
-                                    await action.Entity.InsertOrReplaceAsync(sxmTrans).CAF();
+                                    await action.Entity.InsertOrReplaceAsync(sxmTrans).ConfigureFalse();
                                     break;
 
                                 case ChangeType.InsertOrUpdate:
-                                    await action.Entity.InsertOrUpdateAsync(sxmTrans).CAF();
+                                    await action.Entity.InsertOrUpdateAsync(sxmTrans).ConfigureFalse();
                                     break;
                             }
 

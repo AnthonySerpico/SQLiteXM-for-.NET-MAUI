@@ -127,6 +127,87 @@
     }
 
     /// <summary>
+    /// Specifies the SQLite journal mode used to control transaction durability
+    /// and concurrency behavior.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Journal modes correspond to SQLite PRAGMA <c>journal_mode</c> settings.
+    /// These options influence how changes are written to disk and how concurrent
+    /// access is handled.
+    /// </para>
+    /// <para>
+    /// Most applications should use <see cref="Default"/> and allow SQLiteXM to
+    /// select an appropriate mode automatically.
+    /// </para>
+    /// </remarks>
+    public enum SxmJournalMode
+    {
+        /// <summary>
+        /// Uses the DELETE journal mode, where the rollback journal is deleted
+        /// after each transaction completes.
+        /// </summary>
+        Delete,
+
+        /// <summary>
+        /// Uses the TRUNCATE journal mode, where the rollback journal is truncated
+        /// instead of deleted after transactions.
+        /// </summary>
+        Truncate,
+
+        /// <summary>
+        /// Uses the PERSIST journal mode, which retains the journal file but resets
+        /// its header for reuse.
+        /// </summary>
+        Persist,
+
+        /// <summary>
+        /// Uses the MEMORY journal mode, storing the rollback journal in memory.
+        /// This improves performance but reduces durability.
+        /// </summary>
+        Memory,
+
+        /// <summary>
+        /// Uses Write-Ahead Logging (WAL) mode, enabling higher concurrency and
+        /// improved write performance in many scenarios.
+        /// </summary>
+        Wal,
+
+        /// <summary>
+        /// Disables journaling. This provides maximum performance but significantly
+        /// reduces data safety and should be used with caution.
+        /// </summary>
+        Off
+    }
+
+    public enum SxmSynchronousMode
+    {
+        /// <summary>
+        /// Disables journaling. This provides maximum performance but significantly
+        /// reduces data safety and should be used with caution.
+        /// </summary>
+        Off = 0,
+
+        /// <summary>
+        /// Uses the DELETE journal mode, where the rollback journal is deleted
+        /// after each transaction completes.
+        /// </summary>
+        Normal,
+
+        /// <summary>
+        /// Uses the TRUNCATE journal mode, where the rollback journal is truncated
+        /// instead of deleted after transactions.
+        /// </summary>
+        Full,
+
+        /// <summary>
+        /// Uses the PERSIST journal mode, which retains the journal file but resets
+        /// its header for reuse.
+        /// </summary>
+        Extra
+    }
+
+    /// <summary>
     /// Column type enumeration used by the library.
     /// </summary>
     public enum ColumnType
@@ -277,7 +358,7 @@
     /// <summary>
     /// Project-wide constant and helper definitions.
     /// </summary>
-    public class SxmDefines
+    public static class SxmDefines
     {
         /// <summary>
         /// Delimiter used to open a statement in SQL statements properties files.
@@ -543,10 +624,5 @@
             /// </summary>
             AcquireLease
         };
-
-        /// <summary>
-        /// Prevents instantiation of the <see cref="SxmDefines"/> class.
-        /// </summary>
-        private SxmDefines() { }
     }
 }

@@ -1,4 +1,4 @@
-﻿using SQLiteXM.Internal;
+﻿using SQLiteXM.Internal.Threading;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -51,7 +51,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            await Task.CompletedTask.CAF();
+            await Task.CompletedTask.ConfigureFalse();
         }
 
         /// <summary>
@@ -81,7 +81,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            await Task.CompletedTask.CAF();
+            await Task.CompletedTask.ConfigureFalse();
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            await Task.CompletedTask.CAF();
+            await Task.CompletedTask.ConfigureFalse();
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            await Task.CompletedTask.CAF();
+            await Task.CompletedTask.ConfigureFalse();
         }
 
     }
