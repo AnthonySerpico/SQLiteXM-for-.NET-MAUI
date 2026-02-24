@@ -1,6 +1,8 @@
-﻿using SQLiteXM.Internal.Threading;
+﻿using Microsoft.Data.Sqlite;
+using SQLiteXM.Internal.Threading;
 using System.Collections;
 using System.Data.Common;
+using static LinqToDB.Common.Configuration;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SQLiteXM
@@ -87,7 +89,7 @@ namespace SQLiteXM
         }
         private DbCommand? _connCommand;
         private DbDataReader? _connDataReader;
-        private Microsoft.Data.Sqlite.SqliteConnection? _dbConn;
+        private Microsoft.Data.Sqlite.SqliteConnection? _sqliteConnection;
         private Microsoft.Data.Sqlite.SqliteTransaction? _dbConnTransaction;
 
         private static readonly object _synchLock = new object();
@@ -201,18 +203,10 @@ namespace SQLiteXM
             try
             {
                 string? connectionString = SxmConnection.GetConnectionString(ref this._databaseName);
-                _dbConn = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
-                _dbConn.Open();
+                _sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
+                _sqliteConnection.Open();
 
-                // Execute PRAGMA synchronously (very quick) to avoid sync-over-async in ctor.
-                using (var cmd = _dbConn.CreateCommand())
-                {
-                    cmd.CommandText = "PRAGMA foreign_keys = ON";
-                    cmd.ExecuteNonQuery();
-
-                    cmd.CommandText = "PRAGMA journal_mode = WAL";
-                    cmd.ExecuteNonQuery();
-                }
+                SxmInitOptions.RunConnectionPragmas(_sqliteConnection);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -284,7 +278,7 @@ namespace SQLiteXM
                     }
                 }
 
-                if (_dbConn == null) return false;
+                if (_sqliteConnection == null) return false;
 
                 // Wait for the semaphore with timeout/cancellation.
                 if (await _asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), cancellationToken).ConfigureFalse())
@@ -297,12 +291,12 @@ namespace SQLiteXM
                     }
 
                     // If underlying connection was in a bad state, attempt to repair it.
-                    if (_dbConn.State == System.Data.ConnectionState.Broken)
+                    if (_sqliteConnection.State == System.Data.ConnectionState.Broken)
                     {
                         try
                         {
-                            _dbConn.Close();
-                            _dbConn.Open();
+                            _sqliteConnection.Dispose();  // Closes the connection.
+                            CreateNewConnection();
                         }
                         catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                         {
@@ -415,7 +409,7 @@ namespace SQLiteXM
         /// <param name="destroy">Force destruction of the underlying connection (default false).</param>
         public void ReleaseConnection(bool destroy = false)
         {
-            if (_dbConn != null)
+            if (_sqliteConnection != null)
             {
                 try
                 {
@@ -463,7 +457,7 @@ namespace SQLiteXM
         {
             SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
 
-            if (_dbConn != null && _dbConnTransaction != null)
+            if (_sqliteConnection != null && _dbConnTransaction != null)
                 sqLiteErrorCode = await DoCommitAsync(commitFlag).ConfigureFalse();
 
             return sqLiteErrorCode;
@@ -518,13 +512,13 @@ namespace SQLiteXM
         /// </summary>
         public void DestroyConnection()
         {
-            if (_dbConn != null)
+            if (_sqliteConnection != null)
             {
                 ReleaseConnectionResources();
+                SxmInitOptions.RunConnectionClosing(_sqliteConnection);
 
-                _dbConn.Close();
-                _dbConn.Dispose();
-                _dbConn = default(Microsoft.Data.Sqlite.SqliteConnection);
+                _sqliteConnection.Dispose();  // Closes the connection.
+                _sqliteConnection = default(Microsoft.Data.Sqlite.SqliteConnection);
             }
         }
 
@@ -563,7 +557,7 @@ namespace SQLiteXM
             try
             {
                 if (_connCommand == null)
-                    _connCommand = _dbConn.CreateCommand();
+                    _connCommand = _sqliteConnection.CreateCommand();
                 else
                     ReleaseDataReader();
 
@@ -620,7 +614,7 @@ namespace SQLiteXM
             try
             {
                 if (_connCommand == null)
-                    _connCommand = _dbConn.CreateCommand();
+                    _connCommand = _sqliteConnection.CreateCommand();
                 else
                     if (command.StartsWith("DELETE FROM companyReg WHERE companyRegPK") == false)
                         ReleaseDataReader();
@@ -741,9 +735,9 @@ namespace SQLiteXM
             {
                 if (_dbConnTransaction == null)
                 {
-                    _dbConnTransaction = _dbConn.BeginTransaction();
+                    _dbConnTransaction = _sqliteConnection.BeginTransaction();
                     if (_connCommand == null)
-                        _connCommand = _dbConn.CreateCommand();
+                        _connCommand = _sqliteConnection.CreateCommand();
                     _connCommand.Transaction = _dbConnTransaction;
                 }
 

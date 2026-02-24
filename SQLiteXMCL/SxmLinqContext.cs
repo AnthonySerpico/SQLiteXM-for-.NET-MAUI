@@ -9,7 +9,7 @@ namespace SQLiteXM
     public class SxmLinqContext : IDisposable
     {
         private bool _isDisposed = false;
-        private readonly SqliteConnection _dConnection;
+        private readonly Microsoft.Data.Sqlite.SqliteConnection _sqliteConnection;
         private readonly SxmChangeSet _changeSet = new SxmChangeSet();
         private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
 
@@ -18,10 +18,12 @@ namespace SQLiteXM
             SxmInit.EnsureInitialized();
 
             string connStr = SxmConnection.GetConnectionString(ref databaseName);
-            _dConnection = new SqliteConnection(connStr);
-            _dConnection.Open();
+            _sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(connStr);
+            _sqliteConnection.Open();
 
-            _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _dConnection);
+            SxmInitOptions.RunConnectionPragmas(_sqliteConnection);
+
+            _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _sqliteConnection);
             _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
         }
 
@@ -138,7 +140,7 @@ namespace SQLiteXM
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
 
             // Use the owned SqliteConnection directly (safe — still not exposing it).
-            await using var cmd = _dConnection.CreateCommand();
+            await using var cmd = _sqliteConnection.CreateCommand();
             cmd.CommandText = sql;
 
             // Add parameters named @p0, @p1, ... to keep the API simple.
@@ -469,7 +471,9 @@ namespace SQLiteXM
 
             if (disposing)
             {
-                _dConnection?.Dispose();
+                SxmInitOptions.RunConnectionClosing(_sqliteConnection);
+
+                _sqliteConnection?.Dispose();  // Closes the connection.
                 _linqToDbDataConnection?.Dispose();
             }
 

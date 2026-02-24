@@ -37,13 +37,16 @@ namespace SQLiteXM
         // Reads outside the gate are safe because false positives only cause an extra wait.
         private static bool _initialized = false;
 
+        private static SxmInitOptions? _initOptions;
+        public static SxmInitOptions? InitOptions => _initOptions;
+
         /// <summary>
         /// Initialize the database using SQL statements parsed from the specified file.
         /// </summary>
         /// <param name="sqlStatementsFileName">Path to the SQL statements file (absolute or relative).</param>
         /// <param name="fileType">Format of the SQL statements file.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        public static async Task InitDbAsync(string sqlStatementsFileName, SxmInitOptions? options = null)
+        public static async Task InitDbAsync(string sqlStatementsFileName, SxmInitOptions? initOptions = null)
         {
             await _initGate.WaitAsync().ConfigureFalse();
             try
@@ -62,7 +65,9 @@ namespace SQLiteXM
                     await ParseSqlStatementsFile(stream, fileType).ConfigureFalse();
                 }
 
-                await SxmInit.InitializeAsync(options);
+                await SxmInit.InitializeAsync();
+
+                _initOptions = initOptions;
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -80,7 +85,7 @@ namespace SQLiteXM
         /// <param name="stream">Open, readable stream containing SQL statement definitions.</param>
         /// <param name="fileType">Format of the SQL statements contained in the stream.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        public static async Task InitDbAsync(Stream stream, SxmInitOptions? options = null)
+        public static async Task InitDbAsync(Stream stream, SxmInitOptions? initOptions = null)
         {
             await _initGate.WaitAsync().ConfigureFalse();
             try
@@ -89,7 +94,9 @@ namespace SQLiteXM
                     return;
 
                 await ParseSqlStatementsFile(stream, SqlStatementsFileType.Unknown).ConfigureFalse();
-                await SxmInit.InitializeAsync(options);
+                await SxmInit.InitializeAsync();
+
+                _initOptions = initOptions;
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -223,7 +230,7 @@ namespace SQLiteXM
         /// Initialize the database schema and auxiliary structures using the currently parsed SQL statements.
         /// </summary>
         /// <returns>True on success.</returns>
-        private static async Task<bool> InitializeAsync(SxmInitOptions? options)
+        private static async Task<bool> InitializeAsync()
         {
             // At this point, the SQL statements file has been parsed, the database name, default status, and version have been loaded into SxmProcessSQLStatements.
             new SxmDatabaseDescriptor();
@@ -233,7 +240,6 @@ namespace SQLiteXM
             {
                 long sqlStatementsVersionNumber = SxmProcessSQLStatements.SqlStatementsVersionNumber;  // The value in the current SQL statements file.
                 long currentDbVersionNumber = await GetDbVersionNumberAsync(databaseName);
-                await SetSQLiteOptionsAsync(databaseName, options);
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
@@ -435,69 +441,9 @@ namespace SQLiteXM
             return versionNumber;
         }
 
-        /// <summary>
-        /// Attempts to set recommended journal and synchronous PRAGMA settings for the database.
-        /// </summary>
-        /// <returns>A task that completes when the PRAGMA settings have been applied (errors are swallowed).</returns>
-        private static async Task SetSQLiteOptionsAsync(string databaseName, SxmInitOptions? options)
+        internal static void SetJournalMode()
         {
-            SxmConnection? sxmConnection = default;
-            options ??= new SxmInitOptions();
 
-            try
-            {
-                sxmConnection = new SxmConnection(databaseName);
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
-                {
-                    string? journalMode = default;
-                    long? synchronous = default;
-
-                    await sxmConnection.ExecuteQueryAsync($"PRAGMA journal_mode={options.JournalMode}", default(List<object>));
-                    if (sxmConnection.HasRows() && sxmConnection.NextRow())
-                    {
-                        journalMode = (string?)sxmConnection.GetValue("journal_mode");
-                        if(journalMode == null || !journalMode.ToLower().Equals(options.JournalMode.ToLower()))
-                        {
-                            throw new InvalidOperationException($"SQLiteXM initialization failed. Unable to set PRAGMA journal_mode to '{options.JournalMode}'. Actual mode is '{journalMode}'.");
-                        }
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"SQLiteXM initialization failed. Unable to set PRAGMA journal_mode to '{options.JournalMode}'. Actual mode is '{journalMode}'.");
-                    }
-
-                    await sxmConnection.ExecuteQueryAsync($"PRAGMA synchronous={(long)options.SynchronousModeOption}", default(List<object>));
-                    await sxmConnection.ExecuteQueryAsync($"PRAGMA synchronous", default(List<object>));
-                    if (sxmConnection.HasRows() && sxmConnection.NextRow())
-                    {
-                        synchronous = (long?)sxmConnection.GetValue("synchronous");
-                        if (synchronous == null || synchronous != (long)options.SynchronousModeOption)
-                        {
-                            throw new InvalidOperationException($"SQLiteXM initialization failed. Unable to set PRAGMA synchronous to '{options.SynchronousModeOption}'. Actual mode is '{synchronous}'.");
-                        }
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"SQLiteXM initialization failed. Unable to set PRAGMA synchronous to '{options.SynchronousModeOption}'. Actual mode is '{synchronous}'.");
-                    }
-                }
-            }
-            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
-            {
-                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"SetJournalModeAsync failure for database '{databaseName}'.");
-                throw;
-            }
-            catch (System.Exception ex)
-            {
-                string errStr = $"SetJournalModeAsync failure for database '{databaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
-            }
-            finally
-            {
-                sxmConnection?.DestroyConnection();
-            }
         }
 
         /// <summary>
@@ -1329,54 +1275,5 @@ namespace SQLiteXM
 
             return triggerNames;
         }
-    }
-
-    /// <summary>
-    /// Represents configuration options used when initializing a SQLiteXM database.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <see cref="SxmInitOptions"/> allows callers to control database initialization
-    /// behavior without requiring direct interaction with low-level SQLite PRAGMA commands.
-    /// These settings are applied during <see cref="SxmInit.InitDbAsync(string, SxmInitOptions?, System.Threading.CancellationToken)"/>
-    /// and are intended to provide a safe, high-level configuration surface.
-    /// </para>
-    /// <para>
-    /// Instances of this class are immutable after creation. Callers may use object
-    /// initializer syntax to specify only the settings they wish to override.
-    /// </para>
-    /// <para>
-    /// Additional options may be added in future versions of SQLiteXM without breaking
-    /// existing callers.
-    /// </para>
-    /// </remarks>
-    public sealed class SxmInitOptions
-    {
-        /// <summary>
-        /// Gets the SQLite journal mode enum that should be applied during initialization.
-        /// Callers set this value via object initializer syntax.
-        /// </summary>
-        public SxmJournalMode JournalModeOption { get; init; } = SxmJournalMode.Delete;
-
-        private SxmSynchronousMode _synchronousMode = SxmSynchronousMode.Normal;
-        /// <summary>
-        /// Gets the SQLite synchronous mode enum that should be applied during initialization.
-        /// Callers set this value via object initializer syntax.
-        /// </summary>
-        public SxmSynchronousMode SynchronousModeOption { get => _synchronousMode; set { _synchronousMode = value; } }
-
-        /// <summary>
-        /// Gets the SQLite PRAGMA string for journal_mode corresponding to <see cref="JournalModeOption"/>.
-        /// </summary>
-        public string JournalMode => JournalModeOption switch
-        {
-            SxmJournalMode.Wal => "WAL",
-            SxmJournalMode.Delete => "DELETE",
-            SxmJournalMode.Truncate => "TRUNCATE",
-            SxmJournalMode.Persist => "PERSIST",
-            SxmJournalMode.Memory => "MEMORY",
-            SxmJournalMode.Off => "OFF",
-            _ => throw new ArgumentOutOfRangeException(nameof(JournalModeOption), JournalModeOption, "Unsupported journal mode.")
-        };
     }
 }

@@ -182,29 +182,23 @@
 
     public enum SxmSynchronousMode
     {
-        /// <summary>
-        /// Disables journaling. This provides maximum performance but significantly
-        /// reduces data safety and should be used with caution.
-        /// </summary>
         Off = 0,
 
-        /// <summary>
-        /// Uses the DELETE journal mode, where the rollback journal is deleted
-        /// after each transaction completes.
-        /// </summary>
         Normal,
 
-        /// <summary>
-        /// Uses the TRUNCATE journal mode, where the rollback journal is truncated
-        /// instead of deleted after transactions.
-        /// </summary>
         Full,
 
-        /// <summary>
-        /// Uses the PERSIST journal mode, which retains the journal file but resets
-        /// its header for reuse.
-        /// </summary>
         Extra
+    }
+
+
+    public enum SxmTempStore
+    {
+        Default = 0,
+
+        File,
+
+        Memory
     }
 
     /// <summary>
