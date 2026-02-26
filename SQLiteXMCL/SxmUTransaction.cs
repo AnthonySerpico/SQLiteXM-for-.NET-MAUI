@@ -549,7 +549,7 @@ namespace SQLiteXM
 
             if (_connection.DatabaseName?.Equals(databaseName) == false)
             {
-                string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
+                string databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
                 string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
 
                 if (File.Exists(dbFullyQualifiedPath) == true)
@@ -578,7 +578,7 @@ namespace SQLiteXM
 
             if (_connection.DatabaseName?.Equals(databaseName) == false)
             {
-                string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
+                string databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
                 string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
                 if (File.Exists(dbFullyQualifiedPath) == true)
                     await _connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);

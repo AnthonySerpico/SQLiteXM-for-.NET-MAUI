@@ -24,12 +24,13 @@ namespace SQLiteXM
         /// <remarks>
         /// Default: <see cref="Environment.SpecialFolder.MyDocuments"/> unless specified when creating the descriptor.
         /// </remarks>
-        private readonly static Environment.SpecialFolder _databaseFolder = Environment.SpecialFolder.MyDocuments;
-        public static Environment.SpecialFolder DatabaseFolder
-        {
-            get { return _databaseFolder; }
-        }
+        private readonly static Environment.SpecialFolder _databaseFolder = Environment.SpecialFolder.LocalApplicationData;
 
+        public static string DatabaseFolder
+        {
+            get { return Path.Combine(Environment.GetFolderPath(_databaseFolder), "SQLiteXM"); }
+        }
+        
         /// <summary>
         /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the database name provided by <see cref="SxmDatabaseDescriptor.DefaultDatabase"/>.
         /// </summary>
@@ -83,12 +84,12 @@ namespace SQLiteXM
             const long defaultMaxLogSize = 4 * 1024 * 1024; // 4 MB
             string logFileName = databaseName + ".log";
 
-            SxmLogging.SxmLoggingFactory(logFileName, DatabaseFolder, defaultMaxLogSize);
+            SxmLogging.SxmLoggingFactory(logFileName, SxmDatabaseDescriptor.DatabaseFolder, defaultMaxLogSize);
         }
 
         private void CreateDB(string databaseName)
         {
-            string databaseFolderString = Environment.GetFolderPath(_databaseFolder);
+            string databaseFolderString = SxmDatabaseDescriptor.DatabaseFolder;
 
             if (Directory.Exists(databaseFolderString) == false)
                 Directory.CreateDirectory(databaseFolderString);

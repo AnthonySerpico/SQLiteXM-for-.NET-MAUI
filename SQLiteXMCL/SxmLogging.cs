@@ -38,7 +38,7 @@ namespace SQLiteXM
         // Maximum characters retained for exception text to avoid very large queued entries on mobile.
         private const int _maxExceptionTextLength = 2048;
 
-        internal static void SxmLoggingFactory(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize)
+        internal static void SxmLoggingFactory(string logFileName, string logPathSpecialFolder, long maxLogSize)
         {
             string databaseName = Path.GetFileNameWithoutExtension(logFileName);
 
@@ -58,10 +58,10 @@ namespace SQLiteXM
         /// <param name="logFileName">The log file name (for example "app.log").</param>
         /// <param name="logPathSpecialFolder">Special folder where the log file will be stored.</param>
         /// <param name="maxLogSize">Maximum allowed log file size in bytes before rotation occurs.</param>
-        private SxmLogging(string logFileName, Environment.SpecialFolder logPathSpecialFolder, long maxLogSize)
+        private SxmLogging(string logFileName, string logPathSpecialFolder, long maxLogSize)
         {
             this._maxLogSize = maxLogSize;
-            string folder = Environment.GetFolderPath(logPathSpecialFolder);
+            string folder = logPathSpecialFolder;
             if (!string.IsNullOrEmpty(folder))
                 Directory.CreateDirectory(folder);
 

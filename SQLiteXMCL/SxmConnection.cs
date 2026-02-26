@@ -120,16 +120,20 @@ namespace SQLiteXM
                 this._databaseName = databaseName;
                 this._shared = shared;
 
-                CreateNewConnection();
+                CreateNewConnection(ref this._databaseName, ref _sqliteConnection);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                DestroyConnection();
+
                 SxmLogging.Log(ex, $"Connection failure for database '{this._databaseName}' shared '{this._shared}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
+                DestroyConnection();
+
                 string errStr = $"Connection failure for database '{this._databaseName}' shared '{this._shared}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
@@ -198,26 +202,24 @@ namespace SQLiteXM
             }
         }
 
-        private void CreateNewConnection()
+        internal static void CreateNewConnection(ref string? databaseName, ref Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection)
         {
             try
             {
-                string? connectionString = SxmConnection.GetConnectionString(ref this._databaseName);
-                _sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
-                _sqliteConnection.Open();
+                string? connectionString = SxmConnection.GetConnectionString(ref databaseName);
+                sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
+                sqliteConnection.Open();
 
-                SxmInitOptions.RunConnectionPragmas(_sqliteConnection);
+                SxmInitOptions.ConnectionOpened(sqliteConnection);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                DestroyConnection();
-                SxmLogging.Log(ex, $"CreateNewConnection failure for database '{this._databaseName}'.");
+                SxmLogging.Log(ex, $"CreateNewConnection failure for database '{databaseName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                DestroyConnection();
-                string errStr = $"CreateNewConnection failure for database '{this._databaseName}'.";
+                string errStr = $"CreateNewConnection failure for database '{databaseName}'.";
                 SxmLogging.Log(ex);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -239,7 +241,7 @@ namespace SQLiteXM
                 databaseName = SxmConnection.ResolveDatabaseName(databaseName);
                 if (!_dbConnectionString.TryGetValue(databaseName, out connectionString))
                 {
-                    string databaseFolderPath = Environment.GetFolderPath(SxmDatabaseDescriptor.DatabaseFolder);
+                    string databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
                     string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
                     connectionString = string.Format(_sqliteConnString, pathToDatabase);
 
@@ -295,18 +297,21 @@ namespace SQLiteXM
                     {
                         try
                         {
-                            _sqliteConnection.Dispose();  // Closes the connection.
-                            CreateNewConnection();
+                            DestroyConnection();
+                            CreateNewConnection(ref this._databaseName, ref _sqliteConnection);
                         }
                         catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                         {
+                            DestroyConnection();
                             ReleaseLock(_lockOwner);
+
                             SxmLogging.Log(ex, "LockAsync failure.");
                             // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                             throw;
                         }
                         catch (System.Exception ex)
                         {
+                            DestroyConnection();
                             ReleaseLock(_lockOwner);
 
                             string errStr = "LockAsync failure.";
@@ -515,9 +520,11 @@ namespace SQLiteXM
             if (_sqliteConnection != null)
             {
                 ReleaseConnectionResources();
-                SxmInitOptions.RunConnectionClosing(_sqliteConnection);
 
+                SxmInitOptions.ConnectionClosing(_sqliteConnection);
                 _sqliteConnection.Dispose();  // Closes the connection.
+                SxmInitOptions.ConnectionClosed();
+
                 _sqliteConnection = default(Microsoft.Data.Sqlite.SqliteConnection);
             }
         }

@@ -57,8 +57,7 @@ namespace SQLiteXM
                 string fullPathToSqlStatementsFile = ResolveSqlStatementsFile(sqlStatementsFileName);
                 SqlStatementsFileType fileType = SxmHelpers.GetSqlStatementsFileType(fullPathToSqlStatementsFile);
                 if (fileType == SqlStatementsFileType.Unknown)
-                    throw new ArgumentException(
-                        $"'{sqlStatementsFileName}' is an unknown SQL statements file type. The SQL statements file must be JSON or XML.");
+                    throw new ArgumentException($"'{sqlStatementsFileName}' is an unknown SQL statements file type. The SQL statements file must be JSON or XML.");
 
                 {
                     using var stream = File.OpenRead(fullPathToSqlStatementsFile);

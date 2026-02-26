@@ -9,22 +9,32 @@ namespace SQLiteXM
     public class SxmLinqContext : IDisposable
     {
         private bool _isDisposed = false;
-        private readonly Microsoft.Data.Sqlite.SqliteConnection _sqliteConnection;
+        private readonly Microsoft.Data.Sqlite.SqliteConnection? _sqliteConnection;
         private readonly SxmChangeSet _changeSet = new SxmChangeSet();
         private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
 
         public SxmLinqContext(string? databaseName = null)
         {
-            SxmInit.EnsureInitialized();
+            try
+            {
+                SxmInit.EnsureInitialized();
+                SxmConnection.CreateNewConnection(ref databaseName, ref _sqliteConnection);
 
-            string connStr = SxmConnection.GetConnectionString(ref databaseName);
-            _sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(connStr);
-            _sqliteConnection.Open();
-
-            SxmInitOptions.RunConnectionPragmas(_sqliteConnection);
-
-            _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _sqliteConnection);
-            _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
+                _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _sqliteConnection);
+                _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
+            }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                SxmLogging.Log(ex, $"SxmLinqContext ctor failure for database '{databaseName}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                string errStr = $"SxmLinqContext ctor failure for database '{databaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
+            }
         }
 
         public SxmChangeSet GetChangeSet() => _changeSet;
@@ -471,9 +481,10 @@ namespace SQLiteXM
 
             if (disposing)
             {
-                SxmInitOptions.RunConnectionClosing(_sqliteConnection);
-
+                SxmInitOptions.ConnectionClosing(_sqliteConnection);
                 _sqliteConnection?.Dispose();  // Closes the connection.
+                SxmInitOptions.ConnectionClosed();
+
                 _linqToDbDataConnection?.Dispose();
             }
 

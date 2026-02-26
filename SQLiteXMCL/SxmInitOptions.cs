@@ -1,5 +1,9 @@
 ﻿
+using Microsoft.Data.Sqlite;
 using SQLiteXM;
+
+public delegate void ConnectionOpenedInteceptor(Microsoft.Data.Sqlite.SqliteConnection sqliteConnection);
+public delegate void ConnectionClosedInteceptor();
 
 /// <summary>
 /// Represents configuration options used when initializing a SQLiteXM database.
@@ -40,6 +44,9 @@ public sealed class SxmInitOptions
     private SxmTempStore? _tempStore = null;
     public SxmTempStore? TempStore { get => _tempStore; set { _tempStore = value; } }
 
+    private List<ConnectionOpenedInteceptor>? ConnectionOpenedInteceptors { get; set; }
+    private List<ConnectionClosedInteceptor>? ConnectionClosedInteceptors { get; set; }
+
     /// <summary>
     /// Gets the SQLite journal mode enum that should be applied during initialization.
     /// Callers set this value via object initializer syntax.
@@ -52,6 +59,22 @@ public sealed class SxmInitOptions
     /// Callers set this value via object initializer syntax.
     /// </summary>
     public SxmSynchronousMode? SynchronousModeOption { get => _synchronousMode; set { _synchronousMode = value; } }
+
+    public void AddConnectionOpenedInteceptor(ConnectionOpenedInteceptor connectionOpenedInteceptor)
+    {
+        if (ConnectionOpenedInteceptors == default)
+            ConnectionOpenedInteceptors = new();
+
+        ConnectionOpenedInteceptors.Add(connectionOpenedInteceptor);
+    }
+
+    public void AddConnectionClosedInteceptor(ConnectionClosedInteceptor connectionClosedInteceptor)
+    {
+        if (ConnectionClosedInteceptors == default)
+            ConnectionClosedInteceptors = new();
+
+        ConnectionClosedInteceptors.Add(connectionClosedInteceptor);
+    }
 
     /// <summary>
     /// Gets the SQLite PRAGMA string for journal_mode corresponding to <see cref="JournalModeOption"/>.
@@ -67,16 +90,42 @@ public sealed class SxmInitOptions
         _ => throw new ArgumentOutOfRangeException(nameof(JournalModeOption), JournalModeOption, "Unsupported journal mode.")
     };
 
-    internal static void RunConnectionClosing(Microsoft.Data.Sqlite.SqliteConnection sqliteConnection)
+    internal static void ConnectionOpened(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection)
     {
-        if (SxmInit.InitOptions == null || SxmInit.InitOptions.CheckpointOnConnectionClose == false)
+        if (sqliteConnection == null || SxmInit.InitOptions == null)
+            return;
+
+        RunConnectionPragmas(sqliteConnection);
+
+        if (SxmInit.InitOptions.ConnectionOpenedInteceptors != null)
+        {
+            foreach (ConnectionOpenedInteceptor connectionOpenedInteceptor in SxmInit.InitOptions.ConnectionOpenedInteceptors)
+                connectionOpenedInteceptor(sqliteConnection);
+        }
+    }
+
+    internal static void ConnectionClosed()
+    {
+        if (SxmInit.InitOptions == null)
+            return;
+
+        if (SxmInit.InitOptions.ConnectionClosedInteceptors != null)
+        {
+            foreach (ConnectionClosedInteceptor connectionClosedInteceptor in SxmInit.InitOptions.ConnectionClosedInteceptors)
+                connectionClosedInteceptor();
+        }
+    }
+
+    internal static void ConnectionClosing(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection)
+    {
+        if (sqliteConnection == null || SxmInit.InitOptions == null || SxmInit.InitOptions.CheckpointOnConnectionClose == false)
             return;
 
         using (var cmd = sqliteConnection.CreateCommand())
         {
             cmd.CommandText = $"PRAGMA wal_checkpoint(PASSIVE)";
             using var reader = cmd.ExecuteReader();
-            if(reader.Read())
+            if (reader.Read())
             {
                 int busy = reader.GetInt32(0);
                 int log = reader.GetInt32(1);
@@ -85,12 +134,9 @@ public sealed class SxmInitOptions
         }
     }
 
-    internal static void RunConnectionPragmas(Microsoft.Data.Sqlite.SqliteConnection sqliteConnection)
+    private static void RunConnectionPragmas(Microsoft.Data.Sqlite.SqliteConnection sqliteConnection)
     {
-        if (SxmInit.InitOptions == null)
-            return;
-
-        SxmInitOptions? initOptions = SxmInit.InitOptions;
+        SxmInitOptions initOptions = SxmInit.InitOptions!;
 
         // Execute PRAGMA synchronously (very quick) to avoid sync-over-async in ctor.
         using (var cmd = sqliteConnection.CreateCommand())
