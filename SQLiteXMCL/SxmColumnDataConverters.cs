@@ -94,6 +94,28 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Convert a nullable <see cref="TimeSpan"/> to total ticks.
+        /// Returns <c>null</c> when <paramref name="ts"/> is <c>null</c>.
+        /// </summary>
+        /// <param name="ts">The nullable <see cref="TimeSpan"/> to convert.</param>
+        /// <returns>Total ticks contained in <paramref name="ts"/>, or <c>null</c>.</returns>
+        internal static long? TimeSpanToTotalTicks(TimeSpan? ts)
+        {
+            return ts.HasValue ? ts.Value.Ticks : null;
+        }
+
+        /// <summary>
+        /// Convert a nullable <see cref="TimeOnly"/> to total ticks since midnight.
+        /// Returns <c>null</c> when <paramref name="to"/> is <c>null</c>.
+        /// </summary>
+        /// <param name="to">The nullable <see cref="TimeOnly"/> value to convert.</param>
+        /// <returns>Total ticks since midnight represented by <paramref name="to"/>, or <c>null</c>.</returns>
+        internal static long? TimeOnlyToTotalTicks(TimeOnly? to)
+        {
+            return to.HasValue ? to.Value.Ticks : null;
+        }
+
+        /// <summary>
         /// Convert a nullable <see cref="TimeOnly"/> to a fixed precision string "HH:mm:ss.fffffff" using invariant culture.
         /// Returns <c>null</c> when <paramref name="to"/> is <c>null</c>.
         /// </summary>
@@ -233,6 +255,28 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Create a <see cref="TimeSpan"/> from total ticks.
+        /// Returns <c>null</c> when <paramref name="totalTicks"/> is <c>null</c>.
+        /// </summary>
+        /// <param name="totalTicks">Total ticks, or <c>null</c>.</param>
+        /// <returns><see cref="TimeSpan"/> equivalent to <paramref name="totalTicks"/> ticks, or <c>null</c>.</returns>
+        internal static TimeSpan? TimeSpanFromTotalTicks(long? totalTicks)
+        {
+            return totalTicks.HasValue ? TimeSpan.FromTicks(totalTicks.Value) : (TimeSpan?)null;
+        }
+
+        /// <summary>
+        /// Create a <see cref="TimeOnly"/> from total ticks since midnight.
+        /// Returns <c>null</c> when <paramref name="totalTicks"/> is <c>null</c>.
+        /// </summary>
+        /// <param name="totalTicks">Total ticks since midnight, or <c>null</c>.</param>
+        /// <returns><see cref="TimeOnly"/> corresponding to <paramref name="totalTicks"/>, or <c>null</c>.</returns>
+        internal static TimeOnly? TimeOnlyFromTotalTicks(long? totalTicks)
+        {
+            return totalTicks.HasValue ? new TimeOnly(totalTicks.Value) : (TimeOnly?)null;
+        }
+
+        /// <summary>
         /// Parse a <see cref="TimeSpan"/> from its invariant string representation.
         /// Returns <c>null</c> when <paramref name="timeSpanString"/> is <c>null</c>.
         /// </summary>
@@ -273,9 +317,18 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="unixDayNumber">Number of days since Unix epoch, or <c>null</c>.</param>
         /// <returns><see cref="DateOnly"/> corresponding to the provided day offset, or <c>null</c>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="unixDayNumber"/> is outside the supported <see cref="DateOnly"/> range.</exception>
         internal static DateOnly? DateOnlyFromUnixDayNumber(long? unixDayNumber)
         {
-            return unixDayNumber.HasValue ? DateOnly.FromDateTime(DateTime.UnixEpoch).AddDays((int)unixDayNumber.Value) : (DateOnly?)null;
+            if (!unixDayNumber.HasValue) return null;
+
+            int baseDay = DateOnly.FromDateTime(DateTime.UnixEpoch).DayNumber;
+            long dayNumber = (long)baseDay + unixDayNumber.Value;
+
+            if (dayNumber < DateOnly.MinValue.DayNumber || dayNumber > DateOnly.MaxValue.DayNumber)
+                throw new ArgumentOutOfRangeException(nameof(unixDayNumber), "Unix day number is outside the supported DateOnly range.");
+
+            return DateOnly.FromDayNumber((int)dayNumber);
         }
 
         /// <summary>

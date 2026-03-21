@@ -169,7 +169,7 @@ namespace SQLiteXM
 
             using (ct.Register(() => entry.Tcs?.TrySetCanceled()))
             {
-                await waitTask!.WaitAsync(ct).ConfigureFalse();
+                await waitTask!.WaitAsync(ct).ConfigureFalse();  // Wait for RefCount to go to 0.
             }
 
             lock (entry.Sync)
@@ -201,7 +201,7 @@ namespace SQLiteXM
         public async Task RunWorkersAsync(string? databaseName, IEnumerable<Func<SxmConnection, Task>> workersEnum, CancellationToken ct = default)
         {
             if (workersEnum == null) throw new ArgumentNullException(nameof(workersEnum));
-            if (databaseName == null) throw new ArgumentNullException(databaseName);
+            if (databaseName == null) throw new ArgumentNullException(nameof(databaseName));
 
             // Materialize workers to avoid double-enumeration / side-effects.
             //List<Func<SxmConnection, Task>> workerList = workersEnum as List<Func<SxmConnection, Task>> ?? workersEnum.ToList();

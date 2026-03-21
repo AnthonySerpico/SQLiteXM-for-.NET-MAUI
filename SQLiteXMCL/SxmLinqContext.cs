@@ -12,6 +12,7 @@ namespace SQLiteXM
         private readonly Microsoft.Data.Sqlite.SqliteConnection? _sqliteConnection;
         private readonly SxmChangeSet _changeSet = new SxmChangeSet();
         private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
+        private string? _databaseName;
 
         public SxmLinqContext(string? databaseName = null)
         {
@@ -19,6 +20,7 @@ namespace SQLiteXM
             {
                 SxmInit.EnsureInitialized();
                 SxmConnection.CreateNewConnection(ref databaseName, ref _sqliteConnection);
+                _databaseName = databaseName;
 
                 _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _sqliteConnection);
                 _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
@@ -481,10 +483,7 @@ namespace SQLiteXM
 
             if (disposing)
             {
-                SxmInitOptions.ConnectionClosing(_sqliteConnection);
-                _sqliteConnection?.Dispose();  // Closes the connection.
-                SxmInitOptions.ConnectionClosed();
-
+                SxmConnection.CloseConnection(_sqliteConnection, _databaseName);
                 _linqToDbDataConnection?.Dispose();
             }
 

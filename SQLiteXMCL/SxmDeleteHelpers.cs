@@ -50,8 +50,6 @@ namespace SQLiteXM
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
-
-            await Task.CompletedTask.ConfigureFalse();
         }
 
         /// <summary>
@@ -80,8 +78,6 @@ namespace SQLiteXM
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
-
-            await Task.CompletedTask.ConfigureFalse();
         }
 
         /// <summary>
@@ -114,8 +110,6 @@ namespace SQLiteXM
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
-
-            await Task.CompletedTask.ConfigureFalse();
         }
 
         /// <summary>
@@ -144,9 +138,6 @@ namespace SQLiteXM
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
-
-            await Task.CompletedTask.ConfigureFalse();
         }
-
     }
 }

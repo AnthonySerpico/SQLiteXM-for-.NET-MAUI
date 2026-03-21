@@ -221,14 +221,20 @@ namespace SQLiteXM
 
         internal async Task<Dictionary<string, object?>> ExecuteInsertDirectAsync(string insertSql, List<object> parameterValues, CancellationToken cancellationToken = default)
         {
-            string commandName = new Guid().ToString();
-            string? tableName = SxmHelpers.ExtractTableNameFromInsert(insertSql);
-
+            string commandName = Guid.NewGuid().ToString();
             InsertDefinition id = new InsertDefinition(commandName, insertSql);
-            SxmSqlStatements.InsertStatements.Add(commandName, id);
 
-            Dictionary<string, object?> insertResponse = await ExecuteInsertAsync(commandName, parameterValues, cancellationToken);
-            SxmSqlStatements.InsertStatements.Remove(commandName);
+            Dictionary<string, object?> insertResponse;
+            try
+            {
+                SxmSqlStatements.InsertStatements.Add(commandName, id);
+                insertResponse = await ExecuteInsertAsync(commandName, parameterValues, cancellationToken);
+            }
+            finally
+            {
+                SxmSqlStatements.InsertStatements.Remove(commandName);
+            }
+
             return insertResponse;
         }
 
@@ -248,9 +254,10 @@ namespace SQLiteXM
             long recordID = -1;
             string? synchID = default(string);
 
-            InsertDefinition? insertDefinition = SxmSqlStatements.InsertStatements[command] as InsertDefinition;
-            if (insertDefinition == null)
+            if (!SxmSqlStatements.InsertStatements.TryGetValue(command, out InsertDefinition? insertDefinition) || insertDefinition == null)
+            {
                 throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+            }
 
             await ExecuteNonQueryTransAsync(insertDefinition.InsertSQL, parameterValues, cancellationToken).ConfigureFalse();
 
@@ -353,7 +360,13 @@ namespace SQLiteXM
             {
                 throw new ArgumentNullException($"ExecuteQueryAsync failure. SxmConnection '_connection' is null.");
             }
-            await _connection.ExecuteQueryAsync(SxmSqlStatements.SelectStatements[command].SelectSQL, parameterValues, cancellationToken).ConfigureFalse();
+
+            if (!SxmSqlStatements.SelectStatements.TryGetValue(command, out SelectDefinition? selectDefinition) || selectDefinition == null)
+            {
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+            }
+
+            await _connection.ExecuteQueryAsync(selectDefinition.SelectSQL, parameterValues, cancellationToken).ConfigureFalse();
         }
 
         /// <summary>
@@ -364,7 +377,12 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token.</param>
         internal async Task ExecuteUpdateAsync(string command, List<object> parameterValues, CancellationToken cancellationToken = default)
         {
-            await ExecuteNonQueryAsync(SxmSqlStatements.UpdateStatements[command].UpdateSQL, parameterValues, cancellationToken).ConfigureFalse();
+            if (!SxmSqlStatements.UpdateStatements.TryGetValue(command, out UpdateDefinition? updateDefinition) || updateDefinition == null)
+            {
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+            }
+
+            await ExecuteNonQueryAsync(updateDefinition.UpdateSQL, parameterValues, cancellationToken).ConfigureFalse();
         }
 
         /// <summary>
@@ -375,7 +393,12 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token.</param>
         internal async Task ExecuteDeleteAsync(string command, List<object> parameterValues, CancellationToken cancellationToken = default)
         {
-            await ExecuteNonQueryAsync(SxmSqlStatements.DeleteStatements[command].DeleteSQL, parameterValues, cancellationToken).ConfigureFalse();
+            if (!SxmSqlStatements.DeleteStatements.TryGetValue(command, out DeleteDefinition? deleteDefinition) || deleteDefinition == null)
+            {
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+            }
+
+            await ExecuteNonQueryAsync(deleteDefinition.DeleteSQL, parameterValues, cancellationToken).ConfigureFalse();
         }
 
         /// <summary>
@@ -521,8 +544,12 @@ namespace SQLiteXM
                 try
                 {
                     string? dbName = (string?)GetValue("name");
-                    if (dbName?.ToLower().Equals("main") == false && dbName.ToLower().Equals("temp") == false)
+                    if (!string.IsNullOrEmpty(dbName) &&
+                        !string.Equals(dbName, "main", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(dbName, "temp", StringComparison.OrdinalIgnoreCase))
+                    {
                         await DetachDatabaseAsync(dbName);
+                    }
                 }
                 catch (System.Exception) // Keep trying to detach all databases.
                 {

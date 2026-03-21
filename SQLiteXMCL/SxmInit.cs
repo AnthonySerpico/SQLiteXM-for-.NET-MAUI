@@ -37,9 +37,6 @@ namespace SQLiteXM
         // Reads outside the gate are safe because false positives only cause an extra wait.
         private static bool _initialized = false;
 
-        private static SxmInitOptions? _initOptions;
-        public static SxmInitOptions? InitOptions => _initOptions;
-
         /// <summary>
         /// Initialize the database using SQL statements parsed from the specified file.
         /// </summary>
@@ -60,13 +57,15 @@ namespace SQLiteXM
                     throw new ArgumentException($"'{sqlStatementsFileName}' is an unknown SQL statements file type. The SQL statements file must be JSON or XML.");
 
                 {
-                    using var stream = File.OpenRead(fullPathToSqlStatementsFile);
+                    using FileStream stream = File.OpenRead(fullPathToSqlStatementsFile);
                     await ParseSqlStatementsFile(stream, fileType).ConfigureFalse();
                 }
 
+                // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
+                // Follow on calls to set will be ignored even if the initial setter value is null.
+                SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
+                SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
                 await SxmInit.InitializeAsync();
-
-                _initOptions = initOptions;
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -93,9 +92,12 @@ namespace SQLiteXM
                     return;
 
                 await ParseSqlStatementsFile(stream, SqlStatementsFileType.Unknown).ConfigureFalse();
-                await SxmInit.InitializeAsync();
 
-                _initOptions = initOptions;
+                // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
+                // Follow on calls to set will be ignored even if the initial setter value is null.
+                SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
+                SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
+                await SxmInit.InitializeAsync();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.

@@ -70,7 +70,7 @@ namespace SQLiteXM
     /// <summary>
     /// Represents a single change (insert/update/delete) that has been recorded against an entity.
     /// </summary>
-    sealed public class ChangeAction
+    public sealed class ChangeAction
     {
         /// <summary>
         /// The entity the action targets. Never null.

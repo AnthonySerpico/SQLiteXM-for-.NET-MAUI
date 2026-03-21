@@ -1,9 +1,6 @@
-﻿using Microsoft.Data.Sqlite;
-using SQLiteXM.Internal.Threading;
+﻿using SQLiteXM.Internal.Threading;
 using System.Collections;
 using System.Data.Common;
-using static LinqToDB.Common.Configuration;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SQLiteXM
 {
@@ -87,6 +84,7 @@ namespace SQLiteXM
         {
             get { return _databaseName; }
         }
+
         private DbCommand? _connCommand;
         private DbDataReader? _connDataReader;
         private Microsoft.Data.Sqlite.SqliteConnection? _sqliteConnection;
@@ -98,6 +96,7 @@ namespace SQLiteXM
         // releasing someone else's lock and to allow a logical owner to re-enter.
         private readonly SemaphoreSlim _asyncLock = new SemaphoreSlim(1, 1);
         private readonly object _ownerSync = new object();
+        private readonly object _connectionSync = new object();
         private Guid? _lockOwner;
         private int _lockReentrancy = 0;
 
@@ -210,7 +209,7 @@ namespace SQLiteXM
                 sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
                 sqliteConnection.Open();
 
-                SxmInitOptions.ConnectionOpened(sqliteConnection);
+                SxmInitOptions.ConnectionOpened(sqliteConnection, databaseName);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -219,10 +218,20 @@ namespace SQLiteXM
             }
             catch (System.Exception ex)
             {
-                string errStr = $"CreateNewConnection failure for database '{databaseName}'.";
+                string errStr = $"CreateNewConnection failure for database '{databaseName ?? "null"}'.";
                 SxmLogging.Log(ex);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
+        }
+
+        internal static void CloseConnection(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection, string? databaseName)
+        {
+            if (sqliteConnection == null )
+                return;
+
+            SxmInitOptions.ConnectionClosing(sqliteConnection, databaseName);
+            sqliteConnection?.Dispose();  // Closes the connection.
+            SxmInitOptions.ConnectionClosed(databaseName);
         }
 
         /// <summary>
@@ -283,7 +292,8 @@ namespace SQLiteXM
                 if (_sqliteConnection == null) return false;
 
                 // Wait for the semaphore with timeout/cancellation.
-                if (await _asyncLock.WaitAsync(TimeSpan.FromMilliseconds(millisecondsTimeout), cancellationToken).ConfigureFalse())
+                TimeSpan timeout = millisecondsTimeout == -1 ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(millisecondsTimeout);
+                if (await _asyncLock.WaitAsync(timeout, cancellationToken).ConfigureFalse())
                 {
                     lock (_ownerSync)
                     {
@@ -302,7 +312,7 @@ namespace SQLiteXM
                         }
                         catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                         {
-                            DestroyConnection();
+                            try { DestroyConnection(); } catch (System.Exception) { }
                             ReleaseLock(_lockOwner);
 
                             SxmLogging.Log(ex, "LockAsync failure.");
@@ -311,7 +321,7 @@ namespace SQLiteXM
                         }
                         catch (System.Exception ex)
                         {
-                            DestroyConnection();
+                            try { DestroyConnection(); } catch (System.Exception) { }
                             ReleaseLock(_lockOwner);
 
                             string errStr = "LockAsync failure.";
@@ -394,6 +404,12 @@ namespace SQLiteXM
         {
             if (databaseName == null)
             {
+                if(SxmDatabaseDescriptor.DefaultDatabase == null)
+                    throw new InvalidDataException(
+                        "SqlStatements configuration error: no default database is defined. " +
+                        "This operation required a default database, but none is configured. " +
+                        "Fix: set 'isDefault' to 'true' on exactly one database in your SQL statements files.");
+
                 databaseName = SxmDatabaseDescriptor.DefaultDatabase;
             }
             else
@@ -414,40 +430,43 @@ namespace SQLiteXM
         /// <param name="destroy">Force destruction of the underlying connection (default false).</param>
         public void ReleaseConnection(bool destroy = false)
         {
-            if (_sqliteConnection != null)
+            lock (_connectionSync)
             {
-                try
-                {
-                    if (_dbConnTransaction != null)
-                        // ensure rollback is completed; block here to preserve previous behavior
-                        DoCommitAsync(SQLiteXM.SxmDefines.RollbackTransaction).GetAwaiter().GetResult();
-                }
-                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
-                {
-                    SxmLogging.Log(ex, $"ReleaseConnection failure for database '{this._databaseName}'.");
-                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                    throw;
-                }
-                catch (System.Exception ex)
-                {
-                    string errStr = $"ReleaseConnection failure for database '{this._databaseName}'.";
-                    SxmLogging.Log(ex, errStr);
-                    throw ExceptionHelper.Wrap(ex, errStr);
-                }
-                finally
+                if (_sqliteConnection != null)
                 {
                     try
                     {
-                        if (!_shared || destroy == true)
-                            DestroyConnection();
-                        else
-                            ReleaseConnectionResources();
+                        if (_dbConnTransaction != null)
+                            // ensure rollback is completed; block here to preserve previous behavior
+                            DoCommitAsync(SQLiteXM.SxmDefines.RollbackTransaction).GetAwaiter().GetResult();
                     }
-                    catch (System.Exception ex) 
+                    catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                     {
-                        string errStr = $"ReleaseConnection failure destroying or releasing connection for database '{this._databaseName}' shared '{_shared}' destroy '{destroy}'.";
-                        SxmLogging.Log(ex);
-                        throw ExceptionHelper.Wrap(ex, errStr); ;
+                        SxmLogging.Log(ex, $"ReleaseConnection failure for database '{this._databaseName}'.");
+                        // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                        throw;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        string errStr = $"ReleaseConnection failure for database '{this._databaseName}'.";
+                        SxmLogging.Log(ex, errStr);
+                        throw ExceptionHelper.Wrap(ex, errStr);
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            if (!_shared || destroy == true)
+                                DestroyConnection();
+                            else
+                                ReleaseConnectionResources();
+                        }
+                        catch (System.Exception ex)
+                        {
+                            string errStr = $"ReleaseConnection failure destroying or releasing connection for database '{this._databaseName}' shared '{_shared}' destroy '{destroy}'.";
+                            SxmLogging.Log(ex);
+                            throw ExceptionHelper.Wrap(ex, errStr); ;
+                        }
                     }
                 }
             }
@@ -517,15 +536,14 @@ namespace SQLiteXM
         /// </summary>
         public void DestroyConnection()
         {
-            if (_sqliteConnection != null)
+            lock (_connectionSync)
             {
-                ReleaseConnectionResources();
-
-                SxmInitOptions.ConnectionClosing(_sqliteConnection);
-                _sqliteConnection.Dispose();  // Closes the connection.
-                SxmInitOptions.ConnectionClosed();
-
-                _sqliteConnection = default(Microsoft.Data.Sqlite.SqliteConnection);
+                if (_sqliteConnection != null)
+                {
+                    ReleaseConnectionResources();
+                    CloseConnection(_sqliteConnection, _databaseName);
+                    _sqliteConnection = default(Microsoft.Data.Sqlite.SqliteConnection);
+                }
             }
         }
 
@@ -668,7 +686,7 @@ namespace SQLiteXM
         {
             _connCommand.Parameters.Clear();
 
-            if (parameterValues != null)
+            if (parameterValues != null && parameterValues.Count > 0)
             {
                 DbParametersDataType dbParametersDataType = GetDbParameterType(ref parameterValues);
 

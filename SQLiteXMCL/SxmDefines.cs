@@ -180,6 +180,15 @@
         Off
     }
 
+    public enum CheckPointConnection
+    {
+        Off = 0,
+
+        OnConnectionClose,
+
+        MaxSize
+    }
+
     public enum SxmSynchronousMode
     {
         Off = 0,

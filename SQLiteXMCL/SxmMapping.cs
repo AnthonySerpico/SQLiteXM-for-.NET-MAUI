@@ -81,12 +81,16 @@ namespace SQLiteXM
             ms.SetConverter<string, TimeOnly?>(s => SxmColumnDataConverters.TimeOnlyFromString(s));
             ms.SetConverter<TimeOnly, long?>(t => SxmColumnDataConverters.TimeOnlyToTotalMilliseconds(t));
             ms.SetConverter<long, TimeOnly?>(ticks => SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(ticks));
+            ms.SetConverter<TimeOnly, long?>(t => SxmColumnDataConverters.TimeOnlyToTotalTicks(t));
+            ms.SetConverter<long, TimeOnly?>(ticks => SxmColumnDataConverters.TimeOnlyFromTotalTicks(ticks));
 
             // TimeSpan TEXT + numeric (Ticks)
             ms.SetConverter<TimeSpan, string?>(t => SxmColumnDataConverters.TimeSpanToString(t));
             ms.SetConverter<string, TimeSpan?>(s => SxmColumnDataConverters.TimeSpanFromString(s));
             ms.SetConverter<TimeSpan, long?>(t => SxmColumnDataConverters.TimeSpanToTotalMilliseconds(t));
             ms.SetConverter<long, TimeSpan?>(ticks => SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(ticks));
+            ms.SetConverter<TimeSpan, long?>(t => SxmColumnDataConverters.TimeSpanToTotalTicks(t));
+            ms.SetConverter<long, TimeSpan?>(ticks => SxmColumnDataConverters.TimeSpanFromTotalTicks(ticks));
 
             // DateTimeOffset TEXT + numeric (Unix ms)
             ms.SetConverter<DateTimeOffset, string?>(dto => SxmColumnDataConverters.DateTimeOffsetToString(dto));

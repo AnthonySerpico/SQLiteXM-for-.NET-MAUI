@@ -15,7 +15,9 @@ namespace SQLiteXM
         private static string? _defaultDatabase;
         public static string? DefaultDatabase
         {
-            get { return _defaultDatabase; }
+            get { 
+                return _defaultDatabase; 
+            }
         }
 
         /// <summary>
@@ -24,13 +26,35 @@ namespace SQLiteXM
         /// <remarks>
         /// Default: <see cref="Environment.SpecialFolder.MyDocuments"/> unless specified when creating the descriptor.
         /// </remarks>
-        private readonly static Environment.SpecialFolder _databaseFolder = Environment.SpecialFolder.LocalApplicationData;
+/*        private readonly static Environment.SpecialFolder _databaseFolder = Environment.SpecialFolder.LocalApplicationData;
 
-        public static string DatabaseFolder
+        internal static string DatabaseFolder
         {
-            get { return Path.Combine(Environment.GetFolderPath(_databaseFolder), "SQLiteXM"); }
+            get { 
+                if(DatabaseFolderOverride == null)
+                    return Path.Combine(Environment.GetFolderPath(_databaseFolder), "SQLiteXM");
+
+                return DatabaseFolderOverride;
+            }
+        }*/
+
+        private static string? _databaseFolder;
+        internal static string? DatabaseFolder
+        {
+            get => _databaseFolder;
+            set
+            {
+                // Can only be set once.
+                if (_databaseFolder is null)
+                {
+                    if (value == null)
+                        _databaseFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SQLiteXM");
+                    else
+                        _databaseFolder = value;
+                }
+            }
         }
-        
+
         /// <summary>
         /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the database name provided by <see cref="SxmDatabaseDescriptor.DefaultDatabase"/>.
         /// </summary>
@@ -97,6 +121,25 @@ namespace SQLiteXM
             string pathToDatabase = Path.Combine(databaseFolderString, databaseName);
             if (File.Exists(pathToDatabase) == false)
                 using (File.Create(pathToDatabase)) { }
+        }
+
+        /// <summary>
+        /// Gets the size of the SQLite WAL file for the specified database.
+        /// </summary>
+        /// <param name="databaseName">The database file name (without path).</param>
+        /// <returns>The size of the WAL file in bytes, or 0 if the file does not exist.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="databaseName"/> is null or whitespace.</exception>
+        public static long GetWalFileSize(string databaseName)
+        {
+            if (string.IsNullOrWhiteSpace(databaseName))
+                throw new ArgumentException("Database name must be specified.", nameof(databaseName));
+
+            string walFilePath = Path.Combine(SxmDatabaseDescriptor.DatabaseFolder, databaseName + "-wal");
+            if (!File.Exists(walFilePath))
+                return 0;
+
+            FileInfo fileInfo = new(walFilePath);
+            return fileInfo.Length;
         }
 
         internal static bool IsDatabaseDefined(string databaseName)
