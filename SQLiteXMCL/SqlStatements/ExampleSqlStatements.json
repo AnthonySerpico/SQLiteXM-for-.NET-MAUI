@@ -1,43 +1,89 @@
 {
   "database": "sqlitexmtest",
-  "default" :  true | false,
+  "default": true
+  | false,
   "version": 1,
 
   "_comment": "Do not include any comments in your SQL. For example, INSERT INTO user (name) /*comment */ VALUES('Bob');, or SELECT * FROM user WHERE name = 'Bob'; -- comment",
 
   "table": [
-    { "Table Name": "user", "Statement": "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, address TEXT, name TEXT, datetimee TEXT)"},
-    { "Table Name": "customer", "Statement": "CREATE TABLE customer (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT)" }
+    {
+      "Table Name": "user",
+      "Statement": "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, address TEXT, name TEXT, datetimee TEXT)"
+    },
+    {
+      "Table Name": "customer",
+      "Statement": "CREATE TABLE customer (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT)"
+    }
   ],
 
   "alter": [
-      { "Column Name": "datetimee", "Table Name": "user", "Statement": "ALTER TABLE user ADD datetimee TEXT" }
+    {
+      "Column Name": "datetimee",
+      "Table Name": "user",
+      "Statement": "ALTER TABLE user ADD datetimee TEXT"
+    }
   ],
 
   "index": [
-      { "Index Name": "memberIdIDX", "Table Name": "user", "Statement": "DROP INDEX memberIdIDX" },
-      { "Index Name": "flNameIDX",   "Table Name": "user", "Statement": "CREATE INDEX flNameIDX ON user (intt, longg)" }
+    {
+      "Index Name": "memberIdIDX",
+      "Table Name": "user",
+      "Statement": "DROP INDEX memberIdIDX"
+    },
+    {
+      "Index Name": "flNameIDX",
+      "Table Name": "user",
+      "Statement": "CREATE INDEX flNameIDX ON user (intt, longg)"
+    }
   ],
-  
+
   "trigger": [
-      { "Trigger Name": "updateCustomer", "Statement": "CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;" }
+    {
+      "Trigger Name": "updateCustomer",
+      "Statement": "CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;"
+    }
   ],
-  
+
   "insert": [
-      { "Statement Name": "insertUser", "Table Name": "user", "Statement": "INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, address, name, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @address, @name, @datetimee)" }
+    {
+      "Statement Name": "insertUser",
+      "Table Name": "user",
+      "Statement": "INSERT INTO user (intt, longg, floatt, doublee, decimall, booll, address, name, datetimee) VALUES(@intt, @longg, @floatt, @doublee, @decimall, @booll, @address, @name, @datetimee)"
+    }
   ],
-  
+
   "select": [
-      { "Statement Name": "getUser",          "Table Name": "user", "Statement": "SELECT * FROM user WHERE doublee = @p0 LIMIT 50" },
-      { "Statement Name": "getUserNameValue", "Table Name": "user", "Statement": "SELECT * FROM user WHERE doublee = @doublee LIMIT 50" },
-      { "Statement Name": "getCustomer", "Table Name": "customer", "Statement": "SELECT * FROM customer LIMIT 50" }
+    {
+      "Statement Name": "getUser",
+      "Table Name": "user",
+      "Statement": "SELECT * FROM user WHERE doublee = @p0 LIMIT 50"
+    },
+    {
+      "Statement Name": "getUserNameValue",
+      "Table Name": "user",
+      "Statement": "SELECT * FROM user WHERE doublee = @doublee LIMIT 50"
+    },
+    {
+      "Statement Name": "getCustomer",
+      "Table Name": "customer",
+      "Statement": "SELECT * FROM customer LIMIT 50"
+    }
   ],
-  
+
   "update": [
-      { "Statement Name": "updateLastQuestionLocation", "Table Name": "user", "Statement": "UPDATE lastQuestionLocation SET topicQuestionId=@p0 WHERE memberId = @p1 AND topicID = @p2" }
+    {
+      "Statement Name": "updateLastQuestionLocation",
+      "Table Name": "user",
+      "Statement": "UPDATE lastQuestionLocation SET topicQuestionId=@p0 WHERE memberId = @p1 AND topicID = @p2"
+    }
   ],
-  
+
   "delete": [
-      { "Statement Name": "deleteUser", "Table Name": "user", "Statement": "DELETE FROM user WHERE doublee = @p0" }
+    {
+      "Statement Name": "deleteUser",
+      "Table Name": "user",
+      "Statement": "DELETE FROM user WHERE doublee = @p0"
+    }
   ]
 }

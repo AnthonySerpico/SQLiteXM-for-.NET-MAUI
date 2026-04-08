@@ -73,6 +73,7 @@ namespace SQLiteXM
         /// </remarks>
         internal ConnectionLease AcquireConnectionLease(string databaseName)
         {
+            if (databaseName == null) throw new ArgumentNullException(nameof(databaseName));
             Entry entry = _map.GetOrAdd(databaseName, _ => new Entry());
 
             lock (entry.Sync)
@@ -105,6 +106,11 @@ namespace SQLiteXM
 
             lock (entry.Sync)
             {
+                if (entry.RefCount == 0)
+                {
+                    throw new InvalidOperationException($"Release called with no active leases for '{databaseName}'.");
+                }
+
                 if (entry.RefCount > 0)
                     entry.RefCount--;
 
@@ -116,17 +122,17 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Deterministically shutdown and destroy the connection for the specified database.
+        /// Deterministically shuts down and destroys the connection for the specified database.
         /// </summary>
-        /// <param name="databaseName">The name of the database to shutdown.</param>
-        /// <param name="ct">Cancellation token to abort waiting for active leases to be released.</param>
+        /// <param name="databaseName">The name of the database to shut down.</param>
+        /// <param name="ct">Cancellation token used to abort waiting for active leases to be released.</param>
         /// <returns>A task that completes when the connection has been destroyed or the operation is cancelled.</returns>
         /// <remarks>
-        /// If no entry exists this method returns immediately. If the entry is not already closing and
-        /// there are no active leases, the connection is destroyed synchronously. If leases are present,
-        /// the entry is marked closing and this method waits asynchronously until the reference count
-        /// reaches zero (or <paramref name="ct"/> cancels), then destroys the connection and removes
-        /// the entry from the manager.
+        /// If no entry exists this method returns immediately. The entry is marked closing and, if leases are
+        /// active, this method waits until the per-entry reference count reaches zero (or <paramref name="ct"/>
+        /// cancels). When shutdown proceeds, the connection is claimed under the entry lock, removed from the
+        /// manager, and released asynchronously via <see cref="SxmConnection.ReleaseConnectionAsync"/>.
+        /// Concurrent shutdown calls are safe; the underlying connection is released at most once.
         /// </remarks>
         public async Task ShutdownAsync(string? databaseName, CancellationToken ct = default)
         {
@@ -136,12 +142,28 @@ namespace SQLiteXM
                 return;
 
             Task? waitTask = null;
+            TaskCompletionSource<object?>? tcs = null;
+            SxmConnection? connectionToRelease = null;
+            bool releaseNow = false;
 
             lock (entry.Sync)
             {
                 if (entry.Closing)
                 {
-                    waitTask = entry.Tcs?.Task;
+                    if (entry.RefCount == 0)
+                    {
+                        connectionToRelease = entry.Connection;
+                        entry.Connection = null;
+                        entry.Tcs = null;
+                        _map.TryRemove(databaseName, out _);
+                        releaseNow = true;
+                    }
+                    else
+                    {
+                        entry.Tcs ??= new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                        tcs = entry.Tcs;
+                        waitTask = tcs.Task;
+                    }
                 }
                 else
                 {
@@ -149,49 +171,54 @@ namespace SQLiteXM
 
                     if (entry.RefCount == 0)
                     {
-                        try
-                        {
-                            entry.Connection?.ReleaseConnection(destroy: true);
-                        }
-                        finally
-                        {
-                            _map.TryRemove(databaseName, out _);
-                        }
-                        return;
+                        connectionToRelease = entry.Connection;
+                        entry.Connection = null;
+                        _map.TryRemove(databaseName, out _);
+                        releaseNow = true;
                     }
                     else
                     {
                         entry.Tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-                        waitTask = entry.Tcs.Task;
+                        tcs = entry.Tcs;
+                        waitTask = tcs.Task;
                     }
                 }
             }
 
-            using (ct.Register(() => entry.Tcs?.TrySetCanceled()))
+            if (releaseNow)
             {
-                await waitTask!.WaitAsync(ct).ConfigureFalse();  // Wait for RefCount to go to 0.
+                if (connectionToRelease != null)
+                    await connectionToRelease.ReleaseConnectionAsync(destroy: true, ct).ConfigureFalse();
+
+                return;
+            }
+
+            if (waitTask != null)
+            {
+                await waitTask.WaitAsync(ct).ConfigureFalse();
             }
 
             lock (entry.Sync)
             {
-                try
-                {
-                    entry.Connection?.ReleaseConnection(destroy: true);
-                }
-                finally
-                {
-                    _map.TryRemove(databaseName, out _);
-                }
+                connectionToRelease = entry.Connection;
+                entry.Connection = null;
+                _map.TryRemove(databaseName, out _);
             }
+
+            if (connectionToRelease != null)
+                await connectionToRelease.ReleaseConnectionAsync(destroy: true, ct).ConfigureFalse();
         }
 
         /// <summary>
         /// Acquire leases for all provided worker delegates and run the workers concurrently.
         /// </summary>
         /// <param name="databaseName">The database name to use for the shared connection.</param>
-        /// <param name="workers">Worker delegates that accept an <see cref="SxmConnection"/> and return a <see cref="Task"/>.</param>
-        /// <param name="ct">Cancellation token used to cancel launched worker tasks.</param>
-        /// <returns>A task that completes once all workers have finished or an exception is thrown.</returns>
+        /// <param name="workersEnum">Worker delegates that accept an <see cref="SxmConnection"/> and return a <see cref="Task"/>.</param>
+        /// <param name="ct">
+        /// Cancellation token observed before each worker is scheduled. Already-started workers are not
+        /// cancelled automatically and must observe cancellation through their own mechanisms.
+        /// </param>
+        /// <returns>A task that completes once all scheduled workers have finished or an exception is thrown.</returns>
         /// <remarks>
         /// This method acquires leases for all workers up-front to prevent races with shutdown. All
         /// workers are executed using the same shared <see cref="SxmConnection"/> instance (the connection
@@ -207,11 +234,19 @@ namespace SQLiteXM
             //List<Func<SxmConnection, Task>> workerList = workersEnum as List<Func<SxmConnection, Task>> ?? workersEnum.ToList();
             IReadOnlyCollection<Func<SxmConnection, Task>> workerCollection = workersEnum as IReadOnlyCollection<Func<SxmConnection, Task>> ?? workersEnum.ToList();
 
+            foreach (Func<SxmConnection, Task>? worker in workerCollection)
+            {
+                if (worker == null)
+                {
+                    throw new ArgumentException("The workers collection must not contain null delegates.", nameof(workersEnum));
+                }
+            }
+
             // Acquire leases for all workers up front
-            List<ConnectionLease> leases = new List<ConnectionLease>();
+            List<ConnectionLease> leases = new List<ConnectionLease>(workerCollection.Count);
             try
             {
-                foreach (Func<SxmConnection, Task> t in workerCollection)
+                foreach (Func<SxmConnection, Task> _ in workerCollection)
                 {
                     // This will throw if the connection is already closing.
                     leases.Add(AcquireConnectionLease(databaseName));
@@ -223,8 +258,7 @@ namespace SQLiteXM
 
                 SxmConnection sharedConn = leases[0].Connection;
 
-                List<Task> tasks = new List<Task>();
-                int index = 0;
+                List<Task> tasks = new List<Task>(workerCollection.Count);
                 foreach (Func<SxmConnection, Task> worker in workerCollection)
                 {
                     // Launch each worker using the same sharedConn; workers must still coordinate via SxmConnection.LockAsync if they need exclusive access.
@@ -232,7 +266,6 @@ namespace SQLiteXM
                     {
                         await worker(sharedConn).ConfigureFalse();
                     }, ct));
-                    index++;
                 }
 
                 await Task.WhenAll(tasks).ConfigureFalse();

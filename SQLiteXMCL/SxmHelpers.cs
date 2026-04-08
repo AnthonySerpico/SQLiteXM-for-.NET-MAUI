@@ -82,6 +82,98 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Format a CLR value into a SQL literal suitable for use when the value
+        /// originates from an attribute argument (compile-time constant).
+        /// </summary>
+        /// <remarks>
+        /// This routine deliberately only supports the CLR types that C# allows
+        /// as attribute arguments:
+        /// - bool, char, string
+        /// - sbyte, byte, short, ushort, int, uint, long, ulong, float, double
+        /// - single-dimensional arrays of the above
+        ///
+        /// If an unsupported type is supplied the method throws <see cref="ArgumentException"/>.
+        /// Use this when you need to convert an attribute-provided default value into a SQL literal.
+        /// </remarks>
+        /// <param name="value">Attribute-origin value (may be null).</param>
+        /// <returns>SQL literal representing <paramref name="value"/>.</returns>
+        /// <exception cref="ArgumentException">When <paramref name="value"/> is not an allowed attribute argument type.</exception>
+        internal static string FormatSqlLiteral(object? value)
+        {
+            if (value is null)
+                return "NULL";
+
+            // Strings: single-quote escaped
+            if (value is string s)
+                return $"'{s.Replace("'", "''")}'";
+
+            // Char: quoted and escaped
+            if (value is char ch)
+                return $"'{ch.ToString().Replace("'", "''")}'";
+
+            // Boolean: sqlite integer form
+            if (value is bool b)
+                return b ? "1" : "0";
+
+            // Enums: convert to underlying integral value
+            if (value is Enum e)
+            {
+                long v = Convert.ToInt64(e, CultureInfo.InvariantCulture);
+                return v.ToString(CultureInfo.InvariantCulture);
+            }
+
+            // Integral and floating types
+            switch (value)
+            {
+                case sbyte sb:
+                    return sb.ToString(CultureInfo.InvariantCulture);
+                case byte bt:
+                    return bt.ToString(CultureInfo.InvariantCulture);
+                case short sh:
+                    return sh.ToString(CultureInfo.InvariantCulture);
+                case ushort ush:
+                    return ush.ToString(CultureInfo.InvariantCulture);
+                case int i:
+                    return i.ToString(CultureInfo.InvariantCulture);
+                case uint ui:
+                    return ui.ToString(CultureInfo.InvariantCulture);
+                case long l:
+                    return l.ToString(CultureInfo.InvariantCulture);
+                case ulong ul:
+                    return ul.ToString(CultureInfo.InvariantCulture);
+                case float f:
+                    if (float.IsNaN(f) || float.IsInfinity(f))
+                        return $"'{f.ToString(CultureInfo.InvariantCulture)}'";
+                    return f.ToString("R", CultureInfo.InvariantCulture);
+                case double d:
+                    if (double.IsNaN(d) || double.IsInfinity(d))
+                        return $"'{d.ToString(CultureInfo.InvariantCulture)}'";
+                    return d.ToString("R", CultureInfo.InvariantCulture);
+            }
+
+            // Arrays: single-dimensional arrays of allowed element types
+            if (value is Array arr)
+            {
+                var elems = new List<string>(arr.Length);
+                foreach (var item in arr)
+                {
+                    if (item is null)
+                    {
+                        elems.Add("NULL");
+                        continue;
+                    }
+
+                    // recursively format element; will throw if element type is not allowed
+                    elems.Add(FormatSqlLiteral(item));
+                }
+
+                return "(" + string.Join(", ", elems) + ")";
+            }
+
+            throw new ArgumentException($"Type '{value.GetType()}' is not a supported attribute argument type.");
+        }
+
+        /// <summary>
         /// Determines whether the provided file path refers to a JSON or XML SQL statements file.
         /// </summary>
         /// <param name="filePath">The file path or name to inspect.</param>
@@ -759,39 +851,39 @@ namespace SQLiteXM
 
                             if (piType == typeof(int).Name)
                                 pi.SetValue(userObject, ConvertToInt32(kvp.Value, kvp.Key));
-                                //pi.SetValue(userObject, (int)(long)kvp.Value);
+                            //pi.SetValue(userObject, (int)(long)kvp.Value);
 
                             else if (piType == typeof(long).Name)
                                 pi.SetValue(userObject, Convert.ToInt64(kvp.Value, CultureInfo.InvariantCulture));
-                                //pi.SetValue(userObject, (long)kvp.Value);
+                            //pi.SetValue(userObject, (long)kvp.Value);
 
                             else if (piType == typeof(float).Name)
                                 pi.SetValue(userObject, ConvertToSingle(kvp.Value, kvp.Key));
-                                //pi.SetValue(userObject, (float)(double)kvp.Value);
+                            //pi.SetValue(userObject, (float)(double)kvp.Value);
 
                             else if (piType == typeof(short).Name)
                                 pi.SetValue(userObject, ConvertToInt16(kvp.Value, kvp.Key));
-                                //pi.SetValue(userObject, (short)(long)kvp.Value);
+                            //pi.SetValue(userObject, (short)(long)kvp.Value);
 
                             else if (piType == typeof(ushort).Name)
                                 pi.SetValue(userObject, ConvertToUInt16(kvp.Value, kvp.Key));
-                                //pi.SetValue(userObject, (ushort)(long)kvp.Value);
+                            //pi.SetValue(userObject, (ushort)(long)kvp.Value);
 
                             else if (piType == typeof(uint).Name)
                                 pi.SetValue(userObject, ConvertToUInt32(kvp.Value, kvp.Key));
-                                //pi.SetValue(userObject, (uint)(long)kvp.Value);
+                            //pi.SetValue(userObject, (uint)(long)kvp.Value);
 
                             else if (piType == typeof(sbyte).Name)
                                 pi.SetValue(userObject, ConvertToSByte(kvp.Value, kvp.Key));
-                                //pi.SetValue(userObject, (sbyte)(long)kvp.Value);
+                            //pi.SetValue(userObject, (sbyte)(long)kvp.Value);
 
                             else if (piType == typeof(byte).Name)
                                 pi.SetValue(userObject, ConvertToByte(kvp.Value, kvp.Key));
-                                //pi.SetValue(userObject, (byte)(long)kvp.Value);
+                            //pi.SetValue(userObject, (byte)(long)kvp.Value);
 
                             else if (piType == typeof(double).Name)
                                 pi.SetValue(userObject, Convert.ToDouble(kvp.Value, CultureInfo.InvariantCulture));
-                                //pi.SetValue(userObject, (double)kvp.Value);
+                            //pi.SetValue(userObject, (double)kvp.Value);
 
                             else if (piType == typeof(string).Name)
                                 pi.SetValue(userObject, kvp.Value.ToString());
@@ -1836,6 +1928,22 @@ namespace SQLiteXM
             // a runtime data issue. The caller decides whether to wrap or propagate.
             return new ArgumentException(
                 $"Unsupported DB type '{dbType}' for column '{columnName}' on entity '{objectType}' mapped to CLR type '{targetType}'.");
+        }
+
+        /// <summary>
+        /// Return the first item from the supplied list or throw a descriptive exception when the list is empty.
+        /// </summary>
+        /// <typeparam name="T">Element type.</typeparam>
+        /// <param name="list">List returned from RunStatementAsync.</param>
+        /// <param name="sqlStatementName">Name of the SQL statement (used in error text).</param>
+        /// <returns>The first element of <paramref name="list"/>.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the list is null or empty.</exception>
+        internal static T GetFirstOrThrow<T>(List<T>? list, string sqlStatementName)
+        {
+            if (list == null || list.Count == 0)
+                throw new InvalidOperationException($"Insert statement '{sqlStatementName}' did not return any rows. Ensure the SQL statement returns a row (e.g. use RETURNING) or call a non-returning insert API.");
+
+            return list[0];
         }
     }
 

@@ -15,11 +15,54 @@ namespace SQLiteXM
     /// Derived types are automatically inspected for column/index/foreign key attributes when an
     /// instance is constructed, and the database schema is created or reconciled as required.
     /// </summary>
+    /// <remarks>
+    /// Design note: this implementation intentionally uses the entity's simple CLR type name
+    /// (that is, <c>Type.Name</c>) as the logical table identifier and as the key for several
+    /// internal initialization and statement caches. When two different CLR types share the
+    /// same simple name (for example, types with identical names in different namespaces or
+    /// assemblies) or when the same simple name is used with different database names, the
+    /// library detects the condition at runtime and throws an <see cref="InvalidOperationException"/>
+    /// to fail fast rather than allow silent data corruption.
+    /// 
+    /// Rationale:
+    /// - Failing fast surfaces incorrect usage or naming conflicts immediately and prevents
+    ///   subtle, hard-to-diagnose data integrity issues that could occur if different CLR types
+    ///   were implicitly mapped to the same table identifier.
+    /// - Using the simple type name keeps SQL table identifiers predictable and stable across
+    ///   builds and avoids changing on refactors that only affect assembly-qualified identity.
+    /// 
+    /// How to avoid collisions:
+    /// - Ensure entity class simple names are unique across your solution and referenced assemblies,
+    ///   especially when targeting multiple databases.
+    /// - Use distinct class names per database when a single solution works with multiple databases.
+    /// 
+    /// Future alternatives:
+    /// - If you prefer tolerant behavior (no runtime exception) you can change the cache-keying
+    ///   strategy to include the CLR identity and database name (for example,
+    ///   <c>type.AssemblyQualifiedName + \"|\" + databaseName</c>). This is a compatibility-impacting
+    ///   change and may require updates in other components that depend on the current simple-name
+    ///   based behavior, so it is intentionally not applied automatically.
+    /// 
+    /// Visibility and maintenance:
+    /// - This remark documents the intended behavior for maintainers and consumers so that the
+    ///   fail-fast behavior is explicit and discoverable.
+    /// </remarks>
+
     [Table(IsColumnAttributeRequired = false)]
     public class SxmEntity
     {
         // Prevent multiple concurrent initializations for the same entity type.
         private static readonly object _lockObject = new object();
+
+        // Protect against different CLR types that share the same simple Name (namespace/assembly collisions).
+        // Maps simple type Name -> type identity (AssemblyQualifiedName preferred).
+        // Used only to detect and fail fast on collisions; NOT used as SQL table identifier.
+        private static readonly ConcurrentDictionary<string, string?> _entityTypeMap = new ConcurrentDictionary<string, string?>(StringComparer.Ordinal);
+
+        // Protect against using the same simple Name across different databases.
+        // Maps simple type Name -> database name where it was first initialized.
+        // Used only to detect and fail fast on cross-database collisions for same simple name.
+        private static readonly ConcurrentDictionary<string, string?> _entityDatabaseMap = new ConcurrentDictionary<string, string?>(StringComparer.Ordinal);
 
         /// <summary>
         /// Per-table initialization gate.
@@ -47,7 +90,7 @@ namespace SQLiteXM
         private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> _standardIndexDict = new ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>>(StringComparer.Ordinal);
 
         // Column map per type: nested concurrent dictionary for safe concurrent reads/writes.
-        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _columnNameAndTypeDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _columnNameAndTypeDict = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
         private string? _databaseName;
         private List<ForeignKeyAttributes>? _foreignKeyAttributeList = default(List<ForeignKeyAttributes>);
@@ -125,11 +168,41 @@ namespace SQLiteXM
         private void Initialize()
         {
             // NOTE: Entity class names must be globally unique across namespaces. Do not drop columns until after processing indexes/triggers.
-            string tableName = GetType().Name;
+            var type = GetType();
+            string tableName = type.Name;
+            // Unique CLR identity for collision detection.
+            string typeIdentity = type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
             lock (_lockObject)
             {
                 DbNameValidation();
+
+                // Prevent using the same simple table name across different databases.
+                // The first database that registers the simple name wins; others must use distinct class names.
+                if (!_entityDatabaseMap.TryAdd(tableName, _databaseName))
+                {
+                    if (_entityDatabaseMap.TryGetValue(tableName, out var existingDb) &&
+                        !string.Equals(existingDb, _databaseName, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Entity database collision: simple name '{tableName}' is already registered for database '{existingDb}'. " +
+                            "Using the same entity simple name across multiple databases is not supported. Use distinct class names per database.");
+                    }
+                    // If the existing mapping equals our database, continue - another instance for the same DB registered earlier.
+                }
+
+                // Prevent different CLR types (different namespaces/assemblies) that share the same simple Name.
+                if (!_entityTypeMap.TryAdd(tableName, typeIdentity))
+                {
+                    if (_entityTypeMap.TryGetValue(tableName, out var existingTypeIdentity) &&
+                        !string.Equals(existingTypeIdentity, typeIdentity, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Entity name collision: simple name '{tableName}' is already registered by CLR type '{existingTypeIdentity}'. " +
+                            "Types with the same simple name from different namespaces or assemblies are not supported.");
+                    }
+                    // If the existing type mapping equals our type identity, continue - another instance of the same CLR type registered earlier.
+                }
             }
 
             Lazy<Task> lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
@@ -164,7 +237,32 @@ namespace SQLiteXM
             }
             catch
             {
-                _initTasks.TryRemove(tableName, out _); // allow retry on failure
+                _initTasks.TryRemove(tableName, out _); // allow retry on failure.
+
+                // Best-effort cleanup: remove the mappings only if they still match this attempt's database/type.
+                // Do it under the same lock used for registration to avoid races with other threads.
+                try
+                {
+                    lock (_lockObject)
+                    {
+                        if (_entityTypeMap.TryGetValue(tableName, out var mappedType) &&
+                            string.Equals(mappedType, typeIdentity, StringComparison.Ordinal))
+                        {
+                            _entityTypeMap.TryRemove(tableName, out _);
+                        }
+
+                        if (_entityDatabaseMap.TryGetValue(tableName, out var mappedDb) &&
+                            string.Equals(mappedDb, _databaseName, StringComparison.Ordinal))
+                        {
+                            _entityDatabaseMap.TryRemove(tableName, out _);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Swallow cleanup errors to avoid hiding the original exception.
+                }
+
                 throw;
             }
         }
@@ -177,7 +275,7 @@ namespace SQLiteXM
         {
             List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
 
-            foreach (PropertyInfo piItem in GetType().GetProperties())
+            foreach (PropertyInfo piItem in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 propertyInfoWithAliases.Add(new MemberInfoWithAlias(piItem, string.Empty));
 
             return propertyInfoWithAliases;
@@ -464,6 +562,9 @@ namespace SQLiteXM
                 .OrderBy(k => k, StringComparer.Ordinal)
                 .ToArray();
 
+                if (columns.Length == 0)
+                    throw new InvalidOperationException($"Update statement cannot be built for '{tableName}' because no updatable columns were found. At least one defined column is required.");
+
                 string setClause = string.Join(", ", columns.Select(c => $"{SxmHelpers.QuoteIdentifier(c)}=@{c}"));
                 string updateStatement = $"UPDATE {quotedTable} SET {setClause} WHERE {SxmHelpers.QuoteIdentifier("id")}=@id";
                 string newGuid = Guid.NewGuid().ToString();
@@ -525,12 +626,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"ProcesstriggerAttributesAsync failure for table '{tableName}'.");
+                SxmLogging.Log(ex, $"ProcessTriggerAttributesAsync failure for table '{tableName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ProcesstriggerAttributesAsync failure for table '{tableName}'.";
+                string errStr = $"ProcessTriggerAttributesAsync failure for table '{tableName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -543,7 +644,9 @@ namespace SQLiteXM
                 foreach (var myAttribute in customAttributes)
                 {
                     string? triggerSql = myAttribute.triggerSql;
-                    newTriggerNameList.Add(triggerSql);
+                    // Guard: skip null or whitespace trigger SQL strings to avoid executing null.
+                    if (!string.IsNullOrWhiteSpace(triggerSql))
+                        newTriggerNameList.Add(triggerSql);
                 }
 
                 if (newTriggerNameList.Count > 0)
@@ -561,12 +664,12 @@ namespace SQLiteXM
                     catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                     {
                         // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                        SxmLogging.Log(ex, $"ProcesstriggerAttributesAsync failure for table '{tableName}'.");
+                        SxmLogging.Log(ex, $"ProcessTriggerAttributesAsync failure for table '{tableName}'.");
                         throw;
                     }
                     catch (System.Exception ex)
                     {
-                        string errStr = $"ProcesstriggerAttributesAsync failure for table '{tableName}'.";
+                        string errStr = $"ProcessTriggerAttributesAsync failure for table '{tableName}'.";
                         SxmLogging.Log(ex, errStr);
                         throw ExceptionHelper.Wrap(ex, errStr);
                     }
@@ -733,7 +836,7 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"GetIndexTableStatementsAsync failure for table '{tableName}.");
+                SxmLogging.Log(ex, $"GetIndexTableStatementsAsync failure for table '{tableName}'.");
                 throw;
             }
             catch (System.Exception ex)
@@ -813,7 +916,7 @@ namespace SQLiteXM
             {
                 foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
                 {
-                    if (!_columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !kvp.Key.Equals("id") && !kvp.Key.Equals("synchId"))
+                    if (!_columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !IsIgnored(kvp.Key))
                     {
                         string alterDefinition = $"ALTER TABLE {quotedTable} DROP COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)}";
                         await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)))
@@ -885,7 +988,7 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{conn.DatabaseName} table '{this.GetType().Name}'.");
+                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{conn.DatabaseName}' table '{this.GetType().Name}'.");
                 throw;
             }
             catch (System.Exception ex)
@@ -917,7 +1020,7 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{sxmConnection?.DatabaseName} table '{this.GetType().Name}'.");
+                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{sxmConnection?.DatabaseName}' table '{this.GetType().Name}'.");
                 throw;
             }
             catch (System.Exception ex)
@@ -928,7 +1031,8 @@ namespace SQLiteXM
             }
             finally
             {
-                sxmConnection?.DestroyConnection();
+                if (sxmConnection != null)
+                    await sxmConnection.DestroyConnectionAsync();
             }
 
             return false;
@@ -962,9 +1066,19 @@ namespace SQLiteXM
             string tableName = this.GetType().Name;
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-            SxmConnection sxmConnection = new SxmConnection(_databaseName);
-            bool tableExists = await SxmInit.DoesTableExistAsync(tableName, sxmConnection);
-            sxmConnection?.DestroyConnection();
+            SxmConnection? sxmConnection = null;
+            bool tableExists = false;
+
+            try
+            {
+                sxmConnection = new SxmConnection(_databaseName);
+                tableExists = await SxmInit.DoesTableExistAsync(tableName, sxmConnection);
+            }
+            finally
+            {
+                if (sxmConnection != null)
+                    await sxmConnection.DestroyConnectionAsync();
+            }
 
             if (!tableExists)
             {
@@ -1013,7 +1127,7 @@ namespace SQLiteXM
                 var typeName = type.Name;
 
                 // Ensure per-type column map exists.
-                _columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.Ordinal));
+                _columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase));
 
                 // Get the [Table] attribute to check IsColumnAttributeRequired.
                 TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);
@@ -1025,7 +1139,7 @@ namespace SQLiteXM
                     string memberInfoName = memberInfo.Name;
 
                     // Skip "id" and "synchId" properties
-                    if (memberInfoName is "id" or "synchId")
+                    if (IsIgnored(memberInfoName))
                         continue;
 
                     if (memberInfo is not PropertyInfo propertyInfo)
@@ -1041,15 +1155,15 @@ namespace SQLiteXM
                         continue; // Must have [Column] attribute in order to map to a database, but it's missing.
 
                     // Typed attribute reads (no dictionary, no strings)
-                    RequiredNotNull? nn = memberInfo.GetCustomAttribute<RequiredNotNull>(inherit: false);
+                    RequiredNotNull? requiredNotNull = memberInfo.GetCustomAttribute<RequiredNotNull>(inherit: false);
                     bool hasCreateIndex = memberInfo.IsDefined(typeof(CreateIndex), inherit: false);
                     bool hasCreateUniqueIndex = memberInfo.IsDefined(typeof(CreateUniqueIndex), inherit: false);
-                    CreateForeignKey? fk = memberInfo.GetCustomAttribute<CreateForeignKey>(inherit: false);
+                    CreateForeignKey? isForeignKey = memberInfo.GetCustomAttribute<CreateForeignKey>(inherit: false);
 
                     string notNull = string.Empty;
-                    if (nn is not null)
+                    if (requiredNotNull is not null)
                     {
-                        notNull = nn.defaultValue is not null ? $" not null default {nn.defaultValue}" : " not null";
+                        notNull = requiredNotNull.defaultValue is not null ? $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.defaultValue)}" : " not null";
                     }
 
                     // Resolve mapped field name once (member name or alias)
@@ -1070,32 +1184,31 @@ namespace SQLiteXM
                     }
 
                     // CreateForeignKey
-                    if (fk is not null)
+                    if (isForeignKey is not null)
                     {
                         _foreignKeyAttributeList ??= new List<ForeignKeyAttributes>();
 
                         _foreignKeyAttributeList.Add(new ForeignKeyAttributes
                         {
                             fieldName = columnName,
-                            foreignTable = fk.foreignTable,
+                            foreignTable = isForeignKey.foreignTable,
                         });
 
-                        SxmHelpers.CreateAssociation(type, columnName, fk.foreignTable);
+                        SxmHelpers.CreateAssociation(type, columnName, isForeignKey.foreignTable);
                     }
 
                     // Safe, null-free (preferred here).
                     Type clrType = Nullable.GetUnderlyingType(propertyInfo.PropertyType) ?? propertyInfo.PropertyType;
 
-                    // Override from ColumnType if specified, for example, [Column(ColumnType = ColumnType.Text)]
+                    // Override from ColumnType if specified, for example, [Column(DataType = ColumnType.Text)]
                     string? overrideType = colAttr?.DataType switch
                     {
                         DataType.Text or DataType.NChar or DataType.NVarChar or DataType.Char or DataType.VarChar => "TEXT",
                         DataType.Int16 or DataType.Int32 or DataType.UInt16 or DataType.UInt32 or DataType.Int64 or DataType.Long => "INTEGER",
                         DataType.Boolean or DataType.DateTime or DataType.Date or DataType.Time => "INTEGER", // unix.milliseconds for time types
                         DataType.Decimal or DataType.UInt64 => "TEXT",  // preserve range
-                        DataType.Guid => "TEXT",
                         DataType.Single or DataType.Double => "REAL",
-                        DataType.Binary or DataType.Blob or DataType.VarBinary => "BLOB",
+                        DataType.Guid or DataType.Binary or DataType.Blob or DataType.VarBinary => "BLOB",
                         _ => null
                     };
 
@@ -1103,7 +1216,7 @@ namespace SQLiteXM
                     {
                         bool allowed =
                             (IsTimeType(clrType) && overrideType.Equals("TEXT", StringComparison.OrdinalIgnoreCase)) ||
-                            (clrType == typeof(Guid) && overrideType.Equals("BLOB", StringComparison.OrdinalIgnoreCase));
+                            (clrType == typeof(Guid) && overrideType.Equals("TEXT", StringComparison.OrdinalIgnoreCase));
 
                         if (!allowed)
                             overrideType = null;
@@ -1139,7 +1252,7 @@ namespace SQLiteXM
             string? columnType = clrType == typeof(decimal) ? "TEXT" :
                                  clrType == typeof(string) ? "TEXT" :
                                  clrType == typeof(ulong) ? "TEXT" :
-                                 clrType == typeof(Guid) ? "TEXT" :
+                                 clrType == typeof(Guid) ? "BLOB" :
 
                                  clrType == typeof(DateTimeOffset) ? "INTEGER" :
                                  clrType == typeof(TimeSpan) ? "INTEGER" :

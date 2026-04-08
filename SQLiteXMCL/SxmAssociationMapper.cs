@@ -176,7 +176,8 @@ namespace SQLiteXM
             }
             finally
             {
-                sxmConnection?.DestroyConnection();
+                if (sxmConnection != null)
+                    await sxmConnection.DestroyConnectionAsync();
             }
         }
 

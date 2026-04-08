@@ -37,7 +37,7 @@ namespace SQLiteXM
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters, dbName).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace SQLiteXM
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync<T>(sqlStatementName, userObjectParameters, dbName).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace SQLiteXM
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters, dbName).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace SQLiteXM
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, new List<object>(1) { sqlStatementParameters }, dbName).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace SQLiteXM
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters, dbName).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace SQLiteXM
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, sqlStatementParameters, dbName).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
 
@@ -487,7 +487,7 @@ namespace SQLiteXM
             }
             catch (System.Exception ex)
             {
-                string errStr = $"RunStatementAsync failure for statement '{sqlStatementName}' dstatement type '{sqlStatementType.ToString()}'.";
+                string errStr = $"RunStatementAsync failure for statement '{sqlStatementName}' statement type '{sqlStatementType.ToString()}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -495,7 +495,7 @@ namespace SQLiteXM
             if (recordData == default(List<Dictionary<string, object?>>))
                 recordData = new List<Dictionary<string, object?>>();
 
-            return await Task.FromResult(recordData).ConfigureFalse();
+            return recordData;
         }
     }
 }

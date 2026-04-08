@@ -24,7 +24,7 @@ namespace SQLiteXM
     /// - Use <see cref="CreateAsync(SxmConnection, int, CancellationToken)"/> when you already have an
     ///   <see cref="SxmConnection"/> (shared connections may require acquiring an async lock).
     /// - Prefer the async pattern with <c>await using</c> so the transaction can auto-commit on <see cref="DisposeAsync"/>.
-    /// - Synchronous <see cref="Dispose(bool)"/> does not auto-commit; call explicit commit methods before disposing if using sync pattern.
+    /// - The synchronous <see cref="Dispose"/> path delegates to <see cref="DisposeAsync"/> and may block.
     /// </remarks>
     public class SxmTransaction : SxmUTransaction
     {
@@ -107,72 +107,6 @@ namespace SQLiteXM
             return tx;
         }
 
-        /// <summary>
-        /// Synchronous dispose that cleans up ambient transaction state and calls base dispose.
-        /// Does NOT perform an automatic commit to avoid blocking on finalizers or in sync paths.
-        /// </summary>
-        /// <param name="disposing">True when called from user code; false when called from finalizer.</param>
-        /// <remarks>
-        /// - If <paramref name="disposing"/> is false (finalizer), managed state is not touched.
-        /// - If this instance is the ambient/top transaction it will be popped from the ambient stack.
-        /// - Errors during cleanup are logged but not rethrown to avoid throwing from Dispose.
-        /// </remarks>
-        protected override void Dispose(bool disposing)
-        {
-            // Finalizer path: do not touch managed state (Ambient or Connection).
-            if (!disposing)
-            {
-                try
-                {
-                    base.Dispose(disposing);
-                }
-                catch
-                {
-                    // Swallow to avoid throwing on finalizer thread.
-                }
-                return;
-            }
-
-            try
-            {
-                try
-                {
-                    // Only pop if we are the ambient/top transaction.
-                    if (SxmAmbientTransaction.Current == this)
-                    {
-                        try
-                        {
-                            SxmAmbientTransaction.Pop(this);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log but do not rethrow from Dispose to avoid masking other cleanup.
-                            try { SxmLogging.Log(ex); } catch { }
-                            // Try a best-effort removal to recover the ambient stack.
-                            try { SxmAmbientTransaction.TryRemove(this); } catch { }
-                        }
-                    }
-                    else
-                    {
-                        // Log a warning — popping out-of-order is a programming error.
-                        if(SxmAmbientTransaction.Current != null)
-                            try { SxmLogging.Log(new InvalidOperationException("Dispose called when transaction is not the ambient/top transaction.")); } catch { }
-                        // Do not attempt to pop or auto-commit.
-                    }
-                }
-                catch (Exception ex)
-                {
-                    SxmLogging.Log(ex);
-                    // Do not rethrow; keep disposing to allow base cleanup.
-                }
-
-                base.Dispose(disposing);
-            }
-            finally
-            {
-                // no synchronous commit to avoid blocking; use DisposeAsync or explicit commit instead
-            }
-        }
 
         /// <summary>
         /// Asynchronous dispose which will attempt to commit the transaction if this instance is the ambient/top transaction and no error was encountered.
@@ -273,88 +207,124 @@ namespace SQLiteXM
         /// <remarks>
         /// - If a previous statement set the error flag, <see cref="RunStatementAsync(string, List{object})"/> will skip subsequent statements
         ///   until <see cref="ResetError"/> is called.
-        /// - Calling <c>commitTransaction()</c> / <c>commitTransactionAsync()</c> ends the underlying SQLite transaction but does NOT
+        /// - Calling <c>CommitTransaction()</c> / <c>CommitTransactionAsync()</c> ends the underlying SQLite transaction but does NOT
         ///   release the SxmTransaction's connection lock or dispose the object. You may reuse the same SxmTransaction instance after a commit.
-        /// - The connection lock is released only when the transaction is disposed (<see cref="DisposeAsync"/> / <see cref="Dispose(bool)"/>) or finalized.
+        /// - The connection lock is released only when the transaction is disposed (<see cref="DisposeAsync"/>) or finalized.
         /// </remarks>
         public void ResetError() => _encounteredError = false;
 
         /************************************************************************* INSERT ********************************************************************/
         /// <summary>
-        /// Perform an insert statement and map the returning row to <typeparamref name="TResult"/>. Supports entity mapping. Return the entity object.
+        /// Perform an insert statement and map the returning row to <typeparamref name="TResult"/>.
+        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
         /// </summary>
         /// <typeparam name="T">Type of the input parameter object.</typeparam>
         /// <typeparam name="TResult">Type of the result record to return.</typeparam>
         /// <param name="sqlStatementName">Named SQL statement to execute.</param>
         /// <param name="userObjectParameters">User object with parameter values.</param>
         /// <returns>The first result row mapped to <typeparamref name="TResult"/>.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<TResult> InsertAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
-        /// Perform an insert and return the first result row as a dictionary. Supports entity mapping. Return dictionary of inserted columns.
+        /// Perform an insert and return the first result row as a dictionary.
+        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
         /// </summary>
+        /// <typeparam name="T">Type of the input parameter object.</typeparam>
+        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
+        /// <param name="userObjectParameters">User object with parameter values.</param>
+        /// <returns>Dictionary of inserted columns for the first returned row.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<Dictionary<string, object?>> InsertAsync<T>(string sqlStatementName, T userObjectParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
-        /// Perform an insert using dictionary parameters and map the result to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return the entity object.
+        /// Perform an insert using dictionary parameters and map the result to <typeparamref name="TResult"/>.
+        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
         /// </summary>
+        /// <typeparam name="TResult">Type of the result record to return.</typeparam>
+        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
+        /// <param name="sqlStatementParameters">Dictionary of named parameter values.</param>
+        /// <returns>The first result row mapped to <typeparamref name="TResult"/>.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<TResult> InsertAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
-        /// Perform an insert using dictionary parameters and return the first result row as dictionary. Supports dictionary of named parameters. Return dictionary of inserted columns.
+        /// Perform an insert using dictionary parameters and return the first result row as dictionary.
+        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
         /// </summary>
+        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
+        /// <param name="sqlStatementParameters">Dictionary of named parameter values.</param>
+        /// <returns>Dictionary of inserted columns for the first returned row.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, new List<object>(1) { sqlStatementParameters }).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
-        /// Perform an insert using a list of parameter objects and map the first result to <typeparamref name="TResult"/>. Supports List of positional parameters. Return the entity object.
+        /// Perform an insert using a list of parameter objects and map the first result to <typeparamref name="TResult"/>.
+        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
         /// </summary>
+        /// <typeparam name="TResult">Type of the result record to return.</typeparam>
+        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
+        /// <param name="sqlStatementParameters">Ordered list of parameter values.</param>
+        /// <returns>The first result row mapped to <typeparamref name="TResult"/>.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<TResult> InsertAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
         /// <summary>
-        /// Perform an insert using a list of parameter objects and return the first result row as dictionary. Supports List of positional parameters. Return dictionary of inserted columns.
+        /// Perform an insert using a list of parameter objects and return the first result row as dictionary.
+        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
         /// </summary>
+        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
+        /// <param name="sqlStatementParameters">Ordered list of parameter values.</param>
+        /// <returns>Dictionary of inserted columns for the first returned row.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, List<object> sqlStatementParameters)
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-            return select[0];
+            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
         }
 
 
@@ -630,7 +600,7 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string errStr = $"RunStatementAsync failure for statement '{sqlStatementName}' dstatement type '{sqlStatementType.ToString()}'.";
+                    string errStr = $"RunStatementAsync failure for statement '{sqlStatementName}' statement type '{sqlStatementType.ToString()}'.";
                     SxmLogging.Log(ex, errStr);
                     throw ExceptionHelper.Wrap(ex, errStr);
                 }

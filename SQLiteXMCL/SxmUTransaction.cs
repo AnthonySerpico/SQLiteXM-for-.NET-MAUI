@@ -54,40 +54,56 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Async factory overload used when the caller already has an <see cref="SxmConnection"/>.
-        /// When the supplied connection is shared this method attempts to acquire the connection lock
-        /// asynchronously and will throw an <see cref="SxmException"/> if the lock cannot be obtained.
+        /// Create a transaction wrapper for the supplied connection.
+        /// If the supplied connection is non-shared (transient/private) and CreateAsync fails,
+        /// the connection will be best-effort destroyed to avoid leaking the resource.
+        /// Caller-supplied shared connections are never destroyed by this method.
         /// </summary>
-        /// <param name="conn">Shared or private connection to use for the transaction.</param>
-        /// <param name="waitMilliseconds">Timeout in milliseconds to wait for the connection lock when the connection is shared.</param>
-        /// <param name="cancellationToken">Cancellation token to observe when waiting for the lock.</param>
-        /// <returns>A new <see cref="SxmUTransaction"/> that may own the connection lock.</returns>
-        /// <exception cref="ArgumentNullException">If <paramref name="conn"/> is null.</exception>
-        /// <exception cref="SxmException">If the connection is shared and the lock could not be acquired.</exception>
-        internal static async Task<SxmUTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
+        /// <param name="conn">Connection supplied by the caller.</param>
+        /// <param name="waitMilliseconds">Timeout to wait for any required lock.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The created <see cref="SxmUTransaction"/>.</returns>
+        public static async Task<SxmUTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
         {
             if (conn == null) throw new ArgumentNullException(nameof(conn));
 
-            bool ownsLock = false;
-            Guid? ownerId = null;
-
-            // Only attempt lock when the supplied connection is shared.
-            if (conn.Shared)
+            try
             {
-                ownerId = Guid.NewGuid();
-                bool locked = await conn.LockAsync(waitMilliseconds, cancellationToken, ownerId).ConfigureFalse();
-                if (!locked)
-                {
-                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.LockDb, conn.DatabaseName));
-                }
-                ownsLock = true;
-            }
+                Guid? ownerId = null;
+                bool ownsLock = false;
 
-            return new SxmUTransaction(conn, ownsLock: ownsLock, ownerId: ownerId);
+                // If the connection is shared, we must acquire the lock before creating the transaction.
+                if (conn.Shared)
+                {
+                    ownerId = Guid.NewGuid();
+                    bool locked = await conn.LockAsync(waitMilliseconds, cancellationToken, ownerId).ConfigureFalse();
+                    if (!locked)
+                        throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.LockDb, conn.DatabaseName));
+
+                    ownsLock = true;
+                }
+
+                // At this point either:
+                // - conn.Shared == true and we hold the lock (ownsLock == true), or
+                // - conn.Shared == false (transient) and we simply hand the connection to the transaction.
+                return new SxmUTransaction(conn, ownsLock, ownerId);
+            }
+            catch
+            {
+                // Best-effort cleanup: if the caller passed a non-shared (transient) connection,
+                // they likely handed ownership to the transaction factory. If CreateAsync failed,
+                // destroy the transient connection so callers won't accidentally leak it.
+                if (!conn.Shared)
+                {
+                    try { await conn.DestroyConnectionAsync().ConfigureFalse(); } catch { /* swallow cleanup errors */ }
+                }
+
+                throw;
+            }
         }
 
         /// <summary>
-        /// Finalize and clean up the transaction object.
+        /// Finalize and clean up the transaction object asynchronously.
         /// This method performs a best-effort release of the connection lock (if this transaction owns it)
         /// and then releases/returns the underlying connection.
         ///
@@ -96,17 +112,23 @@ namespace SQLiteXM
         ///   (COMMIT/ROLLBACK). It does NOT release the SxmUTransaction's connection lock or null out this object.
         /// - The SxmUTransaction instance may be reused after a commit to start new database transactions on the same
         ///   connection; the connection lock remains held until this transaction is disposed/finalized.
-        /// - finalizeTransaction is intentionally best-effort and non-throwing to avoid throwing from finalizers.
+        /// - FinalizeTransactionAsync is intentionally best-effort and non-throwing to avoid throwing from finalizers.
         /// </summary>
-        protected void FinalizeTransaction()
+        protected async Task FinalizeTransactionAsync()
         {
             // Centralized, idempotent lock release helper.
             EnsureLockReleased();
 
-            // then cleanup the connection and transaction resources as before
+            // then cleanup the connection and transaction resources as before.
             try
             {
-                _connection?.ReleaseConnection();
+                if (_connection != null)
+                {
+                    // Only destroy the underlying native connection automatically when the
+                    // SxmConnection is non-shared. Shared connections remain caller-owned.
+                    bool destroyAutomatically = !_connection.Shared;
+                    await _connection.ReleaseConnectionAsync(destroy: destroyAutomatically).ConfigureFalse();
+                }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -122,7 +144,15 @@ namespace SQLiteXM
             }
             finally
             {
-                _connection = null;
+                if (_connection != null)
+                {
+                    bool destroyedAutomatically = !_connection.Shared;
+                    if (destroyedAutomatically)
+                    {
+                        // If we automatically destroyed the connection, then null out our reference to it to avoid future use.
+                        _connection = null;
+                    }
+                }
             }
         }
 
@@ -143,11 +173,6 @@ namespace SQLiteXM
                         // Release only if we are the owner
                         _connection.ReleaseLock(_lockOwnerId);
                     }
-                    catch
-                    {
-                        // Swallow any exception during lock release to avoid noisy logs from cleanup/finalizer paths.
-                        // If you need diagnostics, enable a debug/verbose option and log there.
-                    }
                     finally
                     {
                         _ownsAsyncLock = false;
@@ -163,40 +188,22 @@ namespace SQLiteXM
         /// </summary>
         public void Dispose()
         {
-            Dispose(true); // Called from user code.
+            DisposeAsync().AsTask().GetAwaiter().GetResult();
             GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Asynchronous dispose. Overridable so derived types can perform async commit/cleanup.
-        /// Default implementation runs the synchronous dispose logic.
         /// </summary>
         /// <returns>A <see cref="ValueTask"/> that completes when disposal is finished.</returns>
         public virtual async ValueTask DisposeAsync()
         {
-            Dispose(true);
-            await Task.CompletedTask.ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Core dispose implementation. Called by both <see cref="Dispose"/> and the finalizer.
-        /// </summary>
-        /// <param name="disposing">True when called from user code; false when called from the runtime finalizer.</param>
-        protected virtual void Dispose(bool disposing)
-        {
             if (_disposed)
                 return;
 
-            // If called from user code we could release managed resources here.
-            // Do not duplicate lock-release: finalizeTransaction() already calls EnsureLockReleased().
-            if (disposing)
-            {
-                // Release managed resources (none specific here).
-            }
-
             try
             {
-                FinalizeTransaction();
+                await FinalizeTransactionAsync().ConfigureFalse();
             }
             catch (System.Exception ex)
             {
@@ -207,14 +214,8 @@ namespace SQLiteXM
             {
                 _disposed = true;
             }
-        }
 
-        /// <summary>
-        /// Finalizer to ensure best-effort cleanup if Dispose was not called.
-        /// </summary>
-        ~SxmUTransaction()
-        {
-            Dispose(false); // Called from runtime.
+            GC.SuppressFinalize(this);
         }
 
         /********************* INSERT / UPDATE / DELETE wrappers (async implementations) ************************/

@@ -63,8 +63,8 @@ namespace SQLiteXM
             {
                 try
                 {
-                    var baseName = base.DataType.ToString();
-                    if (Enum.TryParse<DataType>(baseName, out var dt))
+                    string baseName = base.DataType.ToString();
+                    if (Enum.TryParse<DataType>(baseName, out SQLiteXM.DataType dt))
                         return dt;
                 }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -350,9 +350,10 @@ namespace SQLiteXM
         /// <param name="DefaultValue">The non-null default value to assign to the member.</param>
         public RequiredNotNull(object DefaultValue)
         {
-            this.defaultValue = DefaultValue;
             if (DefaultValue == null)
                 throw new ArgumentNullException("RequiredNotNull", "For fields with the attribute 'RequiredNotNull', the default value for the field cannot be null.");
+
+            this.defaultValue = DefaultValue;
         }
     }
 

@@ -152,7 +152,7 @@ namespace SQLiteXM
             if (IndexStatements == null)
                 IndexStatements = new Dictionary<string, List<IndexDefinition>>();
 
-            List<IndexDefinition>? indexStatementsList = IndexStatements[dbAndTableName] as List<IndexDefinition>;
+            IndexStatements.TryGetValue(dbAndTableName, out List<IndexDefinition>? indexStatementsList);
             if (indexStatementsList == null)
             {
                 indexStatementsList = new List<IndexDefinition>();
@@ -189,7 +189,8 @@ namespace SQLiteXM
             if (TriggerStatements == null)
                 TriggerStatements = new Dictionary<string, List<TriggerDefinition>>();
 
-            List<TriggerDefinition>? triggerStatementsList = TriggerStatements[dbName] as List<TriggerDefinition>;
+            // TryGetValue sets triggerStatementsList to the existing list or null if the key doesn't exist.
+            TriggerStatements.TryGetValue(dbName, out List<TriggerDefinition>? triggerStatementsList);
             if (triggerStatementsList == null)
             {
                 triggerStatementsList = new List<TriggerDefinition>();
@@ -226,7 +227,7 @@ namespace SQLiteXM
             if (AlterStatements == null)
                 AlterStatements = new Dictionary<string, List<AlterDefinition>>();
 
-            List<AlterDefinition>? alterStatementsList = AlterStatements[dbAndTableName] as List<AlterDefinition>;
+            AlterStatements.TryGetValue(dbAndTableName, out List<AlterDefinition>? alterStatementsList);
             if (alterStatementsList == null)
             {
                 alterStatementsList = new List<AlterDefinition>();
