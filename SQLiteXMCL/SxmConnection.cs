@@ -625,13 +625,13 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"ExecuteQueryAsync failure for database '{this._databaseName}' and command '{command}'.");
+                SxmLogging.Log(ex, $"ExecuteQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteQueryAsync failure for database '{this._databaseName}' and command '{command}'.";
+                string errStr = $"ExecuteQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -682,13 +682,13 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"ExecuteNonQueryAsync failure for database '{this._databaseName}' and command '{command}'.");
+                SxmLogging.Log(ex, $"ExecuteNonQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteNonQueryAsync failure for database '{this._databaseName}' and command '{command}'.";
+                string errStr = $"ExecuteNonQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

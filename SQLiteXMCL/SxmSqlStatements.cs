@@ -1,5 +1,7 @@
 ﻿using SQLiteXM;
 using System.Collections;
+using System.Collections.Concurrent;
+using System.Xml.Linq;
 using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM
@@ -27,8 +29,7 @@ namespace SQLiteXM
         /// <summary>
         /// Trigger definitions keyed by database name.
         /// </summary>
-        internal static Dictionary<string, List<TriggerDefinition>>? TriggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
-
+        internal static ConcurrentDictionary<string, List<TriggerDefinition>> TriggerStatements = new ConcurrentDictionary<string, List<TriggerDefinition>>(StringComparer.Ordinal);
         /// <summary>
         /// Insert statements keyed by statement name.
         /// </summary>
@@ -180,35 +181,30 @@ namespace SQLiteXM
         /// <param name="dbName">The database name the trigger belongs to.</param>
         /// <param name="triggerName">The trigger name.</param>
         /// <param name="sqlStatement">The SQL text of the trigger.</param>
-        internal static void AddTriggerDefinition(string dbName, string triggerName, string sqlStatement)
+        internal static void AddTriggerDefinition(string dbName, string sqlStatement)
         {
             sqlStatement = sqlStatement.Trim();
-            triggerName = triggerName.Trim();
             dbName = dbName.Trim();
-
-            if (TriggerStatements == null)
-                TriggerStatements = new Dictionary<string, List<TriggerDefinition>>();
 
             // TryGetValue sets triggerStatementsList to the existing list or null if the key doesn't exist.
             TriggerStatements.TryGetValue(dbName, out List<TriggerDefinition>? triggerStatementsList);
             if (triggerStatementsList == null)
             {
                 triggerStatementsList = new List<TriggerDefinition>();
-                TriggerStatements.Add(dbName, triggerStatementsList);
+                TriggerStatements[dbName] = triggerStatementsList;
             }
 
-            triggerStatementsList.Add(new TriggerDefinition(triggerName, sqlStatement));
+            triggerStatementsList.Add(new TriggerDefinition(sqlStatement));
         }
 
-        /// <summary>
-        /// Removes all trigger definitions and resets the trigger store to uninitialized.
-        /// </summary>
-        internal static void RemoveTriggerDefinitions()
+        internal static void CreateTriggerStatementsList(string dbName)
         {
-            if (TriggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
+            // TryGetValue sets triggerStatementsList to the existing list or null if the key doesn't exist.
+            TriggerStatements.TryGetValue(dbName, out List<TriggerDefinition>? triggerStatementsList);
+            if (triggerStatementsList == null)
             {
-                TriggerStatements.Clear();
-                TriggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
+                triggerStatementsList = new List<TriggerDefinition>();
+                TriggerStatements[dbName] = triggerStatementsList;
             }
         }
 
@@ -280,7 +276,12 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Clears in-memory stores for alters, tables, indexes, and triggers.
+        /// Clears in-memory stores for alter, table create, and index statements. The TriggerStatements
+        /// ConcurrentDictionary is not cleared because it is not know when the creation of a trigger 
+        /// will succeed. If the source table of the trigger is created by an entity, and not by a create
+        /// table statement in the SqlStatements file, then the trigger creation will fail during initialization.
+        /// In this case, the trigger statement must remain in memory for the next attempt, which will be when
+        /// each entity is created for the database associated with the trigger.
         /// </summary>
         internal static void ClearStatementTables()
         {
@@ -300,12 +301,6 @@ namespace SQLiteXM
             {
                 IndexStatements.Clear();
                 IndexStatements = default(Dictionary<string, List<IndexDefinition>>);
-            }
-
-            if (TriggerStatements != default(Dictionary<string, List<TriggerDefinition>>))
-            {
-                TriggerStatements.Clear();
-                TriggerStatements = default(Dictionary<string, List<TriggerDefinition>>);
             }
         }
 

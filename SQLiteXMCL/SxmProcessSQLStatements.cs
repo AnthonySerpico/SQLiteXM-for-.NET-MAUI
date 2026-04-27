@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Xml.Linq;
 using System.Xml.Serialization;
 using static SQLiteXM.SxmSerialization;
 
@@ -232,9 +233,10 @@ namespace SQLiteXM
                     foreach (Dictionary<string, string> insertEntry in rootJson.Insert)
                         SxmSqlStatements.AddInsertDefinition(insertEntry["Statement Name"], insertEntry["Table Name"], insertEntry["Statement"]);
 
+                SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootJson?.Trigger != default)
                     foreach (Dictionary<string, string> triggerEntry in rootJson.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry["Trigger Name"], triggerEntry["Statement"]);
+                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry["Statement"]);
             }
         }
 
@@ -278,9 +280,10 @@ namespace SQLiteXM
                     foreach (Insert insertEntry in rootXml.Insert)
                         SxmSqlStatements.AddInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
 
+                SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootXml?.Trigger != default)
                     foreach (Trigger triggerEntry in rootXml.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.TriggerName, triggerEntry.Statement);
+                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.Statement);
             }
         }
 

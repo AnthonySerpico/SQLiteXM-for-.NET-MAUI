@@ -349,7 +349,7 @@ namespace SQLiteXM
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
-            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNamesAsync(databaseName, sqlStatementName, statementType);
+            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNamesAsync(databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters);
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, selectParameterValues, databaseName).ConfigureFalse();
             List<TResult> userRecordList = SxmHelpers.PopulateUserRecord<TResult>(select);
@@ -388,7 +388,7 @@ namespace SQLiteXM
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
-            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNamesAsync(databaseName, sqlStatementName, statementType);
+            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNamesAsync(databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters);
 
             return await RunStatementAsync(sqlStatementName, selectParameterValues, databaseName).ConfigureFalse();
@@ -437,7 +437,7 @@ namespace SQLiteXM
             SqlStatementType sqlStatementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             try
             {
-                //await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName))
+                //await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName).ConfigureFalse())
                 {
                     switch (sqlStatementType)
                     {

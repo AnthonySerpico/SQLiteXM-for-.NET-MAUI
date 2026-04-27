@@ -86,7 +86,7 @@ namespace SQLiteXM
         ///.ToList();
 
         // Perform efficient bulk insert, returns rows copied
-        ///long rowsCopied = await ctx.BulkCopyAsync(batch);
+        ///long rowsCopied = await ctx.BulkCopyAsync(batch).ConfigureFalse();
         ///Console.WriteLine($"Rows copied: {rowsCopied}");
         ///
         /// 
@@ -99,7 +99,7 @@ namespace SQLiteXM
             if (entities == null) throw new ArgumentNullException(nameof(entities));
 
             var opts = options ?? new LinqToDB.Data.BulkCopyOptions();
-            var result = await WithDataConnectionAsync(dc => dc.BulkCopyAsync(opts, entities));
+            var result = await WithDataConnectionAsync(dc => dc.BulkCopyAsync(opts, entities)).ConfigureFalse();
             return result?.RowsCopied ?? 0L;
         }
 
@@ -136,11 +136,11 @@ namespace SQLiteXM
         /// <summary>
         /// 
         /// using var ctx = new SxmLinqContext();
-        /// var rows = await ctx.QueryAsync("SELECT id, name, address FROM UserRecord WHERE id > @p0", 100);
+        /// var rows = await ctx.QueryAsync("SELECT id, name, address FROM UserRecord WHERE id > @p0", 100).ConfigureFalse();
         /// foreach (var row in rows)
         ///     Console.WriteLine($"{row["id"]}: {row["name"]} - {row["address"]}");
         ///
-        /// int affected = await ctx.ExecuteRawSqlAsync("UPDATE UserRecord SET address = {0} WHERE name = {1}", "New Addr", "Alice");
+        /// int affected = await ctx.ExecuteRawSqlAsync("UPDATE UserRecord SET address = {0} WHERE name = {1}", "New Addr", "Alice").ConfigureFalse();
         /// Note: ExecuteRawSqlAsync uses LinqToDB ExecuteAsync so it accepts LinqToDB-style placeholders.
         /// 
         /// Execute a SQL SELECT (or any query returning rows) and materialize the result as a
@@ -152,7 +152,7 @@ namespace SQLiteXM
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
 
             // Use the owned SqliteConnection directly (safe — still not exposing it).
-            await using var cmd = _sqliteConnection.CreateCommand();
+            await using SqliteCommand cmd = _sqliteConnection.CreateCommand();
             cmd.CommandText = sql;
 
             // Add parameters named @p0, @p1, ... to keep the API simple.
@@ -166,7 +166,7 @@ namespace SQLiteXM
 
             var results = new List<Dictionary<string, object?>>();
 
-            await using var reader = await cmd.ExecuteReaderAsync().ConfigureFalse();
+            await using SqliteDataReader reader = await cmd.ExecuteReaderAsync().ConfigureFalse();
             while (await reader.ReadAsync().ConfigureFalse())
             {
                 var row = new Dictionary<string, object?>(StringComparer.Ordinal);
@@ -218,7 +218,7 @@ namespace SQLiteXM
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             // Alias to InsertOrReplace for SQLite; keep surface for consumers.
-            return await InsertOrReplaceAsync(entity);
+            return await InsertOrReplaceAsync(entity).ConfigureFalse();
         }
 
         // -------------------------
@@ -412,7 +412,7 @@ namespace SQLiteXM
                     if (conflictMode == ConflictMode.ContinueOnConflict)
                     {
                         // commit whatever succeeded (partial commit)
-                        await sxmTrans.CommitTransactionAsync();
+                        await sxmTrans.CommitTransactionAsync().ConfigureFalse();
                         committed = true;
                     }
                     else if (conflictMode == ConflictMode.FailOnFirstConflict)
@@ -420,12 +420,12 @@ namespace SQLiteXM
                         // If any failure happened we must rollback; otherwise commit.
                         if (anyFailure)
                         {
-                            await sxmTrans.RollbackTransactionAsync();
+                            await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
                             committed = false;
                         }
                         else
                         {
-                            await sxmTrans.CommitTransactionAsync();
+                            await sxmTrans.CommitTransactionAsync().ConfigureFalse();
                             committed = true;
                         }
                     }
@@ -433,12 +433,12 @@ namespace SQLiteXM
                     {
                         if (anyFailure)
                         {
-                            await sxmTrans.RollbackTransactionAsync();
+                            await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
                             committed = false;
                         }
                         else
                         {
-                            await sxmTrans.CommitTransactionAsync();
+                            await sxmTrans.CommitTransactionAsync().ConfigureFalse();
                             committed = true;
                         }
                     }
@@ -448,7 +448,7 @@ namespace SQLiteXM
                     // Best-effort rollback if commit/processing failed.
                     try
                     {
-                        await sxmTrans.RollbackTransactionAsync();
+                        await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
                     }
                     catch
                     {

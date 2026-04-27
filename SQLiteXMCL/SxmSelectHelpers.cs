@@ -38,7 +38,7 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters);
+                    await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
                     selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
                 }
             }
@@ -78,7 +78,7 @@ namespace SQLiteXM
 
             try
             {
-                await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters);
+                await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
                 selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -119,7 +119,7 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters);
+                    await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
                     selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
                 }
             }
@@ -159,7 +159,7 @@ namespace SQLiteXM
 
             try
             {
-                await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters);
+                await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
                 selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))

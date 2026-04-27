@@ -34,8 +34,8 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.ExecuteDeleteAsync(sqlStatementName, sqlStatementParameters);
-                    await sxmTransaction.CommitTransactionAsync();
+                    await sxmTransaction.ExecuteDeleteAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -64,7 +64,7 @@ namespace SQLiteXM
         {
             try
             {
-                await sxmTransaction.ExecuteDeleteAsync(sqlStatementName, sqlStatementParameters);
+                await sxmTransaction.ExecuteDeleteAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -94,8 +94,8 @@ namespace SQLiteXM
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.ExecuteDeleteDirectAsync(sqlStatement, sqlStatementParameters);
-                    await sxmTransaction.CommitTransactionAsync();
+                    await sxmTransaction.ExecuteDeleteDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -124,7 +124,7 @@ namespace SQLiteXM
         {
             try
             {
-                await sxmTransaction.ExecuteDeleteDirectAsync(sqlStatement, sqlStatementParameters);
+                await sxmTransaction.ExecuteDeleteDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {

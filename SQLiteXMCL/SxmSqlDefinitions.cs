@@ -212,14 +212,6 @@
     /// </summary>
     public class TriggerDefinition
     {
-        private string _triggerName;
-        /// <summary>
-        /// Gets the name of the trigger.
-        /// </summary>
-        public string TriggerName
-        {
-            get { return _triggerName; }
-        }
         private string triggerSQL;
         /// <summary>
         /// Gets the CREATE TRIGGER SQL statement.
@@ -234,9 +226,9 @@
         /// </summary>
         /// <param name="triggerName">The name of the trigger.</param>
         /// <param name="triggerSQL">The CREATE TRIGGER SQL statement.</param>
-        internal TriggerDefinition(string triggerName, string triggerSQL)
+        internal TriggerDefinition(string triggerSQL)
         {
-            this._triggerName = triggerName;
+            //this._triggerName = triggerName;
             this.triggerSQL = triggerSQL;
         }
     }

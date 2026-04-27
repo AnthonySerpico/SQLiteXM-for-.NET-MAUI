@@ -49,8 +49,8 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     databaseName = sxmTransaction.Connection?.DatabaseName;
-                    ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters);
-                    await sxmTransaction.CommitTransactionAsync();
+                    ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -97,7 +97,7 @@ namespace SQLiteXM
             try
             {
                 databaseName = sxmTransaction.Connection?.DatabaseName;
-                ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters);
+                ir = await sxmTransaction.ExecuteInsertAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -125,8 +125,8 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     databaseName = sxmTransaction.Connection?.DatabaseName;
-                    ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatement, sqlStatementParameters);
-                    await sxmTransaction.CommitTransactionAsync();
+                    ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -153,7 +153,7 @@ namespace SQLiteXM
             try
             {
                 databaseName = sxmTransaction.Connection?.DatabaseName;
-                ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatementName, sqlStatementParameters);
+                ir = await sxmTransaction.ExecuteInsertDirectAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {

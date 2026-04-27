@@ -3,6 +3,7 @@ using SQLiteXM.Internal.Threading;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Xml.Linq;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 //using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
@@ -17,7 +18,7 @@ namespace SQLiteXM
     /// database schema objects (tables, indexes, triggers), and maintaining the stored SQL statements
     /// version number in the database (PRAGMA user_version).
     /// </remarks>
-    public static class SxmInit 
+    public static class SxmInit
     {
         /// <summary>
         /// Cache mapping table name -> (column name -> column type) using thread-safe concurrent dictionaries.
@@ -66,7 +67,7 @@ namespace SQLiteXM
                 // Follow on calls to set will be ignored even if the initial setter value is null.
                 SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
                 SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
-                await SxmInit.InitializeAsync();
+                await SxmInit.InitializeAsync().ConfigureFalse();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -98,7 +99,7 @@ namespace SQLiteXM
                 // Follow on calls to set will be ignored even if the initial setter value is null.
                 SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
                 SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
-                await SxmInit.InitializeAsync();
+                await SxmInit.InitializeAsync().ConfigureFalse();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -242,11 +243,11 @@ namespace SQLiteXM
             try
             {
                 long sqlStatementsVersionNumber = SxmProcessSQLStatements.SqlStatementsVersionNumber;  // The value in the current SQL statements file.
-                long currentDbVersionNumber = await GetDbVersionNumberAsync(databaseName);
+                long currentDbVersionNumber = await GetDbVersionNumberAsync(databaseName).ConfigureFalse();
 
                 if (sqlStatementsVersionNumber > currentDbVersionNumber || sqlStatementsVersionNumber == 0)
                 {
-                    await CreateSystemTablesAsync(databaseName);
+                    await CreateSystemTablesAsync(databaseName).ConfigureFalse();
                     sxmConnection = new SxmConnection(databaseName, shared: true);
 
                     if (SxmSqlStatements.TableCreateStatements != default(Dictionary<string, TableDefinition>))
@@ -258,30 +259,30 @@ namespace SQLiteXM
                             if (DatabaseNameTableName.Split('.').Length != 2)
                                 throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidTableName, DatabaseNameTableName));
 
-                            if (!await DoesTableExistAsync(DatabaseNameTableName, sxmConnection, tableNamesMap))
+                            if (!await DoesTableExistAsync(DatabaseNameTableName, sxmConnection, tableNamesMap).ConfigureFalse())
                             {
                                 TableDefinition tableDefinition = SxmSqlStatements.TableCreateStatements[DatabaseNameTableName] as TableDefinition;
                                 if (tableDefinition.TableSQL.StartsWith("CREATE ", true, null) == true)
-                                    await ApplyCreateTableStatementAsync(DatabaseNameTableName, sxmConnection, tableDefinition);
+                                    await ApplyCreateTableStatementAsync(DatabaseNameTableName, sxmConnection, tableDefinition).ConfigureFalse();
                             }
                             else
                             {
                                 TableDefinition tableDefinition = SxmSqlStatements.TableCreateStatements[DatabaseNameTableName] as TableDefinition;
                                 if (tableDefinition.TableSQL.StartsWith("DROP ", true, null) == true)
-                                    await ApplyDropTableStatementAsync(DatabaseNameTableName, sxmConnection, tableDefinition);
+                                    await ApplyDropTableStatementAsync(DatabaseNameTableName, sxmConnection, tableDefinition).ConfigureFalse();
                                 else
                                 {
-                                    await ApplyAlterTableStatementsAsync(DatabaseNameTableName, sxmConnection);
-                                    await ApplyIndexTableStatementsAsync(DatabaseNameTableName, sxmConnection);
+                                    await ApplyAlterTableStatementsAsync(DatabaseNameTableName, sxmConnection).ConfigureFalse();
+                                    await ApplyIndexTableStatementsAsync(DatabaseNameTableName, sxmConnection).ConfigureFalse();
                                 }
                             }
                         }
                     }
 
-                    await ApplyTriggerTableStatementsAsync(sxmConnection);
-                    await DropUnusedEntitiesAsync(databaseName, sxmConnection);
-                    await StoreDbVersionNumberAsync(sqlStatementsVersionNumber, databaseName, sxmConnection);
-                    await SxmAssociationMapper.InitializeAssociationsAsync(databaseName);
+                    await ApplyTriggerTableStatementsAsync(sxmConnection, databaseName).ConfigureFalse();
+                    await DropUnusedEntitiesAsync(databaseName, sxmConnection).ConfigureFalse();
+                    await StoreDbVersionNumberAsync(sqlStatementsVersionNumber, databaseName, sxmConnection).ConfigureFalse();
+                    await SxmAssociationMapper.InitializeAssociationsAsync(databaseName).ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -298,7 +299,7 @@ namespace SQLiteXM
             }
             finally
             {
-                if(sxmConnection != null)
+                if (sxmConnection != null)
                     await sxmConnection.DestroyConnectionAsync().ConfigureFalse();
                 SxmSqlStatements.ClearStatementTables();
             }
@@ -327,7 +328,7 @@ namespace SQLiteXM
                 if (dropTypes.Count == 0)
                     return;
 
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
                     foreach (var type in dropTypes)
                     {
@@ -366,15 +367,15 @@ namespace SQLiteXM
         private static async Task CreateSystemTablesAsync(string databaseName)
         {
             SxmConnection sxmConnection = new SxmConnection(databaseName);
-            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
             {
-                if (!await DoesTableExistAsync("_systemCloudSynchDescriptor", sxmConnection))
-                    await CreateCloudSyncDescriptorAsync(sxmTransaction);
+                if (!await DoesTableExistAsync("_systemCloudSynchDescriptor", sxmConnection).ConfigureFalse())
+                    await CreateCloudSyncDescriptorAsync(sxmTransaction).ConfigureFalse();
 
-                if (!await DoesTableExistAsync("_systemCloudSynch", sxmConnection))
-                    await CreateCloudSynchTableAsync(sxmTransaction);
+                if (!await DoesTableExistAsync("_systemCloudSynch", sxmConnection).ConfigureFalse())
+                    await CreateCloudSynchTableAsync(sxmTransaction).ConfigureFalse();
 
-                await sxmTransaction.CommitTransactionAsync();
+                await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
             }
         }
 
@@ -413,9 +414,9 @@ namespace SQLiteXM
             try
             {
                 SxmConnection sxmConnection = new SxmConnection(databaseName);
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
-                    await sxmConnection.ExecuteQueryAsync("PRAGMA user_version", default(List<object>));
+                    await sxmConnection.ExecuteQueryAsync("PRAGMA user_version", default(List<object>)).ConfigureFalse();
 
                     if (sxmConnection.HasRows() && sxmConnection.NextRow())
                     {
@@ -453,9 +454,9 @@ namespace SQLiteXM
             try
             {
                 SxmConnection sxmConnection = new SxmConnection(databaseName);
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
-                    await sxmConnection.ExecuteQueryAsync("PRAGMA user_version = 0", default(List<object>));
+                    await sxmConnection.ExecuteQueryAsync("PRAGMA user_version = 0", default(List<object>)).ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -481,9 +482,9 @@ namespace SQLiteXM
         {
             try
             {
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
-                    await sxmConnection.ExecuteQueryAsync(String.Format("PRAGMA user_version = {0}", versionNumber), default(List<object>));
+                    await sxmConnection.ExecuteQueryAsync(String.Format("PRAGMA user_version = {0}", versionNumber), default(List<object>)).ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -518,18 +519,18 @@ namespace SQLiteXM
                 databaseName = parts[0];
                 tableName = parts[1];
 
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
-                    await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL);
-                    await AddSynchIdAsync(parts, sxmTransaction);
+                    await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL).ConfigureFalse();
+                    await AddSynchIdAsync(parts, sxmTransaction).ConfigureFalse();
 
-                    await InsertIntoSystemCloudSyncDescriptorAsync(DatabaseNameTableName, databaseName, tableName, sxmTransaction);
+                    await InsertIntoSystemCloudSyncDescriptorAsync(DatabaseNameTableName, databaseName, tableName, sxmTransaction).ConfigureFalse();
 
-                    await CreateCloudSynchTriggersAsync(DatabaseNameTableName, sxmTransaction);
-                    await sxmTransaction.CommitTransactionAsync();
+                    await CreateCloudSynchTriggersAsync(DatabaseNameTableName, sxmTransaction).ConfigureFalse();
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
 
-                await ApplyIndexTableStatementsAsync(DatabaseNameTableName, sxmConnection);
+                await ApplyIndexTableStatementsAsync(DatabaseNameTableName, sxmConnection).ConfigureFalse();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -561,21 +562,21 @@ namespace SQLiteXM
             try
             {
                 SxmConnection? sxmConnection = new SxmConnection(databaseName);
-                if (!await DoesTableExistAsync(tableName, sxmConnection))
+                if (!await DoesTableExistAsync(tableName, sxmConnection).ConfigureFalse())
                 {
                     Hashtable tableNamesMap = new Hashtable();
                     TableDefinition? tableDefinition = SxmSqlStatements.TableCreateStatements![key] as TableDefinition;
 
-                    await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                   await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                     {
-                        await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL);
-                        await SxmInit.AddSynchIdAsync(parts, sxmTransaction);
+                        await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL).ConfigureFalse();
+                        await SxmInit.AddSynchIdAsync(parts, sxmTransaction).ConfigureFalse();
 
-                        await SxmInit.InsertIntoSystemCloudSyncDescriptorAsync(key, databaseName, parts[1], sxmTransaction);
+                        await SxmInit.InsertIntoSystemCloudSyncDescriptorAsync(key, databaseName, parts[1], sxmTransaction).ConfigureFalse();
 
-                        //await SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction);
+                        //await SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction).ConfigureFalse();
 
-                        await sxmTransaction.CommitTransactionAsync();
+                        await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                     }
                 }
             }
@@ -604,7 +605,7 @@ namespace SQLiteXM
             try
             {
                 string sqlSelect = "SELECT name FROM sqlite_master WHERE type='table' AND name=@p0";
-                await sxmConnection.ExecuteQueryAsync(sqlSelect, new List<object> { tableName });
+                await sxmConnection.ExecuteQueryAsync(sqlSelect, new List<object> { tableName }).ConfigureFalse();
                 return sxmConnection.HasRows();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -641,13 +642,13 @@ namespace SQLiteXM
                 databaseName = parts[0];
                 tableName = parts[1];
 
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
-                    await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL);
-                    await sxmTransaction.ExecuteTableStatementAsync($"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier("update" + tableName)}");
-                    await sxmTransaction.ExecuteTableStatementAsync($"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier("delete" + tableName)}");
+                    await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL).ConfigureFalse();
+                    await sxmTransaction.ExecuteTableStatementAsync($"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier("update" + tableName)}").ConfigureFalse();
+                    await sxmTransaction.ExecuteTableStatementAsync($"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier("delete" + tableName)}").ConfigureFalse();
 
-                    await sxmTransaction.CommitTransactionAsync();
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -684,9 +685,9 @@ namespace SQLiteXM
                 string tableName = parts[1];
 
                 Hashtable? columnNames = null;
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
-                    await sxmConnection.ExecuteQueryAsync($"PRAGMA table_info({SxmHelpers.QuoteIdentifier(tableName)})", default(List<object>));
+                    await sxmConnection.ExecuteQueryAsync($"PRAGMA table_info({SxmHelpers.QuoteIdentifier(tableName)})", default(List<object>)).ConfigureFalse();
 
                     if (alterStatementsList.Count > 1)
                     {
@@ -737,10 +738,10 @@ namespace SQLiteXM
                         {
                             try
                             {
-                                await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(sxmConnection))
+                                await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                                 {
-                                    await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition.AlterSQL);
-                                    await sxmTransaction1.CommitTransactionAsync();
+                                    await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition.AlterSQL).ConfigureFalse();
+                                    await sxmTransaction1.CommitTransactionAsync().ConfigureFalse();
                                 }
                             }
                             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -793,7 +794,7 @@ namespace SQLiteXM
             if (sqlStatementType == SxmDefines.SqlStatementType.Unknown || string.IsNullOrEmpty(tableName))
                 throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, queryName));
 
-            return await GetTableColumnNamesAsync(dbName, tableName);
+            return await GetTableColumnNamesAsync(dbName, tableName).ConfigureFalse();
         }
 
         /// <summary>
@@ -863,9 +864,9 @@ namespace SQLiteXM
             var columnNames = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
 
             SxmConnection sxmConnection = new SxmConnection(dbName);
-            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
             {
-                await sxmConnection.ExecuteQueryAsync($"PRAGMA table_info({SxmHelpers.QuoteIdentifier(tableName)})", default(List<object>));
+                await sxmConnection.ExecuteQueryAsync($"PRAGMA table_info({SxmHelpers.QuoteIdentifier(tableName)})", default(List<object>)).ConfigureFalse();
                 while (sxmConnection.NextRow() == true)
                 {
                     string? columnName = (string?)sxmConnection.GetValue("name");
@@ -888,41 +889,56 @@ namespace SQLiteXM
         /// Existing triggers are dropped before new ones are created.
         /// </summary>
         /// <param name="connectionMap">Map of database name to active connection. If null, connections will be created as needed.</param>
-        private static async Task ApplyTriggerTableStatementsAsync(SxmConnection sxmConnection)
+        private static async Task ApplyTriggerTableStatementsAsync(SxmConnection sxmConnection, string dbName)
         {
-            List<TriggerDefinition>? triggerStatementsList = default(List<TriggerDefinition>);
+            await DropTriggersAsync(sxmConnection).ConfigureFalse();
+            await AddTriggersAsync(sxmConnection, dbName).ConfigureFalse();
+        }
 
-            if (SxmSqlStatements.TriggerStatements != null)
+        internal static async Task DropTriggersAsync(SxmConnection sxmConnection)
+        {
+            // Delete all triggers in the database.
+            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
             {
-                ICollection triggerStatementKeys = SxmSqlStatements.TriggerStatements.Keys;
-
-                foreach (string dbName in triggerStatementKeys)
+                List<string> existingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty).ConfigureFalse();
+                foreach (string existingTrigger in existingTriggers)
                 {
-                    // Delete all triggers in the database.
-                    await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
-                    {
-                        List<string> existingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty);
-                        foreach (string existingTrigger in existingTriggers)
-                        {
-                            await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER {SxmHelpers.QuoteIdentifier(existingTrigger)}");
-                        }
+                   await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier(existingTrigger)}").ConfigureFalse();
+                }
 
-                        await sxmTransaction.CommitTransactionAsync();
+                await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
+            }
+        }
+
+        internal static async Task AddTriggersAsync(SxmConnection sxmConnection, string dbName)
+        {
+            // Get all triggers in the SQL Statements file and create them.
+            List<TriggerDefinition>? triggerStatementsList = SxmSqlStatements.TriggerStatements?[dbName] as List<TriggerDefinition>;
+
+            if (triggerStatementsList != null)
+            {
+               await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
+                {
+                    // Iterate backwards so we can safely remove successful entries without invalidating the iteration.
+                    for (int i = triggerStatementsList.Count - 1; i >= 0; i--)
+                    {
+                        TriggerDefinition td = triggerStatementsList.ElementAt(i);
+                        try
+                        {
+                            await sxmTransaction.ExecuteCreateTriggerAsync(td.TriggerSQL).ConfigureFalse();
+
+                            // If creation succeeded, remove the entry so the list keeps only those that failed.
+                            triggerStatementsList.RemoveAt(i);
+                        }
+                        catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                        {
+                            // If not a 'no such table' error — rethrow unchanged so callers/runtime can handle appropriately.
+                            if (ex.InnerException == null || !ex.InnerException.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase))
+                                throw;
+                        }
                     }
 
-                    // Get all triggers in the SQL Statements file and create them.
-                    triggerStatementsList = SxmSqlStatements.TriggerStatements[dbName] as List<TriggerDefinition>;
-                    if (triggerStatementsList != null)
-                    {
-                        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
-                        {
-                            foreach (TriggerDefinition td in triggerStatementsList)
-                            {
-                                await sxmTransaction.ExecuteCreateTriggerAsync(td.TriggerSQL);
-                            }
-                            await sxmTransaction.CommitTransactionAsync();
-                        }
-                    }
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
         }
@@ -946,9 +962,9 @@ namespace SQLiteXM
                 string tableName = parts[1];
 
                 Hashtable? indexNames = null;
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+               await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
-                    await sxmConnection.ExecuteQueryAsync($"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})", null as List<object>);
+                    await sxmConnection.ExecuteQueryAsync($"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})", null as List<object>).ConfigureFalse();
 
                     if (indexStatementsList.Count > 1)
                     {
@@ -993,10 +1009,10 @@ namespace SQLiteXM
                         {
                             try
                             {
-                                await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(sxmConnection))
+                                await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                                 {
-                                    await sxmTransaction1.ExecuteIndexAsync(indexDefinition.IndexSQL);
-                                    await sxmTransaction1.CommitTransactionAsync();
+                                    await sxmTransaction1.ExecuteIndexAsync(indexDefinition.IndexSQL).ConfigureFalse();
+                                    await sxmTransaction1.CommitTransactionAsync().ConfigureFalse();
                                 }
                             }
                             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -1043,7 +1059,7 @@ namespace SQLiteXM
         private static async Task AddSynchIdAsync(string[] parts, SxmUTransaction sxmTransaction)
         {
             string alterSQL = $"ALTER TABLE {SxmHelpers.QuoteIdentifier(parts[1])} ADD COLUMN {SxmHelpers.QuoteIdentifier("synchId")} BLOB NOT NULL DEFAULT ''";
-            await sxmTransaction.ExecuteTableStatementAsync(alterSQL);
+            await sxmTransaction.ExecuteTableStatementAsync(alterSQL).ConfigureFalse()  ;
         }
 
         /// <summary>
@@ -1057,7 +1073,7 @@ namespace SQLiteXM
             string databaseTable = "_systemCloudSynchDescriptor";
 
             string tableSQL = $"CREATE TABLE {SxmHelpers.QuoteIdentifier(databaseTable)} (id INTEGER PRIMARY KEY AUTOINCREMENT, dbName TEXT, tableName TEXT, cloudSynchFlag INTEGER)";
-            await sxmTransaction.ExecuteTableStatementAsync(tableSQL);
+            await sxmTransaction.ExecuteTableStatementAsync(tableSQL).ConfigureFalse();
         }
 
         /// <summary>
@@ -1074,7 +1090,7 @@ namespace SQLiteXM
             parameterValues.Add(databaseName);
             parameterValues.Add(tableName);
             parameterValues.Add(tableDefinition.CloudSynch);
-            await sxmTransaction.ExecuteSystemUpdateDirectAsync("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues);
+            await sxmTransaction.ExecuteSystemUpdateDirectAsync("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues).ConfigureFalse();
         }
 
 
@@ -1089,7 +1105,7 @@ namespace SQLiteXM
             string databaseTable = "_systemCloudSynch";
 
             string tableSQL = $"CREATE TABLE {SxmHelpers.QuoteIdentifier(databaseTable)} (id INTEGER PRIMARY KEY AUTOINCREMENT, dbName TEXT, tableName TEXT, action TEXT, synchId BLOB)";
-            await sxmTransaction.ExecuteTableStatementAsync(tableSQL);
+            await sxmTransaction.ExecuteTableStatementAsync(tableSQL).ConfigureFalse();
         }
 
         /// <summary>
@@ -1121,7 +1137,7 @@ namespace SQLiteXM
                     $"CREATE TRIGGER IF NOT EXISTS {quotedTriggerUpdate} UPDATE ON {quotedTable} " +
                     $"BEGIN INSERT INTO {quotedSystemTable} (dbName, tableName, action, synchId) " +
                     $"VALUES ('{safeDbName}', '{safeTableNameLiteral}', 'update', new.synchId); END;";
-                await sxmTransaction.ExecuteCreateTriggerAsync(triggerUpdateSql);
+                await sxmTransaction.ExecuteCreateTriggerAsync(triggerUpdateSql).ConfigureFalse();
 
                 if (tableDefinition?.CloudSynch == SxmDefines.CloudSync) // This is weird, needs fixing. How does it make sense for this to be inside this code block?
                 {
@@ -1130,7 +1146,7 @@ namespace SQLiteXM
                         $"CREATE TRIGGER IF NOT EXISTS {quotedTriggerDelete} DELETE ON {quotedTable} " +
                         $"BEGIN INSERT INTO {quotedSystemTable} (dbName, tableName, action, synchId) " +
                         $"VALUES ('{safeDbName}', '{safeTableNameLiteral}', 'delete', old.synchId); END;";
-                    await sxmTransaction.ExecuteCreateTriggerAsync(triggerDeleteSql);
+                    await sxmTransaction.ExecuteCreateTriggerAsync(triggerDeleteSql).ConfigureFalse();
                 }
             }
         }
@@ -1142,7 +1158,7 @@ namespace SQLiteXM
             string tableName = parts[1];
 
             {
-                await sxmConnection.ExecuteQueryAsync("SELECT name FROM sqlite_master WHERE type='table'", null as List<object>);
+                await sxmConnection.ExecuteQueryAsync("SELECT name FROM sqlite_master WHERE type='table'", null as List<object>).ConfigureFalse();
 
                 ArrayList tableNames = new ArrayList();
                 if (sxmConnection.HasRows())
@@ -1200,7 +1216,7 @@ namespace SQLiteXM
                     sql += " AND tbl_name = @p0";
                     parms = new List<object> { tableName };
                 }
-                await sxmConnection.ExecuteQueryAsync(sql, parms);
+                await sxmConnection.ExecuteQueryAsync(sql, parms).ConfigureFalse();
 
                 if (sxmConnection.HasRows() == true)
                 {

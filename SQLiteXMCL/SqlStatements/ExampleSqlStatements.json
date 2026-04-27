@@ -1,7 +1,6 @@
 {
   "database": "sqlitexmtest",
-  "default": true
-  | false,
+  "default": true | false,
   "version": 1,
 
   "_comment": "Do not include any comments in your SQL. For example, INSERT INTO user (name) /*comment */ VALUES('Bob');, or SELECT * FROM user WHERE name = 'Bob'; -- comment",

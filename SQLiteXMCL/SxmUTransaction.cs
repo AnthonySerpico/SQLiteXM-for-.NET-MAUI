@@ -229,7 +229,7 @@ namespace SQLiteXM
             try
             {
                 SxmSqlStatements.InsertStatements.Add(commandName, id);
-                insertResponse = await ExecuteInsertAsync(commandName, parameterValues, cancellationToken);
+                insertResponse = await ExecuteInsertAsync(commandName, parameterValues, cancellationToken).ConfigureFalse();
             }
             finally
             {
@@ -278,7 +278,7 @@ namespace SQLiteXM
                         if (nextRow.ContainsKey("rowID") == true)
                         {
                             recordID = (long)nextRow["rowID"]!;
-                            synchID = await GetSynchIdAsync(insertDefinition.TableName, recordID);
+                            synchID = await GetSynchIdAsync(insertDefinition.TableName, recordID).ConfigureFalse();
                         }
 
                     if (synchID == null || synchID.Length == 0)
@@ -336,7 +336,7 @@ namespace SQLiteXM
                 List<object> parameterList = new List<object>();
                 parameterList.Add(recordID);
 
-                await _connection.ExecuteQueryAsync(String.Format("SELECT synchId FROM {0} WHERE id = @p0 LIMIT 1", SxmHelpers.QuoteIdentifier(tableName)), parameterList);
+                await _connection.ExecuteQueryAsync(String.Format("SELECT synchId FROM {0} WHERE id = @p0 LIMIT 1", SxmHelpers.QuoteIdentifier(tableName)), parameterList).ConfigureFalse();
                 Dictionary<string, object?>? row = _connection.GetNextRow<Dictionary<string, object?>>();
 
                 if (row != null && row.Count > 0)
@@ -526,7 +526,7 @@ namespace SQLiteXM
         public async Task AttachDatabaseAsync()
         {
             foreach (string databaseName in SxmDatabaseDescriptor.GetDatabaseNames())
-                await AttachDatabaseAsync(databaseName);
+                await AttachDatabaseAsync(databaseName).ConfigureFalse();
         }
 
         /// <summary>
@@ -538,7 +538,7 @@ namespace SQLiteXM
             {
                 throw new ArgumentNullException($"DetachDatabaseAsync failure. SxmConnection '_connection' is null.");
             }
-            await _connection.ExecuteQueryAsync("PRAGMA database_list", null as List<object>);
+            await _connection.ExecuteQueryAsync("PRAGMA database_list", null as List<object>).ConfigureFalse();
 
             while (NextRow() == true)
             {
@@ -549,7 +549,7 @@ namespace SQLiteXM
                         !string.Equals(dbName, "main", StringComparison.OrdinalIgnoreCase) &&
                         !string.Equals(dbName, "temp", StringComparison.OrdinalIgnoreCase))
                     {
-                        await DetachDatabaseAsync(dbName);
+                        await DetachDatabaseAsync(dbName).ConfigureFalse();
                     }
                 }
                 catch (System.Exception) // Keep trying to detach all databases.
@@ -581,7 +581,7 @@ namespace SQLiteXM
                 string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
 
                 if (File.Exists(dbFullyQualifiedPath) == true)
-                    await _connection.ExecuteNonQueryAsync(String.Format("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>);
+                    await _connection.ExecuteNonQueryAsync(String.Format("ATTACH DATABASE '{0}' as {1}", dbFullyQualifiedPath, databaseName), null as List<object>).ConfigureFalse();
                 else
                     throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.NoDatabaseExists, databaseName));
             }
@@ -609,7 +609,7 @@ namespace SQLiteXM
                 string databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
                 string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
                 if (File.Exists(dbFullyQualifiedPath) == true)
-                    await _connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>);
+                    await _connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>).ConfigureFalse();
                 else
                     throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.NoDatabaseExists, databaseName));
             }

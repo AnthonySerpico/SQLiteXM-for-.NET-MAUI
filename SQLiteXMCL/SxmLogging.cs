@@ -74,7 +74,7 @@ namespace SQLiteXM
             {
                 SingleReader = true,
                 SingleWriter = false,
-                FullMode = BoundedChannelFullMode.DropNewest
+                FullMode = BoundedChannelFullMode.DropOldest
             };
 
             _writeChannel = Channel.CreateBounded<string>(options);
@@ -154,7 +154,7 @@ namespace SQLiteXM
                 entryBuilder.Append(" (Local Time)");
                 entryBuilder.Append(Environment.NewLine);
                 entryBuilder.Append(errorLogText.ToString()).Append(Environment.NewLine);
-                entryBuilder.Append("*************************************************************").Append(Environment.NewLine).Append(Environment.NewLine);
+                entryBuilder.Append("*******************************************************").Append(Environment.NewLine).Append(Environment.NewLine);
 
                 // Try to write to the bounded channel. With DropOldest FullMode the channel should accept new entries
                 // but if TryWrite returns false for any reason increment droppedCount as a fallback.

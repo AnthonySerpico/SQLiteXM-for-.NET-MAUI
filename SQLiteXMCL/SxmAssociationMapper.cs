@@ -1,4 +1,5 @@
 ﻿using LinqToDB.Mapping;
+using SQLiteXM.Internal.Threading;
 using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Linq.Expressions;
@@ -110,17 +111,17 @@ namespace SQLiteXM
             try
             {
                 sxmConnection = new SxmConnection(databaseName);
-                List<string> tableNames = await SxmHelpers.GetAllUserTableNamesAsync(sxmConnection);
+                List<string> tableNames = await SxmHelpers.GetAllUserTableNamesAsync(sxmConnection).ConfigureFalse();
 
                 if (tableNames.Count > 0)
                 {
-                    await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection))
+                    await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                     {
                         foreach (string tableName in tableNames)
                         {
                             currentTableName = tableName;
                             string pragma = $"PRAGMA foreign_key_list({SxmHelpers.QuoteIdentifier(tableName)})";
-                            await sxmConnection.ExecuteQueryAsync(pragma, default(List<object>));
+                            await sxmConnection.ExecuteQueryAsync(pragma, default(List<object>)).ConfigureFalse();
 
                             while (sxmConnection.NextRow() == true)
                             {
@@ -176,8 +177,7 @@ namespace SQLiteXM
             }
             finally
             {
-                if (sxmConnection != null)
-                    await sxmConnection.DestroyConnectionAsync();
+                await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureFalse();
             }
         }
 
