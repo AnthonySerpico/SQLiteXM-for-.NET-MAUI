@@ -329,6 +329,38 @@ namespace SQLiteXM
         }
 
 
+        /************************************************************************* DDL ********************************************************************/
+        /// <summary>
+        /// Asynchronously drops the specified table if it exists within a transaction.
+        /// If <paramref name="force"/> is true, foreign key enforcement is deferred to prevent 
+        /// the drop from being blocked by active constraints.
+        /// </summary>
+        /// <param name="tableName">Name of the table to drop.</param>
+        /// <param name="dbName">Optional database name override; uses the default database if null.</param>
+        /// <param name="force">If true, executes 'PRAGMA defer_foreign_keys = ON' to allow dropping constrained tables within the transaction.</param>
+        public static async Task DropTableAsync(string tableName, string? dbName = default, bool force = false)
+        {
+            // QuoteIdentifier performs validation and correct quoting per project guidelines.
+            string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+            await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
+            {
+                if (force)
+                {
+                    // Within a transaction, defer_foreign_keys allows for schema changes that would 
+                    // otherwise be blocked by foreign key constraints.
+                    string fkDdl = $"PRAGMA defer_foreign_keys = ON";
+                    await SxmDdlHelpers.PerformTableStatementAsync(fkDdl, dbName, sxmTransaction).ConfigureFalse();
+                }
+                
+                string dtDdl = $"DROP TABLE IF EXISTS {quotedTable}";
+                await SxmDdlHelpers.PerformTableStatementAsync(dtDdl, dbName, sxmTransaction).ConfigureFalse();
+
+                // If force was used, SQLite validates all deferred foreign key constraints at this point.
+                await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
+            }
+        }
+
 
         /************************************************************************* GENERIC ********************************************************************/
 
@@ -458,7 +490,7 @@ namespace SQLiteXM
                             recordData.Add(await SxmInsertHelpers.PerformInsertAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse());
                             break;
 
-                        // Direct SQL statement queries are processed here.
+                        // Direct SQL statement queries are processed here. These are statements where the SQL is embedded in the code, not inside the SqlStatemenst file.
                         case SqlStatementType.SelectDirect:
                             recordData = await SxmSelectHelpers.PerformSelectDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
                             break;
@@ -492,9 +524,7 @@ namespace SQLiteXM
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
 
-            if (recordData == default(List<Dictionary<string, object?>>))
-                recordData = new List<Dictionary<string, object?>>();
-
+            recordData ??= new List<Dictionary<string, object?>>();
             return recordData;
         }
     }

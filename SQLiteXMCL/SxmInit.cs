@@ -280,7 +280,6 @@ namespace SQLiteXM
                     }
 
                     await ApplyTriggerTableStatementsAsync(sxmConnection, databaseName).ConfigureFalse();
-                    await DropUnusedEntitiesAsync(databaseName, sxmConnection).ConfigureFalse();
                     await StoreDbVersionNumberAsync(sqlStatementsVersionNumber, databaseName, sxmConnection).ConfigureFalse();
                     await SxmAssociationMapper.InitializeAssociationsAsync(databaseName).ConfigureFalse();
                 }
@@ -305,63 +304,6 @@ namespace SQLiteXM
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Drops tables for all types that implement <see cref="ISxmDropEntity"/>.
-        /// </summary>
-        /// <param name="databaseName">Optional database name to operate on. If null the implicit database is used.</param>
-        /// <returns>A task that completes when all drop operations have finished.</returns>
-        private static async Task DropUnusedEntitiesAsync(string databaseName, SxmConnection sxmConnection)
-        {
-            string? tableName = default;
-            try
-            {
-                // Collect all non-abstract classes that implement ISxmDropEntity across loaded assemblies.
-                var dropTypes = AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a =>
-                    {
-                        try { return a.GetTypes(); }
-                        catch { return Array.Empty<Type>(); } // skip assemblies we can't reflect over
-                    }).Where(t => t.IsClass && !t.IsAbstract && typeof(ISxmDropEntity).IsAssignableFrom(t)).ToList();
-
-                if (dropTypes.Count == 0)
-                    return;
-
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
-                {
-                    foreach (var type in dropTypes)
-                    {
-                        tableName = type.Name;
-                        string dropSql = $"DROP TABLE IF EXISTS {SxmHelpers.QuoteIdentifier(tableName)}";
-
-                        try
-                        {
-                            // Use a shared connection/transaction for each drop to avoid interfering with shared state.
-                            await sxmTransaction.ExecuteTableStatementAsync(dropSql).ConfigureFalse();
-                        }
-                        catch (Exception ex)
-                        {
-                            // Best-effort logging - do not allow one failure to stop remaining drops.
-                            try { SxmLogging.Log(ex); } catch { }
-                        }
-                    }
-
-                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
-                }
-            }
-            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
-            {
-                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DropUnusedEntitiesAsync failure for table '{tableName}' for database '{databaseName}'.");
-                throw;
-            }
-            catch (System.Exception ex)
-            {
-                string errStr = $"DropUnusedEntitiesAsync failure for table '{tableName}' for database '{databaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
-            }
         }
 
         private static async Task CreateSystemTablesAsync(string databaseName)

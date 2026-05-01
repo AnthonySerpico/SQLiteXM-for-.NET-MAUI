@@ -194,12 +194,12 @@ namespace SQLiteXM
 
             Type baseType = typeof(SxmEntity);
 
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 Type[] asmTypes;
                 try
                 {
-                    asmTypes = asm.GetTypes();
+                    asmTypes = assembly.GetTypes();
                 }
                 catch (ReflectionTypeLoadException rtlEx)
                 {

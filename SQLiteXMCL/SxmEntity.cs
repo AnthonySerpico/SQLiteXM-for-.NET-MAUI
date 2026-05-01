@@ -212,7 +212,8 @@ namespace SQLiteXM
             Lazy<Task> lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
                     () => Task.Run(async () =>
                     {
-                        var props = GetEntityProperties();
+                        ValidateDynamicallyAccessedMembersAttribute(type);
+                        List<MemberInfoWithAlias> props = GetEntityProperties();
                         GetColumnNamesAndDataTypes(props);
 
                         bool newTable;
@@ -834,7 +835,7 @@ namespace SQLiteXM
                     {
                         string alterDefinition = $"ALTER TABLE {quotedTable} ADD COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}";
 
-                       await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)).ConfigureFalse())
+                        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(_databaseName)).ConfigureFalse())
                         {
                             await sxmTransaction.ExecuteAlterTableAsync(alterDefinition).ConfigureFalse();
                             await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
@@ -1327,5 +1328,28 @@ namespace SQLiteXM
 
         private static bool IsIgnored(string name) => string.Equals(name, "id", StringComparison.OrdinalIgnoreCase) ||
                                                       string.Equals(name, "synchId", StringComparison.OrdinalIgnoreCase);
+
+        private void ValidateDynamicallyAccessedMembersAttribute(Type entityType)
+        {
+            if (entityType == null)
+                throw new ArgumentNullException(nameof(entityType));
+
+            // Skip validation on platforms where AOT/trimming is not supported, as the attribute is not required.
+            //if (OperatingSystem.IsIOS() || OperatingSystem.IsAndroid())
+            {
+                bool hasAttribute = entityType
+                    .GetCustomAttributes(typeof(DynamicallyAccessedMembersAttribute), inherit: false)
+                    .Cast<DynamicallyAccessedMembersAttribute>()
+                    .Any(attr => attr.MemberTypes == DynamicallyAccessedMemberTypes.All);
+
+                if (!hasAttribute)
+                {
+                    throw new InvalidOperationException(
+                        $"The class '{entityType.Name}' is missing required AOT annotations. " +
+                        $"Please add: [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] " +
+                        $"to the class definition.");
+                }
+            }
+        }
     }
 }

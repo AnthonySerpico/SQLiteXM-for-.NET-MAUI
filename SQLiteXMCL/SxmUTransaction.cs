@@ -104,8 +104,12 @@ namespace SQLiteXM
 
         /// <summary>
         /// Finalize and clean up the transaction object asynchronously.
-        /// This method performs a best-effort release of the connection lock (if this transaction owns it)
-        /// and then releases/returns the underlying connection.
+        /// </summary>
+        /// <remarks>
+        /// Note: This method may throw if resource cleanup fails. However, the 
+        /// public DisposeAsync/Dispose methods are guaranteed to catch and log 
+        /// these exceptions to ensure safe object disposal.
+        /// </remarks>
         ///
         /// Important semantics:
         /// - Calling commitTransaction()/commitTransactionAsync() only ends the underlying SQLite transaction

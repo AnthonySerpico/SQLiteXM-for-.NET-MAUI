@@ -50,5 +50,4 @@
 
 		<None Include="SqlStatements\ExampleSqlStatements.xml" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.xml" />
 	</ItemGroup>
-
 </Project>

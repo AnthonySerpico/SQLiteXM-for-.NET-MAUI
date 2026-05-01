@@ -507,7 +507,7 @@ namespace SQLiteXM
 
                     _dbConnTransaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
                     if (_connCommand != null)
-                        _connCommand.Transaction = default(Microsoft.Data.Sqlite.SqliteTransaction); 
+                        _connCommand.Transaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
                 }
                 catch (Microsoft.Data.Sqlite.SqliteException ex)
                 {

@@ -131,7 +131,7 @@ public sealed class SxmInitOptions
     /// </summary>
     /// <param name="databaseName">The database name to look up.</param>
     /// <returns>The initialization options, or null if none are registered.</returns>
-    internal static SxmInitOptions? GetInitOptionsFromDatabaseName(string? databaseName)
+    private static SxmInitOptions? GetInitOptionsFromDatabaseName(string? databaseName)
     {
         if (string.IsNullOrEmpty(databaseName) || _databaseNames is null)
             return null;
