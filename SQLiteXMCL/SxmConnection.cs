@@ -168,7 +168,7 @@ namespace SQLiteXM
         private sealed class ConnectionLease : ISxmConnectionLease
         {
             private readonly SxmConnection _connection;
-            private bool _disposed;
+            private int _disposed;
 
             /// <inheritdoc/>
             public SxmConnection Connection => _connection;
@@ -185,9 +185,11 @@ namespace SQLiteXM
             /// <inheritdoc/>
             public ValueTask DisposeAsync()
             {
-                if (!_disposed)
+                // Thread-safe disposal using Interlocked to prevent double-release in concurrent scenarios.
+                // While dispose should typically be single-threaded per pattern guidelines, this ensures
+                // correctness if callers accidentally dispose the same lease concurrently.
+                if (System.Threading.Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
                 {
-                    _disposed = true;
                     _connection.ReleaseLock(OwnerId);
                 }
 
@@ -207,12 +209,12 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"CreateNewConnection failure for database '{databaseName}'.");
+                SxmLogging.Log(ex, $"CreateNewConnection failure for database: '{databaseName ?? "null"}'. + ex.Message");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"CreateNewConnection failure for database '{databaseName ?? "null"}'.";
+                string errStr = $"CreateNewConnection failure for database: '{databaseName ?? "null"}'. " + ex.Message;
                 SxmLogging.Log(ex);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -401,9 +403,8 @@ namespace SQLiteXM
             {
                 if (SxmDatabaseDescriptor.DefaultDatabase == null)
                     throw new InvalidDataException(
-                        "SqlStatements configuration error: no default database is defined. " +
-                        "This operation required a default database, but none is configured. " +
-                        "Fix: set 'isDefault' to 'true' on exactly one database in your SQL statements files.");
+                        "Error: No default database is defined in any of your SqlStatements configuration files. " +
+                        "Fix: Set 'isDefault' to 'true' in one of your SQL statements configuration files.");
 
                 databaseName = SxmDatabaseDescriptor.DefaultDatabase;
             }
@@ -511,7 +512,7 @@ namespace SQLiteXM
                 }
                 catch (Microsoft.Data.Sqlite.SqliteException ex)
                 {
-                    string errStr = $"DoCommitAsync failure for database '{this._databaseName}' commit flag '{commitFlag}'.";
+                    string errStr = $"DoCommitAsync failure for database: '{this._databaseName}'. Commit flag '{commitFlag}'.";
                     SxmLogging.Log(ex, errStr);
 
                     if (commitFlag == SQLiteXM.SxmDefines.CommitTransaction)
@@ -519,9 +520,15 @@ namespace SQLiteXM
                     else
                         throw ExceptionHelper.Wrap(ex, errStr);
                 }
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                {
+                    SxmLogging.Log(ex, $"DoCommitAsync failure for database: '{this._databaseName}'. Commit flag '{commitFlag}'.");
+                    // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                    throw;
+                }
                 catch (System.Exception ex)
                 {
-                    string errStr = $"DoCommitAsync failure for database '{this._databaseName}' commit flag '{commitFlag}'.";
+                    string errStr = $"DoCommitAsync failure for database: '{this._databaseName}'. Commit flag '{commitFlag}'.";
                     SxmLogging.Log(ex, errStr);
                     throw ExceptionHelper.Wrap(ex, errStr);
                 }
@@ -799,13 +806,13 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"BeginTransaction failure for database '{this._databaseName}'.");
+                SxmLogging.Log(ex, $"BeginTransaction failure for database: '{this._databaseName}'. Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"BeginTransaction failure for database '{this._databaseName}' error code '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.";
+                string errStr = $"BeginTransaction failure for database: '{this._databaseName}'. Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

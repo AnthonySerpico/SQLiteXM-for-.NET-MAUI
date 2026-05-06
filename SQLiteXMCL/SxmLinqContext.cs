@@ -134,7 +134,7 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// 
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="sql"/> is null or whitespace.</exception>
         /// using var ctx = new SxmLinqContext();
         /// var rows = await ctx.QueryAsync("SELECT id, name, address FROM UserRecord WHERE id > @p0", 100).ConfigureFalse();
         /// foreach (var row in rows)

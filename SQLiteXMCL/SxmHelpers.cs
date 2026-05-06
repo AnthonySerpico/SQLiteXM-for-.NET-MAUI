@@ -47,6 +47,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="name">Identifier to quote (table, column, index name, etc.).</param>
         /// <returns>Quoted identifier safe for SQL injection into SQL text.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
         internal static string QuoteIdentifier(string name)
         {
             if (string.IsNullOrWhiteSpace(name))

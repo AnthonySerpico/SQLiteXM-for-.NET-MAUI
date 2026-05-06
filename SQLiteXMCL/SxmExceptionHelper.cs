@@ -28,6 +28,10 @@ namespace SQLiteXM
         /// </remarks>
         internal static bool IsNonWrappable(Exception ex)
         {
+            // Prefer checking the concrete provider type instead of the Source string.
+            if (ex is Microsoft.Data.Sqlite.SqliteException)
+                return true;
+
             return ex is SxmException
                    || ex is OperationCanceledException
                    || ex is TaskCanceledException

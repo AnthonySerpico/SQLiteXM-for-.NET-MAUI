@@ -57,6 +57,10 @@ namespace SQLiteXM
         // Prevent multiple concurrent initializations for the same entity type.
         private static readonly object _lockObject = new object();
 
+        // Cache mapping CLR `Type` -> resolved `[Table].Name` (or `null` when missing/empty).
+        // Thread-safe ConcurrentDictionary used to avoid repeated reflection on first access.
+        private static readonly ConcurrentDictionary<Type, string?> _tableAttributeNameCache = new ConcurrentDictionary<Type, string?>();
+
         // Protect against different CLR types that share the same simple Name (namespace/assembly collisions).
         // Maps simple type Name -> type identity (AssemblyQualifiedName preferred).
         // Used only to detect and fail fast on collisions; NOT used as SQL table identifier.
@@ -126,19 +130,6 @@ namespace SQLiteXM
         [Column(DataType = DataType.Blob)]
         public virtual Guid? synchId { get; internal set; }
 
-        // Needs to throw an exception if databaseName is invalid.
-        /// <summary>
-        /// Create an entity instance bound to the specified database name.
-        /// Construction triggers schema/index/trigger initialization for the entity's type.
-        /// </summary>
-        /// <param name="databaseName">Database name to use for initialization. If null, an implicit DB name is created.</param>
-        public SxmEntity(string? databaseName)
-        {
-            SxmInit.EnsureInitialized();
-            this._databaseName = databaseName;
-            Initialize();
-        }
-        // Needs to throw an exception if databaseName is invalid.
         /// <summary>
         /// Create an entity instance using the implicit database name.
         /// Construction triggers schema/index/trigger initialization for the entity's type.
@@ -146,7 +137,30 @@ namespace SQLiteXM
         public SxmEntity()
         {
             SxmInit.EnsureInitialized();
+            this._databaseName = ResolveTableAttributeName();
             Initialize();
+        }
+
+        /// <summary>
+        /// Resolve and cache the <see cref="TableAttribute.Name"/> for this entity's CLR type.
+        /// The first caller pays the reflection cost; subsequent callers return the cached value.
+        /// </summary>
+        /// <returns>The configured table/database name from <see cref="TableAttribute"/>, or <c>null</c> when not set.</returns>
+        internal string? ResolveTableAttributeName()
+        {
+            Type ctorType = GetType();
+
+            if (_tableAttributeNameCache.TryGetValue(ctorType, out string? cachedName))
+                return cachedName;
+
+            string? resolved = _tableAttributeNameCache.GetOrAdd(ctorType, t =>
+            {
+                TableAttribute? tbl = t.GetCustomAttribute<TableAttribute>(inherit: false);
+                string? name = tbl?.Name;
+                return string.IsNullOrWhiteSpace(name) ? null : name;
+            });
+
+            return resolved;
         }
 
         /// <summary>
@@ -189,8 +203,11 @@ namespace SQLiteXM
                         !string.Equals(existingDb, _databaseName, StringComparison.Ordinal))
                     {
                         throw new InvalidOperationException(
-                            $"Entity database collision: simple name '{tableName}' is already registered for database '{existingDb}'. " +
-                            "Using the same entity simple name across multiple databases is not supported. Use distinct class names per database.");
+                            $"CRITICAL: Entity database collision detected. The entity class '{tableName}' is already registered for database '{existingDb}'.\n" +
+                            $"Current database attempting registration: '{_databaseName}'.\n" +
+                            $"CAUSE: The same entity class name is being used across multiple databases.\n" +
+                            $"SOLUTION: Use distinct entity class names for each database, or ensure the same entity class is only used with one database.\n" +
+                            $"EXAMPLE: Instead of using 'User' for both databases, use 'DatabaseAUser' and 'DatabaseBUser'.");
                     }
                     // If the existing mapping equals our database, continue - another instance for the same DB registered earlier.
                 }
@@ -202,8 +219,12 @@ namespace SQLiteXM
                         !string.Equals(existingTypeIdentity, typeIdentity, StringComparison.Ordinal))
                     {
                         throw new InvalidOperationException(
-                            $"Entity name collision: simple name '{tableName}' is already registered by CLR type '{existingTypeIdentity}'. " +
-                            "Types with the same simple name from different namespaces or assemblies are not supported.");
+                            $"CRITICAL: Entity name collision detected. The simple class name '{tableName}' is already registered by another type '{existingTypeIdentity}'.\n" +
+                            $"Current type attempting registration: '{typeIdentity}'.\n" +
+                            $"CAUSE: Two different classes with the same name ('{tableName}') exist in different namespaces or assemblies.\n" +
+                            $"SOLUTION: Rename one of the entity classes to ensure unique simple names across your entire application.\n" +
+                            $"IMPORTANT: SQLiteXM uses the simple class name (Type.Name) as the table identifier. " +
+                            $"Classes in different namespaces MUST have unique names to prevent schema conflicts and data corruption.");
                     }
                     // If the existing type mapping equals our type identity, continue - another instance of the same CLR type registered earlier.
                 }
@@ -395,6 +416,8 @@ namespace SQLiteXM
         /// This method automatically determines whether to insert a new record or update an existing one.
         /// </summary>
         /// <param name="sxmTrans">An optional <see cref="SxmTransaction"/> to execute within.</param>
+        /// <returns>A task representing the asynchronous save operation.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the insert or update SQL statement is not found for the table.</exception>
         /// <remarks>
         /// - If the entity does not exist in the database, an INSERT operation is performed.
         /// - If the entity already exists, an UPDATE operation is performed.

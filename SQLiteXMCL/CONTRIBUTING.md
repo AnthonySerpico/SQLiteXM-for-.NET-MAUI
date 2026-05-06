@@ -67,3 +67,9 @@ public MyType(string name) { ... }
 ## Miscellaneous
 - Avoid scanning assemblies on every call; cache reflection results where appropriate and handle `ReflectionTypeLoadException` gracefully.
 - Prefer `using` / `await using` for disposable connections when the connection type supports `IDisposable` / `IAsyncDisposable`.
+
+## Exception handling policy
+- Preserve provider-specific exceptions (for example, `Microsoft.Data.Sqlite.SqliteException`) so callers can inspect provider metadata (error codes, extended properties) and make informed decisions (e.g. retry, constraint handling).
+- Prefer checking concrete exception types (e.g., `ex is Microsoft.Data.Sqlite.SqliteException`) instead of relying on `ex.Source` string comparisons. Type checks are robust against localization and changes to the Source property.
+- Do not double-wrap provider exceptions. If the project needs a uniform exception type for public APIs, use a wrapper that preserves provider metadata (for example by copying the provider error code into `SxmException.Data`) and avoid hiding the original exception type unless explicitly required.
+- Keep fatal and cancellation exceptions rethrown unchanged (see `ExceptionHelper.IsNonWrappable`).

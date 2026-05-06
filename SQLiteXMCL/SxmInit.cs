@@ -420,12 +420,19 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="versionNumber">Version number to store.</param>
         /// <returns>A task that completes when the PRAGMA has been set.</returns>
+        /// <remarks>
+        /// SECURITY NOTE: This method uses string formatting instead of parameterization because
+        /// PRAGMA statements in SQLite do not support parameter binding. However, this is safe because
+        /// <paramref name="versionNumber"/> is a strongly-typed long (not user-controlled string input),
+        /// which eliminates SQL injection risk. The formatted value is validated by the compiler and runtime.
+        /// </remarks>
         private static async Task StoreDbVersionNumberAsync(long versionNumber, string databaseName, SxmConnection sxmConnection)
         {
             try
             {
                 await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                 {
+                    // Safe: versionNumber is type-safe long, not user input string.
                     await sxmConnection.ExecuteQueryAsync(String.Format("PRAGMA user_version = {0}", versionNumber), default(List<object>)).ConfigureFalse();
                 }
             }
@@ -875,7 +882,7 @@ namespace SQLiteXM
                         catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                         {
                             // If not a 'no such table' error — rethrow unchanged so callers/runtime can handle appropriately.
-                            if (ex.InnerException == null || !ex.InnerException.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase))
+                            if (!ex.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase))
                                 throw;
                         }
                     }
