@@ -168,7 +168,6 @@ internal static class SxmSchemaRegistration
         Lazy<Task> lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
                 () => Task.Run(async () =>
                 {
-                    ValidateDynamicallyAccessedMembersAttribute(entityType);
                     List<MemberInfoWithAlias> props = GetEntityProperties(entityType);
                     GetColumnNamesAndDataTypes(entityType, props, databaseName);
 
@@ -647,22 +646,6 @@ internal static class SxmSchemaRegistration
             {
                 await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureAwait(false);
             }
-        }
-    }
-
-    private static void ValidateDynamicallyAccessedMembersAttribute(Type entityType)
-    {
-        bool hasAttribute = entityType
-            .GetCustomAttributes(typeof(DynamicallyAccessedMembersAttribute), inherit: false)
-            .Cast<DynamicallyAccessedMembersAttribute>()
-            .Any(attr => attr.MemberTypes == DynamicallyAccessedMemberTypes.All);
-
-        if (!hasAttribute)
-        {
-            throw new InvalidOperationException(
-                $"The class '{entityType.Name}' is missing required AOT annotations. " +
-                $"Please add: [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] " +
-                $"to the class definition.");
         }
     }
 
