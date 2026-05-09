@@ -2,6 +2,7 @@
 using SQLiteXM.Internal.Threading;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Xml.Linq;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
@@ -181,6 +182,32 @@ namespace SQLiteXM
             finally
             {
                 _initGate.Release();
+            }
+        }
+
+        /// <summary>
+        /// Register entity types and create/migrate their schemas at application startup.
+        /// </summary>
+        /// <param name="entityTypes">Array of SxmEntity-derived types to register.</param>
+        /// <remarks>
+        /// Call this once at app startup (e.g., in App.xaml.cs or MauiProgram.cs) after calling <see cref="InitDbAsync"/>.
+        /// All tables, indexes, triggers, and foreign keys will be created/migrated.
+        /// 
+        /// This method replaces the legacy constructor-based schema initialization pattern.
+        /// Entity classes registered via this method will not trigger schema creation on instantiation.
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">Thrown if SQLiteXM has not been initialized via <see cref="InitDbAsync"/>.</exception>
+        /// <exception cref="ArgumentException">Thrown if any type does not derive from <see cref="SxmEntity"/> or is abstract.</exception>
+        public static async Task RegisterSchemaAsync([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] params Type[] entityTypes)
+        {
+            EnsureInitialized();
+
+            if (entityTypes == null || entityTypes.Length == 0)
+                return;
+
+            foreach (var type in entityTypes)
+            {
+                await SxmSchemaRegistration.RegisterEntitySchemaAsync(type).ConfigureAwait(false);
             }
         }
 

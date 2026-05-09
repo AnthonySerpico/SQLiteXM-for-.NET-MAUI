@@ -1,0 +1,672 @@
+using LinqToDB.Mapping;
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using static SQLiteXM.SxmDefines;
+
+namespace SQLiteXM;
+
+/// <summary>
+/// Handles deterministic schema registration and initialization for entity types.
+/// Separates schema creation from entity instantiation, allowing explicit registration at application startup.
+/// </summary>
+internal static class SxmSchemaRegistration
+{
+    // Track registered entity types to prevent duplicate initialization
+    private static readonly ConcurrentDictionary<Type, bool> _registeredSchemas = new();
+
+    // Prevent multiple concurrent initializations for the same entity type
+    private static readonly object _lockObject = new object();
+
+    // Cache mapping CLR Type -> resolved [Table].Database name
+    private static readonly ConcurrentDictionary<Type, string?> _tableAttributeNameCache = new();
+
+    // Protect against different CLR types that share the same simple Name
+    private static readonly ConcurrentDictionary<string, string?> _entityTypeMap = new(StringComparer.Ordinal);
+
+    // Protect against using the same simple Name across different databases
+    private static readonly ConcurrentDictionary<string, string?> _entityDatabaseMap = new(StringComparer.Ordinal);
+
+    // Per-table initialization gate (same as SxmEntity)
+    private static readonly ConcurrentDictionary<string, Lazy<Task>> _initTasks = new();
+
+    // Index dictionaries
+    private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> _uniqueIndexDict = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> _standardIndexDict = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Register and initialize schema for a single entity type.
+    /// </summary>
+    /// <param name="entityType">The entity type derived from SxmEntity.</param>
+    /// <param name="databaseName">Optional database name override.</param>
+    /// <exception cref="ArgumentNullException">Thrown when entityType is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when entityType does not inherit from SxmEntity or is abstract.</exception>
+    public static async Task RegisterEntitySchemaAsync(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type entityType, 
+        string? databaseName = null)
+    {
+        if (entityType == null)
+            throw new ArgumentNullException(nameof(entityType));
+
+        // RULE 1: Fail-fast if type does not inherit from SxmEntity
+        if (!typeof(SxmEntity).IsAssignableFrom(entityType))
+        {
+            throw new ArgumentException(
+                $"Type '{entityType.Name}' must inherit from SxmEntity. " +
+                $"Only entity types derived from SxmEntity can be registered for schema initialization.",
+                nameof(entityType));
+        }
+
+        if (entityType.IsAbstract)
+        {
+            throw new ArgumentException(
+                $"Type '{entityType.Name}' cannot be abstract. " +
+                $"Only concrete entity types can be registered for schema initialization.",
+                nameof(entityType));
+        }
+
+        // Mark as registered - use TryAdd result for thread-safe idempotency
+        if (!_registeredSchemas.TryAdd(entityType, true))
+            return; // Already registered by another thread
+
+        // Resolve database name
+        string? resolvedDbName = databaseName ?? ResolveTableAttributeDatabaseName(entityType);
+
+        // Validate database name
+        ValidateDatabaseName(ref resolvedDbName);
+
+        // Initialize schema
+        await InitializeSchemaAsync(entityType, resolvedDbName).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Check if an entity type has been registered.
+    /// </summary>
+    public static bool IsSchemaRegistered(Type entityType)
+    {
+        return _registeredSchemas.ContainsKey(entityType);
+    }
+
+    /// <summary>
+    /// Resolve the database name from [Table(Database = "...")] attribute.
+    /// </summary>
+    private static string? ResolveTableAttributeDatabaseName(Type entityType)
+    {
+        if (_tableAttributeNameCache.TryGetValue(entityType, out string? cachedName))
+            return cachedName;
+
+        string? resolved = _tableAttributeNameCache.GetOrAdd(entityType, t =>
+        {
+            TableAttribute? tbl = t.GetCustomAttribute<TableAttribute>(inherit: false);
+            string? name = tbl?.Database;
+            return string.IsNullOrWhiteSpace(name) ? null : name;
+        });
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// Validate and resolve database name (same logic as SxmEntity.DbNameValidation).
+    /// </summary>
+    private static void ValidateDatabaseName(ref string? databaseName)
+    {
+        if (databaseName == null)
+        {
+            databaseName = SxmDatabaseDescriptor.DefaultDatabase;
+            if (databaseName == null)
+                throw new InvalidDataException("A default database has not been configured in any of your SQL statements files.");
+        }
+        else
+        {
+            if (!SxmDatabaseDescriptor.IsDatabaseDefined(databaseName))
+                throw new InvalidDataException($"The database '{databaseName}' has not been configured. Check the spelling matches the database name in your SQL statements file.");
+        }
+    }
+
+    /// <summary>
+    /// Initialize schema for an entity type (mirrors SxmEntity.Initialize logic).
+    /// </summary>
+    private static async Task InitializeSchemaAsync(Type entityType, string databaseName)
+    {
+        string tableName = entityType.Name;
+        string typeIdentity = entityType.AssemblyQualifiedName ?? entityType.FullName ?? entityType.Name;
+
+        lock (_lockObject)
+        {
+            // Prevent using the same simple table name across different databases
+            if (!_entityDatabaseMap.TryAdd(tableName, databaseName))
+            {
+                if (_entityDatabaseMap.TryGetValue(tableName, out var existingDb) &&
+                    !string.Equals(existingDb, databaseName, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"CRITICAL: Entity database collision detected. The entity class '{tableName}' is already registered for database '{existingDb}'.\n" +
+                        $"Current database attempting registration: '{databaseName}'.\n" +
+                        $"CAUSE: The same entity class name is being used across multiple databases.\n" +
+                        $"SOLUTION: Use distinct entity class names for each database, or ensure the same entity class is only used with one database.\n" +
+                        $"EXAMPLE: Instead of using 'User' for both databases, use 'DatabaseAUser' and 'DatabaseBUser'.");
+                }
+            }
+
+            // Prevent different CLR types that share the same simple Name
+            if (!_entityTypeMap.TryAdd(tableName, typeIdentity))
+            {
+                if (_entityTypeMap.TryGetValue(tableName, out var existingTypeIdentity) &&
+                    !string.Equals(existingTypeIdentity, typeIdentity, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        $"CRITICAL: Entity name collision detected. The simple class name '{tableName}' is already registered by another type '{existingTypeIdentity}'.\n" +
+                        $"Current type attempting registration: '{typeIdentity}'.\n" +
+                        $"CAUSE: Two different classes with the same name ('{tableName}') exist in different namespaces or assemblies.\n" +
+                        $"SOLUTION: Rename one of the entity classes to ensure unique simple names across your entire application.\n" +
+                        $"IMPORTANT: SQLiteXM uses the simple class name (Type.Name) as the table identifier. " +
+                        $"Classes in different namespaces MUST have unique names to prevent schema conflicts and data corruption.");
+                }
+            }
+        }
+
+        Lazy<Task> lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
+                () => Task.Run(async () =>
+                {
+                    ValidateDynamicallyAccessedMembersAttribute(entityType);
+                    List<MemberInfoWithAlias> props = GetEntityProperties(entityType);
+                    GetColumnNamesAndDataTypes(entityType, props, databaseName);
+
+                    bool newTable;
+                    if (!(newTable = await CreateTableAsync(entityType, databaseName).ConfigureAwait(false)))
+                        await AddColumnsAsync(entityType, databaseName).ConfigureAwait(false);
+
+                    var std = new List<string>();
+                    var uniq = new List<string>();
+                    await GetIndexTableStatementsAsync(entityType, databaseName, std, uniq).ConfigureAwait(false);
+
+                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Standard, std).ConfigureAwait(false);
+                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Unique, uniq).ConfigureAwait(false);
+                    await ProcessTriggerAttributesAsync(entityType, databaseName).ConfigureAwait(false);
+
+                    if (!newTable)
+                        await DropColumnsAsync(entityType, databaseName).ConfigureAwait(false);
+                }),
+                LazyThreadSafetyMode.ExecutionAndPublication
+            )
+        );
+
+        try
+        {
+            await lazyInit.Value.ConfigureAwait(false);
+        }
+        catch
+        {
+            _initTasks.TryRemove(tableName, out _); // allow retry on failure
+
+            // Best-effort cleanup
+            try
+            {
+                lock (_lockObject)
+                {
+                    if (_entityTypeMap.TryGetValue(tableName, out var mappedType) &&
+                        string.Equals(mappedType, typeIdentity, StringComparison.Ordinal))
+                    {
+                        _entityTypeMap.TryRemove(tableName, out _);
+                    }
+
+                    if (_entityDatabaseMap.TryGetValue(tableName, out var mappedDb) &&
+                        string.Equals(mappedDb, databaseName, StringComparison.Ordinal))
+                    {
+                        _entityDatabaseMap.TryRemove(tableName, out _);
+                    }
+                }
+            }
+            catch
+            {
+                // Swallow cleanup errors
+            }
+
+            throw;
+        }
+    }
+
+    private static List<MemberInfoWithAlias> GetEntityProperties(Type entityType)
+    {
+        List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
+
+        foreach (PropertyInfo piItem in entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            propertyInfoWithAliases.Add(new MemberInfoWithAlias(piItem, string.Empty));
+
+        return propertyInfoWithAliases;
+    }
+
+    private static void GetColumnNamesAndDataTypes(Type entityType, List<MemberInfoWithAlias> propertyInfoWithAliases, string databaseName)
+    {
+        if (propertyInfoWithAliases == null || propertyInfoWithAliases.Count == 0)
+            return;
+
+        string typeName = entityType.Name;
+        var columnDict = SxmEntity._columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+
+        if (columnDict.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"INTERNAL ERROR: Column map for type '{typeName}' was already initialized. " +
+                $"This indicates a critical failure in the entity initialization synchronization logic.");
+        }
+
+        TableAttribute? tbl = entityType.GetCustomAttribute<TableAttribute>(inherit: false);
+        bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false;
+
+        List<ForeignKeyAttributes>? foreignKeyAttributeList = null;
+
+        foreach (MemberInfoWithAlias propertyInfoWithAlias in propertyInfoWithAliases)
+        {
+            MemberInfo memberInfo = propertyInfoWithAlias.memberInfo;
+            string memberInfoName = memberInfo.Name;
+
+            if (IsIgnored(memberInfoName))
+                continue;
+
+            if (memberInfo is not PropertyInfo propertyInfo)
+                continue;
+
+            if (memberInfo.IsDefined(typeof(NotColumnAttribute), false))
+                continue;
+
+            ColumnAttribute? colAttr = memberInfo.GetCustomAttribute<ColumnAttribute>(inherit: false);
+            if (columnIsRequired && colAttr == null)
+                continue;
+
+            RequiredNotNull? requiredNotNull = memberInfo.GetCustomAttribute<RequiredNotNull>(inherit: false);
+            bool hasCreateIndex = memberInfo.IsDefined(typeof(CreateIndex), inherit: false);
+            bool hasCreateUniqueIndex = memberInfo.IsDefined(typeof(CreateUniqueIndex), inherit: false);
+            CreateForeignKey? isForeignKey = memberInfo.GetCustomAttribute<CreateForeignKey>(inherit: false);
+
+            string notNull = string.Empty;
+            if (requiredNotNull is not null)
+            {
+                notNull = requiredNotNull.defaultValue is not null 
+                    ? $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.defaultValue)}" 
+                    : " not null";
+            }
+
+            string columnName = string.IsNullOrEmpty(propertyInfoWithAlias.alias) ? memberInfoName : propertyInfoWithAlias.alias;
+
+            if (hasCreateIndex)
+            {
+                var bag = _standardIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
+                bag.Add(new IndexPropertyAttributes(columnName, typeName));
+            }
+
+            if (hasCreateUniqueIndex)
+            {
+                var bag = _uniqueIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
+                bag.Add(new IndexPropertyAttributes(columnName, typeName));
+            }
+
+            if (isForeignKey is not null)
+            {
+                foreignKeyAttributeList ??= new List<ForeignKeyAttributes>();
+                foreignKeyAttributeList.Add(new ForeignKeyAttributes
+                {
+                    fieldName = columnName,
+                    foreignTable = isForeignKey.foreignTable,
+                });
+
+                SxmHelpers.CreateAssociation(entityType, columnName, isForeignKey.foreignTable);
+            }
+
+            Type clrType = Nullable.GetUnderlyingType(propertyInfo.PropertyType) ?? propertyInfo.PropertyType;
+
+            string? overrideType = colAttr?.DataType switch
+            {
+                DataType.Text or DataType.NChar or DataType.NVarChar or DataType.Char or DataType.VarChar => "TEXT",
+                DataType.Int16 or DataType.Int32 or DataType.UInt16 or DataType.UInt32 or DataType.Int64 or DataType.Long => "INTEGER",
+                DataType.Boolean or DataType.DateTime or DataType.Date or DataType.Time => "INTEGER",
+                DataType.Decimal or DataType.UInt64 => "TEXT",
+                DataType.Single or DataType.Double => "REAL",
+                DataType.Guid or DataType.Binary or DataType.Blob or DataType.VarBinary => "BLOB",
+                _ => null
+            };
+
+            if (overrideType is not null)
+            {
+                bool allowed =
+                    (IsTimeType(clrType) && overrideType.Equals("TEXT", StringComparison.OrdinalIgnoreCase)) ||
+                    (clrType == typeof(Guid) && overrideType.Equals("TEXT", StringComparison.OrdinalIgnoreCase));
+
+                if (!allowed)
+                    overrideType = null;
+            }
+
+            string? columnType = overrideType ?? ClrTypeToColumnType(clrType);
+
+            if (columnType != null)
+            {
+                if (!columnDict.TryAdd(columnName, columnType + notNull))
+                {
+                    throw new InvalidOperationException(
+                        $"Duplicate mapped column name '{columnName}' on type '{typeName}'. " +
+                        $"Members '{memberInfoName}' (alias '{propertyInfoWithAlias.alias ?? ""}') " +
+                        $"and another member resolved to the same mapped name.");
+                }
+            }
+        }
+
+        // Store foreign keys for table creation (will be retrieved in CreateTableAsync)
+        if (foreignKeyAttributeList != null)
+        {
+            // Store in a static dictionary for retrieval during table creation
+            _foreignKeyCache.TryAdd(typeName, foreignKeyAttributeList);
+        }
+    }
+
+    // Cache for foreign keys (needed for table creation)
+    private static readonly ConcurrentDictionary<string, List<ForeignKeyAttributes>> _foreignKeyCache = new();
+
+    private static bool IsTimeType(Type clrType)
+    {
+        return clrType == typeof(DateTimeOffset) ||
+               clrType == typeof(TimeSpan) ||
+               clrType == typeof(DateOnly) ||
+               clrType == typeof(TimeOnly) ||
+               clrType == typeof(DateTime);
+    }
+
+    private static string? ClrTypeToColumnType(Type clrType)
+    {
+        return clrType == typeof(decimal) ? "TEXT" :
+               clrType == typeof(string) ? "TEXT" :
+               clrType == typeof(ulong) ? "TEXT" :
+               clrType == typeof(Guid) ? "BLOB" :
+               clrType == typeof(DateTimeOffset) ? "INTEGER" :
+               clrType == typeof(TimeSpan) ? "INTEGER" :
+               clrType == typeof(DateOnly) ? "INTEGER" :
+               clrType == typeof(TimeOnly) ? "INTEGER" :
+               clrType == typeof(DateTime) ? "INTEGER" :
+               clrType == typeof(ushort) ? "INTEGER" :
+               clrType == typeof(sbyte) ? "INTEGER" :
+               clrType == typeof(short) ? "INTEGER" :
+               clrType == typeof(long) ? "INTEGER" :
+               clrType == typeof(uint) ? "INTEGER" :
+               clrType == typeof(byte) ? "INTEGER" :
+               clrType == typeof(bool) ? "INTEGER" :
+               clrType == typeof(int) ? "INTEGER" :
+               clrType == typeof(double) ? "REAL" :
+               clrType == typeof(float) ? "REAL" :
+               clrType == typeof(byte[]) ? "BLOB" :
+               null;
+    }
+
+    private static async Task<bool> CreateTableAsync(Type entityType, string databaseName)
+    {
+        bool tableCreated = false;
+        string tableName = entityType.Name;
+        string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+        SxmConnection? sxmConnection = null;
+        bool tableExists = false;
+
+        try
+        {
+            sxmConnection = new SxmConnection(databaseName);
+            tableExists = await SxmInit.DoesTableExistAsync(tableName, sxmConnection).ConfigureAwait(false);
+        }
+        finally
+        {
+            await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureAwait(false);
+        }
+
+        if (!tableExists)
+        {
+            tableCreated = true;
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"CREATE TABLE {quotedTable} (");
+            sb.Append($"{SxmHelpers.QuoteIdentifier("id")} INTEGER PRIMARY KEY AUTOINCREMENT");
+
+            foreach (KeyValuePair<string, string> kvp in SxmEntity._columnNameAndTypeDict[tableName])
+            {
+                sb.Append(", ");
+                sb.Append($"{SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}");
+            }
+
+            if (_foreignKeyCache.TryGetValue(tableName, out var foreignKeyList))
+            {
+                foreach (ForeignKeyAttributes attribute in foreignKeyList)
+                {
+                    sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable)}({SxmHelpers.QuoteIdentifier("id")})");
+                }
+                _foreignKeyCache.TryRemove(tableName, out _);
+            }
+
+            sb.Append(")");
+
+            SxmSqlStatements.AddTableDefinition(string.Format("{0}.{1}", databaseName, tableName), sb.ToString());
+            await SxmInit.CreateTableAsync(databaseName, tableName).ConfigureAwait(false);
+            SxmSqlStatements.RemoveTableDefinitions();
+        }
+
+        return tableCreated;
+    }
+
+    private static async Task AddColumnsAsync(Type entityType, string databaseName)
+    {
+        string tableName = entityType.Name;
+        string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+        Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+
+        foreach (KeyValuePair<string, string> kvp in SxmEntity._columnNameAndTypeDict[tableName])
+        {
+            if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
+            {
+                string alterDefinition = $"ALTER TABLE {quotedTable} ADD COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}";
+
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+                {
+                    await sxmTransaction.ExecuteAlterTableAsync(alterDefinition).ConfigureAwait(false);
+                    await sxmTransaction.CommitTransactionAsync().ConfigureAwait(false);
+                }
+
+                int offset = 0;
+                string? value;
+
+                if ((offset = kvp.Value.IndexOf(' ')) != -1)
+                    value = kvp.Value.Substring(0, offset);
+                else
+                    value = kvp.Value;
+
+                SxmInit.AddColumnNameType(tableName, kvp.Key, value);
+            }
+        }
+    }
+
+    private static async Task DropColumnsAsync(Type entityType, string databaseName)
+    {
+        string tableName = entityType.Name;
+        string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+        Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+
+        foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
+        {
+            if (!SxmEntity._columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !IsIgnored(kvp.Key))
+            {
+                string alterDefinition = $"ALTER TABLE {quotedTable} DROP COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)}";
+                await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+                {
+                    await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition).ConfigureAwait(false);
+                    await sxmTransaction1.CommitTransactionAsync().ConfigureAwait(false);
+                }
+
+                SxmInit.RemoveColumnNameType(tableName, kvp.Key);
+            }
+        }
+    }
+
+    private static async Task GetIndexTableStatementsAsync(Type entityType, string databaseName, List<string> existingStandardIndexes, List<string> existingUniqueIndexes)
+    {
+        string tableName = entityType.Name;
+        string pragma = $"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})";
+
+        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+        {
+            await sxmTransaction.Connection.ExecuteQueryAsync(pragma, null as List<object>).ConfigureAwait(false);
+
+            while (sxmTransaction.Connection.NextRow() == true)
+            {
+                string? indexName = (string?)sxmTransaction.Connection.GetValue("name");
+                if (indexName == null)
+                    continue;
+
+                var raw = sxmTransaction.Connection.GetValue("unique");
+                bool isUnique = raw != null && Convert.ToInt64(raw) == 1;
+                if (isUnique)
+                    existingUniqueIndexes.Add(indexName);
+                else
+                    existingStandardIndexes.Add(indexName);
+            }
+        }
+    }
+
+    private static async Task ProcessIndexStatementsAsync(Type entityType, string databaseName, IndexType indexType, List<string> existingIndexes)
+    {
+        List<string> indexSqlStatements = new List<string>();
+
+        string unique = string.Empty;
+        string tableName = entityType.Name;
+        string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+        IIndexVars[]? firstArray;
+        IIndexVars[]? secondArray;
+
+        if (indexType == IndexType.Standard)
+        {
+            firstArray = (CreateIndex[])entityType.GetCustomAttributes(typeof(CreateIndex), true);
+            secondArray = _standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexVars>();
+        }
+        else if (indexType == IndexType.Unique)
+        {
+            firstArray = (CreateUniqueIndex[])entityType.GetCustomAttributes(typeof(CreateUniqueIndex), true);
+            secondArray = _uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexVars>();
+            unique = "UNIQUE";
+        }
+        else
+        {
+            return;
+        }
+
+        firstArray ??= Array.Empty<IIndexVars>();
+        secondArray ??= Array.Empty<IIndexVars>();
+
+        List<IIndexVars> customAttributes = new List<IIndexVars>(firstArray.Length + secondArray.Length);
+        customAttributes.AddRange(firstArray);
+        customAttributes.AddRange(secondArray);
+
+        AssignIndexNames(customAttributes, tableName);
+
+        foreach (var myAttribute in customAttributes)
+        {
+            if (!existingIndexes.Contains(myAttribute.indexName))
+            {
+                string indexFields = string.Join(", ", myAttribute.indexFields.Select(f => SxmHelpers.QuoteIdentifier(f)));
+                string createIndexSql = $"CREATE {unique} INDEX {SxmHelpers.QuoteIdentifier(myAttribute.indexName)} ON {quotedTable} ({indexFields})";
+                indexSqlStatements.Add(createIndexSql);
+            }
+        }
+
+        foreach (string indexName in existingIndexes)
+        {
+            bool found = false;
+
+            foreach (IIndexVars customAttribute in customAttributes)
+            {
+                if (customAttribute.indexName.Equals(indexName))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                indexSqlStatements.Add($"DROP INDEX {SxmHelpers.QuoteIdentifier(indexName)}");
+        }
+
+        if (indexSqlStatements.Count > 0)
+        {
+            await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+            {
+                foreach (string indexStatement in indexSqlStatements)
+                    await sxmTransaction1.ExecuteIndexAsync(indexStatement).ConfigureAwait(false);
+
+                await sxmTransaction1.CommitTransactionAsync().ConfigureAwait(false);
+            }
+        }
+
+        if (indexType == IndexType.Standard)
+            _standardIndexDict.TryRemove(tableName, out _);
+        else if (indexType == IndexType.Unique)
+            _uniqueIndexDict.TryRemove(tableName, out _);
+    }
+
+    private static void AssignIndexNames(List<IIndexVars> indexArray, string tableName)
+    {
+        foreach (IIndexVars iiV in indexArray)
+        {
+            iiV.indexName = "IDX_" + tableName;
+
+            for (int i = 0; i < iiV.indexFields.Length; i++)
+            {
+                iiV.indexName += "_" + iiV.indexFields[i];
+            }
+        }
+    }
+
+    private static async Task ProcessTriggerAttributesAsync(Type entityType, string databaseName)
+    {
+        string tableName = entityType.Name;
+        List<TriggerDefinition> triggerStatementsList = SxmSqlStatements.TriggerStatements[databaseName] as List<TriggerDefinition>;
+
+        CreateTrigger[] customAttributes = (CreateTrigger[])entityType.GetCustomAttributes(typeof(CreateTrigger), true);
+        if (customAttributes.Length > 0)
+        {
+            foreach (CreateTrigger myAttribute in customAttributes)
+            {
+                if (!string.IsNullOrWhiteSpace(myAttribute.triggerSql))
+                {
+                    triggerStatementsList.Add(new TriggerDefinition(myAttribute.triggerSql));
+                }
+            }
+        }
+
+        if (triggerStatementsList.Count > 0)
+        {
+            SxmConnection sxmConnection = new SxmConnection(databaseName, shared: false);
+            try
+            {
+                await SxmInit.AddTriggersAsync(sxmConnection, databaseName).ConfigureAwait(false);
+            }
+            finally
+            {
+                await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static void ValidateDynamicallyAccessedMembersAttribute(Type entityType)
+    {
+        bool hasAttribute = entityType
+            .GetCustomAttributes(typeof(DynamicallyAccessedMembersAttribute), inherit: false)
+            .Cast<DynamicallyAccessedMembersAttribute>()
+            .Any(attr => attr.MemberTypes == DynamicallyAccessedMemberTypes.All);
+
+        if (!hasAttribute)
+        {
+            throw new InvalidOperationException(
+                $"The class '{entityType.Name}' is missing required AOT annotations. " +
+                $"Please add: [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] " +
+                $"to the class definition.");
+        }
+    }
+
+    private static bool IsIgnored(string name) => 
+        string.Equals(name, "id", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(name, "synchId", StringComparison.OrdinalIgnoreCase);
+}

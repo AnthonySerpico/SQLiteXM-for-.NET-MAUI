@@ -36,7 +36,7 @@ public abstract class TestBase : IDisposable
 
     /// <summary>
     /// Synchronous initialization for static constructor.
-    /// Ensures all tests share the same database location.
+    /// Ensures all tests share the same database location and registers all test entity schemas.
     /// </summary>
     private static void InitializeSqliteXMSync()
     {
@@ -54,6 +54,81 @@ public abstract class TestBase : IDisposable
 
         // Run async initialization synchronously - safe in static constructor
         SxmInit.InitDbAsync(TestSqlStatementsPath, initOptions).GetAwaiter().GetResult();
+
+        // CRITICAL: Register all test entity schemas at startup.
+        // With the deterministic schema registration refactor, entity constructors
+        // no longer create/migrate tables. All schema must be registered explicitly.
+        RegisterAllTestEntitySchemasSync();
+    }
+
+    /// <summary>
+    /// Registers all test entity schemas used across the test suite.
+    /// This must be called after InitDbAsync and before any entity usage.
+    /// </summary>
+    private static void RegisterAllTestEntitySchemasSync()
+    {
+        SxmInit.RegisterSchemaAsync(
+            // Standard test entities (from TestEntities.cs)
+            typeof(SimpleEntity),
+            typeof(AllTypesEntity),
+            typeof(TimeTypeTextEntity),
+            typeof(ExplicitColumnEntity),
+            typeof(IndexedEntity),
+            typeof(ParentEntity),
+            typeof(ChildEntity),
+            typeof(TriggerEntity),
+            typeof(RequiredFieldEntity),
+            // Migration test entities (from EntityMigrationTests.cs)
+            typeof(MigrationTestV1),
+            typeof(MigrationTestV2),
+            typeof(AddColumnEvolution),
+            typeof(AddColumnRequired),
+            typeof(AddColumnNullable),
+            typeof(AddColumnDataTypeOverride),
+            typeof(DropColumnEvolution),
+            typeof(DropColumnNotColumnTest),
+            typeof(SystemColumnsTest),
+            typeof(IndexMigrationEntity),
+            typeof(UniqueIndexMigrationEntity),
+            typeof(TriggerMigrationEntity),
+            typeof(AuditLogEntity),
+            typeof(FKParentEntity),
+            typeof(FKChildEntity),
+            typeof(AttributeRequiredEntity),
+            typeof(CompositeIndexEntity),
+            typeof(FreshTableWithIndexEntity),
+            typeof(FreshTableWithIndexEntity2),
+            // Drop table test entities (from DropTableTests.cs)
+            typeof(DropTestEntity1),
+            typeof(DropTestEntity2),
+            typeof(DropTestParentEntity3),
+            typeof(DropTestChildEntity3),
+            typeof(DropTestParentEntity4),
+            typeof(DropTestChildEntity4),
+            typeof(DropTestParentEntity5),
+            typeof(DropTestChildEntity5),
+            typeof(DropTestEntity8),
+            typeof(DropTestEntity9),
+            typeof(DropTestEntity10),
+            typeof(DropTestEntity11),
+            typeof(DropTestEntity12),
+            typeof(DropTestEntity13),
+            typeof(DropTestParentEntity14),
+            typeof(DropTestChildEntity14),
+            typeof(DropTestEntity15),
+            typeof(DropTestGrandParentEntity16),
+            typeof(DropTestParentEntity16),
+            typeof(DropTestChildEntity16),
+            typeof(DropTestEntity17),
+            typeof(DropTestEntity18),
+            typeof(DropTestEntity19),
+            typeof(DropTestEntityWithAVeryLongNameThatTestsTheLimitsOfTableNameHandling),
+            typeof(DropTestParentEntity20),
+            typeof(DropTestChildEntity20A),
+            typeof(DropTestChildEntity20B),
+            typeof(DropTestEntity21),
+            typeof(DropTestEntity22)
+        ).GetAwaiter().GetResult();
     }
 
     protected TestBase()
@@ -82,7 +157,7 @@ public abstract class TestBase : IDisposable
     }
 
     /// <summary>
-    /// Initialize SQLiteXM with the test configuration.
+    /// Initialize SQLiteXM with the test configuration and register all test entity schemas.
     /// NOTE: Initialization normally happens in static constructor.
     /// This method can be called after CleanupTestDataAsync() to re-initialize.
     /// </summary>
@@ -96,6 +171,70 @@ public abstract class TestBase : IDisposable
         };
 
         await SxmInit.InitDbAsync(TestSqlStatementsPath, initOptions);
+
+        // Register all test entity schemas (idempotent - safe to call multiple times)
+        await SxmInit.RegisterSchemaAsync(
+            // Standard test entities (from TestEntities.cs)
+            typeof(SimpleEntity),
+            typeof(AllTypesEntity),
+            typeof(TimeTypeTextEntity),
+            typeof(ExplicitColumnEntity),
+            typeof(IndexedEntity),
+            typeof(ParentEntity),
+            typeof(ChildEntity),
+            typeof(TriggerEntity),
+            typeof(RequiredFieldEntity),
+            // Migration test entities (from EntityMigrationTests.cs)
+            typeof(MigrationTestV1),
+            typeof(MigrationTestV2),
+            typeof(AddColumnEvolution),
+            typeof(AddColumnRequired),
+            typeof(AddColumnNullable),
+            typeof(AddColumnDataTypeOverride),
+            typeof(DropColumnEvolution),
+            typeof(DropColumnNotColumnTest),
+            typeof(SystemColumnsTest),
+            typeof(IndexMigrationEntity),
+            typeof(UniqueIndexMigrationEntity),
+            typeof(TriggerMigrationEntity),
+            typeof(AuditLogEntity),
+            typeof(FKParentEntity),
+            typeof(FKChildEntity),
+            typeof(AttributeRequiredEntity),
+            typeof(CompositeIndexEntity),
+            typeof(FreshTableWithIndexEntity),
+            typeof(FreshTableWithIndexEntity2),
+            // Drop table test entities (from DropTableTests.cs)
+            typeof(DropTestEntity1),
+            typeof(DropTestEntity2),
+            typeof(DropTestParentEntity3),
+            typeof(DropTestChildEntity3),
+            typeof(DropTestParentEntity4),
+            typeof(DropTestChildEntity4),
+            typeof(DropTestParentEntity5),
+            typeof(DropTestChildEntity5),
+            typeof(DropTestEntity8),
+            typeof(DropTestEntity9),
+            typeof(DropTestEntity10),
+            typeof(DropTestEntity11),
+            typeof(DropTestEntity12),
+            typeof(DropTestEntity13),
+            typeof(DropTestParentEntity14),
+            typeof(DropTestChildEntity14),
+            typeof(DropTestEntity15),
+            typeof(DropTestGrandParentEntity16),
+            typeof(DropTestParentEntity16),
+            typeof(DropTestChildEntity16),
+            typeof(DropTestEntity17),
+            typeof(DropTestEntity18),
+            typeof(DropTestEntity19),
+            typeof(DropTestEntityWithAVeryLongNameThatTestsTheLimitsOfTableNameHandling),
+            typeof(DropTestParentEntity20),
+            typeof(DropTestChildEntity20A),
+            typeof(DropTestChildEntity20B),
+            typeof(DropTestEntity21),
+            typeof(DropTestEntity22)
+        );
     }
 
     /// <summary>
@@ -156,6 +295,117 @@ public abstract class TestBase : IDisposable
         await Task.CompletedTask;
         throw new InvalidOperationException("CleanupTestDataAsync is only available in DEBUG builds.");
 #endif
+    }
+
+    /// <summary>
+    /// Cleans all data from test tables without dropping them or resetting static state.
+    /// Use this for test isolation when you need a clean slate but don't need full re-initialization.
+    /// This is safer and faster than CleanupTestDataAsync and works in all build configurations.
+    /// </summary>
+    protected async Task CleanupTableDataAsync()
+    {
+        // Close all connections first
+        await SxmConnectionManager.Instance.ShutdownAsync(TestDatabaseName);
+
+        // Force GC to release handles
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+
+        // Delete all data from all test entity tables
+        var entityTypes = new[]
+        {
+            // Standard test entities
+            typeof(SimpleEntity),
+            typeof(AllTypesEntity),
+            typeof(TimeTypeTextEntity),
+            typeof(ExplicitColumnEntity),
+            typeof(IndexedEntity),
+            typeof(ParentEntity),
+            typeof(ChildEntity),
+            typeof(TriggerEntity),
+            typeof(RequiredFieldEntity),
+            // Migration test entities
+            typeof(MigrationTestV1),
+            typeof(MigrationTestV2),
+            typeof(AddColumnEvolution),
+            typeof(AddColumnRequired),
+            typeof(AddColumnNullable),
+            typeof(AddColumnDataTypeOverride),
+            typeof(DropColumnEvolution),
+            typeof(DropColumnNotColumnTest),
+            typeof(SystemColumnsTest),
+            typeof(IndexMigrationEntity),
+            typeof(UniqueIndexMigrationEntity),
+            typeof(TriggerMigrationEntity),
+            typeof(AuditLogEntity),
+            typeof(FKParentEntity),
+            typeof(FKChildEntity),
+            typeof(AttributeRequiredEntity),
+            typeof(CompositeIndexEntity),
+            typeof(FreshTableWithIndexEntity),
+            typeof(FreshTableWithIndexEntity2),
+            // Drop table test entities
+            typeof(DropTestEntity1),
+            typeof(DropTestEntity2),
+            typeof(DropTestParentEntity3),
+            typeof(DropTestChildEntity3),
+            typeof(DropTestParentEntity4),
+            typeof(DropTestChildEntity4),
+            typeof(DropTestParentEntity5),
+            typeof(DropTestChildEntity5),
+            typeof(DropTestEntity8),
+            typeof(DropTestEntity9),
+            typeof(DropTestEntity10),
+            typeof(DropTestEntity11),
+            typeof(DropTestEntity12),
+            typeof(DropTestEntity13),
+            typeof(DropTestParentEntity14),
+            typeof(DropTestChildEntity14),
+            typeof(DropTestEntity15),
+            typeof(DropTestGrandParentEntity16),
+            typeof(DropTestParentEntity16),
+            typeof(DropTestChildEntity16),
+            typeof(DropTestEntity17),
+            typeof(DropTestEntity18),
+            typeof(DropTestEntity19),
+            typeof(DropTestEntityWithAVeryLongNameThatTestsTheLimitsOfTableNameHandling),
+            typeof(DropTestParentEntity20),
+            typeof(DropTestChildEntity20A),
+            typeof(DropTestChildEntity20B),
+            typeof(DropTestEntity21),
+            typeof(DropTestEntity22)
+        };
+
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+
+        foreach (var entityType in entityTypes)
+        {
+            try
+            {
+                string tableName = entityType.Name;
+                await using var command = connection.CreateCommand();
+                command.CommandText = $"DELETE FROM {SxmHelpers.QuoteIdentifier(tableName)}";
+                await command.ExecuteNonQueryAsync();
+            }
+            catch
+            {
+                // Ignore errors - table might not exist yet
+            }
+        }
+
+        // Checkpoint WAL to ensure changes are visible
+        try
+        {
+            await using var checkpointCmd = connection.CreateCommand();
+            checkpointCmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)";
+            await checkpointCmd.ExecuteNonQueryAsync();
+        }
+        catch
+        {
+            // Ignore WAL checkpoint errors
+        }
     }
 
     /// <summary>
@@ -241,6 +491,55 @@ public abstract class TestBase : IDisposable
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Executes a raw SQL command against the test database.
+    /// </summary>
+    protected async Task ExecuteNonQueryAsync(string sql)
+    {
+        // Database file does NOT have .db extension (it's just the database name)
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// Executes a raw SQL scalar query against the test database.
+    /// </summary>
+    protected async Task<T> ExecuteScalarAsync<T>(string sql)
+    {
+        // Database file does NOT have .db extension (it's just the database name)
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        var result = await command.ExecuteScalarAsync();
+        return result == null || result is DBNull ? default! : (T)Convert.ChangeType(result, typeof(T));
+    }
+
+    /// <summary>
+    /// Checks if a column exists in a table.
+    /// </summary>
+    protected async Task<bool> ColumnExistsAsync(string tableName, string columnName)
+    {
+        var count = await ExecuteScalarAsync<long>(
+            $"SELECT COUNT(*) FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'");
+        return count > 0;
+    }
+
+    /// <summary>
+    /// Gets the SQL type of a column.
+    /// </summary>
+    protected async Task<string> GetColumnTypeAsync(string tableName, string columnName)
+    {
+        var result = await ExecuteScalarAsync<string>(
+            $"SELECT type FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'");
+        return result ?? string.Empty;
     }
 
     /// <summary>
