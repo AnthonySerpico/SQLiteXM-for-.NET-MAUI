@@ -1423,7 +1423,7 @@ namespace SQLiteXM
                         }
                         else if (dbType.Equals("BLOB", StringComparison.OrdinalIgnoreCase))
                         {
-                            byte[]? b = SxmColumnDataConverters.GuidToRfc4122Bytes((Guid)value);
+                            byte[]? b = SxmColumnDataConverters.GuidToNativeBytes((Guid)value);
                             dbValue = (object?)b ?? DBNull.Value;
                         }
                         else

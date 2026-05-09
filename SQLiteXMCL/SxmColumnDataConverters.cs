@@ -162,14 +162,37 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Convert a nullable <see cref="Guid"/> to its 16-byte RFC 4122 representation.
+        /// Convert a nullable <see cref="Guid"/> to its 16-byte RFC 4122 representation (big-endian network byte order).
         /// Returns <c>null</c> when <paramref name="g"/> is <c>null</c>.
         /// </summary>
+        /// <remarks>
+        /// RFC 4122 format stores all Guid components in big-endian (network) byte order, providing
+        /// cross-platform compatibility with Java, Python, PostgreSQL UUID, and other systems.
+        /// Use this when interoperability or standards compliance is required.
+        /// For .NET-only scenarios with LINQ-to-DB queries, use <see cref="GuidToNativeBytes"/> instead.
+        /// </remarks>
         /// <param name="g">The nullable <see cref="Guid"/> to convert.</param>
         /// <returns>16-byte RFC 4122 representation of <paramref name="g"/>, or <c>null</c>.</returns>
         internal static byte[]? GuidToRfc4122Bytes(Guid? g)
         {
             return g.HasValue ? GuidStorageHelpers.ToRfc4122Bytes(g.Value) : null;
+        }
+
+        /// <summary>
+        /// Convert a nullable <see cref="Guid"/> to its 16-byte native .NET representation (mixed-endian).
+        /// Returns <c>null</c> when <paramref name="g"/> is <c>null</c>.
+        /// </summary>
+        /// <remarks>
+        /// Native .NET format uses Guid.ToByteArray() which stores the first 3 components in little-endian
+        /// and the last component in big-endian. This is the default format expected by LINQ-to-DB and provides
+        /// best performance for .NET-only applications. For cross-platform UUID compatibility, use
+        /// <see cref="GuidToRfc4122Bytes"/> instead.
+        /// </remarks>
+        /// <param name="g">The nullable <see cref="Guid"/> to convert.</param>
+        /// <returns>16-byte native .NET representation of <paramref name="g"/>, or <c>null</c>.</returns>
+        internal static byte[]? GuidToNativeBytes(Guid? g)
+        {
+            return g?.ToByteArray();
         }
 
         /// <summary>
@@ -356,10 +379,16 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Parse a <see cref="Guid"/> from its 16-byte RFC 4122 representation.
+        /// Parse a <see cref="Guid"/> from its 16-byte RFC 4122 representation (big-endian network byte order).
         /// Returns <c>null</c> when <paramref name="byteArray"/> is <c>null</c>.
         /// When non-<c>null</c> the array must be 16 bytes or an <see cref="ArgumentException"/> is thrown.
         /// </summary>
+        /// <remarks>
+        /// RFC 4122 format stores all Guid components in big-endian (network) byte order, providing
+        /// cross-platform compatibility with Java, Python, PostgreSQL UUID, and other systems.
+        /// Use this when interoperability or standards compliance is required.
+        /// For .NET-only scenarios with LINQ-to-DB queries, use <see cref="GuidFromNativeBytes"/> instead.
+        /// </remarks>
         /// <param name="byteArray">16-byte RFC 4122 byte array, or <c>null</c>.</param>
         /// <returns>Parsed <see cref="Guid"/> or <c>null</c>.</returns>
         /// <exception cref="ArgumentException">Thrown if <paramref name="byteArray"/> is not 16 bytes long when non-<c>null</c>.</exception>
@@ -371,6 +400,27 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Parse a <see cref="Guid"/> from its 16-byte native .NET representation (mixed-endian).
+        /// Returns <c>null</c> when <paramref name="byteArray"/> is <c>null</c>.
+        /// When non-<c>null</c> the array must be 16 bytes or an <see cref="ArgumentException"/> is thrown.
+        /// </summary>
+        /// <remarks>
+        /// Native .NET format uses the byte array produced by Guid.ToByteArray() which stores the first
+        /// 3 components in little-endian and the last component in big-endian. This is the default format
+        /// expected by LINQ-to-DB and provides best performance for .NET-only applications.
+        /// For cross-platform UUID compatibility, use <see cref="GuidFromRfc4122Bytes"/> instead.
+        /// </remarks>
+        /// <param name="byteArray">16-byte native .NET byte array, or <c>null</c>.</param>
+        /// <returns>Parsed <see cref="Guid"/> or <c>null</c>.</returns>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="byteArray"/> is not 16 bytes long when non-<c>null</c>.</exception>
+        internal static Guid? GuidFromNativeBytes(byte[]? byteArray)
+        {
+            if (byteArray is null) return null;
+            if (byteArray.Length != 16) throw new ArgumentException("Native .NET GUID byte array must be 16 bytes long.", nameof(byteArray));
+            return new Guid(byteArray);
+        }
+
+        /// <summary>
         /// Create a <see cref="DateTimeOffset"/> from Unix time in milliseconds.
         /// Returns <c>null</c> when <paramref name="unixTimeMs"/> is <c>null</c>.
         /// </summary>
@@ -378,7 +428,20 @@ namespace SQLiteXM
         /// <returns><see cref="DateTimeOffset"/> representing <paramref name="unixTimeMs"/>, or <c>null</c>.</returns>
         internal static DateTimeOffset? DateTimeOffsetFromUnixTimeMilliseconds(long? unixTimeMs)
         {
-            return unixTimeMs.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(unixTimeMs.Value) : (DateTimeOffset?)null;
+            if (!unixTimeMs.HasValue) return null;
+
+            // FromUnixTimeMilliseconds has range limitations
+            // Valid range: 0001-01-02T00:00:00.000Z to 9999-12-31T23:59:59.999Z
+            // If value is before Unix epoch minimum or after maximum, clamp or throw
+            const long minUnixMs = -62135596799999; // 0001-01-02T00:00:00.001Z
+            const long maxUnixMs = 253402300799999; // 9999-12-31T23:59:59.999Z
+
+            if (unixTimeMs.Value < minUnixMs)
+                return DateTimeOffset.MinValue;
+            if (unixTimeMs.Value > maxUnixMs)
+                return DateTimeOffset.MaxValue;
+
+            return DateTimeOffset.FromUnixTimeMilliseconds(unixTimeMs.Value);
         }
 
         /// <summary>

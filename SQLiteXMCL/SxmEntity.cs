@@ -137,16 +137,16 @@ namespace SQLiteXM
         public SxmEntity()
         {
             SxmInit.EnsureInitialized();
-            this._databaseName = ResolveTableAttributeName();
+            this._databaseName = ResolveTableAttributeDatabaseName();
             Initialize();
         }
 
         /// <summary>
-        /// Resolve and cache the <see cref="TableAttribute.Name"/> for this entity's CLR type.
+        /// Resolve and cache the <see cref="TableAttribute.Database"/> for this entity's CLR type.
         /// The first caller pays the reflection cost; subsequent callers return the cached value.
         /// </summary>
         /// <returns>The configured table/database name from <see cref="TableAttribute"/>, or <c>null</c> when not set.</returns>
-        internal string? ResolveTableAttributeName()
+        internal string? ResolveTableAttributeDatabaseName()
         {
             Type ctorType = GetType();
 
@@ -156,7 +156,7 @@ namespace SQLiteXM
             string? resolved = _tableAttributeNameCache.GetOrAdd(ctorType, t =>
             {
                 TableAttribute? tbl = t.GetCustomAttribute<TableAttribute>(inherit: false);
-                string? name = tbl?.Name;
+                string? name = tbl?.Database;
                 return string.IsNullOrWhiteSpace(name) ? null : name;
             });
 
@@ -1114,7 +1114,19 @@ namespace SQLiteXM
                 var typeName = type.Name;
 
                 // Ensure per-type column map exists.
-                _columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+                var columnDict = _columnNameAndTypeDict.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+
+                // Fail-fast: column map should be empty on first initialization.
+                // If it already contains columns, this indicates a critical failure in the initialization
+                // synchronization logic (Lazy<Task> guarantees should prevent this).
+                if (columnDict.Count > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"INTERNAL ERROR: Column map for type '{typeName}' was already initialized. " +
+                        $"This indicates a critical failure in the entity initialization synchronization logic. " +
+                        $"Expected: Lazy<Task> with ExecutionAndPublication mode should guarantee single execution. " +
+                        $"Please report this issue with steps to reproduce, including thread count and entity instantiation pattern.");
+                }
 
                 // Get the [Table] attribute to check IsColumnAttributeRequired.
                 TableAttribute? tbl = type.GetCustomAttribute<TableAttribute>(inherit: false);

@@ -300,7 +300,7 @@ namespace SQLiteXM
         /// Default is false (members can be inferred).
         /// </summary>
         public bool IsColumnAttributeRequired { get; set; } = false;
-        public string? Name { get; set; } = null;
+        public string? Database { get; set; } = null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IsTableAttribute"/> class.

@@ -39,10 +39,79 @@ namespace SQLiteXM
         // Reads outside the gate are safe because false positives only cause an extra wait.
         private static bool _initialized = false;
 
+#if DEBUG
+        /// <summary>
+        /// Resets all static initialization state to allow re-initialization.
+        /// **WARNING:** This is intended ONLY for testing scenarios and should NEVER be called in production code.
+        /// Calling this while entities or connections are active will cause undefined behavior.
+        /// </summary>
+        /// <remarks>
+        /// This method clears:
+        /// - Initialization flag and cached metadata in SxmInit
+        /// - Entity schema caches in SxmEntity (column maps, index bags, initialization tasks)
+        /// - Database descriptors and SQL statement caches
+        /// - Connection manager state
+        /// 
+        /// After calling this, you must call InitDbAsync again before using any entities.
+        /// </remarks>
+        public static async Task ResetForTestingAsync()
+        {
+            await _initGate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                // Reset SxmInit state
+                _initialized = false;
+
+                // Reset SxmEntity static caches via reflection (they're private)
+                var entityType = typeof(SxmEntity);
+
+                ClearStaticField(entityType, "_initTasks");
+                ClearStaticField(entityType, "_columnNameAndTypeDict");
+                ClearStaticField(entityType, "_uniqueIndexDict");
+                ClearStaticField(entityType, "_standardIndexDict");
+                ClearStaticField(entityType, "_insertGuidDict");
+                ClearStaticField(entityType, "_updateGuidDict");
+                ClearStaticField(entityType, "_deleteGuidDict");
+                ClearStaticField(entityType, "_tableAttributeNameCache");
+                ClearStaticField(entityType, "_entityTypeMap");
+                ClearStaticField(entityType, "_entityDatabaseMap");
+
+                // Reset database descriptors
+                SxmDatabaseDescriptor.ResetForTesting();
+
+                // Reset SQL statements
+                SxmSqlStatements.ResetForTesting();
+
+                // Reset init options database registry
+                SxmInitOptions.ResetForTesting();
+
+                // Note: We don't reset SxmConnectionManager as it manages active connections
+                // Tests should ensure all connections are properly disposed before calling ResetForTestingAsync
+            }
+            finally
+            {
+                _initGate.Release();
+            }
+        }
+
+        private static void ClearStaticField(Type type, string fieldName)
+        {
+            var field = type.GetField(fieldName, System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (field != null)
+            {
+                var fieldValue = field.GetValue(null);
+                if (fieldValue is System.Collections.IDictionary dict)
+                {
+                    dict.Clear();
+                }
+            }
+        }
+#endif
+
         /// <summary>
         /// Initialize the database using SQL statements parsed from the specified file.
         /// </summary>
-        /// <param name="sqlStatementsFileName">Path to the SQL statements file (absolute or relative).</param>
+        /// <param name="sqlStatementsFileName">Path to the SQL statements file (absolute or relative).
         /// <param name="fileType">Format of the SQL statements file.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
         public static async Task InitDbAsync(string sqlStatementsFileName, SxmInitOptions? initOptions = null)
@@ -58,14 +127,16 @@ namespace SQLiteXM
                 if (fileType == SqlStatementsFileType.Unknown)
                     throw new ArgumentException($"'{sqlStatementsFileName}' is an unknown SQL statements file type. The SQL statements file must be JSON or XML.");
 
+                // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
+                // Follow on calls to set will be ignored even if the initial setter value is null.
+                // CRITICAL: Must set DatabaseFolder BEFORE any SxmDatabaseDescriptor is created.
+                SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
+
                 {
                     using FileStream stream = File.OpenRead(fullPathToSqlStatementsFile);
                     await ParseSqlStatementsFile(stream, fileType).ConfigureFalse();
                 }
 
-                // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
-                // Follow on calls to set will be ignored even if the initial setter value is null.
-                SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
                 SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
                 await SxmInit.InitializeAsync().ConfigureFalse();
 
@@ -93,11 +164,13 @@ namespace SQLiteXM
                 if (_initialized)
                     return;
 
-                await ParseSqlStatementsFile(stream, SqlStatementsFileType.Unknown).ConfigureFalse();
-
                 // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
                 // Follow on calls to set will be ignored even if the initial setter value is null.
+                // CRITICAL: Must set DatabaseFolder BEFORE any SxmDatabaseDescriptor is created.
                 SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
+
+                await ParseSqlStatementsFile(stream, SqlStatementsFileType.Unknown).ConfigureFalse();
+
                 SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
                 await SxmInit.InitializeAsync().ConfigureFalse();
 

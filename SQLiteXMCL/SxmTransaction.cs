@@ -34,7 +34,7 @@ namespace SQLiteXM
         private string? _databaseName = default;
 
         /// <summary>
-        /// Tracks whether any child statement has thrown an exception. When set, subsequent statements are skipped until <see cref="ResetError"/> is called.
+        /// Tracks whether any child statement has thrown an exception. When set, subsequent statements are skipped and auto-commit is prevented.
         /// </summary>
         private bool _encounteredError = false;
 
@@ -200,18 +200,6 @@ namespace SQLiteXM
                 await base.DisposeAsync().ConfigureFalse();
             }
         }
-
-        /// <summary>
-        /// Clear the internal encountered-error flag so subsequent statements will run.
-        /// </summary>
-        /// <remarks>
-        /// - If a previous statement set the error flag, <see cref="RunStatementAsync(string, List{object})"/> will skip subsequent statements
-        ///   until <see cref="ResetError"/> is called.
-        /// - Calling <c>CommitTransaction()</c> / <c>CommitTransactionAsync()</c> ends the underlying SQLite transaction but does NOT
-        ///   release the SxmTransaction's connection lock or dispose the object. You may reuse the same SxmTransaction instance after a commit.
-        /// - The connection lock is released only when the transaction is disposed (<see cref="DisposeAsync"/>) or finalized.
-        /// </remarks>
-        public void ResetError() => _encounteredError = false;
 
         /************************************************************************* INSERT ********************************************************************/
         /// <summary>

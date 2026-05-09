@@ -36,6 +36,18 @@ public sealed class SxmInitOptions
 {
     private static ConcurrentDictionary<string, SxmInitOptions>? _databaseNames;
 
+#if DEBUG
+    /// <summary>
+    /// Resets the database name registry for testing purposes.
+    /// **WARNING:** Only call this in test scenarios.
+    /// </summary>
+    internal static void ResetForTesting()
+    {
+        _databaseNames?.Clear();
+        _databaseNames = null;
+    }
+#endif
+
     private CheckPointConnection? _checkPointConnection;
 
     /// <summary>
