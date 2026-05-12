@@ -31,8 +31,8 @@ internal static class SxmSchemaRegistration
     private static readonly ConcurrentDictionary<string, Lazy<Task>> _initTasks = new();
 
     // Index dictionaries
-    private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> _uniqueIndexDict = new(StringComparer.Ordinal);
-    private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexPropertyAttributes>> _standardIndexDict = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexProperties>> _uniqueIndexDict = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, ConcurrentBag<IndexProperties>> _standardIndexDict = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Register and initialize schema for a single entity type.
@@ -86,6 +86,23 @@ internal static class SxmSchemaRegistration
     {
         return _registeredSchemas.ContainsKey(entityType);
     }
+
+#if DEBUG
+    /// <summary>
+    /// Resets all static schema registration state for testing.
+    /// **WARNING:** This is intended ONLY for testing scenarios.
+    /// </summary>
+    internal static void ResetForTesting()
+    {
+        _registeredSchemas.Clear();
+        _tableAttributeNameCache.Clear();
+        _entityTypeMap.Clear();
+        _entityDatabaseMap.Clear();
+        _initTasks.Clear();
+        _uniqueIndexDict.Clear();
+        _standardIndexDict.Clear();
+    }
+#endif
 
     /// <summary>
     /// Resolve the database name from [Table(Database = "...")] attribute.
@@ -232,7 +249,80 @@ internal static class SxmSchemaRegistration
         foreach (PropertyInfo piItem in entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             propertyInfoWithAliases.Add(new MemberInfoWithAlias(piItem, string.Empty));
 
+        // Validate rename attributes
+        ValidateRenameAttributes(entityType, propertyInfoWithAliases);
+
         return propertyInfoWithAliases;
+    }
+
+    /// <summary>
+    /// Validates that [Rename] attributes are used correctly.
+    /// </summary>
+    /// <remarks>
+    /// Enforces the following rules:
+    /// <list type="number">
+    ///   <item><description>The old property name(s) referenced in [Rename] must NOT exist as current properties.</description></item>
+    ///   <item><description>Multiple properties cannot claim to rename from the same old name.</description></item>
+    ///   <item><description>A property cannot have [Rename] and [NotColumn] simultaneously.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Thrown when validation rules are violated.</exception>
+    private static void ValidateRenameAttributes(Type entityType, List<MemberInfoWithAlias> propertyInfoWithAliases)
+    {
+        var allPropertyNames = new HashSet<string>(
+            propertyInfoWithAliases.Select(p => p.memberInfo.Name),
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        var renameClaimsMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); // oldName -> newPropertyName
+
+        foreach (var prop in propertyInfoWithAliases)
+        {
+            RenameAttribute? renameAttr = prop.memberInfo.GetCustomAttribute<RenameAttribute>(inherit: false);
+            if (renameAttr == null)
+                continue;
+
+            string newPropertyName = prop.memberInfo.Name;
+
+            // Rule 1: Cannot have both [Rename] and [NotColumn]
+            if (prop.memberInfo.IsDefined(typeof(NotColumnAttribute), false))
+            {
+                throw new InvalidOperationException(
+                    $"SCHEMA ERROR in entity '{entityType.Name}': Property '{newPropertyName}' cannot have both [Rename] and [NotColumn] attributes.\n" +
+                    $"SOLUTION: Remove one of the attributes. If the property should not be mapped, use [NotColumn] only.");
+            }
+
+            // Rule 2: Old property name must NOT exist as a current property
+            foreach (string oldName in renameAttr.OldNames)
+            {
+                if (allPropertyNames.Contains(oldName))
+                {
+                    throw new InvalidOperationException(
+                        $"SCHEMA ERROR in entity '{entityType.Name}': Property '{newPropertyName}' has [Rename(\"{oldName}\")] but property '{oldName}' still exists.\n" +
+                        $"CAUSE: The old property must be completely removed from the entity class after renaming.\n" +
+                        $"SOLUTION: Remove the '{oldName}' property definition from the '{entityType.Name}' class.\n" +
+                        $"EXAMPLE:\n" +
+                        $"  // Before (INCORRECT):\n" +
+                        $"  public string {oldName} {{ get; set; }}\n" +
+                        $"  [Rename(\"{oldName}\")]\n" +
+                        $"  public string {newPropertyName} {{ get; set; }}\n\n" +
+                        $"  // After (CORRECT):\n" +
+                        $"  [Rename(\"{oldName}\")]\n" +
+                        $"  public string {newPropertyName} {{ get; set; }}");
+                }
+
+                // Rule 3: Multiple properties cannot claim the same old name
+                if (renameClaimsMap.TryGetValue(oldName, out var existingClaimant))
+                {
+                    throw new InvalidOperationException(
+                        $"SCHEMA ERROR in entity '{entityType.Name}': Multiple properties claim to rename from '{oldName}'.\n" +
+                        $"Property '{existingClaimant}' and property '{newPropertyName}' both have [Rename(\"{oldName}\")].\n" +
+                        $"SOLUTION: Only one property can rename from a given old name. Review your rename history and fix the duplicate claim.");
+                }
+
+                renameClaimsMap[oldName] = newPropertyName;
+            }
+        }
     }
 
     private static void GetColumnNamesAndDataTypes(Type entityType, List<MemberInfoWithAlias> propertyInfoWithAliases, string databaseName)
@@ -253,7 +343,7 @@ internal static class SxmSchemaRegistration
         TableAttribute? tbl = entityType.GetCustomAttribute<TableAttribute>(inherit: false);
         bool columnIsRequired = tbl?.IsColumnAttributeRequired ?? false;
 
-        List<ForeignKeyAttributes>? foreignKeyAttributeList = null;
+        List<ForeignKeyFields>? foreignKeyAttributeList = null;
 
         foreach (MemberInfoWithAlias propertyInfoWithAlias in propertyInfoWithAliases)
         {
@@ -273,10 +363,10 @@ internal static class SxmSchemaRegistration
             if (columnIsRequired && colAttr == null)
                 continue;
 
-            RequiredNotNull? requiredNotNull = memberInfo.GetCustomAttribute<RequiredNotNull>(inherit: false);
-            bool hasCreateIndex = memberInfo.IsDefined(typeof(CreateIndex), inherit: false);
-            bool hasCreateUniqueIndex = memberInfo.IsDefined(typeof(CreateUniqueIndex), inherit: false);
-            CreateForeignKey? isForeignKey = memberInfo.GetCustomAttribute<CreateForeignKey>(inherit: false);
+            RequiredNotNullAttribute? requiredNotNull = memberInfo.GetCustomAttribute<RequiredNotNullAttribute>(inherit: false);
+            bool hasCreateIndex = memberInfo.IsDefined(typeof(IndexAttribute), inherit: false);
+            bool hasCreateUniqueIndex = memberInfo.IsDefined(typeof(UniqueIndexAttribute), inherit: false);
+            ForeignKeyAttribute? isForeignKey = memberInfo.GetCustomAttribute<ForeignKeyAttribute>(inherit: false);
 
             string notNull = string.Empty;
             if (requiredNotNull is not null)
@@ -290,20 +380,20 @@ internal static class SxmSchemaRegistration
 
             if (hasCreateIndex)
             {
-                var bag = _standardIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
-                bag.Add(new IndexPropertyAttributes(columnName, typeName));
+                var bag = _standardIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexProperties>());
+                bag.Add(new IndexProperties(columnName, typeName));
             }
 
             if (hasCreateUniqueIndex)
             {
-                var bag = _uniqueIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexPropertyAttributes>());
-                bag.Add(new IndexPropertyAttributes(columnName, typeName));
+                var bag = _uniqueIndexDict.GetOrAdd(typeName, _ => new ConcurrentBag<IndexProperties>());
+                bag.Add(new IndexProperties(columnName, typeName));
             }
 
             if (isForeignKey is not null)
             {
-                foreignKeyAttributeList ??= new List<ForeignKeyAttributes>();
-                foreignKeyAttributeList.Add(new ForeignKeyAttributes
+                foreignKeyAttributeList ??= new List<ForeignKeyFields>();
+                foreignKeyAttributeList.Add(new ForeignKeyFields
                 {
                     fieldName = columnName,
                     foreignTable = isForeignKey.foreignTable,
@@ -358,7 +448,7 @@ internal static class SxmSchemaRegistration
     }
 
     // Cache for foreign keys (needed for table creation)
-    private static readonly ConcurrentDictionary<string, List<ForeignKeyAttributes>> _foreignKeyCache = new();
+    private static readonly ConcurrentDictionary<string, List<ForeignKeyFields>> _foreignKeyCache = new();
 
     private static bool IsTimeType(Type clrType)
     {
@@ -428,7 +518,7 @@ internal static class SxmSchemaRegistration
 
             if (_foreignKeyCache.TryGetValue(tableName, out var foreignKeyList))
             {
-                foreach (ForeignKeyAttributes attribute in foreignKeyList)
+                foreach (ForeignKeyFields attribute in foreignKeyList)
                 {
                     sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable)}({SxmHelpers.QuoteIdentifier("id")})");
                 }
@@ -452,6 +542,13 @@ internal static class SxmSchemaRegistration
 
         Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
 
+        // Step 1: Process column renames first
+        await ProcessColumnRenamesAsync(entityType, databaseName, dbTableColumnNameAndType).ConfigureAwait(false);
+
+        // Step 2: Refresh database column list after renames
+        dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+
+        // Step 3: Add any new columns that don't exist yet
         foreach (KeyValuePair<string, string> kvp in SxmEntity._columnNameAndTypeDict[tableName])
         {
             if (!dbTableColumnNameAndType.ContainsKey(kvp.Key))
@@ -474,6 +571,86 @@ internal static class SxmSchemaRegistration
 
                 SxmInit.AddColumnNameType(tableName, kvp.Key, value);
             }
+        }
+    }
+
+    /// <summary>
+    /// Processes column renames for all properties with [Rename] attributes.
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>Migration Strategy:</strong></para>
+    /// <list type="bullet">
+    ///   <item><description>For each property with [Rename], search for old column names in reverse order (newest to oldest).</description></item>
+    ///   <item><description>If any old column exists, rename it to the current property name (data preserved).</description></item>
+    ///   <item><description>If no old column exists, do nothing (new column will be created by AddColumnsAsync).</description></item>
+    /// </list>
+    /// 
+    /// <para><strong>Edge Cases Handled:</strong></para>
+    /// <list type="bullet">
+    ///   <item><description><strong>Fresh Install:</strong> No old columns exist → no rename, new column created.</description></item>
+    ///   <item><description><strong>Skipped Versions:</strong> User upgrades from V1 directly to V3 → oldest historical name is found and renamed.</description></item>
+    ///   <item><description><strong>Sequential Upgrade:</strong> User upgrades V1 → V2 → V3 → each rename happens in sequence.</description></item>
+    ///   <item><description><strong>Partial History Missing:</strong> Only some historical names exist → first match is renamed.</description></item>
+    /// </list>
+    /// </remarks>
+    private static async Task ProcessColumnRenamesAsync(Type entityType, string databaseName, Dictionary<string, string> dbTableColumnNameAndType)
+    {
+        string tableName = entityType.Name;
+        string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+        PropertyInfo[] properties = entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        foreach (var prop in properties)
+        {
+            var renameAttr = prop.GetCustomAttribute<RenameAttribute>(inherit: false);
+            if (renameAttr == null)
+                continue;
+
+            // Skip if marked as NotColumn (already validated, but double-check for safety)
+            if (prop.IsDefined(typeof(NotColumnAttribute), false))
+                continue;
+
+            string newColumnName = prop.Name;
+
+            // Check if the new column name already exists (no rename needed)
+            if (dbTableColumnNameAndType.ContainsKey(newColumnName))
+                continue;
+
+            // Search for old column names in reverse order (newest to oldest)
+            // This handles skipped-version upgrades: if "Title" → "Name" → "ProductName",
+            // and the database has "Name", we rename "Name" → "ProductName" directly.
+            string? foundOldName = null;
+            for (int i = renameAttr.OldNames.Length - 1; i >= 0; i--)
+            {
+                string oldName = renameAttr.OldNames[i];
+                if (dbTableColumnNameAndType.ContainsKey(oldName))
+                {
+                    foundOldName = oldName;
+                    break;
+                }
+            }
+
+            // If no old column exists, do nothing (fresh install or column already renamed)
+            if (foundOldName == null)
+                continue;
+
+            // Rename the old column to the new column name
+            string alterDefinition = $"ALTER TABLE {quotedTable} RENAME COLUMN {SxmHelpers.QuoteIdentifier(foundOldName)} TO {SxmHelpers.QuoteIdentifier(newColumnName)}";
+
+            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+            {
+                await sxmTransaction.ExecuteAlterTableAsync(alterDefinition).ConfigureAwait(false);
+                await sxmTransaction.CommitTransactionAsync().ConfigureAwait(false);
+            }
+
+            // Update internal column tracking: remove old name, add new name
+            string? columnType = dbTableColumnNameAndType[foundOldName];
+            SxmInit.RemoveColumnNameType(tableName, foundOldName);
+
+            // Extract base type without constraints for internal tracking
+            int offset = columnType.IndexOf(' ');
+            string baseType = offset != -1 ? columnType.Substring(0, offset) : columnType;
+            SxmInit.AddColumnNameType(tableName, newColumnName, baseType);
         }
     }
 
@@ -533,18 +710,18 @@ internal static class SxmSchemaRegistration
         string tableName = entityType.Name;
         string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-        IIndexVars[]? firstArray;
-        IIndexVars[]? secondArray;
+        IIndexProperties[]? firstArray;
+        IIndexProperties[]? secondArray;
 
         if (indexType == IndexType.Standard)
         {
-            firstArray = (CreateIndex[])entityType.GetCustomAttributes(typeof(CreateIndex), true);
-            secondArray = _standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexVars>();
+            firstArray = (IndexAttribute[])entityType.GetCustomAttributes(typeof(IndexAttribute), true);
+            secondArray = _standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexProperties>();
         }
         else if (indexType == IndexType.Unique)
         {
-            firstArray = (CreateUniqueIndex[])entityType.GetCustomAttributes(typeof(CreateUniqueIndex), true);
-            secondArray = _uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexVars>();
+            firstArray = (UniqueIndexAttribute[])entityType.GetCustomAttributes(typeof(UniqueIndexAttribute), true);
+            secondArray = _uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexProperties>();
             unique = "UNIQUE";
         }
         else
@@ -552,10 +729,10 @@ internal static class SxmSchemaRegistration
             return;
         }
 
-        firstArray ??= Array.Empty<IIndexVars>();
-        secondArray ??= Array.Empty<IIndexVars>();
+        firstArray ??= Array.Empty<IIndexProperties>();
+        secondArray ??= Array.Empty<IIndexProperties>();
 
-        List<IIndexVars> customAttributes = new List<IIndexVars>(firstArray.Length + secondArray.Length);
+        List<IIndexProperties> customAttributes = new List<IIndexProperties>(firstArray.Length + secondArray.Length);
         customAttributes.AddRange(firstArray);
         customAttributes.AddRange(secondArray);
 
@@ -575,7 +752,7 @@ internal static class SxmSchemaRegistration
         {
             bool found = false;
 
-            foreach (IIndexVars customAttribute in customAttributes)
+            foreach (IIndexProperties customAttribute in customAttributes)
             {
                 if (customAttribute.indexName.Equals(indexName))
                 {
@@ -605,9 +782,9 @@ internal static class SxmSchemaRegistration
             _uniqueIndexDict.TryRemove(tableName, out _);
     }
 
-    private static void AssignIndexNames(List<IIndexVars> indexArray, string tableName)
+    private static void AssignIndexNames(List<IIndexProperties> indexArray, string tableName)
     {
-        foreach (IIndexVars iiV in indexArray)
+        foreach (IIndexProperties iiV in indexArray)
         {
             iiV.indexName = "IDX_" + tableName;
 
@@ -623,10 +800,10 @@ internal static class SxmSchemaRegistration
         string tableName = entityType.Name;
         List<TriggerDefinition> triggerStatementsList = SxmSqlStatements.TriggerStatements[databaseName] as List<TriggerDefinition>;
 
-        CreateTrigger[] customAttributes = (CreateTrigger[])entityType.GetCustomAttributes(typeof(CreateTrigger), true);
+        TriggerAttribute[] customAttributes = (TriggerAttribute[])entityType.GetCustomAttributes(typeof(TriggerAttribute), true);
         if (customAttributes.Length > 0)
         {
-            foreach (CreateTrigger myAttribute in customAttributes)
+            foreach (TriggerAttribute myAttribute in customAttributes)
             {
                 if (!string.IsNullOrWhiteSpace(myAttribute.triggerSql))
                 {

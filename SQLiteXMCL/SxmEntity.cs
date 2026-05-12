@@ -233,7 +233,7 @@ namespace SQLiteXM
             string? resolved = _tableAttributeNameCache.GetOrAdd(ctorType, t =>
             {
                 TableAttribute? tbl = t.GetCustomAttribute<TableAttribute>(inherit: false);
-                string? name = tbl?.Database;
+                string? name = tbl?.DatabaseName;
                 return string.IsNullOrWhiteSpace(name) ? null : name;
             });
 

@@ -282,7 +282,7 @@ namespace SQLiteXM
 
                 SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootXml?.Trigger != default)
-                    foreach (Trigger triggerEntry in rootXml.Trigger)
+                    foreach (SxmSerialization.Trigger triggerEntry in rootXml.Trigger)
                         SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.Statement);
             }
         }

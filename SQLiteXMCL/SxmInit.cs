@@ -86,6 +86,9 @@ namespace SQLiteXM
                 // Reset init options database registry
                 SxmInitOptions.ResetForTesting();
 
+                // Reset schema registration state
+                SxmSchemaRegistration.ResetForTesting();
+
                 // Note: We don't reset SxmConnectionManager as it manages active connections
                 // Tests should ensure all connections are properly disposed before calling ResetForTestingAsync
             }

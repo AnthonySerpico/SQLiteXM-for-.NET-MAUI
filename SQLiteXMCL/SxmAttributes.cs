@@ -15,6 +15,8 @@ namespace SQLiteXM
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public class TableAttribute : LinqToDB.Mapping.TableAttribute
     {
+        public string? DatabaseName { get; set; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="TableAttribute"/> class.
         /// Uses the default table name resolution from LinqToDB.
@@ -123,9 +125,115 @@ namespace SQLiteXM
     }
 
     /// <summary>
+    /// Indicates that this property was previously named differently in the database.
+    /// The column will be renamed during schema migration to preserve existing data.
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>Migration Behavior:</strong></para>
+    /// <list type="bullet">
+    ///   <item><description>If any old column name exists in the database, it will be renamed (data preserved).</description></item>
+    ///   <item><description>If no old column exists, a new column is created (fresh install scenario).</description></item>
+    ///   <item><description>The old property must be removed from the entity class (validation enforced at registration).</description></item>
+    ///   <item><description>Multiple renames are tried in reverse order (newest to oldest).</description></item>
+    /// </list>
+    /// 
+    /// <para><strong>Single-Step Rename Example:</strong></para>
+    /// <code>
+    /// // Version 1
+    /// public string Title { get; set; }
+    /// 
+    /// // Version 2 - Rename "Title" to "Name"
+    /// [Rename("Title")]
+    /// public string Name { get; set; }  // ← Remove "Title" property!
+    /// </code>
+    /// 
+    /// <para><strong>Multi-Step Rename Example:</strong></para>
+    /// <code>
+    /// // Version 1
+    /// public string Title { get; set; }
+    /// 
+    /// // Version 2
+    /// [Rename("Title")]
+    /// public string Name { get; set; }
+    /// 
+    /// // Version 3 - Track full history
+    /// [Rename("Title", "Name")]
+    /// public string ProductName { get; set; }  // ← Remove "Name" property!
+    /// </code>
+    /// 
+    /// <para><strong>Fresh Install:</strong> If a user installs Version 3 directly (never had Version 1 or 2),
+    /// the column is created as "ProductName" with no rename needed.</para>
+    /// 
+    /// <para><strong>Skipped Versions:</strong> If a user updates from Version 1 directly to Version 3,
+    /// the migration finds "Title" column and renames it directly to "ProductName".</para>
+    /// 
+    /// <para><strong>Important:</strong> The old property must be completely removed from the entity class.
+    /// If both old and new properties exist, schema registration will fail with a clear validation error.</para>
+    /// </remarks>
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+    public class RenameAttribute : Attribute
+    {
+        /// <summary>
+        /// The previous name(s) of this column, in chronological order (oldest first).
+        /// </summary>
+        /// <remarks>
+        /// When multiple names are provided, SQLiteXM will search for them in reverse order (newest to oldest)
+        /// during migration. The first match found will be renamed to the current property name.
+        /// </remarks>
+        public string[] OldNames { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RenameAttribute"/> class for a single-step rename.
+        /// </summary>
+        /// <param name="oldName">The previous name of this column in the database.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="oldName"/> is null or whitespace.</exception>
+        /// <example>
+        /// <code>
+        /// [Rename("OldColumnName")]
+        /// public string NewColumnName { get; set; }
+        /// </code>
+        /// </example>
+        public RenameAttribute(string oldName)
+        {
+            if (string.IsNullOrWhiteSpace(oldName))
+                throw new ArgumentException("Old column name cannot be null or empty.", nameof(oldName));
+
+            OldNames = new[] { oldName };
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RenameAttribute"/> class for multi-step renames.
+        /// </summary>
+        /// <param name="oldNames">
+        /// The previous names of this column in chronological order (oldest to newest).
+        /// Example: If column was "A" → "B" → "C", pass ("A", "B") for property named "C".
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="oldNames"/> is null, empty, or contains null/whitespace entries.
+        /// </exception>
+        /// <example>
+        /// <code>
+        /// // Column history: "OriginalName" → "MiddleName" → "FinalName"
+        /// [Rename("OriginalName", "MiddleName")]
+        /// public string FinalName { get; set; }
+        /// </code>
+        /// </example>
+        public RenameAttribute(params string[] oldNames)
+        {
+            if (oldNames == null || oldNames.Length == 0)
+                throw new ArgumentException("At least one old name must be provided.", nameof(oldNames));
+
+            if (oldNames.Any(name => string.IsNullOrWhiteSpace(name)))
+                throw new ArgumentException("Old column names cannot be null or empty.", nameof(oldNames));
+
+            OldNames = oldNames;
+        }
+    }
+
+    /// <summary>
     /// Interface describing index-related attribute data.
     /// </summary>
-    interface IIndexVars
+    interface IIndexProperties
     {
         /// <summary>
         /// The fields that participate in the index.
@@ -142,7 +250,7 @@ namespace SQLiteXM
     /// Helper class used to construct index attributes programmatically.
     /// Not an attribute itself; used to build index names and field lists.
     /// </summary>
-    public class IndexPropertyAttributes : IIndexVars
+    public class IndexProperties : IIndexProperties
     {
         /// <inheritdoc/>
         public string[] indexFields { get; set; }
@@ -151,12 +259,12 @@ namespace SQLiteXM
         public string indexName { get; set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="IndexPropertyAttributes"/> class
+        /// Initializes a new instance of the <see cref="IndexProperties"/> class
         /// for a single-field index and builds a conventional index name using the table name.
         /// </summary>
         /// <param name="indexField">The indexed field name.</param>
         /// <param name="tableName">The table name used to derive the index name.</param>
-        public IndexPropertyAttributes(string indexField, string tableName)
+        public IndexProperties(string indexField, string tableName)
         {
             this.indexFields = new string[] { indexField };
 
@@ -173,7 +281,7 @@ namespace SQLiteXM
     /// Can be applied at class-level (specify fields) or member-level (no args).
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-    public class CreateIndex : Attribute, IIndexVars
+    public class IndexAttribute : Attribute, IIndexProperties
     {
         /// <inheritdoc/>
         public string[] indexFields { get; set; } = Array.Empty<string>();
@@ -182,27 +290,26 @@ namespace SQLiteXM
         public string indexName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateIndex"/> attribute.
-        /// Use the parameterless ctor for member-level usage or named arguments to set <see cref="IndexName"/>.
+        /// Initializes a new instance of the <see cref="IndexAttribute"/> attribute.
         /// </summary>
-        public CreateIndex()
+        public IndexAttribute()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateIndex"/> attribute for a single-field index.
+        /// Initializes a new instance of the <see cref="IndexAttribute"/> attribute for a single-field index.
         /// </summary>
         /// <param name="indexField">The single field to include in the index.</param>
-        public CreateIndex(string indexField)
+        public IndexAttribute(string indexField)
         {
             indexFields = new[] { indexField };
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateIndex"/> attribute for a multi-field index.
+        /// Initializes a new instance of the <see cref="IndexAttribute"/> attribute for a multi-field index.
         /// </summary>
         /// <param name="indexFields">The fields to include in the index.</param>
-        public CreateIndex(params string[] indexFields)
+        public IndexAttribute(params string[] indexFields)
         {
             this.indexFields = indexFields ?? Array.Empty<string>();
         }
@@ -223,7 +330,7 @@ namespace SQLiteXM
     /// Can be applied at class-level (specify fields) or member-level (no args).
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-    public class CreateUniqueIndex : Attribute, IIndexVars
+    public class UniqueIndexAttribute : Attribute, IIndexProperties
     {
         /// <inheritdoc/>
         public string[] indexFields { get; set; } = Array.Empty<string>();
@@ -232,26 +339,26 @@ namespace SQLiteXM
         public string indexName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateUniqueIndex"/> attribute.
+        /// Initializes a new instance of the <see cref="UniqueIndexAttribute"/> attribute.
         /// </summary>
-        public CreateUniqueIndex()
+        public UniqueIndexAttribute()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateUniqueIndex"/> attribute for a single-field unique index.
+        /// Initializes a new instance of the <see cref="UniqueIndexAttribute"/> attribute for a single-field unique index.
         /// </summary>
         /// <param name="indexField">The single field to include in the unique index.</param>
-        public CreateUniqueIndex(string indexField)
+        public UniqueIndexAttribute(string indexField)
         {
             indexFields = new[] { indexField };
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateUniqueIndex"/> attribute for a multi-field unique index.
+        /// Initializes a new instance of the <see cref="UniqueIndexAttribute"/> attribute for a multi-field unique index.
         /// </summary>
         /// <param name="indexFields">The fields to include in the unique index.</param>
-        public CreateUniqueIndex(params string[] indexFields)
+        public UniqueIndexAttribute(params string[] indexFields)
         {
             this.indexFields = indexFields ?? Array.Empty<string>();
         }
@@ -268,54 +375,11 @@ namespace SQLiteXM
     }
 
     /// <summary>
-    /// Attribute used to mark a member as a column (explicit intent).
-    /// Provides an optional <see cref="ColumnType"/> to describe the column semantics.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-    public class IsAColumnAttribute : Attribute
-    {
-        /// <summary>
-        /// Gets or sets the column type classification for this column.
-        /// </summary>
-        public ColumnType ColumnType { get; set; }
-    }
-
-    /// <summary>
-    /// Attribute indicating a member should not be treated as a column by SQLiteXM logic.
-    /// This is similar in intent to <see cref="NotColumnAttribute"/> but kept for explicit project-level tagging.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-    public class NotAColumnAttribute : Attribute
-    {
-    }
-
-    /// <summary>
-    /// Class-level attribute denoting a type represents a mapped table in the system.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public class IsTableAttribute : Attribute
-    {
-        /// <summary>
-        /// When true, members require a column attribute to be considered for mapping.
-        /// Default is false (members can be inferred).
-        /// </summary>
-        public bool IsColumnAttributeRequired { get; set; } = false;
-        public string? Database { get; set; } = null;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="IsTableAttribute"/> class.
-        /// </summary>
-        public IsTableAttribute()
-        {
-        }
-    }
-
-    /// <summary>
     /// Attribute that contains SQL for creating a trigger.
     /// Apply to a class to include trigger creation SQL during initialization.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    public class CreateTrigger : Attribute
+    public class TriggerAttribute : Attribute
     {
         /// <summary>
         /// The SQL text used to create the trigger.
@@ -323,10 +387,10 @@ namespace SQLiteXM
         public string triggerSql { get; set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateTrigger"/> attribute.
+        /// Initializes a new instance of the <see cref="TriggerAttribute"/> attribute.
         /// </summary>
         /// <param name="triggerSql">The CREATE TRIGGER SQL script to associate with the class.</param>
-        public CreateTrigger(string triggerSql)
+        public TriggerAttribute(string triggerSql)
         {
             this.triggerSql = triggerSql;
         }
@@ -337,7 +401,7 @@ namespace SQLiteXM
     /// Used to enforce non-null defaults at schema generation or validation time.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-    public class RequiredNotNull : Attribute
+    public class RequiredNotNullAttribute : Attribute
     {
         /// <summary>
         /// The default value to use when the member is required and cannot be null.
@@ -345,23 +409,23 @@ namespace SQLiteXM
         public object defaultValue { get; set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="RequiredNotNull"/> attribute.
+        /// Initializes a new instance of the <see cref="RequiredNotNullAttribute"/> attribute.
         /// Throws <see cref="ArgumentNullException"/> if provided default value is null.
         /// </summary>
-        /// <param name="DefaultValue">The non-null default value to assign to the member.</param>
-        public RequiredNotNull(object DefaultValue)
+        /// <param name="defaultValue">The non-null default value to assign to the member.</param>
+        public RequiredNotNullAttribute(object defaultValue)
         {
-            if (DefaultValue == null)
+            if (defaultValue == null)
                 throw new ArgumentNullException("RequiredNotNull", "For fields with the attribute 'RequiredNotNull', the default value for the field cannot be null.");
 
-            this.defaultValue = DefaultValue;
+            this.defaultValue = defaultValue;
         }
     }
 
     /// <summary>
     /// Internal representation of a foreign-key relationship for attribute processing.
     /// </summary>
-    internal class ForeignKeyAttributes
+    internal class ForeignKeyFields
     {
         /// <summary>
         /// The local field name participating in the foreign key.
@@ -378,7 +442,7 @@ namespace SQLiteXM
     /// Attribute to request creation of a foreign key constraint referencing another table.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-    public class CreateForeignKey : Attribute
+    public class ForeignKeyAttribute : Attribute
     {
         /// <summary>
         /// The referenced foreign table name.
@@ -386,12 +450,12 @@ namespace SQLiteXM
         public string foreignTable { get; set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CreateForeignKey"/> attribute.
+        /// Initializes a new instance of the <see cref="ForeignKeyAttribute"/> attribute.
         /// </summary>
-        /// <param name="ForeignTable">The foreign table name to reference in the constraint.</param>
-        public CreateForeignKey(string ForeignTable)
+        /// <param name="foreignTable">The foreign table name to reference in the constraint.</param>
+        public ForeignKeyAttribute(string foreignTable)
         {
-            this.foreignTable = ForeignTable;
+            this.foreignTable = foreignTable;
         }
     }
 
