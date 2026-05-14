@@ -188,6 +188,87 @@ public class ColumnRenameTests : TestBase
         return result == null || result == DBNull.Value ? default : (T)result;
     }
 
+    /// <summary>
+    /// Drops a test table if it exists.
+    /// </summary>
+    private async Task DropTableIfExistsAsync(string tableName)
+    {
+        using var conn = GetDirectConnection();
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"DROP TABLE IF EXISTS {tableName}";
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// Resets schema registration state for column rename test entities.
+    /// This allows tests to re-register schemas without resetting the entire SQLiteXM system.
+    /// </summary>
+    private void ResetColumnRenameSchemaRegistration()
+    {
+        // Use reflection to access the private _registeredSchemas dictionary in SxmSchemaRegistration
+        var schemaRegType = typeof(SxmEntity).Assembly.GetType("SQLiteXM.SxmSchemaRegistration");
+        if (schemaRegType == null)
+            return;
+
+        var registeredSchemasField = schemaRegType.GetField("_registeredSchemas",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        if (registeredSchemasField == null)
+            return;
+
+        var registeredSchemas = registeredSchemasField.GetValue(null) as System.Collections.IDictionary;
+        if (registeredSchemas == null)
+            return;
+
+        // Also clear the _initTasks cache
+        var initTasksField = schemaRegType.GetField("_initTasks",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        var initTasks = initTasksField?.GetValue(null) as System.Collections.IDictionary;
+
+        // Also clear the column name and type dictionary from SxmEntity
+        var columnDictField = typeof(SxmEntity).GetField("_columnNameAndTypeDict",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        var columnDict = columnDictField?.GetValue(null) as System.Collections.IDictionary;
+
+        // Remove only the column rename test entities
+        var typesToReset = new[]
+        {
+            typeof(SingleStepRenameV1),
+            typeof(SingleStepRenameV2),
+            typeof(MultiStepRenameV1),
+            typeof(MultiStepRenameV2),
+            typeof(MultiStepRenameV3),
+            typeof(FreshInstallEntity),
+            typeof(InvalidRenameOldPropertyExists),
+            typeof(InvalidRenameDuplicateClaim),
+            typeof(InvalidRenameWithNotColumn)
+        };
+
+        var tableNamesToReset = typesToReset.Select(t => t.Name).ToArray();
+
+        foreach (var type in typesToReset)
+        {
+            registeredSchemas.Remove(type);
+        }
+
+        // Clear init tasks and column dictionaries for the table names
+        if (initTasks != null)
+        {
+            foreach (var tableName in tableNamesToReset)
+            {
+                initTasks.Remove(tableName);
+            }
+        }
+
+        if (columnDict != null)
+        {
+            foreach (var tableName in tableNamesToReset)
+            {
+                columnDict.Remove(tableName);
+            }
+        }
+    }
+
     #endregion
 
     #region Positive Tests (Happy Path)
@@ -197,6 +278,11 @@ public class ColumnRenameTests : TestBase
     {
         // Arrange: Create V1 table and insert data
         string tableName = nameof(SingleStepRenameV2);
+
+        // Cleanup: Ensure clean state
+        await DropTableIfExistsAsync(tableName);
+        ResetColumnRenameSchemaRegistration();
+
         await CreateTestTableDirectlyAsync(tableName, ("Title", "TEXT"), ("Description", "TEXT"));
         await InsertTestDataAsync(tableName, new Dictionary<string, object>
         {
@@ -213,6 +299,9 @@ public class ColumnRenameTests : TestBase
 
         var value = await ReadColumnValueAsync<string>(tableName, "Name", 1);
         Assert.Equal("Original Title", value);
+
+        // Cleanup: Drop table after test
+        await DropTableIfExistsAsync(tableName);
     }
 
     [Fact]
@@ -220,6 +309,11 @@ public class ColumnRenameTests : TestBase
     {
         // Arrange: Create V1 table with "Title" column
         string tableName = nameof(MultiStepRenameV3);
+
+        // Cleanup: Ensure clean state
+        await DropTableIfExistsAsync(tableName);
+        ResetColumnRenameSchemaRegistration();
+
         await CreateTestTableDirectlyAsync(tableName, ("Title", "TEXT"));
         await InsertTestDataAsync(tableName, new Dictionary<string, object>
         {
@@ -237,6 +331,9 @@ public class ColumnRenameTests : TestBase
 
         var value = await ReadColumnValueAsync<string>(tableName, "ProductName", 1);
         Assert.Equal("Original Title", value);
+
+        // Cleanup: Drop table after test
+        await DropTableIfExistsAsync(tableName);
     }
 
     [Fact]
@@ -244,6 +341,13 @@ public class ColumnRenameTests : TestBase
     {
         // Arrange: Start with V1
         string tableName = nameof(MultiStepRenameV2);
+        string v3TableName = nameof(MultiStepRenameV3);
+
+        // Cleanup: Ensure clean state
+        await DropTableIfExistsAsync(tableName);
+        await DropTableIfExistsAsync(v3TableName);
+        ResetColumnRenameSchemaRegistration();
+
         await CreateTestTableDirectlyAsync(tableName, ("Title", "TEXT"));
         await InsertTestDataAsync(tableName, new Dictionary<string, object>
         {
@@ -261,7 +365,6 @@ public class ColumnRenameTests : TestBase
 
         // Arrange 2: Simulate V3 by creating the table for MultiStepRenameV3 with "Name" column
         // (We reuse the same data, renaming the table to match V3 entity)
-        string v3TableName = nameof(MultiStepRenameV3);
         using (var conn = GetDirectConnection())
         {
             await conn.OpenAsync();
@@ -279,12 +382,21 @@ public class ColumnRenameTests : TestBase
         Assert.True(await ColumnExistsAsync(v3TableName, "ProductName"));
         var valueAfterV3 = await ReadColumnValueAsync<string>(v3TableName, "ProductName", 1);
         Assert.Equal("Original Title", valueAfterV3);
+
+        // Cleanup: Drop tables after test
+        await DropTableIfExistsAsync(tableName);
+        await DropTableIfExistsAsync(v3TableName);
     }
 
     [Fact]
     public async Task FreshInstall_NoOldColumnsExist_ShouldCreateNewColumn()
     {
         // Arrange: No pre-existing table
+        string tableName = nameof(FreshInstallEntity);
+
+        // Cleanup: Ensure clean state
+        await DropTableIfExistsAsync(tableName);
+        ResetColumnRenameSchemaRegistration();
 
         // Act: Register schema for fresh install
         await SxmInit.RegisterSchemaAsync(typeof(FreshInstallEntity));
@@ -293,6 +405,9 @@ public class ColumnRenameTests : TestBase
         Assert.True(await ColumnExistsAsync(nameof(FreshInstallEntity), "FinalName"));
         Assert.False(await ColumnExistsAsync(nameof(FreshInstallEntity), "OldName"));
         Assert.False(await ColumnExistsAsync(nameof(FreshInstallEntity), "MiddleName"));
+
+        // Cleanup: Drop table after test
+        await DropTableIfExistsAsync(tableName);
     }
 
     [Fact]
@@ -300,6 +415,11 @@ public class ColumnRenameTests : TestBase
     {
         // Arrange: Create table with "Name" (V2) but not "Title" (V1)
         string tableName = nameof(MultiStepRenameV3);
+
+        // Cleanup: Ensure clean state
+        await DropTableIfExistsAsync(tableName);
+        ResetColumnRenameSchemaRegistration();
+
         await CreateTestTableDirectlyAsync(tableName, ("Name", "TEXT"));
         await InsertTestDataAsync(tableName, new Dictionary<string, object>
         {
@@ -316,6 +436,9 @@ public class ColumnRenameTests : TestBase
 
         var value = await ReadColumnValueAsync<string>(tableName, "ProductName", 1);
         Assert.Equal("Test Name", value);
+
+        // Cleanup: Drop table after test
+        await DropTableIfExistsAsync(tableName);
     }
 
     #endregion
@@ -374,6 +497,11 @@ public class ColumnRenameTests : TestBase
     {
         // Arrange: Create V2 table directly (already renamed)
         string tableName = nameof(SingleStepRenameV2);
+
+        // Cleanup: Ensure clean state
+        await DropTableIfExistsAsync(tableName);
+        ResetColumnRenameSchemaRegistration();
+
         await CreateTestTableDirectlyAsync(tableName, ("Name", "TEXT"), ("Description", "TEXT"));
         await InsertTestDataAsync(tableName, new Dictionary<string, object>
         {
@@ -390,6 +518,9 @@ public class ColumnRenameTests : TestBase
 
         var value = await ReadColumnValueAsync<string>(tableName, "Name", 1);
         Assert.Equal("Already Renamed", value);
+
+        // Cleanup: Drop table after test
+        await DropTableIfExistsAsync(tableName);
     }
 
     [Fact]
@@ -397,6 +528,11 @@ public class ColumnRenameTests : TestBase
     {
         // Arrange: Create table without any of the historical names
         string tableName = nameof(MultiStepRenameV3);
+
+        // Cleanup: Ensure clean state
+        await DropTableIfExistsAsync(tableName);
+        ResetColumnRenameSchemaRegistration();
+
         await CreateTestTableDirectlyAsync(tableName, ("SomeOtherColumn", "TEXT"));
 
         // Act: Register V3 (no "Title" or "Name" exist → create "ProductName")
@@ -406,6 +542,9 @@ public class ColumnRenameTests : TestBase
         Assert.True(await ColumnExistsAsync(tableName, "ProductName"));
         Assert.False(await ColumnExistsAsync(tableName, "Title"));
         Assert.False(await ColumnExistsAsync(tableName, "Name"));
+
+        // Cleanup: Drop table after test
+        await DropTableIfExistsAsync(tableName);
     }
 
     #endregion

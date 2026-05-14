@@ -110,15 +110,15 @@ public class ExplicitColumnEntity : SxmEntity
 /// </summary>
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 [Table(IsColumnAttributeRequired = false)]
-[CreateIndex(nameof(LastName), nameof(FirstName))]  // Composite index
-[CreateUniqueIndex(nameof(Email))]  // Unique index
+[Index(nameof(LastName), nameof(FirstName))]  // Composite index
+[UniqueIndex(nameof(Email))]  // Unique index
 public class IndexedEntity : SxmEntity
 {
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Email { get; set; }
     
-    [CreateIndex]  // Single-field index
+    [Index]  // Single-field index
     public DateTime CreatedDate { get; set; }
 }
 
@@ -138,7 +138,7 @@ public class ChildEntity : SxmEntity
 {
     public string? ChildName { get; set; }
     
-    [CreateForeignKey(ForeignTable: nameof(ParentEntity))]
+    [ForeignKey(foreignTable: nameof(ParentEntity))]
     public long ParentId { get; set; }
     
     [NotColumn]
@@ -150,7 +150,7 @@ public class ChildEntity : SxmEntity
 /// </summary>
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 [Table(IsColumnAttributeRequired = false)]
-[CreateTrigger("CREATE TRIGGER IF NOT EXISTS UpdateTimestamp AFTER UPDATE ON TriggerEntity BEGIN UPDATE TriggerEntity SET UpdatedDate = (strftime('%s', 'now') * 1000) WHERE id = NEW.id; END;")]
+[Trigger("CREATE TRIGGER IF NOT EXISTS UpdateTimestamp AFTER UPDATE ON TriggerEntity BEGIN UPDATE TriggerEntity SET UpdatedDate = (strftime('%s', 'now') * 1000) WHERE id = NEW.id; END;")]
 public class TriggerEntity : SxmEntity
 {
     public string? Name { get; set; }
@@ -164,10 +164,10 @@ public class TriggerEntity : SxmEntity
 [Table(IsColumnAttributeRequired = false)]
 public class RequiredFieldEntity : SxmEntity
 {
-    [RequiredNotNull(DefaultValue: "Default Name")]
+    [RequiredNotNull(defaultValue: "Default Name")]
     public string? RequiredName { get; set; }
     
-    [RequiredNotNull(DefaultValue: 42)]
+    [RequiredNotNull(defaultValue: 42)]
     public int RequiredAge { get; set; }
     
     public string? OptionalField { get; set; }

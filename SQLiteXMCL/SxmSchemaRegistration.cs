@@ -276,16 +276,16 @@ internal static class SxmSchemaRegistration
 
         var renameClaimsMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); // oldName -> newPropertyName
 
-        foreach (var prop in propertyInfoWithAliases)
+        foreach (MemberInfoWithAlias property in propertyInfoWithAliases)
         {
-            RenameAttribute? renameAttr = prop.memberInfo.GetCustomAttribute<RenameAttribute>(inherit: false);
+            RenameAttribute? renameAttr = property.memberInfo.GetCustomAttribute<RenameAttribute>(inherit: false);
             if (renameAttr == null)
                 continue;
 
-            string newPropertyName = prop.memberInfo.Name;
+            string newPropertyName = property.memberInfo.Name;
 
             // Rule 1: Cannot have both [Rename] and [NotColumn]
-            if (prop.memberInfo.IsDefined(typeof(NotColumnAttribute), false))
+            if (property.memberInfo.IsDefined(typeof(NotColumnAttribute), false))
             {
                 throw new InvalidOperationException(
                     $"SCHEMA ERROR in entity '{entityType.Name}': Property '{newPropertyName}' cannot have both [Rename] and [NotColumn] attributes.\n" +

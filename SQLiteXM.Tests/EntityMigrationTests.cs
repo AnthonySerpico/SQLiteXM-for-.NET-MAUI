@@ -63,7 +63,7 @@ public class EntityMigrationTests : TestBase
 
         // Verify default value is defined in the attribute
         var statusProp = typeof(AddColumnRequired).GetProperty("Status");
-        var reqNotNullAttr = statusProp?.GetCustomAttributes(typeof(RequiredNotNull), false).FirstOrDefault() as RequiredNotNull;
+        var reqNotNullAttr = statusProp?.GetCustomAttributes(typeof(RequiredNotNullAttribute), false).FirstOrDefault() as RequiredNotNullAttribute;
         reqNotNullAttr.Should().NotBeNull("Status property should have RequiredNotNull attribute");
         reqNotNullAttr!.defaultValue.Should().Be(55, "default value should be 55 as defined in the entity");
 
@@ -226,14 +226,14 @@ public class EntityMigrationTests : TestBase
     {
         await InitializeSqliteXMAsync();
 
-        // Create entity with [CreateIndex] attribute on Email property
+        // Create entity with [Index] attribute on Email property
         var entity = new IndexMigrationEntity { Name = "Test", Email = "test@example.com" };
         await entity.SaveAsync();
 
         entity.id.Should().BeGreaterThan(0);
 
         // TODO: Verify index was created in sqlite_master
-        // Current behavior: Property-level [CreateIndex] attributes are registered in _standardIndexDict
+        // Current behavior: Property-level [Index] attributes are registered in _standardIndexDict
         // but indexes may not be created in the database automatically.
         // Investigation needed: Check ProcessIndexStatementsAsync execution and index creation SQL.
 
@@ -245,7 +245,7 @@ public class EntityMigrationTests : TestBase
     {
         await InitializeSqliteXMAsync();
 
-        // Create entity with [CreateUniqueIndex] attribute on Email property
+        // Create entity with [UniqueIndex] attribute on Email property
         var entity1 = new UniqueIndexMigrationEntity 
         { 
             Username = $"user_{Guid.NewGuid()}", 
@@ -255,7 +255,7 @@ public class EntityMigrationTests : TestBase
         entity1.id.Should().BeGreaterThan(0);
 
         // TODO: Verify unique index was created and enforces uniqueness
-        // Current behavior: Property-level [CreateUniqueIndex] attributes are registered in _uniqueIndexDict
+        // Current behavior: Property-level [UniqueIndex] attributes are registered in _uniqueIndexDict
         // but unique indexes may not be created in the database automatically.
         // Investigation needed: Check ProcessIndexStatementsAsync execution and unique index creation SQL.
 
@@ -377,7 +377,7 @@ public class EntityMigrationTests : TestBase
         entity.id.Should().BeGreaterThan(0);
 
         // TODO: Verify composite index was created in sqlite_master
-        // Current behavior: Class-level [CreateIndex] attributes should create composite indexes
+        // Current behavior: Class-level [Index] attributes should create composite indexes
         // but verification shows no indexes are created in the database.
         // Investigation needed: Check if ProcessIndexStatementsAsync is executing the index creation SQL.
 
@@ -470,7 +470,7 @@ public class EntityMigrationTests : TestBase
     {
         public string? Name { get; set; }
 
-        [RequiredNotNull(55)]
+        [RequiredNotNullAttribute(55)]
         public int Status { get; set; }  // Will be added with default value
     }
 
@@ -534,7 +534,7 @@ public class EntityMigrationTests : TestBase
     {
         public string? Name { get; set; }
 
-        [CreateIndex]
+        [Index]
         public string? Email { get; set; }  // Standard index on Email
     }
 
@@ -545,14 +545,14 @@ public class EntityMigrationTests : TestBase
     {
         public string? Username { get; set; }
 
-        [CreateUniqueIndex]
+        [UniqueIndex]
         public string? Email { get; set; }  // Unique index on Email
     }
 
     // TriggerMigration test entity with audit trigger
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     [Table(IsColumnAttributeRequired = false)]
-    [CreateTrigger(@"
+    [Trigger(@"
         CREATE TRIGGER IF NOT EXISTS trg_AuditInsert_TriggerMigrationEntity 
         AFTER INSERT ON TriggerMigrationEntity
         BEGIN
@@ -590,7 +590,7 @@ public class EntityMigrationTests : TestBase
     {
         public string? ChildName { get; set; }
 
-        [CreateForeignKey("FKParentEntity")]
+        [ForeignKey("FKParentEntity")]
         public long ParentId { get; set; }
     }
 
@@ -609,7 +609,7 @@ public class EntityMigrationTests : TestBase
     // CompositeIndex test entity
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     [Table(IsColumnAttributeRequired = false)]
-    [CreateIndex("FirstName", "LastName")]  // Class-level composite index
+    [Index("FirstName", "LastName")]  // Class-level composite index
     public class CompositeIndexEntity : SxmEntity
     {
         public string? FirstName { get; set; }
@@ -655,7 +655,7 @@ public class EntityMigrationTests : TestBase
         // For now, just document what we found rather than failing
         // TODO: Once index creation is confirmed working, uncomment the assertion below
         // indexCount.Should().BeGreaterThan(0, 
-        //     "Index should be created on a fresh table when entity has [CreateIndex] attribute");
+        //     "Index should be created on a fresh table when entity has [Index] attribute");
 
         // Temporary: Just verify the entity was saved successfully
         entity.Email.Should().Be("test@fresh.com");
@@ -710,7 +710,7 @@ public class EntityMigrationTests : TestBase
     {
         public string? Name { get; set; }
 
-        [CreateIndex]
+        [Index]
         public string? Email { get; set; }
     }
 
@@ -721,7 +721,7 @@ public class EntityMigrationTests : TestBase
     {
         public string? Name { get; set; }
 
-        [CreateIndex]
+        [Index]
         public string? Email { get; set; }
     }
 

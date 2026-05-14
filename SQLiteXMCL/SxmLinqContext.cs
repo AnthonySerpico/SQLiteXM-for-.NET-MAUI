@@ -3,11 +3,17 @@ using LinqToDB.Data;
 using Microsoft.Data.Sqlite;
 using SQLiteXM.Internal.Threading;
 using System;
+using System.Collections.Concurrent;
 
 namespace SQLiteXM
 {
     public class SxmLinqContext : IDisposable
     {
+        // Static registry to track DataConnection -> SxmLinqContext mappings
+        // This enables context recovery from IQueryable chains after LINQ operators like Where()
+        private static readonly ConcurrentDictionary<DataConnection, WeakReference<SxmLinqContext>> _contextRegistry 
+            = new ConcurrentDictionary<DataConnection, WeakReference<SxmLinqContext>>();
+
         private bool _isDisposed = false;
         private readonly Microsoft.Data.Sqlite.SqliteConnection? _sqliteConnection;
         private readonly SxmChangeSet _changeSet = new SxmChangeSet();
@@ -24,6 +30,9 @@ namespace SQLiteXM
 
                 _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _sqliteConnection);
                 _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
+
+                // Register this context with its DataConnection for context recovery
+                _contextRegistry[_linqToDbDataConnection] = new WeakReference<SxmLinqContext>(this);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -41,12 +50,58 @@ namespace SQLiteXM
 
         public SxmChangeSet GetChangeSet() => _changeSet;
 
+        /// <summary>
+        /// Attempts to recover the SxmLinqContext from a LinqToDB query provider.
+        /// This enables context preservation through LINQ chains (Where, Select, etc.).
+        /// </summary>
+        /// <param name="query">The IQueryable to extract context from.</param>
+        /// <returns>The associated SxmLinqContext if found; otherwise null.</returns>
+        internal static SxmLinqContext? TryGetContextFromQuery<T>(IQueryable<T> query) where T : class
+        {
+            if (query == null) return null;
+
+            // Fast path: if it's already an SxmTable, return its context directly
+            if (query is SxmTable<T> sxmTable)
+                return sxmTable.DataContext;
+
+            // Slower path: try to extract DataConnection from LinqToDB's query provider
+            // LinqToDB's ITable<T> and query chains use IQueryProvider that holds the DataConnection
+            try
+            {
+                var provider = query.Provider;
+                if (provider == null) return null;
+
+                // LinqToDB's ExpressionQueryImpl<T> has a DataContext property of type IDataContext
+                // which is actually the DataConnection
+                var dataContextProperty = provider.GetType().GetProperty("DataContext");
+                if (dataContextProperty != null)
+                {
+                    var dataContext = dataContextProperty.GetValue(provider);
+                    if (dataContext is DataConnection dc)
+                    {
+                        // Look up our context from the registry
+                        if (_contextRegistry.TryGetValue(dc, out var weakRef) && weakRef.TryGetTarget(out var ctx))
+                        {
+                            return ctx;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If reflection fails or LinqToDB internals change, fall back to null
+                // This is a best-effort recovery mechanism
+            }
+
+            return null;
+        }
+
         // LinqToDB table access
         public SxmTable<T> GetTable<T>() where T : class
         {
             // Wrap the provider table so callers get an IQueryable-like wrapper that also
-            // exposes LoadWith without referencing LinqToDB.
-            return new SxmTable<T>(_linqToDbDataConnection.GetTable<T>());
+            // exposes LoadWith without referencing LinqToDB. Pass this context for deferred bulk operations.
+            return new SxmTable<T>(_linqToDbDataConnection.GetTable<T>(), this);
         }
 
         // Make raw provider escape hatches internal to prevent consumers from calling LinqToDB APIs directly.
@@ -182,109 +237,6 @@ namespace SQLiteXM
             return results;
         }
 
-        /// <summary>
-        /// Insert or replace the given entity asynchronously.
-        /// </summary>
-        /// <typeparam name="T">Entity type.</typeparam>
-        /// <param name="entity">Entity to insert or replace.</param>
-        /// <returns>Number of affected rows (provider-specific).</returns>
-        public async Task<int> InsertOrReplaceAsync<T>(T entity) where T : class
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            if (entity is SxmEntity sxm)
-            {
-                // entity is SxmEntity or derived — use sxm
-                await sxm.SaveAsync().ConfigureFalse();
-                return 1;
-            }
-            else
-            {
-                throw new InvalidOperationException($"Entity {nameof(entity)} must be a SxmEntity.");
-            }
-        }
-
-        /// <summary>
-        /// Insert or update the given entity asynchronously.
-        /// </summary>
-        /// <remarks>
-        /// Many providers expose either InsertOrUpdate or InsertOrReplace semantics.
-        /// For the SQLite provider we alias InsertOrUpdate to InsertOrReplace which
-        /// matches the SQLite behavior (INSERT OR REPLACE).
-        /// </remarks>
-        /// <typeparam name="T">Entity type.</typeparam>
-        /// <param name="entity">Entity to insert or update.</param>
-        /// <returns>Number of affected rows (provider-specific).</returns>
-        public async Task<int> InsertOrUpdateAsync<T>(T entity) where T : class
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            // Alias to InsertOrReplace for SQLite; keep surface for consumers.
-            return await InsertOrReplaceAsync(entity).ConfigureFalse();
-        }
-
-        // -------------------------
-        // Insert APIs (entity-safe)
-        // -------------------------
-
-        /// <summary>
-        /// Insert the given SxmEntity asynchronously; runs <c>Save()</c> lifecycle.
-        /// </summary>
-        public async Task InsertAsync(SxmEntity entity)
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            await entity.SaveAsync().ConfigureFalse();
-        }
-
-        // -------------------------
-        // Update APIs
-        // -------------------------
-
-        /// <summary>
-        /// Update the given SxmEntity using its lifecycle (runs <c>Save()</c> so any internal processing happens).
-        /// Use this overload for SxmEntity instances.
-        /// </summary>
-        public Task UpdateAsync(SxmEntity entity)
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return entity.SaveAsync();
-        }
-
-        /// <summary>
-        /// Generic update convenience that calls LinqToDB.Data.DataConnection.UpdateAsync(entity).
-        /// This bypasses SxmEntity lifecycle processing and should be used intentionally
-        /// (useful for non-entity types or bulk scenarios).
-        /// </summary>
-        public Task UpdateAsync<T>(T entity) where T : class
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _linqToDbDataConnection!.UpdateAsync(entity);
-        }
-
-        // -------------------------
-        // Delete APIs
-        // -------------------------
-
-        /// <summary>
-        /// Delete the given SxmEntity using its lifecycle (runs <c>Delete()</c> so any internal processing happens).
-        /// Use this overload for SxmEntity instances.
-        /// </summary>
-        public Task DeleteAsync(SxmEntity entity)
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return entity.DeleteAsync();
-        }
-
-        /// <summary>
-        /// Generic delete convenience that calls LinqToDB.Data.DataConnection.DeleteAsync(entity).
-        /// This bypasses SxmEntity lifecycle processing and should be used intentionally
-        /// (useful for non-entity types or bulk scenarios).
-        /// </summary>
-        public Task DeleteAsync<T>(T entity) where T : class
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return _linqToDbDataConnection!.DeleteAsync(entity);
-        }
-        // -------------------------------------------------------------------------------------------
-
         // ---------- Change tracking API ------------------
 
         public void InsertOnSubmit<T>(T entity) where T : SxmEntity
@@ -322,13 +274,45 @@ namespace SQLiteXM
             _changeSet.Add(entity, ChangeType.InsertOrUpdate);
         }
 
-        // ---------- SubmitChanges ------------------------
-        // Default now uses RollbackOnAnyFailure (strict atomic behavior).
-        public async Task<SubmitChangesResult> SubmitChangesAsync()
+        /// <summary>
+        /// Enqueues a bulk update operation to be executed during SubmitChangesAsync within the transaction.
+        /// </summary>
+        /// <param name="bulkOperation">The delegate that executes the bulk update.</param>
+        internal void EnqueueBulkUpdate(Func<Task<int>> bulkOperation)
         {
-            return await SubmitChangesAsync(ConflictMode.RollbackOnAnyFailure).ConfigureFalse();
+            if (bulkOperation == null) throw new ArgumentNullException(nameof(bulkOperation));
+            _changeSet.AddBulkOperation(ChangeType.BulkUpdate, bulkOperation);
         }
 
+        /// <summary>
+        /// Enqueues a bulk delete operation to be executed during SubmitChangesAsync within the transaction.
+        /// </summary>
+        /// <param name="bulkOperation">The delegate that executes the bulk delete.</param>
+        internal void EnqueueBulkDelete(Func<Task<int>> bulkOperation)
+        {
+            if (bulkOperation == null) throw new ArgumentNullException(nameof(bulkOperation));
+            _changeSet.AddBulkOperation(ChangeType.BulkDelete, bulkOperation);
+        }
+
+        // ---------- SubmitChanges ------------------------
+        /// <summary>
+        /// Submits all pending changes (inserts, updates, deletes) within a single transaction.
+        /// Default behavior: stops on first failure and rolls back the entire transaction.
+        /// </summary>
+        /// <returns>A SubmitChangesResult containing succeeded and failed operations.</returns>
+        public async Task<SubmitChangesResult> SubmitChangesAsync()
+        {
+            return await SubmitChangesAsync(ConflictMode.FailOnFirstError).ConfigureFalse();
+        }
+
+        /// <summary>
+        /// Submits all pending changes (inserts, updates, deletes) within a single transaction.
+        /// </summary>
+        /// <param name="conflictMode">Controls behavior when operations fail:
+        /// - FailOnFirstError (default): Stop on first failure and rollback the entire transaction.
+        /// - ContinueOnError: Continue processing all operations and commit successes (partial commit).
+        /// </param>
+        /// <returns>A SubmitChangesResult containing succeeded and failed operations.</returns>
         public async Task<SubmitChangesResult> SubmitChangesAsync(ConflictMode conflictMode)
         {
             var report = new SubmitChangesResult();
@@ -339,7 +323,6 @@ namespace SQLiteXM
             }
 
             bool committed = false;
-            bool anyFailure = false;
 
             // One transaction for the whole unit of work
             await using (SxmTransaction sxmTrans = SxmTransaction.Create())
@@ -357,28 +340,41 @@ namespace SQLiteXM
                                 case ChangeType.Insert:
                                 case ChangeType.Update:
                                     // Save decides insert vs update based on existence; use transaction-aware overload.
-                                    await action.Entity.SaveAsync(sxmTrans).ConfigureFalse();
+                                    await action.Entity!.SaveAsync(sxmTrans).ConfigureFalse();
                                     break;
 
                                 case ChangeType.Delete:
-                                    await action.Entity.DeleteAsync(sxmTrans).ConfigureFalse();
+                                    await action.Entity!.DeleteAsync(sxmTrans).ConfigureFalse();
                                     break;
 
                                 case ChangeType.InsertOrReplace:
-                                    await action.Entity.InsertOrReplaceAsync(sxmTrans).ConfigureFalse();
+                                    await action.Entity!.InsertOrReplaceAsync(sxmTrans).ConfigureFalse();
                                     break;
 
                                 case ChangeType.InsertOrUpdate:
-                                    await action.Entity.InsertOrUpdateAsync(sxmTrans).ConfigureFalse();
+                                    await action.Entity!.InsertOrUpdateAsync(sxmTrans).ConfigureFalse();
                                     break;
+
+                                case ChangeType.BulkUpdate:
+                                case ChangeType.BulkDelete:
+                                    // Execute bulk operation within the transaction
+                                    int rowsAffected = await action.BulkOperation!().ConfigureFalse();
+                                    action.Result = new ChangeResult
+                                    {
+                                        Success = true,
+                                        Error = null,
+                                        RowsAffected = rowsAffected
+                                    };
+                                    report.Succeeded.Add(action);
+                                    continue; // Skip entity-specific result handling below
                             }
 
-                            // Success
+                            // Success (entity operations)
                             action.Result = new ChangeResult
                             {
                                 Success = true,
                                 Error = null,
-                                IdAfterOperation = action.Entity.id > 0 ? action.Entity.id : null,
+                                IdAfterOperation = action.Entity!.id > 0 ? action.Entity.id : null,
                                 SynchIdAfterOperation = action.Entity.synchId
                             };
 
@@ -386,52 +382,38 @@ namespace SQLiteXM
                         }
                         catch (Exception ex)
                         {
-                            anyFailure = true;
-
+                            // Record failure
                             action.Result = new ChangeResult
                             {
                                 Success = false,
                                 Error = ex,
-                                IdAfterOperation = action.Entity.id > 0 ? action.Entity.id : null,
-                                SynchIdAfterOperation = action.Entity.synchId
+                                // Only set entity-specific fields if this is an entity operation
+                                IdAfterOperation = action.Entity?.id > 0 ? action.Entity.id : null,
+                                SynchIdAfterOperation = action.Entity?.synchId,
+                                RowsAffected = 0  // Failed operations affect 0 rows
                             };
 
                             report.Failed.Add(action);
 
-                            if (conflictMode == ConflictMode.FailOnFirstConflict)
-                            {
-                                // stop processing further actions
+                            // Stop immediately if FailOnFirstError
+                            if (conflictMode == ConflictMode.FailOnFirstError)
                                 break;
-                            }
 
-                            // ContinueOnConflict or RollbackOnAnyFailure: continue processing to collect results
+                            // Otherwise continue processing (ContinueOnError)
                         }
                     }
 
-                    // Decide commit/rollback based on conflict mode and outcomes
-                    if (conflictMode == ConflictMode.ContinueOnConflict)
+                    // Commit/rollback decision
+                    if (conflictMode == ConflictMode.ContinueOnError)
                     {
-                        // commit whatever succeeded (partial commit)
+                        // Always commit (partial success is acceptable)
                         await sxmTrans.CommitTransactionAsync().ConfigureFalse();
                         committed = true;
                     }
-                    else if (conflictMode == ConflictMode.FailOnFirstConflict)
+                    else // FailOnFirstError
                     {
-                        // If any failure happened we must rollback; otherwise commit.
-                        if (anyFailure)
-                        {
-                            await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
-                            committed = false;
-                        }
-                        else
-                        {
-                            await sxmTrans.CommitTransactionAsync().ConfigureFalse();
-                            committed = true;
-                        }
-                    }
-                    else // RollbackOnAnyFailure (default)
-                    {
-                        if (anyFailure)
+                        // Rollback if any failure; otherwise commit
+                        if (report.Failed.Count > 0)
                         {
                             await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
                             committed = false;
@@ -459,13 +441,14 @@ namespace SQLiteXM
                 }
                 finally
                 {
-                    // Only clear the change set when commit succeeded.
-                    if (committed)
-                        _changeSet.Clear();
+                    // Always clear the change set after any submit attempt.
+                    // This prevents accidental duplicate submissions and makes the behavior predictable.
+                    // If retry is needed, the caller must explicitly re-queue operations.
+                    _changeSet.Clear();
                 }
             }
 
-            report.AllSucceeded = !report.Failed.Any();
+            report.AllSucceeded = report.Failed.Count == 0;
             report.Partial = report.Succeeded.Count > 0 && report.Failed.Count > 0;
             return report;
         }
@@ -483,6 +466,12 @@ namespace SQLiteXM
 
             if (disposing)
             {
+                // Unregister from the context registry
+                if (_linqToDbDataConnection != null)
+                {
+                    _contextRegistry.TryRemove(_linqToDbDataConnection, out _);
+                }
+
                 SxmConnection.CloseConnection(_sqliteConnection, _databaseName);
                 _linqToDbDataConnection?.Dispose();
             }
@@ -494,35 +483,104 @@ namespace SQLiteXM
 
     /// <summary>
     /// Controls SubmitChanges behavior when an individual operation throws.
-    /// - FailOnFirstConflict: stop on first failure and rollback.
-    /// - RollbackOnAnyFailure: default — if any action fails, rollback the whole unit.
-    /// - ContinueOnConflict: continue processing and commit successful actions (partial commit).
     /// </summary>
     public enum ConflictMode
     {
         /// <summary>
-        /// Stop on first failure and rollback.
+        /// (DEFAULT) Stop on first failure and rollback the entire transaction.
+        /// Returns a SubmitChangesResult with the failed action in report.Failed.
         /// </summary>
-        FailOnFirstConflict,
+        FailOnFirstError,
 
         /// <summary>
-        /// If any action fails, rollback the whole unit. This is the new default.
+        /// Continue processing all actions even when failures occur, then commit successes.
+        /// Inspect report.Succeeded and report.Failed to see partial results.
         /// </summary>
-        RollbackOnAnyFailure,
-
-        /// <summary>
-        /// Continue applying remaining actions when an action throws and commit successes.
-        /// </summary>
-        ContinueOnConflict,
+        ContinueOnError
     }
 
-    // Aggregate result returned by SubmitChanges
+    /// <summary>
+    /// Aggregate result returned by SubmitChanges.
+    /// </summary>
     public class SubmitChangesResult
     {
         public List<ChangeAction> Succeeded { get; } = new List<ChangeAction>();
         public List<ChangeAction> Failed { get; } = new List<ChangeAction>();
         public bool AllSucceeded { get; set; }
         public bool Partial { get; set; }
+
+        /// <summary>
+        /// Returns true if any operations failed.
+        /// </summary>
+        public bool AnyFailed => Failed.Count > 0;
+
+        /// <summary>
+        /// Returns the total number of operations (succeeded + failed).
+        /// </summary>
+        public int TotalOperations => Succeeded.Count + Failed.Count;
+
+        /// <summary>
+        /// Returns a human-readable summary of the result.
+        /// </summary>
+        public string GetErrorSummary()
+        {
+            if (AllSucceeded) return "All operations succeeded.";
+
+            var first = Failed.FirstOrDefault();
+            if (Failed.Count == 1)
+            {
+                var entityInfo = first?.Entity != null
+                    ? $" (Entity: {first.Entity.GetType().Name}, Id: {first.Entity.id})"
+                    : string.Empty;
+                return $"1 operation failed{entityInfo}: {first?.Result?.Error?.Message ?? "Unknown error"}";
+            }
+
+            var firstError = first?.Result?.Error?.Message ?? "Unknown error";
+            return $"{Failed.Count} of {TotalOperations} operations failed. First error: {firstError}";
+        }
+    }
+
+    /// <summary>
+    /// Exception thrown when SubmitChanges fails and EnsureSuccess() is called.
+    /// Contains the full SubmitChangesResult for detailed error inspection.
+    /// </summary>
+    public class SubmitChangesException : InvalidOperationException
+    {
+        /// <summary>
+        /// The SubmitChangesResult containing detailed failure information.
+        /// </summary>
+        public SubmitChangesResult Result { get; }
+
+        public SubmitChangesException(string message, SubmitChangesResult result)
+            : base(message, result.Failed.FirstOrDefault()?.Result?.Error)
+        {
+            Result = result;
+        }
+    }
+
+    /// <summary>
+    /// Extension methods for SubmitChangesResult.
+    /// </summary>
+    public static class SubmitChangesResultExtensions
+    {
+        /// <summary>
+        /// Throws a SubmitChangesException if any operations failed, otherwise returns the result for chaining.
+        /// Use this when you want fail-fast behavior with exceptions.
+        /// </summary>
+        /// <param name="result">The SubmitChangesResult to check.</param>
+        /// <returns>The same result if all operations succeeded.</returns>
+        /// <exception cref="SubmitChangesException">Thrown when any operations failed.</exception>
+        public static SubmitChangesResult ThrowIfFailed(this SubmitChangesResult result)
+        {
+            if (result == null) throw new ArgumentNullException(nameof(result));
+
+            if (!result.AllSucceeded)
+            {
+                throw new SubmitChangesException(result.GetErrorSummary(), result);
+            }
+
+            return result;
+        }
     }
 }
 

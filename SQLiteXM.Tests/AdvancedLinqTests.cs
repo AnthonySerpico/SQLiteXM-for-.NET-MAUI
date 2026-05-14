@@ -55,8 +55,8 @@ public class AdvancedLinqTests : TestBase
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var parent1 = new ParentEntity { ParentName = $"GroupP1_{uniquePrefix}" };
         var parent2 = new ParentEntity { ParentName = $"GroupP2_{uniquePrefix}" };
-        await ctx.InsertAsync(parent1);
-        await ctx.InsertAsync(parent2);
+        ctx.InsertOnSubmit(parent1); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(parent2); await ctx.SubmitChangesAsync();
 
         // Create child entities with different counts per parent
         var children = new[]
@@ -70,7 +70,7 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var child in children)
         {
-            await ctx.InsertAsync(child);
+            ctx.InsertOnSubmit(child); await ctx.SubmitChangesAsync();
         }
 
         // Act - GroupBy with Count aggregate for our specific test data only
@@ -90,9 +90,9 @@ public class AdvancedLinqTests : TestBase
         grouped.Should().Contain(g => g.ParentId == parent2.id && g.Count == 2);
 
         // Cleanup
-        foreach (var child in children) { await ctx.DeleteAsync(child); }
-        await ctx.DeleteAsync(parent1);
-        await ctx.DeleteAsync(parent2);
+        foreach (var child in children) { ctx.DeleteOnSubmit(child); await ctx.SubmitChangesAsync(); }
+        ctx.DeleteOnSubmit(parent1); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(parent2); await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            await ctx.InsertAsync(entity);
+            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
         }
 
         // Act - Get page 2 (skip 2, take 2)
@@ -134,7 +134,7 @@ public class AdvancedLinqTests : TestBase
         page2[1].Name.Should().Be("Epsilon");
 
         // Cleanup
-        foreach (var entity in entities) { await ctx.DeleteAsync(entity); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            await ctx.InsertAsync(entity);
+            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
         }
 
         // Act
@@ -176,7 +176,7 @@ public class AdvancedLinqTests : TestBase
         contains99.Should().BeFalse();
 
         // Cleanup
-        foreach (var entity in entities) { await ctx.DeleteAsync(entity); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            await ctx.InsertAsync(entity);
+            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
         }
 
         // Act
@@ -219,7 +219,7 @@ public class AdvancedLinqTests : TestBase
         count.Should().Be(3);
 
         // Cleanup
-        foreach (var entity in entities) { await ctx.DeleteAsync(entity); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
     }
 
     [Fact]
@@ -235,14 +235,14 @@ public class AdvancedLinqTests : TestBase
         // Create two parents
         var parent1 = new ParentEntity { ParentName = $"JoinParent1_{uniquePrefix}" };
         var parent2 = new ParentEntity { ParentName = $"JoinParent2_{uniquePrefix}" };
-        await ctx.InsertAsync(parent1);
-        await ctx.InsertAsync(parent2);
+        ctx.InsertOnSubmit(parent1); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(parent2); await ctx.SubmitChangesAsync();
 
         // Create children - both with valid parents
         var child1 = new ChildEntity { ChildName = $"WithParent_{uniquePrefix}", ParentId = parent1.id };
         var child2 = new ChildEntity { ChildName = $"OtherParent_{uniquePrefix}", ParentId = parent2.id };
-        await ctx.InsertAsync(child1);
-        await ctx.InsertAsync(child2);
+        ctx.InsertOnSubmit(child1); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(child2); await ctx.SubmitChangesAsync();
 
         // Act - Left join where we filter to only show children from parent1
         // This simulates a left join where some parents might not have children
@@ -264,10 +264,10 @@ public class AdvancedLinqTests : TestBase
         leftJoin.Should().Contain(x => x.ChildName == $"OtherParent_{uniquePrefix}" && x.ParentName == $"JoinParent2_{uniquePrefix}");
 
         // Cleanup
-        await ctx.DeleteAsync(child1);
-        await ctx.DeleteAsync(child2);
-        await ctx.DeleteAsync(parent1);
-        await ctx.DeleteAsync(parent2);
+        ctx.DeleteOnSubmit(child1); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(child2); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(parent1); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(parent2); await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -288,7 +288,7 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            await ctx.InsertAsync(entity);
+            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
         }
 
         // Act
@@ -309,7 +309,7 @@ public class AdvancedLinqTests : TestBase
         union.Distinct().Should().HaveCount(union.Count, "Union should remove duplicates");
 
         // Cleanup
-        foreach (var entity in entities) { await ctx.DeleteAsync(entity); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
     }
 
     [Fact]
@@ -329,7 +329,7 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            await ctx.InsertAsync(entity);
+            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
         }
 
         // Act
@@ -341,7 +341,7 @@ public class AdvancedLinqTests : TestBase
         avgDouble.Should().Be(20.0);
 
         // Cleanup
-        foreach (var entity in entities) { await ctx.DeleteAsync(entity); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
     }
 
     [Fact]
@@ -357,14 +357,14 @@ public class AdvancedLinqTests : TestBase
         // Create parents
         var parent1 = new ParentEntity { ParentName = $"SelectMany1_{uniquePrefix}" };
         var parent2 = new ParentEntity { ParentName = $"SelectMany2_{uniquePrefix}" };
-        await ctx.InsertAsync(parent1);
-        await ctx.InsertAsync(parent2);
+        ctx.InsertOnSubmit(parent1); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(parent2); await ctx.SubmitChangesAsync();
 
         // Create children
         var child1 = new ChildEntity { ChildName = $"Child1_{uniquePrefix}", ParentId = parent1.id };
         var child2 = new ChildEntity { ChildName = $"Child2_{uniquePrefix}", ParentId = parent2.id };
-        await ctx.InsertAsync(child1);
-        await ctx.InsertAsync(child2);
+        ctx.InsertOnSubmit(child1); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(child2); await ctx.SubmitChangesAsync();
 
         // Act - SelectMany (cartesian-style projection)
         var flattened = ctx.GetTable<ChildEntity>()
@@ -379,10 +379,10 @@ public class AdvancedLinqTests : TestBase
         flattened.Should().Contain(x => x.ChildName == $"Child2_{uniquePrefix}" && x.ParentName == $"SelectMany2_{uniquePrefix}");
 
         // Cleanup
-        await ctx.DeleteAsync(child1);
-        await ctx.DeleteAsync(child2);
-        await ctx.DeleteAsync(parent1);
-        await ctx.DeleteAsync(parent2);
+        ctx.DeleteOnSubmit(child1); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(child2); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(parent1); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(parent2); await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -402,7 +402,7 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            await ctx.InsertAsync(entity);
+            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
         }
 
         // Act - Complex predicate with string functions
@@ -416,7 +416,7 @@ public class AdvancedLinqTests : TestBase
         results.Should().Contain(e => e.Name == "ComplexTest2");
 
         // Cleanup
-        foreach (var entity in entities) { await ctx.DeleteAsync(entity); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
     }
 
     [Fact]
@@ -428,7 +428,7 @@ public class AdvancedLinqTests : TestBase
         using var ctx = new SxmLinqContext(TestDatabaseName);
 
         var entity1 = new SimpleEntity { Name = "Deferred1", Age = 10 };
-        await ctx.InsertAsync(entity1);
+        ctx.InsertOnSubmit(entity1); await ctx.SubmitChangesAsync();
 
         // Create deferred query
         var query = ctx.GetTable<SimpleEntity>()
@@ -440,7 +440,7 @@ public class AdvancedLinqTests : TestBase
 
         // Add another entity
         var entity2 = new SimpleEntity { Name = "Deferred1", Age = 20 };
-        await ctx.InsertAsync(entity2);
+        ctx.InsertOnSubmit(entity2); await ctx.SubmitChangesAsync();
 
         // Act - Second materialization should rerun the query
         var secondList = query.ToList();
@@ -449,8 +449,8 @@ public class AdvancedLinqTests : TestBase
         secondList.Should().HaveCount(2, "deferred execution should rerun query and see new data");
 
         // Cleanup
-        await ctx.DeleteAsync(entity1);
-        await ctx.DeleteAsync(entity2);
+        ctx.DeleteOnSubmit(entity1); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(entity2); await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -483,7 +483,7 @@ public class AdvancedLinqTests : TestBase
         foreach (var entity in entities)
         {
             entity.Age += 10;
-            await ctx.UpdateAsync(entity);
+            ctx.UpdateOnSubmit(entity); await ctx.SubmitChangesAsync();
         }
 
         // Verify updates

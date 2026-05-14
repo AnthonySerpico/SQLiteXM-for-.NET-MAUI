@@ -349,7 +349,7 @@ public class DropTableTests : TestBase
     public class DropTestChildEntity3 : SxmEntity 
     { 
         public string? ChildName { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestParentEntity3))]
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity3))]
         public long ParentId { get; set; }
     }
 
@@ -362,7 +362,7 @@ public class DropTableTests : TestBase
     public class DropTestChildEntity4 : SxmEntity 
     { 
         public string? ChildName { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestParentEntity4))]
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity4))]
         public long ParentId { get; set; }
     }
 
@@ -375,7 +375,7 @@ public class DropTableTests : TestBase
     public class DropTestChildEntity5 : SxmEntity 
     { 
         public string? ChildName { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestParentEntity5))]
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity5))]
         public long ParentId { get; set; }
     }
 
@@ -416,7 +416,7 @@ public class DropTableTests : TestBase
     public class DropTestChildEntity14 : SxmEntity 
     { 
         public string? ChildName { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestParentEntity14))]
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity14))]
         public long ParentId { get; set; }
     }
 
@@ -433,7 +433,7 @@ public class DropTableTests : TestBase
     public class DropTestParentEntity16 : SxmEntity 
     { 
         public string? Name { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestGrandParentEntity16))]
+        [ForeignKey(foreignTable: nameof(DropTestGrandParentEntity16))]
         public long GrandParentId { get; set; }
     }
 
@@ -442,7 +442,7 @@ public class DropTableTests : TestBase
     public class DropTestChildEntity16 : SxmEntity 
     { 
         public string? Name { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestParentEntity16))]
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity16))]
         public long ParentId { get; set; }
     }
 
@@ -478,7 +478,7 @@ public class DropTableTests : TestBase
     public class DropTestChildEntity20A : SxmEntity 
     { 
         public string? Name { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestParentEntity20))]
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity20))]
         public long ParentId { get; set; }
     }
 
@@ -487,7 +487,7 @@ public class DropTableTests : TestBase
     public class DropTestChildEntity20B : SxmEntity 
     { 
         public string? Name { get; set; }
-        [CreateForeignKey(ForeignTable: nameof(DropTestParentEntity20))]
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity20))]
         public long ParentId { get; set; }
     }
 

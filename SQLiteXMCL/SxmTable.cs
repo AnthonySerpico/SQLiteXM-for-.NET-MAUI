@@ -3,6 +3,8 @@ using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 
+namespace SQLiteXM;
+
 /// <summary>
 /// Lightweight wrapper around <see cref="IQueryable{T}"/> that exposes an instance
 /// <see cref="LoadWith{TProperty}(Expression{Func{T, TProperty}})"/> API so callers in
@@ -12,16 +14,24 @@ using System.Linq.Expressions;
 public sealed class SxmTable<T> : IQueryable<T> where T : class
 {
     private readonly IQueryable<T> _inner;
+    private readonly SxmLinqContext? _context;
 
     /// <summary>
     /// Create a new <see cref="SxmTable{T}"/> that wraps the provided queryable.
     /// </summary>
     /// <param name="inner">The underlying queryable to wrap. Must not be <c>null</c>.</param>
+    /// <param name="context">Optional SxmLinqContext for deferred bulk operations.</param>
     /// <exception cref="ArgumentNullException"><paramref name="inner"/> is <c>null</c>.</exception>
-    public SxmTable(IQueryable<T> inner)
+    public SxmTable(IQueryable<T> inner, SxmLinqContext? context = null)
     {
         this._inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        this._context = context;
     }
+
+    /// <summary>
+    /// Gets the SxmLinqContext associated with this table, if any.
+    /// </summary>
+    internal SxmLinqContext? DataContext => _context;
 
     /// <summary>
     /// Return a new <see cref="SxmTable{T}"/> that will eagerly load the specified navigation
@@ -39,7 +49,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
         {
             // This resolves LinqToDB's LoadWith extension for ITable<T>
             var newQuery = table.LoadWith(navigationProperty);
-            return new SxmTable<T>(newQuery);
+            return new SxmTable<T>(newQuery, _context);
         }
 
         // fallback: no-op (query stays unchanged)
@@ -65,7 +75,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
             {
                 q = ((ITable<T>)q).LoadWith(prop);
             }
-            return new SxmTable<T>(q);
+            return new SxmTable<T>(q, _context);
         }
         return this;
     }

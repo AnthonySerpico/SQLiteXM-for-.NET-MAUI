@@ -32,7 +32,17 @@ namespace SQLiteXM
         /// <summary>
         /// New entity will be added, an existing entity will be updated.
         /// </summary>
-        InsertOrUpdate
+        InsertOrUpdate,
+
+        /// <summary>
+        /// A bulk update operation based on a LINQ query expression.
+        /// </summary>
+        BulkUpdate,
+
+        /// <summary>
+        /// A bulk delete operation based on a LINQ query expression.
+        /// </summary>
+        BulkDelete
     }
 
     /// <summary>
@@ -62,25 +72,35 @@ namespace SQLiteXM
         public Guid? SynchIdAfterOperation { get; set; }
 
         /// <summary>
+        /// For bulk operations, the number of rows affected by the operation.
+        /// </summary>
+        public int RowsAffected { get; set; }
+
+        /// <summary>
         /// UTC timestamp when the result instance was created.
         /// </summary>
         public DateTime Timestamp { get; } = DateTime.UtcNow;
     }
 
     /// <summary>
-    /// Represents a single change (insert/update/delete) that has been recorded against an entity.
+    /// Represents a single change (insert/update/delete/bulk) that has been recorded against an entity or query.
     /// </summary>
     public sealed class ChangeAction
     {
         /// <summary>
-        /// The entity the action targets. Never null.
+        /// The entity the action targets. Null for bulk operations.
         /// </summary>
-        public SxmEntity Entity { get; }
+        public SxmEntity? Entity { get; }
 
         /// <summary>
-        /// The type of change to apply to <see cref="Entity"/>.
+        /// The type of change to apply.
         /// </summary>
         public ChangeType Type { get; set; }
+
+        /// <summary>
+        /// For bulk operations: the delegate that executes the bulk operation when called.
+        /// </summary>
+        public Func<Task<int>>? BulkOperation { get; }
 
         /// <summary>
         /// UTC timestamp when this action was created/recorded.
@@ -102,6 +122,23 @@ namespace SQLiteXM
         {
             Entity = entity ?? throw new ArgumentNullException(nameof(entity));
             Type = type;
+            BulkOperation = null;
+        }
+
+        /// <summary>
+        /// Create a new <see cref="ChangeAction"/> for a bulk operation.
+        /// </summary>
+        /// <param name="type">The type of bulk change (BulkUpdate or BulkDelete).</param>
+        /// <param name="bulkOperation">The delegate that executes the bulk operation.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bulkOperation"/> is null.</exception>
+        internal ChangeAction(ChangeType type, Func<Task<int>> bulkOperation)
+        {
+            if (type != ChangeType.BulkUpdate && type != ChangeType.BulkDelete)
+                throw new ArgumentException($"ChangeAction bulk constructor requires BulkUpdate or BulkDelete, got {type}");
+
+            Entity = null;
+            Type = type;
+            BulkOperation = bulkOperation ?? throw new ArgumentNullException(nameof(bulkOperation));
         }
     }
 
@@ -125,27 +162,27 @@ namespace SQLiteXM
         /// <summary>
         /// Enumerates entities scheduled for insert operations in insertion order.
         /// </summary>
-        internal IEnumerable<SxmEntity> Inserts => _actions.Where(a => a.Type == ChangeType.Insert).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> Inserts => _actions.Where(a => a.Type == ChangeType.Insert && a.Entity != null).Select(a => a.Entity!);
 
         /// <summary>
         /// Enumerates entities scheduled for update operations in the order their actions were recorded.
         /// </summary>
-        internal IEnumerable<SxmEntity> Updates => _actions.Where(a => a.Type == ChangeType.Update).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> Updates => _actions.Where(a => a.Type == ChangeType.Update && a.Entity != null).Select(a => a.Entity!);
 
         /// <summary>
         /// Enumerates entities scheduled for delete operations in the order their actions were recorded.
         /// </summary>
-        internal IEnumerable<SxmEntity> Deletes => _actions.Where(a => a.Type == ChangeType.Delete).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> Deletes => _actions.Where(a => a.Type == ChangeType.Delete && a.Entity != null).Select(a => a.Entity!);
 
         /// <summary>
         /// Enumerates entities scheduled for insert or replace  operations in the order their actions were recorded.
         /// </summary>
-        internal IEnumerable<SxmEntity> InsertOrReplaces => _actions.Where(a => a.Type == ChangeType.InsertOrReplace).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> InsertOrReplaces => _actions.Where(a => a.Type == ChangeType.InsertOrReplace && a.Entity != null).Select(a => a.Entity!);
 
         /// <summary>
         /// Enumerates entities scheduled for insert or update  operations in the order their actions were recorded.
         /// </summary>
-        internal IEnumerable<SxmEntity> InsertOrUpdates => _actions.Where(a => a.Type == ChangeType.InsertOrUpdate).Select(a => a.Entity);
+        internal IEnumerable<SxmEntity> InsertOrUpdates => _actions.Where(a => a.Type == ChangeType.InsertOrUpdate && a.Entity != null).Select(a => a.Entity!);
 
         /// <summary>
         /// True when no actions have been recorded.
@@ -172,6 +209,21 @@ namespace SQLiteXM
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             _actions.Add(new ChangeAction(entity, type));
+        }
+
+        /// <summary>
+        /// Record a bulk operation (update or delete) to be executed during SubmitChanges.
+        /// </summary>
+        /// <param name="type">The type of bulk operation (BulkUpdate or BulkDelete).</param>
+        /// <param name="bulkOperation">The delegate that executes the bulk operation.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="bulkOperation"/> is null.</exception>
+        internal void AddBulkOperation(ChangeType type, Func<Task<int>> bulkOperation)
+        {
+            if (bulkOperation == null) throw new ArgumentNullException(nameof(bulkOperation));
+            if (type != ChangeType.BulkUpdate && type != ChangeType.BulkDelete)
+                throw new ArgumentException($"AddBulkOperation requires BulkUpdate or BulkDelete, got {type}");
+
+            _actions.Add(new ChangeAction(type, bulkOperation));
         }
 
         /// <summary>

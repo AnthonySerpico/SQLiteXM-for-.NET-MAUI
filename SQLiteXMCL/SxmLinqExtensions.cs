@@ -10,19 +10,23 @@ namespace SQLiteXM
     /// <summary>
     /// Lightweight wrapper over LinqToDB's update builder so callers that import
     /// <see cref="SQLiteXM"/> don't need to import <c>LinqToDB</c>.
+    /// Bulk updates are deferred and executed within SubmitChangesAsync transaction.
     /// </summary>
     /// <typeparam name="T">Entity type.</typeparam>
     public sealed class SxmUpdateSet<T> where T : class
     {
         private readonly IUpdatable<T> _inner;
+        private readonly SxmLinqContext? _context;
 
         /// <summary>
         /// Creates a new wrapper around the LinqToDB update builder instance.
         /// </summary>
         /// <param name="inner">The LinqToDB update builder instance.</param>
-        public SxmUpdateSet(IUpdatable<T> inner)
+        /// <param name="context">The SxmLinqContext to enqueue the operation into (null for immediate execution).</param>
+        internal SxmUpdateSet(IUpdatable<T> inner, SxmLinqContext? context = null)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+            _context = context;
         }
 
         /// <summary>
@@ -36,7 +40,7 @@ namespace SQLiteXM
         public SxmUpdateSet<T> Set<TProp>(Expression<Func<T, TProp>> setter, TProp value)
         {
             var next = _inner.Set(setter, value);
-            return new SxmUpdateSet<T>(next);
+            return new SxmUpdateSet<T>(next, _context);
         }
 
         /// <summary>
@@ -50,17 +54,27 @@ namespace SQLiteXM
         public SxmUpdateSet<T> Set<TProp>(Expression<Func<T, TProp>> setter, Expression<Func<T, TProp>> expression)
         {
             var next = _inner.Set(setter, expression);
-            return new SxmUpdateSet<T>(next);
+            return new SxmUpdateSet<T>(next, _context);
         }
 
         /// <summary>
-        /// Executes the update asynchronously.
+        /// Enqueues the bulk update to be executed during SubmitChangesAsync within the transaction.
+        /// All bulk updates participate in the same transaction as entity operations.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Number of rows affected.</returns>
+        /// <returns>Task that completes when the update is enqueued (actual execution happens in SubmitChangesAsync).</returns>
+        /// <exception cref="InvalidOperationException">Thrown when no SxmLinqContext is available.</exception>
         public Task<int> UpdateAsync(CancellationToken cancellationToken = default)
         {
-            return _inner.UpdateAsync(cancellationToken);
+            if (_context == null)
+                throw new InvalidOperationException(
+                    "Bulk update operations require a SxmLinqContext. " +
+                    "Use ctx.GetTable<T>() to obtain a context-aware table, then call Set().UpdateAsync(). " +
+                    "Bulk updates must participate in the SubmitChangesAsync() transaction.");
+
+            // Defer execution - enqueue into context's change set
+            _context.EnqueueBulkUpdate(() => _inner.UpdateAsync(cancellationToken));
+            return Task.FromResult(0); // Return placeholder; actual count available after SubmitChangesAsync
         }
     }
 
@@ -77,6 +91,8 @@ namespace SQLiteXM
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="SxmTable{T}"/>.
+        /// The update will be deferred and executed within SubmitChangesAsync transaction.
+        /// For single-entity updates, prefer <see cref="SxmLinqContext.UpdateOnSubmit"/> + <see cref="SxmLinqContext.SubmitChangesAsync"/>.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this SxmTable<T> query, Expression<Func<T, TProp>> setter, TProp value)
             where T : class
@@ -89,11 +105,12 @@ namespace SQLiteXM
 
             // ITable<T> implements IQueryable<T>, call LinqExtensions.Set directly to get the provider-updatable.
             var updatable = LinqToDB.LinqExtensions.Set<T, TProp>((IQueryable<T>)itable, setter, value);
-            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!);
+            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!, query.DataContext);
         }
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="SxmTable{T}"/> using expression value provider.
+        /// The update will be deferred and executed within SubmitChangesAsync transaction.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this SxmTable<T> query, Expression<Func<T, TProp>> setter, Expression<Func<T, TProp>> expression)
             where T : class
@@ -105,12 +122,12 @@ namespace SQLiteXM
             var itable = query.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
 
             var updatable = LinqToDB.LinqExtensions.Set<T, TProp>((IQueryable<T>)itable, setter, expression);
-            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!);
+            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!, query.DataContext);
         }
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="IQueryable{T}"/>.
-        /// Forwards to LinqToDB directly when the query is not an SxmTable.
+        /// Automatically recovers SxmLinqContext from LINQ chains for transactional bulk updates.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this IQueryable<T> query, Expression<Func<T, TProp>> setter, TProp value)
             where T : class
@@ -118,17 +135,17 @@ namespace SQLiteXM
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (setter == null) throw new ArgumentNullException(nameof(setter));
 
-            if (query is SxmTable<T> sxmTable)
-                return sxmTable.Set(setter, value);
+            // Try to recover context from the query (works for SxmTable and LinqToDB query chains)
+            var context = SxmLinqContext.TryGetContextFromQuery(query);
 
             // Call LinqToDB helper directly using the IQueryable overload.
             var updatable = LinqToDB.LinqExtensions.Set<T, TProp>(query, setter, value);
-            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!);
+            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!, context);
         }
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="IQueryable{T}"/> using expression value provider.
-        /// Forwards to LinqToDB directly when the query is not an SxmTable.
+        /// Automatically recovers SxmLinqContext from LINQ chains for transactional bulk updates.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this IQueryable<T> query, Expression<Func<T, TProp>> setter, Expression<Func<T, TProp>> expression)
             where T : class
@@ -137,12 +154,14 @@ namespace SQLiteXM
             if (setter == null) throw new ArgumentNullException(nameof(setter));
             if (expression == null) throw new ArgumentNullException(nameof(expression));
 
-            if (query is SxmTable<T> sxmTable)
-                return sxmTable.Set(setter, expression);
+            // Try to recover context from the query (works for SxmTable and LinqToDB query chains)
+            var context = SxmLinqContext.TryGetContextFromQuery(query);
 
             var updatable = LinqToDB.LinqExtensions.Set<T, TProp>(query, setter, expression);
-            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!);
+            return new SxmUpdateSet<T>((IUpdatable<T>)updatable!, context);
         }
+
+
 
         /// <summary>
         /// Asynchronously materializes the rows from the provided <see cref="SxmTable{T}"/> to a list.
@@ -245,16 +264,72 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Asynchronously deletes matching rows from the provided <see cref="SxmTable{T}"/>.
+        /// Asynchronously returns the maximum value from the provided <see cref="SxmTable{T}"/> using the specified selector.
         /// </summary>
+        public static Task<TResult> MaxAsync<T, TResult>(this SxmTable<T> table, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.MaxAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously returns the minimum value from the provided <see cref="SxmTable{T}"/> using the specified selector.
+        /// </summary>
+        public static Task<TResult> MinAsync<T, TResult>(this SxmTable<T> table, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.MinAsync((IQueryable<T>)itable, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously returns the number of elements in the provided <see cref="SxmTable{T}"/> as a 64-bit integer.
+        /// </summary>
+        public static Task<long> LongCountAsync<T>(this SxmTable<T> table, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.LongCountAsync((IQueryable<T>)itable, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously determines whether the sequence contains the specified element.
+        /// </summary>
+        public static Task<bool> ContainsAsync<T>(this SxmTable<T> table, T item, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
+            return LinqToDB.AsyncExtensions.ContainsAsync((IQueryable<T>)itable, item, cancellationToken);
+        }
+
+        /// <summary>
+        /// Enqueues a bulk delete operation to be executed during SubmitChangesAsync within the transaction.
+        /// All bulk deletes participate in the same transaction as entity operations.
+        /// For single-entity deletes, prefer <see cref="SxmLinqContext.DeleteOnSubmit"/> + <see cref="SxmLinqContext.SubmitChangesAsync"/>.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Thrown when no SxmLinqContext is available.</exception>
         public static Task<int> DeleteAsync<T>(this SxmTable<T> table, CancellationToken cancellationToken = default)
             where T : class
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
 
-            // Run synchronous provider delete on threadpool so API stays non-blocking when no async overload exists in Linq2DB package.
-            return Task.Run(() => LinqToDB.LinqExtensions.Delete<T>((IQueryable<T>)itable), cancellationToken);
+            if (table.DataContext == null)
+                throw new InvalidOperationException(
+                    "Bulk delete operations require a SxmLinqContext. " +
+                    "Use ctx.GetTable<T>() to obtain a context-aware table, then call DeleteAsync(). " +
+                    "Bulk deletes must participate in the SubmitChangesAsync() transaction.");
+
+            // Defer execution - enqueue into context's change set
+            table.DataContext.EnqueueBulkDelete(() => Task.FromResult(LinqToDB.LinqExtensions.Delete<T>((IQueryable<T>)itable)));
+            return Task.FromResult(0); // Return placeholder; actual count available after SubmitChangesAsync
         }
 
         // ---------- Forwarding overloads for IQueryable<T> (keeps fluent chaining) ----------
@@ -307,35 +382,7 @@ namespace SQLiteXM
             }
         }
 
-        /// <summary>
-        /// MERGE semantics are not supported by SQLite. This API is intentionally unavailable:
-        /// it emits a compile-time error with guidance to use supported upsert alternatives.
-        /// </summary>
-        /// <typeparam name="T">Entity type.</typeparam>
-        /// <param name="table">The LINQ table wrapper.</param>
-        /// <param name="source">Source items to merge (not used).</param>
-        /// <returns>Never returns; usage results in a compile-time error.</returns>
-        [Obsolete("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync instead.", true)]
-        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-        public static Task<int> MergeAsync<T>(this SxmTable<T> table, IEnumerable<T> source) where T : class
-        {
-            throw new NotSupportedException("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync for upsert-like operations.");
-        }
 
-        /// <summary>
-        /// Forwarding overload for <see cref="IQueryable{T}"/>.
-        /// </summary>
-        /// <typeparam name="T">Entity type.</typeparam>
-        /// <param name="query">The queryable to merge into.</param>
-        /// <param name="source">Source items to merge (not used).</param>
-        [Obsolete("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync instead.", true)]
-        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-        public static Task<int> MergeAsync<T>(this IQueryable<T> query, IEnumerable<T> source) where T : class
-        {
-            if (query == null) throw new ArgumentNullException(nameof(query));
-            if (query is SxmTable<T> sxmTable) return sxmTable.MergeAsync(source);
-            throw new NotSupportedException("MERGE is not supported by the SQLite provider. Use InsertOrReplaceAsync, InsertOrUpdateAsync, or BulkCopyAsync for upsert-like operations.");
-        }
 
         /// <summary>
         /// Asynchronously materializes the query to a list (forwarding overload for IQueryable).
@@ -429,16 +476,68 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Asynchronously deletes matching rows for the provided query (forwarding overload for IQueryable).
+        /// Asynchronously returns the maximum value using the specified selector (forwarding overload for IQueryable).
+        /// </summary>
+        public static Task<TResult> MaxAsync<T, TResult>(this IQueryable<T> query, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.MaxAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously returns the minimum value using the specified selector (forwarding overload for IQueryable).
+        /// </summary>
+        public static Task<TResult> MinAsync<T, TResult>(this IQueryable<T> query, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+            return LinqToDB.AsyncExtensions.MinAsync(query, selector, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously returns the number of elements as a 64-bit integer (forwarding overload for IQueryable).
+        /// </summary>
+        public static Task<long> LongCountAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            return LinqToDB.AsyncExtensions.LongCountAsync(query, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously determines whether the sequence contains the specified element (forwarding overload for IQueryable).
+        /// </summary>
+        public static Task<bool> ContainsAsync<T>(this IQueryable<T> query, T item, CancellationToken cancellationToken = default)
+            where T : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            return LinqToDB.AsyncExtensions.ContainsAsync(query, item, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously deletes matching rows for the provided query.
+        /// Automatically recovers SxmLinqContext from LINQ chains for transactional bulk deletes.
         /// </summary>
         public static Task<int> DeleteAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            if (query is SxmTable<T> sxmTable)
-                return sxmTable.DeleteAsync(cancellationToken);
 
-            return Task.Run(() => LinqToDB.LinqExtensions.Delete<T>(query), cancellationToken);
+            // Try to recover context from the query (works for SxmTable and LinqToDB query chains)
+            var context = SxmLinqContext.TryGetContextFromQuery(query);
+
+            if (context != null)
+            {
+                // Defer execution - enqueue into context's change set
+                context.EnqueueBulkDelete(() => Task.FromResult(LinqToDB.LinqExtensions.Delete<T>(query)));
+                return Task.FromResult(0); // Return placeholder; actual count available after SubmitChangesAsync
+            }
+
+            // No context available - execute immediately (for backward compatibility with direct LinqToDB usage)
+            return Task.FromResult(LinqToDB.LinqExtensions.Delete<T>(query));
         }
 
         /// <summary>
