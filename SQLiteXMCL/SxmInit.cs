@@ -1137,7 +1137,9 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">Active transaction used to execute the insert.</param>
         private static async Task InsertIntoSystemCloudSyncDescriptorAsync(string key, string databaseName, string tableName, SxmUTransaction sxmTransaction)
         {
-            TableDefinition tableDefinition = SxmSqlStatements.TableCreateStatements[key] as TableDefinition;
+            if (SxmSqlStatements.TableCreateStatements == null || !SxmSqlStatements.TableCreateStatements.TryGetValue(key, out TableDefinition? tableDefinition) || tableDefinition == null)
+                throw new InvalidOperationException($"Table definition not found for key: {key}");
+
             List<object> parameterValues = new List<object>();
             parameterValues.Add(databaseName);
             parameterValues.Add(tableName);

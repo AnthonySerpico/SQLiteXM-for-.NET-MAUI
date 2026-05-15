@@ -430,12 +430,12 @@ namespace SQLiteXM
         /// <summary>
         /// The local field name participating in the foreign key.
         /// </summary>
-        public string fieldName { get; set; }
+        public string? fieldName { get; set; }
 
         /// <summary>
         /// The referenced foreign table name.
         /// </summary>
-        public string foreignTable { get; set; }
+        public string? foreignTable { get; set; }
     }
 
     /// <summary>

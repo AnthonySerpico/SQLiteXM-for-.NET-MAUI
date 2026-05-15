@@ -76,7 +76,7 @@ internal static class SxmSchemaRegistration
         ValidateDatabaseName(ref resolvedDbName);
 
         // Initialize schema
-        await InitializeSchemaAsync(entityType, resolvedDbName).ConfigureAwait(false);
+        await InitializeSchemaAsync(entityType, resolvedDbName!).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -520,7 +520,7 @@ internal static class SxmSchemaRegistration
             {
                 foreach (ForeignKeyFields attribute in foreignKeyList)
                 {
-                    sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable)}({SxmHelpers.QuoteIdentifier("id")})");
+                    sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName!)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable!)}({SxmHelpers.QuoteIdentifier("id")})");
                 }
                 _foreignKeyCache.TryRemove(tableName, out _);
             }
@@ -684,7 +684,7 @@ internal static class SxmSchemaRegistration
 
         await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
         {
-            await sxmTransaction.Connection.ExecuteQueryAsync(pragma, null as List<object>).ConfigureAwait(false);
+            await sxmTransaction.Connection!.ExecuteQueryAsync(pragma, null).ConfigureAwait(false);
 
             while (sxmTransaction.Connection.NextRow() == true)
             {

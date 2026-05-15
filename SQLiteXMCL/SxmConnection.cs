@@ -246,7 +246,10 @@ namespace SQLiteXM
                 databaseName = SxmConnection.ResolveDatabaseName(databaseName);
                 if (!_dbConnectionString.TryGetValue(databaseName, out connectionString))
                 {
-                    string databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
+                    string? databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
+                    if (databaseFolderPath == null)
+                        throw new InvalidOperationException("Database folder path is not configured.");
+
                     string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
                     connectionString = string.Format(_sqliteConnString, pathToDatabase);
 
@@ -610,7 +613,11 @@ namespace SQLiteXM
             try
             {
                 if (_connCommand == null)
+                {
+                    if (_sqliteConnection == null)
+                        throw new InvalidOperationException("SQLite connection is not available.");
                     _connCommand = _sqliteConnection.CreateCommand();
+                }
                 else
                     ReleaseDataReader();
 
@@ -669,8 +676,12 @@ namespace SQLiteXM
             try
             {
                 if (_connCommand == null)
+                {
+                    if (_sqliteConnection == null)
+                        throw new InvalidOperationException("SQLite connection is not available.");
                     _connCommand = _sqliteConnection.CreateCommand();
-                
+                }
+
                 ReleaseDataReader();
 
                 _connCommand.CommandText = command;
@@ -713,6 +724,9 @@ namespace SQLiteXM
 
         private void AddCommandParameters(List<object>? parameterValues)
         {
+            if (_connCommand == null)
+                throw new InvalidOperationException("Database command is not initialized.");
+
             _connCommand.Parameters.Clear();
 
             if (parameterValues != null && parameterValues.Count > 0)
@@ -796,6 +810,9 @@ namespace SQLiteXM
             {
                 if (_dbConnTransaction == null)
                 {
+                    if (_sqliteConnection == null)
+                        throw new InvalidOperationException("SQLite connection is not available.");
+
                     _dbConnTransaction = _sqliteConnection.BeginTransaction();
                     if (_connCommand == null)
                         _connCommand = _sqliteConnection.CreateCommand();
@@ -825,7 +842,7 @@ namespace SQLiteXM
         public bool HasRows()
         {
             if (_connDataReader != null)
-                return _connDataReader.HasRows;
+                return _connDataReader!.HasRows;
 
             return false;
         }
@@ -842,6 +859,9 @@ namespace SQLiteXM
             {
                 if (HasRows() && _hasCurrentRow)
                 {
+                    if (_connDataReader == null)
+                        throw new InvalidOperationException("Data reader is not available.");
+
                     int ordinal = _connDataReader.GetOrdinal(fieldName);
                     return _connDataReader.GetValue(ordinal);
                 }
@@ -872,7 +892,12 @@ namespace SQLiteXM
             try
             {
                 if (HasRows() && _hasCurrentRow)
+                {
+                    if (_connDataReader == null)
+                        throw new InvalidOperationException("Data reader is not available.");
+
                     return _connDataReader.GetValue(fieldOrdinal);
+                }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -900,7 +925,12 @@ namespace SQLiteXM
             try
             {
                 if (HasRows())
+                {
+                    if (_connDataReader == null)
+                        throw new InvalidOperationException("Data reader is not available.");
+
                     return _connDataReader.GetName(fieldOrdinal);
+                }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -925,9 +955,12 @@ namespace SQLiteXM
         internal string[] GetFieldNames()
         {
             string[] fieldNames;
-                
+
             if (HasRows())
             {
+                if (_connDataReader == null)
+                    throw new InvalidOperationException("Data reader is not available.");
+
                 fieldNames = new string[_connDataReader.FieldCount];
                 for (int i = 0; i < _connDataReader.FieldCount; i++)
                     fieldNames[i] = _connDataReader.GetName(i);
@@ -949,6 +982,9 @@ namespace SQLiteXM
 
             if (NextRow() == true)
             {
+                if (_connDataReader == null)
+                    throw new InvalidOperationException("Data reader is not available.");
+
                 row = new T();
                 int numColumns = GetColumnCount();
                 for (int i = 0; i < numColumns; i++)
@@ -969,7 +1005,12 @@ namespace SQLiteXM
         internal int GetColumnCount()
         {
             if (HasRows())
+            {
+                if (_connDataReader == null)
+                    throw new InvalidOperationException("Data reader is not available.");
+
                 return _connDataReader.FieldCount;
+            }
 
             return 0;
         }
@@ -982,6 +1023,9 @@ namespace SQLiteXM
         {
             if (HasRows())
             {
+                if (_connDataReader == null)
+                    throw new InvalidOperationException("Data reader is not available.");
+
                 if (!(_hasCurrentRow = _connDataReader.Read()))
                     ReleaseDataReader();
             }
@@ -1000,6 +1044,9 @@ namespace SQLiteXM
             {
                 if (HasRows() && _hasCurrentRow)
                 {
+                    if (_connDataReader == null)
+                        throw new InvalidOperationException("Data reader is not available.");
+
                     int ordinal = _connDataReader.GetOrdinal(fieldName);
                     return _connDataReader.GetFieldType(ordinal);
                 }

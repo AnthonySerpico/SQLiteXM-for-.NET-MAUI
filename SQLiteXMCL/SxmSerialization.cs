@@ -27,13 +27,13 @@ namespace SQLiteXM
             /// The name of the table (as found in the source SQL definition).
             /// </summary>
             [XmlElement(ElementName = "TableName")]
-            public string TableName { get; set; }
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL statement text used to create or define the table.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>
@@ -47,19 +47,19 @@ namespace SQLiteXM
             /// The column name affected by the alter command.
             /// </summary>
             [XmlElement(ElementName = "ColumnName")]
-            public string ColumnName { get; set; }
+            public string? ColumnName { get; set; }
 
             /// <summary>
             /// The table name associated with the alter command.
             /// </summary>
             [XmlElement(ElementName = "TableName")]
-            public string TableName { get; set; }
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL alter statement text.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>
@@ -73,19 +73,19 @@ namespace SQLiteXM
             /// The index name.
             /// </summary>
             [XmlElement(ElementName = "IndexName")]
-            public string IndexName { get; set; }
+            public string? IndexName { get; set; }
 
             /// <summary>
             /// The table name the index belongs to.
             /// </summary>
             [XmlElement(ElementName = "TableName")]
-            public string TableName { get; set; }
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL index statement text.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>
@@ -99,19 +99,19 @@ namespace SQLiteXM
             /// Optional name for the insert statement.
             /// </summary>
             [XmlElement(ElementName = "StatementName")]
-            public string StatementName { get; set; }
+            public string? StatementName { get; set; }
 
             /// <summary>
             /// The table targeted by the insert.
             /// </summary>
             [XmlElement(ElementName = "TableName")]
-            public string TableName { get; set; }
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL insert statement text.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>
@@ -125,19 +125,19 @@ namespace SQLiteXM
             /// Optional name for the select statement.
             /// </summary>
             [XmlElement(ElementName = "StatementName")]
-            public string StatementName { get; set; }
+            public string? StatementName { get; set; }
 
             /// <summary>
             /// The table targeted by the select.
             /// </summary>
             [XmlElement(ElementName = "TableName")]
-            public string TableName { get; set; }
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL select statement text.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>
@@ -151,19 +151,19 @@ namespace SQLiteXM
             /// Optional name for the update statement.
             /// </summary>
             [XmlElement(ElementName = "StatementName")]
-            public string StatementName { get; set; }
+            public string? StatementName { get; set; }
 
             /// <summary>
             /// The table targeted by the update.
             /// </summary>
             [XmlElement(ElementName = "TableName")]
-            public string TableName { get; set; }
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL update statement text.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>
@@ -177,19 +177,19 @@ namespace SQLiteXM
             /// Optional name for the delete statement.
             /// </summary>
             [XmlElement(ElementName = "StatementName")]
-            public string StatementName { get; set; }
+            public string? StatementName { get; set; }
 
             /// <summary>
             /// The table targeted by the delete.
             /// </summary>
             [XmlElement(ElementName = "TableName")]
-            public string TableName { get; set; }
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL delete statement text.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>
@@ -203,13 +203,13 @@ namespace SQLiteXM
             /// The trigger name.
             /// </summary>
             [XmlElement(ElementName = "TriggerName")]
-            public string TriggerName { get; set; }
+            public string? TriggerName { get; set; }
 
             /// <summary>
             /// The SQL trigger statement text.
             /// </summary>
             [XmlElement(ElementName = "Statement")]
-            public string Statement { get; set; }
+            public string? Statement { get; set; }
         }
 
         /// <summary>

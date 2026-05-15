@@ -43,7 +43,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// A new <see cref="SxmTable{T}"/> wrapping the updated query when the underlying
     /// source is an <see cref="ITable{T}"/>; otherwise the original instance (no-op).
     /// </returns>
-    public SxmTable<T> LoadWith<TProperty>(Expression<Func<T, TProperty>> navigationProperty)
+    public SxmTable<T> LoadWith<TProperty>(Expression<Func<T, TProperty?>> navigationProperty)
     {
         if (_inner is ITable<T> table)
         {
@@ -66,7 +66,7 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// A new <see cref="SxmTable{T}"/> wrapping the updated query when the underlying
     /// source is an <see cref="ITable{T}"/>; otherwise the original instance (no-op).
     /// </returns>
-    public SxmTable<T> LoadWith(params Expression<Func<T, object>>[] navigationProperties)
+    public SxmTable<T> LoadWith(params Expression<Func<T, object?>>[] navigationProperties)
     {
         if (_inner is ITable<T> table)
         {

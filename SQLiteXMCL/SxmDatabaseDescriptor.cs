@@ -108,12 +108,18 @@ namespace SQLiteXM
             const long defaultMaxLogSize = 4 * 1024 * 1024; // 4 MB
             string logFileName = databaseName + ".log";
 
-            SxmLogging.SxmLoggingFactory(logFileName, SxmDatabaseDescriptor.DatabaseFolder, defaultMaxLogSize);
+            string? logPath = SxmDatabaseDescriptor.DatabaseFolder;
+            if (logPath == null)
+                throw new InvalidOperationException("Database folder path is not configured for logging.");
+
+            SxmLogging.SxmLoggingFactory(logFileName, logPath, defaultMaxLogSize);
         }
 
         private void CreateDB(string databaseName)
         {
-            string databaseFolderString = SxmDatabaseDescriptor.DatabaseFolder;
+            string? databaseFolderString = SxmDatabaseDescriptor.DatabaseFolder;
+            if (databaseFolderString == null)
+                throw new InvalidOperationException("Database folder path is not configured.");
 
             if (Directory.Exists(databaseFolderString) == false)
                 Directory.CreateDirectory(databaseFolderString);
@@ -134,7 +140,11 @@ namespace SQLiteXM
             if (string.IsNullOrWhiteSpace(databaseName))
                 throw new ArgumentException("Database name must be specified.", nameof(databaseName));
 
-            string walFilePath = Path.Combine(SxmDatabaseDescriptor.DatabaseFolder, databaseName + "-wal");
+            string? databaseFolder = SxmDatabaseDescriptor.DatabaseFolder;
+            if (databaseFolder == null)
+                throw new InvalidOperationException("Database folder path is not configured.");
+
+            string walFilePath = Path.Combine(databaseFolder, databaseName + "-wal");
             if (!File.Exists(walFilePath))
                 return 0;
 

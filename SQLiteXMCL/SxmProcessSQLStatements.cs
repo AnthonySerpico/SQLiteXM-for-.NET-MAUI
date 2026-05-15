@@ -254,36 +254,36 @@ namespace SQLiteXM
 
                 if (rootXml?.Table != default)
                     foreach (Table tableEntry in rootXml.Table)
-                        SxmSqlStatements.AddTableDefinition(_databaseName + "." + tableEntry.TableName, tableEntry.Statement);
+                        SxmSqlStatements.AddTableDefinition(_databaseName + "." + tableEntry.TableName, tableEntry.Statement!);
 
                 if (rootXml?.Index != default)
                     foreach (SQLiteXM.SxmSerialization.Index indexEntry in rootXml.Index)
-                        SxmSqlStatements.AddIndexDefinition(_databaseName + "." + indexEntry.TableName, indexEntry.IndexName, indexEntry.Statement);
+                        SxmSqlStatements.AddIndexDefinition(_databaseName + "." + indexEntry.TableName, indexEntry.IndexName!, indexEntry.Statement!);
 
                 if (rootXml?.Alter != default)
                     foreach (Alter alterEntry in rootXml.Alter)
-                        SxmSqlStatements.AddAlterDefinition(_databaseName + "." + alterEntry.TableName, alterEntry.ColumnName, alterEntry.Statement);
+                        SxmSqlStatements.AddAlterDefinition(_databaseName + "." + alterEntry.TableName, alterEntry.ColumnName!, alterEntry.Statement!);
 
                 if (rootXml?.Delete != default)
                     foreach (Delete deleteEntry in rootXml.Delete)
-                        SxmSqlStatements.AddDeleteDefinition(deleteEntry.StatementName, deleteEntry.TableName, deleteEntry.Statement);
+                        SxmSqlStatements.AddDeleteDefinition(deleteEntry.StatementName!, deleteEntry.TableName!, deleteEntry.Statement!);
 
                 if (rootXml?.Update != default)
                     foreach (Update updateEntry in rootXml.Update)
-                        SxmSqlStatements.AddUpdateDefinition(updateEntry.StatementName, updateEntry.TableName, updateEntry.Statement);
+                        SxmSqlStatements.AddUpdateDefinition(updateEntry.StatementName!, updateEntry.TableName!, updateEntry.Statement!);
 
                 if (rootXml?.Select != default)
                     foreach (Select selectEntry in rootXml.Select)
-                        SxmSqlStatements.AddSelectDefinition(selectEntry.StatementName, selectEntry.TableName, selectEntry.Statement);
+                        SxmSqlStatements.AddSelectDefinition(selectEntry.StatementName!, selectEntry.TableName!, selectEntry.Statement!);
 
                 if (rootXml?.Insert != default)
                     foreach (Insert insertEntry in rootXml.Insert)
-                        SxmSqlStatements.AddInsertDefinition(insertEntry.StatementName, insertEntry.TableName, insertEntry.Statement);
+                        SxmSqlStatements.AddInsertDefinition(insertEntry.StatementName!, insertEntry.TableName!, insertEntry.Statement!);
 
                 SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootXml?.Trigger != default)
                     foreach (SxmSerialization.Trigger triggerEntry in rootXml.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.Statement);
+                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.Statement!);
             }
         }
 

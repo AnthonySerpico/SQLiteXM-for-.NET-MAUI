@@ -28,6 +28,9 @@ namespace SQLiteXM
                 SxmConnection.CreateNewConnection(ref databaseName, ref _sqliteConnection);
                 _databaseName = databaseName;
 
+                if (_sqliteConnection == null)
+                    throw new InvalidOperationException("Failed to create SQLite connection.");
+
                 _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _sqliteConnection);
                 _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
 
@@ -205,6 +208,7 @@ namespace SQLiteXM
         public async Task<List<Dictionary<string, object?>>> QueryAsync(string sql, params object?[] parameters)
         {
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
+            if (_sqliteConnection == null) throw new InvalidOperationException("SQLite connection is not available.");
 
             // Use the owned SqliteConnection directly (safe — still not exposing it).
             await using SqliteCommand cmd = _sqliteConnection.CreateCommand();
@@ -215,7 +219,7 @@ namespace SQLiteXM
             {
                 var param = cmd.CreateParameter();
                 param.ParameterName = $"@p{i}";
-                param.Value = parameters[i] ?? DBNull.Value;
+                param.Value = parameters![i] ?? DBNull.Value;
                 cmd.Parameters.Add(param);
             }
 
@@ -322,8 +326,6 @@ namespace SQLiteXM
                 return report;
             }
 
-            bool committed = false;
-
             // One transaction for the whole unit of work
             await using (SxmTransaction sxmTrans = SxmTransaction.Create())
             {
@@ -408,7 +410,6 @@ namespace SQLiteXM
                     {
                         // Always commit (partial success is acceptable)
                         await sxmTrans.CommitTransactionAsync().ConfigureFalse();
-                        committed = true;
                     }
                     else // FailOnFirstError
                     {
@@ -416,12 +417,10 @@ namespace SQLiteXM
                         if (report.Failed.Count > 0)
                         {
                             await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
-                            committed = false;
                         }
                         else
                         {
                             await sxmTrans.CommitTransactionAsync().ConfigureFalse();
-                            committed = true;
                         }
                     }
                 }

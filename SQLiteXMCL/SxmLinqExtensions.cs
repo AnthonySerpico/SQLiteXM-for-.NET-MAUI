@@ -266,7 +266,7 @@ namespace SQLiteXM
         /// <summary>
         /// Asynchronously returns the maximum value from the provided <see cref="SxmTable{T}"/> using the specified selector.
         /// </summary>
-        public static Task<TResult> MaxAsync<T, TResult>(this SxmTable<T> table, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+        public static Task<TResult?> MaxAsync<T, TResult>(this SxmTable<T> table, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
@@ -278,7 +278,7 @@ namespace SQLiteXM
         /// <summary>
         /// Asynchronously returns the minimum value from the provided <see cref="SxmTable{T}"/> using the specified selector.
         /// </summary>
-        public static Task<TResult> MinAsync<T, TResult>(this SxmTable<T> table, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+        public static Task<TResult?> MinAsync<T, TResult>(this SxmTable<T> table, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
@@ -478,7 +478,7 @@ namespace SQLiteXM
         /// <summary>
         /// Asynchronously returns the maximum value using the specified selector (forwarding overload for IQueryable).
         /// </summary>
-        public static Task<TResult> MaxAsync<T, TResult>(this IQueryable<T> query, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+        public static Task<TResult?> MaxAsync<T, TResult>(this IQueryable<T> query, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
@@ -489,7 +489,7 @@ namespace SQLiteXM
         /// <summary>
         /// Asynchronously returns the minimum value using the specified selector (forwarding overload for IQueryable).
         /// </summary>
-        public static Task<TResult> MinAsync<T, TResult>(this IQueryable<T> query, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
+        public static Task<TResult?> MinAsync<T, TResult>(this IQueryable<T> query, Expression<Func<T, TResult>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
@@ -910,6 +910,7 @@ namespace SQLiteXM
         /// <returns>A task that returns the dictionary.</returns>
         public static async Task<Dictionary<TKey, T>> ToDictionaryAsync<T, TKey>(this SxmTable<T> table, Expression<Func<T, TKey>> keySelector, CancellationToken cancellationToken = default)
             where T : class
+            where TKey : notnull
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
@@ -944,6 +945,7 @@ namespace SQLiteXM
         /// <returns>A task that returns the dictionary.</returns>
         public static async Task<Dictionary<TKey, TElement>> ToDictionaryAsync<T, TKey, TElement>(this SxmTable<T> table, Expression<Func<T, TKey>> keySelector, Expression<Func<T, TElement>> elementSelector, CancellationToken cancellationToken = default)
             where T : class
+            where TKey : notnull
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
@@ -971,6 +973,7 @@ namespace SQLiteXM
         /// </summary>
         public static async Task<Dictionary<TKey, T>> ToDictionaryAsync<T, TKey>(this IQueryable<T> query, Expression<Func<T, TKey>> keySelector, CancellationToken cancellationToken = default)
             where T : class
+            where TKey : notnull
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
@@ -994,6 +997,7 @@ namespace SQLiteXM
         /// </summary>
         public static async Task<Dictionary<TKey, TElement>> ToDictionaryAsync<T, TKey, TElement>(this IQueryable<T> query, Expression<Func<T, TKey>> keySelector, Expression<Func<T, TElement>> elementSelector, CancellationToken cancellationToken = default)
             where T : class
+            where TKey : notnull
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));

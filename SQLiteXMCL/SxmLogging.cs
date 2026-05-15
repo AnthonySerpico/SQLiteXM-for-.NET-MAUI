@@ -307,7 +307,7 @@ namespace SQLiteXM
         {
             if (ex == null) return string.Empty;
             var sb = new System.Text.StringBuilder();
-            System.Exception cur = ex;
+            System.Exception? cur = ex;
             while (cur != null)
             {
                 sb.AppendLine($"{cur.GetType().FullName}: {cur.Message}");

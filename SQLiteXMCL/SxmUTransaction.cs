@@ -581,7 +581,10 @@ namespace SQLiteXM
 
             if (_connection.DatabaseName?.Equals(databaseName) == false)
             {
-                string databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
+                string? databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
+                if (databaseFolderPath == null)
+                    throw new InvalidOperationException("Database folder path is not configured.");
+
                 string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
 
                 if (File.Exists(dbFullyQualifiedPath) == true)
@@ -610,7 +613,10 @@ namespace SQLiteXM
 
             if (_connection.DatabaseName?.Equals(databaseName) == false)
             {
-                string databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
+                string? databaseFolderPath = SxmDatabaseDescriptor.DatabaseFolder;
+                if (databaseFolderPath == null)
+                    throw new InvalidOperationException("Database folder path is not configured.");
+
                 string dbFullyQualifiedPath = Path.Combine(databaseFolderPath, databaseName);
                 if (File.Exists(dbFullyQualifiedPath) == true)
                     await _connection.ExecuteNonQueryAsync(String.Format("DETACH DATABASE '{0}'", databaseName), null as List<object>).ConfigureFalse();
