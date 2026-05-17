@@ -88,7 +88,10 @@ namespace SQLiteXM
                 SxmDefines.SxmErrorCode.MissingDatabaseName)},
 
             {SxmDefines.SxmErrorCode.AcquireLease, new ErrorMessage("Connection for '{0}' is closing and cannot be acquired.",
-                SxmDefines.SxmErrorCode.AcquireLease)}
+                SxmDefines.SxmErrorCode.AcquireLease)},
+
+            {SxmDefines.SxmErrorCode.ConnectionBlockedBackgrounded, new ErrorMessage("Cannot create connection for '{0}': application is backgrounded.",
+                SxmDefines.SxmErrorCode.ConnectionBlockedBackgrounded)}
         }.ToImmutableDictionary();
         public static IReadOnlyDictionary<SxmDefines.SxmErrorCode, ErrorMessage> Errors => _errors;
     }

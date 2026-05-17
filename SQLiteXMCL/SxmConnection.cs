@@ -104,6 +104,20 @@ namespace SQLiteXM
         private static readonly Dictionary<string, string> _dbConnectionString = new Dictionary<string, string>();
         private static readonly string _sqliteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
 
+        // Lifecycle gate: when true, new connection creation is blocked
+        private static volatile bool _lifecycleGateClosed = false;
+        internal static bool IsLifecycleGateClosed => _lifecycleGateClosed;
+
+        internal static void CloseLifecycleGate()
+        {
+            _lifecycleGateClosed = true;
+        }
+
+        internal static void OpenLifecycleGate()
+        {
+            _lifecycleGateClosed = false;
+        }
+
         private enum DbParametersDataType { List, TupleList, TwoDArray, OneDArray, HashTable, Dictionary }
 
         /// <summary>
@@ -115,6 +129,12 @@ namespace SQLiteXM
         /// <param name="shared">Whether the connection is shared/reused (default true).</param>
         public SxmConnection(string? databaseName, bool shared = false)
         {
+            // Check lifecycle gate first
+            if (_lifecycleGateClosed)
+            {
+                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.ConnectionBlockedBackgrounded, databaseName));
+            }
+
             try
             {
                 this._databaseName = databaseName;

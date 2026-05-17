@@ -625,7 +625,12 @@
             /// <summary>
             /// Cannot acquire lease on shared connection.
             /// </summary>
-            AcquireLease
+            AcquireLease,
+
+            /// <summary>
+            /// Connection creation blocked: application is backgrounded.
+            /// </summary>
+            ConnectionBlockedBackgrounded
         };
     }
 }
