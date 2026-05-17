@@ -26,7 +26,7 @@ public class ConnectionManagerWorkerTests : TestBase
             // Worker 1: Acquires lock and does multiple operations
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
@@ -51,7 +51,7 @@ public class ConnectionManagerWorkerTests : TestBase
 
                 try
                 {
-                    await using (var transaction = await SxmTransaction.CreateAsync(
+                    await using (var transaction = await SxmSqlTransaction.CreateAsync(
                         sharedConn, 
                         waitMilliseconds: 2500))
                     {
@@ -103,7 +103,7 @@ public class ConnectionManagerWorkerTests : TestBase
             // Worker 1
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 10000))
                 {
@@ -123,7 +123,7 @@ public class ConnectionManagerWorkerTests : TestBase
 
                 try
                 {
-                    await using (var transaction = await SxmTransaction.CreateAsync(
+                    await using (var transaction = await SxmSqlTransaction.CreateAsync(
                         sharedConn, 
                         waitMilliseconds: 10000))
                     {
@@ -144,7 +144,7 @@ public class ConnectionManagerWorkerTests : TestBase
 
                 try
                 {
-                    await using (var transaction = await SxmTransaction.CreateAsync(
+                    await using (var transaction = await SxmSqlTransaction.CreateAsync(
                         sharedConn, 
                         waitMilliseconds: 10000))
                     {
@@ -186,7 +186,7 @@ public class ConnectionManagerWorkerTests : TestBase
         {
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
@@ -244,7 +244,7 @@ public class ConnectionManagerWorkerTests : TestBase
         {
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
@@ -310,7 +310,7 @@ public class ConnectionManagerWorkerTests : TestBase
         {
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
@@ -354,7 +354,7 @@ public class ConnectionManagerWorkerTests : TestBase
             // Worker 1: Does rollback
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
@@ -372,7 +372,7 @@ public class ConnectionManagerWorkerTests : TestBase
             {
                 await Task.Delay(100); // Wait for Worker 1
 
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 3000))
                 {

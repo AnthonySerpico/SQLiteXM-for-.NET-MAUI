@@ -291,7 +291,7 @@ public class ColumnRenameTests : TestBase
         });
 
         // Act: Register V2 schema (should rename Title → Name)
-        await SxmInit.RegisterSchemaAsync(typeof(SingleStepRenameV2));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(SingleStepRenameV2));
 
         // Assert: Column renamed and data preserved
         Assert.False(await ColumnExistsAsync(tableName, "Title"), "Old column 'Title' should not exist");
@@ -322,7 +322,7 @@ public class ColumnRenameTests : TestBase
 
         // Act: Register V3 schema directly (skipping V2)
         // Should find "Title" and rename directly to "ProductName"
-        await SxmInit.RegisterSchemaAsync(typeof(MultiStepRenameV3));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(MultiStepRenameV3));
 
         // Assert: Title → ProductName (V2 "Name" never existed)
         Assert.False(await ColumnExistsAsync(tableName, "Title"), "Old column 'Title' should not exist");
@@ -355,7 +355,7 @@ public class ColumnRenameTests : TestBase
         });
 
         // Act 1: Upgrade to V2 (Title → Name)
-        await SxmInit.RegisterSchemaAsync(typeof(MultiStepRenameV2));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(MultiStepRenameV2));
 
         // Assert 1: Title renamed to Name
         Assert.False(await ColumnExistsAsync(tableName, "Title"));
@@ -374,7 +374,7 @@ public class ColumnRenameTests : TestBase
         }
 
         // Act 2: Upgrade to V3 (Name → ProductName)
-        await SxmInit.RegisterSchemaAsync(typeof(MultiStepRenameV3));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(MultiStepRenameV3));
 
         // Assert 2: Name renamed to ProductName
         Assert.False(await ColumnExistsAsync(v3TableName, "Title"));
@@ -399,7 +399,7 @@ public class ColumnRenameTests : TestBase
         ResetColumnRenameSchemaRegistration();
 
         // Act: Register schema for fresh install
-        await SxmInit.RegisterSchemaAsync(typeof(FreshInstallEntity));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(FreshInstallEntity));
 
         // Assert: New column created directly (no rename occurred)
         Assert.True(await ColumnExistsAsync(nameof(FreshInstallEntity), "FinalName"));
@@ -427,7 +427,7 @@ public class ColumnRenameTests : TestBase
         });
 
         // Act: Register V3 (should find "Name" and rename to "ProductName")
-        await SxmInit.RegisterSchemaAsync(typeof(MultiStepRenameV3));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(MultiStepRenameV3));
 
         // Assert: Name → ProductName (Title never existed)
         Assert.False(await ColumnExistsAsync(tableName, "Title"));
@@ -451,7 +451,7 @@ public class ColumnRenameTests : TestBase
         // Arrange & Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await SxmInit.RegisterSchemaAsync(typeof(InvalidRenameOldPropertyExists));
+            await SxmDatabase.RegisterEntitiesAsync(typeof(InvalidRenameOldPropertyExists));
         });
 
         Assert.Contains("SCHEMA ERROR", exception.Message);
@@ -465,7 +465,7 @@ public class ColumnRenameTests : TestBase
         // Arrange & Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await SxmInit.RegisterSchemaAsync(typeof(InvalidRenameDuplicateClaim));
+            await SxmDatabase.RegisterEntitiesAsync(typeof(InvalidRenameDuplicateClaim));
         });
 
         Assert.Contains("SCHEMA ERROR", exception.Message);
@@ -479,7 +479,7 @@ public class ColumnRenameTests : TestBase
         // Arrange & Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await SxmInit.RegisterSchemaAsync(typeof(InvalidRenameWithNotColumn));
+            await SxmDatabase.RegisterEntitiesAsync(typeof(InvalidRenameWithNotColumn));
         });
 
         Assert.Contains("SCHEMA ERROR", exception.Message);
@@ -510,7 +510,7 @@ public class ColumnRenameTests : TestBase
         });
 
         // Act: Register V2 schema again (should be no-op)
-        await SxmInit.RegisterSchemaAsync(typeof(SingleStepRenameV2));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(SingleStepRenameV2));
 
         // Assert: No changes (already correct)
         Assert.False(await ColumnExistsAsync(tableName, "Title"));
@@ -536,7 +536,7 @@ public class ColumnRenameTests : TestBase
         await CreateTestTableDirectlyAsync(tableName, ("SomeOtherColumn", "TEXT"));
 
         // Act: Register V3 (no "Title" or "Name" exist → create "ProductName")
-        await SxmInit.RegisterSchemaAsync(typeof(MultiStepRenameV3));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(MultiStepRenameV3));
 
         // Assert: ProductName created as new column
         Assert.True(await ColumnExistsAsync(tableName, "ProductName"));

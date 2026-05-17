@@ -496,7 +496,7 @@ internal static class SxmSchemaRegistration
         try
         {
             sxmConnection = new SxmConnection(databaseName);
-            tableExists = await SxmInit.DoesTableExistAsync(tableName, sxmConnection).ConfigureAwait(false);
+            tableExists = await SxmDatabase.DoesTableExistAsync(tableName, sxmConnection).ConfigureAwait(false);
         }
         finally
         {
@@ -528,7 +528,7 @@ internal static class SxmSchemaRegistration
             sb.Append(")");
 
             SxmSqlStatements.AddTableDefinition(string.Format("{0}.{1}", databaseName, tableName), sb.ToString());
-            await SxmInit.CreateTableAsync(databaseName, tableName).ConfigureAwait(false);
+            await SxmDatabase.CreateTableAsync(databaseName, tableName).ConfigureAwait(false);
             SxmSqlStatements.RemoveTableDefinitions();
         }
 
@@ -540,13 +540,13 @@ internal static class SxmSchemaRegistration
         string tableName = entityType.Name;
         string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-        Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+        Dictionary<string, string> dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
 
         // Step 1: Process column renames first
         await ProcessColumnRenamesAsync(entityType, databaseName, dbTableColumnNameAndType).ConfigureAwait(false);
 
         // Step 2: Refresh database column list after renames
-        dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+        dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
 
         // Step 3: Add any new columns that don't exist yet
         foreach (KeyValuePair<string, string> kvp in SxmEntity._columnNameAndTypeDict[tableName])
@@ -569,7 +569,7 @@ internal static class SxmSchemaRegistration
                 else
                     value = kvp.Value;
 
-                SxmInit.AddColumnNameType(tableName, kvp.Key, value);
+                SxmDatabase.AddColumnNameType(tableName, kvp.Key, value);
             }
         }
     }
@@ -645,12 +645,12 @@ internal static class SxmSchemaRegistration
 
             // Update internal column tracking: remove old name, add new name
             string? columnType = dbTableColumnNameAndType[foundOldName];
-            SxmInit.RemoveColumnNameType(tableName, foundOldName);
+            SxmDatabase.RemoveColumnNameType(tableName, foundOldName);
 
             // Extract base type without constraints for internal tracking
             int offset = columnType.IndexOf(' ');
             string baseType = offset != -1 ? columnType.Substring(0, offset) : columnType;
-            SxmInit.AddColumnNameType(tableName, newColumnName, baseType);
+            SxmDatabase.AddColumnNameType(tableName, newColumnName, baseType);
         }
     }
 
@@ -659,7 +659,7 @@ internal static class SxmSchemaRegistration
         string tableName = entityType.Name;
         string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-        Dictionary<string, string> dbTableColumnNameAndType = await SxmInit.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+        Dictionary<string, string> dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
 
         foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
         {
@@ -672,7 +672,7 @@ internal static class SxmSchemaRegistration
                     await sxmTransaction1.CommitTransactionAsync().ConfigureAwait(false);
                 }
 
-                SxmInit.RemoveColumnNameType(tableName, kvp.Key);
+                SxmDatabase.RemoveColumnNameType(tableName, kvp.Key);
             }
         }
     }
@@ -817,7 +817,7 @@ internal static class SxmSchemaRegistration
             SxmConnection sxmConnection = new SxmConnection(databaseName, shared: false);
             try
             {
-                await SxmInit.AddTriggersAsync(sxmConnection, databaseName).ConfigureAwait(false);
+                await SxmDatabase.AddTriggersAsync(sxmConnection, databaseName).ConfigureAwait(false);
             }
             finally
             {

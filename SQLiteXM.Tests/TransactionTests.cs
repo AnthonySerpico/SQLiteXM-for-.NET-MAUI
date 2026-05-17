@@ -18,7 +18,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmTransaction.CreateAsync(connection);
+        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
         await entity.SaveAsync(transaction);
         await transaction.CommitTransactionAsync();
 
@@ -41,7 +41,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmTransaction.CreateAsync(connection);
+        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
         await entity.SaveAsync(transaction);
         var tempId = entity.id;
         await transaction.RollbackTransactionAsync();
@@ -63,7 +63,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmTransaction.CreateAsync(connection);
+        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
         await entity1.SaveAsync(transaction);
         await entity2.SaveAsync(transaction);
         await transaction.CommitTransactionAsync();
@@ -97,7 +97,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmTransaction.CreateAsync(connection);
+        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
         await entity.DeleteAsync(transaction);
         await transaction.CommitTransactionAsync();
 
@@ -118,7 +118,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmTransaction.CreateAsync(connection);
+        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
 
         // SaveAsync() without transaction parameter uses ambient transaction
         await entity1.SaveAsync();

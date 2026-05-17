@@ -108,12 +108,12 @@ namespace SQLiteXM
         private static volatile bool _lifecycleGateClosed = false;
         internal static bool IsLifecycleGateClosed => _lifecycleGateClosed;
 
-        internal static void CloseLifecycleGate()
+        internal static void BlockNewOperations()
         {
             _lifecycleGateClosed = true;
         }
 
-        internal static void OpenLifecycleGate()
+        internal static void AllowNewOperations()
         {
             _lifecycleGateClosed = false;
         }
@@ -225,7 +225,7 @@ namespace SQLiteXM
                 sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
                 sqliteConnection.Open();
 
-                SxmInitOptions.ConnectionOpened(sqliteConnection, databaseName);
+                SxmDatabaseOptions.ConnectionOpened(sqliteConnection, databaseName);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -245,9 +245,9 @@ namespace SQLiteXM
             if (sqliteConnection == null)
                 return;
 
-            SxmInitOptions.ConnectionClosing(sqliteConnection, databaseName);
+            SxmDatabaseOptions.ConnectionClosing(sqliteConnection, databaseName);
             sqliteConnection?.Dispose();  // Closes the connection.
-            SxmInitOptions.ConnectionClosed(databaseName);
+            SxmDatabaseOptions.ConnectionClosed(databaseName);
         }
 
         /// <summary>

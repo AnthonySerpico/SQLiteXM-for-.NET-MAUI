@@ -1,4 +1,4 @@
-ï»¿using LinqToDB;
+using LinqToDB;
 using LinqToDB.Data;
 using Microsoft.Data.Sqlite;
 using SQLiteXM.Internal.Threading;
@@ -7,12 +7,12 @@ using System.Collections.Concurrent;
 
 namespace SQLiteXM
 {
-    public class SxmLinqContext : IDisposable
+    public class SxmLinqDbContext : IDisposable
     {
-        // Static registry to track DataConnection -> SxmLinqContext mappings
+        // Static registry to track DataConnection -> SxmLinqDbContext mappings
         // This enables context recovery from IQueryable chains after LINQ operators like Where()
-        private static readonly ConcurrentDictionary<DataConnection, WeakReference<SxmLinqContext>> _contextRegistry 
-            = new ConcurrentDictionary<DataConnection, WeakReference<SxmLinqContext>>();
+        private static readonly ConcurrentDictionary<DataConnection, WeakReference<SxmLinqDbContext>> _contextRegistry 
+            = new ConcurrentDictionary<DataConnection, WeakReference<SxmLinqDbContext>>();
 
         private bool _isDisposed = false;
         private readonly Microsoft.Data.Sqlite.SqliteConnection? _sqliteConnection;
@@ -20,11 +20,11 @@ namespace SQLiteXM
         private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
         private string? _databaseName;
 
-        public SxmLinqContext(string? databaseName = null)
+        public SxmLinqDbContext(string? databaseName = null)
         {
             try
             {
-                SxmInit.EnsureInitialized();
+                SxmDatabase.EnsureInitialized();
                 SxmConnection.CreateNewConnection(ref databaseName, ref _sqliteConnection);
                 _databaseName = databaseName;
 
@@ -35,17 +35,17 @@ namespace SQLiteXM
                 _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
 
                 // Register this context with its DataConnection for context recovery
-                _contextRegistry[_linqToDbDataConnection] = new WeakReference<SxmLinqContext>(this);
+                _contextRegistry[_linqToDbDataConnection] = new WeakReference<SxmLinqDbContext>(this);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"SxmLinqContext ctor failure for database '{databaseName}'.");
-                // Cancellation/fatal â€” rethrow unchanged so callers/runtime can handle appropriately.
+                SxmLogging.Log(ex, $"SxmLinqDbContext ctor failure for database '{databaseName}'.");
+                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"SxmLinqContext ctor failure for database '{databaseName}'.";
+                string errStr = $"SxmLinqDbContext ctor failure for database '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -54,12 +54,12 @@ namespace SQLiteXM
         public SxmChangeSet GetChangeSet() => _changeSet;
 
         /// <summary>
-        /// Attempts to recover the SxmLinqContext from a LinqToDB query provider.
+        /// Attempts to recover the SxmLinqDbContext from a LinqToDB query provider.
         /// This enables context preservation through LINQ chains (Where, Select, etc.).
         /// </summary>
         /// <param name="query">The IQueryable to extract context from.</param>
-        /// <returns>The associated SxmLinqContext if found; otherwise null.</returns>
-        internal static SxmLinqContext? TryGetContextFromQuery<T>(IQueryable<T> query) where T : class
+        /// <returns>The associated SxmLinqDbContext if found; otherwise null.</returns>
+        internal static SxmLinqDbContext? TryGetContextFromQuery<T>(IQueryable<T> query) where T : class
         {
             if (query == null) return null;
 
@@ -108,7 +108,7 @@ namespace SQLiteXM
         }
 
         // Make raw provider escape hatches internal to prevent consumers from calling LinqToDB APIs directly.
-        // Keeps the safe public SxmLinqContext surface (GetTable, Insert/Update/Delete lifecycles, SubmitChanges).
+        // Keeps the safe public SxmLinqDbContext surface (GetTable, Insert/Update/Delete lifecycles, SubmitChanges).
         // Advanced users inside the library (or friend assemblies) can still use these helpers.
 
         // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
@@ -122,8 +122,8 @@ namespace SQLiteXM
         // Kept low-level WithDataConnectionAsync internal so only library code (or friend assemblies) may access DataConnection.
 
         // Controlled async escape-hatch for advanced library code that needs direct DataConnection access.
-        // Internal to prevent application code from bypassing SxmLinqContext semantics.
-        // Do NOT dispose or retain the DataConnection instance â€” it's owned by this context.
+        // Internal to prevent application code from bypassing SxmLinqDbContext semantics.
+        // Do NOT dispose or retain the DataConnection instance — it's owned by this context.
         private async Task<T> WithDataConnectionAsync<T>(Func<LinqToDB.Data.DataConnection, Task<T>> action)
         {
             if (action == null) throw new ArgumentNullException(nameof(action));
@@ -136,7 +136,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// // C# example (caller in app code)
-        ///using var ctx = new SxmLinqContext();
+        ///using var ctx = new SxmLinqDbContext();
 
         // Prepare many entities
         ///var batch = Enumerable.Range(1, 1000)
@@ -169,7 +169,7 @@ namespace SQLiteXM
         private Task<int> ExecuteRawSqlAsync(string sql, params object[] parameters)
         {
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
-            // Use internal escape hatch â€” still keeps DataConnection out of public API surface.
+            // Use internal escape hatch — still keeps DataConnection out of public API surface.
             return WithDataConnectionAsync(dc => dc.ExecuteAsync(sql, parameters));
         }
 
@@ -186,14 +186,14 @@ namespace SQLiteXM
             var table = new SxmTable<T>(_linqToDbDataConnection.GetTable<T>());
             var q = queryFactory(table) ?? Enumerable.Empty<T>().AsQueryable();
 
-            // Materialize synchronously and return as completed Task â€” caller can await.
+            // Materialize synchronously and return as completed Task — caller can await.
             List<T> list = q.ToList();
             return Task.FromResult(list);
         }
 
         /// <summary>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="sql"/> is null or whitespace.</exception>
-        /// using var ctx = new SxmLinqContext();
+        /// using var ctx = new SxmLinqDbContext();
         /// var rows = await ctx.QueryAsync("SELECT id, name, address FROM UserRecord WHERE id > @p0", 100).ConfigureFalse();
         /// foreach (var row in rows)
         ///     Console.WriteLine($"{row["id"]}: {row["name"]} - {row["address"]}");
@@ -210,7 +210,7 @@ namespace SQLiteXM
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
             if (_sqliteConnection == null) throw new InvalidOperationException("SQLite connection is not available.");
 
-            // Use the owned SqliteConnection directly (safe â€” still not exposing it).
+            // Use the owned SqliteConnection directly (safe — still not exposing it).
             await using SqliteCommand cmd = _sqliteConnection.CreateCommand();
             cmd.CommandText = sql;
 
@@ -327,7 +327,7 @@ namespace SQLiteXM
             }
 
             // One transaction for the whole unit of work
-            await using (SxmTransaction sxmTrans = SxmTransaction.Create())
+            await using (SxmSqlTransaction sxmTrans = SxmSqlTransaction.Create())
             {
                 try
                 {
@@ -433,7 +433,7 @@ namespace SQLiteXM
                     }
                     catch
                     {
-                        // Swallow rollback exceptions â€” keep original exception semantics.
+                        // Swallow rollback exceptions — keep original exception semantics.
                     }
 
                     throw;

@@ -33,7 +33,7 @@ namespace SQLiteXM
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
 
-            SxmConnection.CloseLifecycleGate();
+            SxmConnection.BlockNewOperations();
 
             try
             {
@@ -53,7 +53,7 @@ namespace SQLiteXM
             if (Interlocked.Exchange(ref _suspended, 0) == 0)
                 return;
 
-            SxmConnection.OpenLifecycleGate();
+            SxmConnection.AllowNewOperations();
         }
     }
 }

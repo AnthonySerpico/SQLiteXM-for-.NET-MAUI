@@ -27,7 +27,7 @@ public class SharedConnectionTests : TestBase
             // Task 1: Acquires lock and holds it while doing work
             var task1 = Task.Run(async () =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConnection, 
                     waitMilliseconds: 5000))
                 {
@@ -55,7 +55,7 @@ public class SharedConnectionTests : TestBase
                 try
                 {
                     // This should timeout because Task1 holds the lock
-                    await using (var transaction = await SxmTransaction.CreateAsync(
+                    await using (var transaction = await SxmSqlTransaction.CreateAsync(
                         sharedConnection, 
                         waitMilliseconds: 200))  // Short timeout
                     {
@@ -99,7 +99,7 @@ public class SharedConnectionTests : TestBase
         try
         {
             // First transaction
-            await using (var transaction1 = await SxmTransaction.CreateAsync(sharedConnection))
+            await using (var transaction1 = await SxmSqlTransaction.CreateAsync(sharedConnection))
             {
                 var entity1 = new SimpleEntity { Name = "Sequential1", Age = 100 };
                 await entity1.SaveAsync(transaction1);
@@ -109,7 +109,7 @@ public class SharedConnectionTests : TestBase
             }
 
             // Second transaction (should succeed because first released lock)
-            await using (var transaction2 = await SxmTransaction.CreateAsync(sharedConnection))
+            await using (var transaction2 = await SxmSqlTransaction.CreateAsync(sharedConnection))
             {
                 var entity2 = new SimpleEntity { Name = "Sequential2", Age = 200 };
                 await entity2.SaveAsync(transaction2);
@@ -136,7 +136,7 @@ public class SharedConnectionTests : TestBase
 
         try
         {
-            await using (var transaction = await SxmTransaction.CreateAsync(sharedConnection))
+            await using (var transaction = await SxmSqlTransaction.CreateAsync(sharedConnection))
             {
                 // Create entity
                 var entity = new SimpleEntity { Name = "MultiOp", Age = 50 };
@@ -186,7 +186,7 @@ public class SharedConnectionTests : TestBase
             // Task 1: Quick transaction
             var task1 = Task.Run(async () =>
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(sharedConnection))
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(sharedConnection))
                 {
                     var entity = new SimpleEntity { Name = "LongTimeout_Task1", Age = 111 };
                     await entity.SaveAsync(transaction);
@@ -201,7 +201,7 @@ public class SharedConnectionTests : TestBase
             {
                 await Task.Delay(50); // Ensure Task1 starts first
 
-                await using (var transaction = await SxmTransaction.CreateAsync(
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(
                     sharedConnection, 
                     waitMilliseconds: 3000))  // Long enough timeout
                 {
@@ -237,7 +237,7 @@ public class SharedConnectionTests : TestBase
         try
         {
             // First transaction with rollback
-            await using (var transaction1 = await SxmTransaction.CreateAsync(sharedConnection))
+            await using (var transaction1 = await SxmSqlTransaction.CreateAsync(sharedConnection))
             {
                 var entity1 = new SimpleEntity { Name = "Rollback1", Age = 300 };
                 await entity1.SaveAsync(transaction1);
@@ -245,7 +245,7 @@ public class SharedConnectionTests : TestBase
             }
 
             // Second transaction (should succeed immediately after rollback released lock)
-            await using (var transaction2 = await SxmTransaction.CreateAsync(
+            await using (var transaction2 = await SxmSqlTransaction.CreateAsync(
                 sharedConnection, 
                 waitMilliseconds: 100))  // Short timeout should be fine
             {
@@ -285,7 +285,7 @@ public class SharedConnectionTests : TestBase
                 {
                     try
                     {
-                        await using (var transaction = await SxmTransaction.CreateAsync(
+                        await using (var transaction = await SxmSqlTransaction.CreateAsync(
                             sharedConnection, 
                             waitMilliseconds: 5000))
                         {
@@ -342,7 +342,7 @@ public class SharedConnectionTests : TestBase
             var conn = new SxmConnection(TestDatabaseName, shared: false);
             try
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(conn))
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(conn))
                 {
                     var entity = new SimpleEntity { Name = "NonShared_Task1", Age = 777 };
                     await entity.SaveAsync(transaction);
@@ -362,7 +362,7 @@ public class SharedConnectionTests : TestBase
             var conn = new SxmConnection(TestDatabaseName, shared: false);
             try
             {
-                await using (var transaction = await SxmTransaction.CreateAsync(conn))
+                await using (var transaction = await SxmSqlTransaction.CreateAsync(conn))
                 {
                     var entity = new SimpleEntity { Name = "NonShared_Task2", Age = 888 };
                     await entity.SaveAsync(transaction);

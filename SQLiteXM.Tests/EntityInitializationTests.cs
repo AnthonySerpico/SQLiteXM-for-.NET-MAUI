@@ -6,7 +6,7 @@ namespace SQLiteXM.Tests;
 /// <summary>
 /// Tests for deterministic schema registration and entity initialization.
 /// After the refactor, entity constructors no longer create/migrate tables.
-/// Schema must be registered explicitly via SxmInit.RegisterSchemaAsync.
+/// Schema must be registered explicitly via SxmDatabase.RegisterEntitiesAsync.
 /// </summary>
 [Collection("SQLiteXM Tests")]
 public class EntityInitializationTests : TestBase
@@ -51,9 +51,9 @@ public class EntityInitializationTests : TestBase
         await InitializeSqliteXMAsync();
 
         // Act - Register same entity schema multiple times
-        await SxmInit.RegisterSchemaAsync(typeof(SimpleEntity));
-        await SxmInit.RegisterSchemaAsync(typeof(SimpleEntity));
-        await SxmInit.RegisterSchemaAsync(typeof(SimpleEntity));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(SimpleEntity));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(SimpleEntity));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(SimpleEntity));
 
         // Assert - Should not throw, and entity should work normally
         var entity = new SimpleEntity { Name = "Test" };
@@ -307,7 +307,7 @@ public class EntityInitializationTests : TestBase
         {
             tasks.Add(Task.Run(async () => 
             {
-                await SxmInit.RegisterSchemaAsync(typeof(SimpleEntity));
+                await SxmDatabase.RegisterEntitiesAsync(typeof(SimpleEntity));
             }));
         }
 

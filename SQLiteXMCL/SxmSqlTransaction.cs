@@ -6,7 +6,7 @@ using static SQLiteXM.SxmDefines;
 csharp
 // Shared connection (correct): await factory + await using -> lock acquired, auto-commit on DisposeAsync
 SxmConnection sharedConn = new SxmConnection("myDb", shared: true);
-await using (var tx = await SxmTransaction.CreateAsync(sharedConn).ConfigureFalse())
+await using (var tx = await SxmSqlTransaction.CreateAsync(sharedConn).ConfigureFalse())
 {
     await tx.PerformInsert("insertSomething", paramObj).ConfigureFalse();
 } // DisposeAsync awaited here -> lock released
@@ -26,7 +26,7 @@ namespace SQLiteXM
     /// - Prefer the async pattern with <c>await using</c> so the transaction can auto-commit on <see cref="DisposeAsync"/>.
     /// - The synchronous <see cref="Dispose"/> path delegates to <see cref="DisposeAsync"/> and may block.
     /// </remarks>
-    public class SxmTransaction : SxmUTransaction
+    public class SxmSqlTransaction : SxmUTransaction
     {
         /// <summary>
         /// Database name associated with the underlying connection. May be null for unnamed in-memory connections.
@@ -47,7 +47,7 @@ namespace SQLiteXM
         /// <param name="conn">The underlying <see cref="SxmConnection"/> to execute statements on.</param>
         /// <param name="ownsLock">True when this transaction owns an acquired connection lock.</param>
         /// <param name="ownerId">Optional owner id for lock tracking when the connection is shared.</param>
-        private SxmTransaction(SxmConnection conn, bool ownsLock, Guid? ownerId = null) : base(conn, ownsLock, ownerId)
+        private SxmSqlTransaction(SxmConnection conn, bool ownsLock, Guid? ownerId = null) : base(conn, ownsLock, ownerId)
         {
             this._databaseName = conn.DatabaseName;
         }
@@ -56,15 +56,15 @@ namespace SQLiteXM
         /// Factory that creates a private (non-shared) <see cref="SxmConnection"/> and registers this transaction as ambient.
         /// </summary>
         /// <param name="databaseName">Optional database name to open; null uses default.</param>
-        /// <returns>A new <see cref="SxmTransaction"/> instance that is ambient and ready for use.</returns>
+        /// <returns>A new <see cref="SxmSqlTransaction"/> instance that is ambient and ready for use.</returns>
         /// <remarks>
         /// The synchronous factory does not attempt to acquire a shared connection lock because it creates a private connection.
         /// Prefer the async factory for shared connections.
         /// </remarks>
-        public new static SxmTransaction Create(string? databaseName = null)
+        public new static SxmSqlTransaction Create(string? databaseName = null)
         {
             SxmConnection conn = new SxmConnection(databaseName, shared: false);
-            SxmTransaction sxmTransaction = new SxmTransaction(conn, ownsLock: false, ownerId: null);
+            SxmSqlTransaction sxmTransaction = new SxmSqlTransaction(conn, ownsLock: false, ownerId: null);
             SxmAmbientTransaction.Push(sxmTransaction);
             return sxmTransaction;
         }
@@ -76,10 +76,10 @@ namespace SQLiteXM
         /// <param name="conn">An existing <see cref="SxmConnection"/> instance.</param>
         /// <param name="waitMilliseconds">Maximum time to wait for a shared connection lock when required.</param>
         /// <param name="cancellationToken">Cancellation token to abort waiting for the lock.</param>
-        /// <returns>An ambient <see cref="SxmTransaction"/> with the connection lock acquired when appropriate.</returns>
+        /// <returns>An ambient <see cref="SxmSqlTransaction"/> with the connection lock acquired when appropriate.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="conn"/> is null.</exception>
         /// <exception cref="SxmException">Thrown when a shared connection lock cannot be acquired.</exception>
-        public new static async Task<SxmTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
+        public new static async Task<SxmSqlTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
         {
             if (conn == null) throw new ArgumentNullException(nameof(conn));
 
@@ -98,7 +98,7 @@ namespace SQLiteXM
                 ownsLock = true;
             }
 
-            var tx = new SxmTransaction(conn, ownsLock: ownsLock, ownerId: ownerId);
+            var tx = new SxmSqlTransaction(conn, ownsLock: ownsLock, ownerId: ownerId);
 
             // Store lease so DisposeAsync can deterministically release it.
             tx._connectionLease = lease;
@@ -467,7 +467,7 @@ namespace SQLiteXM
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
-            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
+            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, selectParameterValues).ConfigureFalse();
             List<TResult> userRecordList = SxmHelpers.PopulateUserRecord<TResult>(select);
@@ -494,7 +494,7 @@ namespace SQLiteXM
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
                 //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
-            Dictionary<string, string> columnNames = await SxmInit.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
+            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
 
             return await RunStatementAsync(sqlStatementName, selectParameterValues).ConfigureFalse();

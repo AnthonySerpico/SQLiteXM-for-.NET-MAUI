@@ -40,20 +40,20 @@ public abstract class TestBase : IDisposable
     /// </summary>
     private static void InitializeSqliteXMSync()
     {
-        // FIXED: SxmInit.InitDbAsync now applies DatabaseFolderOverride BEFORE creating
+        // FIXED: SxmDatabase.InitializeAsync now applies DatabaseFolderOverride BEFORE creating
         // any SxmDatabaseDescriptor, so we no longer need the reflection hack.
-        // The library correctly respects the override when passed via SxmInitOptions.
+        // The library correctly respects the override when passed via SxmDatabaseOptions.
 
         // Do NOT reset here - we want initialization to persist for all tests
         // (Reset is only needed when developing/debugging specific test scenarios)
 
-        var initOptions = new SxmInitOptions
+        var initOptions = new SxmDatabaseOptions
         {
             DatabaseFolderOverride = TestDatabaseFolder
         };
 
         // Run async initialization synchronously - safe in static constructor
-        SxmInit.InitDbAsync(TestSqlStatementsPath, initOptions).GetAwaiter().GetResult();
+        SxmDatabase.InitializeAsync(TestSqlStatementsPath, initOptions).GetAwaiter().GetResult();
 
         // CRITICAL: Register all test entity schemas at startup.
         // With the deterministic schema registration refactor, entity constructors
@@ -63,11 +63,11 @@ public abstract class TestBase : IDisposable
 
     /// <summary>
     /// Registers all test entity schemas used across the test suite.
-    /// This must be called after InitDbAsync and before any entity usage.
+    /// This must be called after InitializeAsync and before any entity usage.
     /// </summary>
     private static void RegisterAllTestEntitySchemasSync()
     {
-        SxmInit.RegisterSchemaAsync(
+        SxmDatabase.RegisterEntitiesAsync(
             // Standard test entities (from TestEntities.cs)
             typeof(SimpleEntity),
             typeof(AllTypesEntity),
@@ -166,16 +166,16 @@ public abstract class TestBase : IDisposable
     protected async Task InitializeSqliteXMAsync()
     {
         // Re-initialize if needed (e.g., after cleanup)
-        // InitDbAsync is safe to call multiple times - it returns early if already initialized
-        var initOptions = new SxmInitOptions
+        // InitializeAsync is safe to call multiple times - it returns early if already initialized
+        var initOptions = new SxmDatabaseOptions
         {
             DatabaseFolderOverride = TestDatabaseFolder
         };
 
-        await SxmInit.InitDbAsync(TestSqlStatementsPath, initOptions);
+        await SxmDatabase.InitializeAsync(TestSqlStatementsPath, initOptions);
 
         // Register all test entity schemas (idempotent - safe to call multiple times)
-        await SxmInit.RegisterSchemaAsync(
+        await SxmDatabase.RegisterEntitiesAsync(
             // Standard test entities (from TestEntities.cs)
             typeof(SimpleEntity),
             typeof(AllTypesEntity),
@@ -253,7 +253,7 @@ public abstract class TestBase : IDisposable
         await SxmConnectionManager.Instance.ShutdownAsync(TestDatabaseName);
 
         // Reset all SQLiteXM static state
-        await SxmInit.ResetForTestingAsync();
+        await SxmDatabase.ResetForTestingAsync();
 
         // Force GC to release any file handles
         GC.Collect();
@@ -442,7 +442,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<T?> VerifyEntityExistsInDbAsync<T>(long id) where T : SxmEntity
     {
-        using var context = new SxmLinqContext(TestDatabaseName);
+        using var context = new SxmLinqDbContext(TestDatabaseName);
         var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
         return entity;
     }
@@ -452,7 +452,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task VerifyEntityNotInDbAsync<T>(long id) where T : SxmEntity
     {
-        using var context = new SxmLinqContext(TestDatabaseName);
+        using var context = new SxmLinqDbContext(TestDatabaseName);
         var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
         if (entity != null)
         {
@@ -466,7 +466,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected List<T> GetAllEntitiesFromDb<T>() where T : SxmEntity
     {
-        using var context = new SxmLinqContext(TestDatabaseName);
+        using var context = new SxmLinqDbContext(TestDatabaseName);
         return context.GetTable<T>().ToList();
     }
 
@@ -475,7 +475,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected int GetEntityCountFromDb<T>() where T : SxmEntity
     {
-        using var context = new SxmLinqContext(TestDatabaseName);
+        using var context = new SxmLinqDbContext(TestDatabaseName);
         return context.GetTable<T>().Count();
     }
 
@@ -487,7 +487,7 @@ public abstract class TestBase : IDisposable
     {
         try
         {
-            using var context = new SxmLinqContext(TestDatabaseName);
+            using var context = new SxmLinqDbContext(TestDatabaseName);
             _ = context.GetTable<T>().Count();
             return true;
         }

@@ -18,9 +18,9 @@ public delegate void ConnectionClosedInterceptor();
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="SxmInitOptions"/> allows callers to control database initialization
+/// <see cref="SxmDatabaseOptions"/> allows callers to control database initialization
 /// behavior without requiring direct interaction with low-level SQLite PRAGMA commands.
-/// These settings are applied during <see cref="SxmInit.InitDbAsync(string, SxmInitOptions?, System.Threading.CancellationToken)"/>
+/// These settings are applied during <see cref="SxmDatabase.InitializeAsync(string, SxmDatabaseOptions?, System.Threading.CancellationToken)"/>
 /// and are intended to provide a safe, high-level configuration surface.
 /// </para>
 /// <para>
@@ -32,9 +32,9 @@ public delegate void ConnectionClosedInterceptor();
 /// existing callers.
 /// </para>
 /// </remarks>
-public sealed class SxmInitOptions
+public sealed class SxmDatabaseOptions
 {
-    private static ConcurrentDictionary<string, SxmInitOptions>? _databaseNames;
+    private static ConcurrentDictionary<string, SxmDatabaseOptions>? _databaseNames;
 
 #if DEBUG
     /// <summary>
@@ -126,7 +126,7 @@ public sealed class SxmInitOptions
     /// </summary>
     /// <param name="initOptions">The initialization options to associate.</param>
     /// <param name="databaseName">The database name used as the key.</param>
-    internal static void AddDatabaseName(SxmInitOptions? initOptions, string databaseName)
+    internal static void AddDatabaseName(SxmDatabaseOptions? initOptions, string databaseName)
     {
         if (initOptions is null || string.IsNullOrEmpty(databaseName))
             return;
@@ -143,19 +143,19 @@ public sealed class SxmInitOptions
     /// </summary>
     /// <param name="databaseName">The database name to look up.</param>
     /// <returns>The initialization options, or null if none are registered.</returns>
-    private static SxmInitOptions? GetInitOptionsFromDatabaseName(string? databaseName)
+    private static SxmDatabaseOptions? GetInitOptionsFromDatabaseName(string? databaseName)
     {
         if (string.IsNullOrEmpty(databaseName) || _databaseNames is null)
             return null;
 
-        return _databaseNames.TryGetValue(databaseName, out SxmInitOptions? initOptions) ? initOptions : null;
+        return _databaseNames.TryGetValue(databaseName, out SxmDatabaseOptions? initOptions) ? initOptions : null;
     }
 
     /// <summary>
     /// Adds a handler that is invoked after a connection is opened.
     /// </summary>
     /// <param name="connectionOpenedInterceptor">The handler to register.</param>
-    public void AddConnectionOpenedInterceptor(ConnectionOpenedInterceptor connectionOpenedInterceptor)
+    public void OnConnectionOpened(ConnectionOpenedInterceptor connectionOpenedInterceptor)
     {
         lock (_interceptorLock)
         {
@@ -168,7 +168,7 @@ public sealed class SxmInitOptions
     /// Adds a handler that is invoked after a connection is closed.
     /// </summary>
     /// <param name="connectionClosedInterceptor">The handler to register.</param>
-    public void AddConnectionClosedInterceptor(ConnectionClosedInterceptor connectionClosedInterceptor)
+    public void OnConnectionClosed(ConnectionClosedInterceptor connectionClosedInterceptor)
     {
         lock (_interceptorLock)
         {
@@ -198,7 +198,7 @@ public sealed class SxmInitOptions
     /// <param name="databaseName">The database name associated with the connection.</param>
     internal static void ConnectionOpened(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection, string? databaseName)
     {
-        SxmInitOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
+        SxmDatabaseOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
         if (sqliteConnection == null || initOptions == null)
             return;
 
@@ -220,7 +220,7 @@ public sealed class SxmInitOptions
     /// <param name="databaseName">The database name whose interceptors should run.</param>
     internal static void ConnectionClosed(string? databaseName)
     {
-        SxmInitOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
+        SxmDatabaseOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
         if (initOptions == null)
             return;
 
@@ -241,7 +241,7 @@ public sealed class SxmInitOptions
     /// <param name="databaseName">The associated database name.</param>
     internal static void ConnectionClosing(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection, string? databaseName)
     {
-        SxmInitOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
+        SxmDatabaseOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
         if (sqliteConnection == null || initOptions == null || initOptions.CheckPointConnection == null || initOptions.CheckPointConnection == SQLiteXM.CheckPointConnection.Off)
             return;
 
@@ -255,7 +255,7 @@ public sealed class SxmInitOptions
             CheckPointWal(sqliteConnection, "PASSIVE");
         }
 
-        // Before computing this, you need to get the SxmInit.InitOptions asssociated with this database name, which requires it to be saved here in SxmInit.
+        // Before computing this, you need to get the SxmDatabase.InitOptions asssociated with this database name, which requires it to be saved here in SxmDatabase.
         if (databaseName != null && _databaseNames != null)
         {
             if (initOptions != null)
@@ -299,7 +299,7 @@ public sealed class SxmInitOptions
     /// </summary>
     /// <param name="sqliteConnection">The SQLite connection to configure.</param>
     /// <param name="initOptions">The initialization options to apply.</param>
-    private static void RunConnectionPragmas(Microsoft.Data.Sqlite.SqliteConnection sqliteConnection, SxmInitOptions initOptions)
+    private static void RunConnectionPragmas(Microsoft.Data.Sqlite.SqliteConnection sqliteConnection, SxmDatabaseOptions initOptions)
     {
         // Execute PRAGMA synchronously (very quick) to avoid sync-over-async in ctor.
         using (Microsoft.Data.Sqlite.SqliteCommand cmd = sqliteConnection.CreateCommand())

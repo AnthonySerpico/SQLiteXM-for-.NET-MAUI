@@ -17,7 +17,7 @@ public class FailFastTests : TestBase
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(
-            async () => await SxmInit.RegisterSchemaAsync(nonEntityType));
+            async () => await SxmDatabase.RegisterEntitiesAsync(nonEntityType));
 
         Assert.Contains("must inherit from SxmEntity", ex.Message);
     }
@@ -30,7 +30,7 @@ public class FailFastTests : TestBase
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ArgumentException>(
-            async () => await SxmInit.RegisterSchemaAsync(abstractType));
+            async () => await SxmDatabase.RegisterEntitiesAsync(abstractType));
 
         Assert.Contains("cannot be abstract", ex.Message);
     }
@@ -45,14 +45,14 @@ public class FailFastTests : TestBase
             () => { var entity = new UnregisteredEntity(); });
 
         Assert.Contains("has not been registered", ex.Message);
-        Assert.Contains("RegisterSchemaAsync", ex.Message);
+        Assert.Contains("RegisterEntitiesAsync", ex.Message);
     }
 
     [Fact]
     public async Task EntityConstructor_WithRegistration_ShouldSucceed()
     {
         // Arrange - RegisteredEntity will be registered in this test
-        await SxmInit.RegisterSchemaAsync(typeof(RegisteredEntity));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(RegisteredEntity));
 
         // Act & Assert - should not throw
         var entity = new RegisteredEntity { Name = "Test" };
@@ -64,7 +64,7 @@ public class FailFastTests : TestBase
     public async Task EntitySave_WithRegistration_ShouldSucceed()
     {
         // Arrange
-        await SxmInit.RegisterSchemaAsync(typeof(RegisteredEntity));
+        await SxmDatabase.RegisterEntitiesAsync(typeof(RegisteredEntity));
         var entity = new RegisteredEntity { Name = "TestSave" };
 
         // Act

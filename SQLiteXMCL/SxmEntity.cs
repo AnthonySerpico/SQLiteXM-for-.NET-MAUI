@@ -20,7 +20,7 @@ namespace SQLiteXM
     /// <para>
     /// <strong>Schema Registration:</strong>
     /// Entity schema (tables, indexes, triggers, foreign keys) must be registered explicitly at
-    /// application startup via <see cref="SxmInit.RegisterSchemaAsync(Type[])"/> before instantiating
+    /// application startup via <see cref="SxmDatabase.RegisterEntitiesAsync(Type[])"/> before instantiating
     /// entities. Entity construction no longer performs schema initialization.
     /// </para>
     /// 
@@ -29,8 +29,8 @@ namespace SQLiteXM
     /// </para>
     /// <code>
     /// // At application startup (e.g., MauiProgram.cs)
-    /// await SxmInit.InitDbAsync("statements.json");
-    /// await SxmInit.RegisterSchemaAsync(
+    /// await SxmDatabase.InitializeAsync("statements.json");
+    /// await SxmDatabase.RegisterEntitiesAsync(
     ///     typeof(Dog),
     ///     typeof(Cat),
     ///     typeof(Owner)
@@ -94,7 +94,7 @@ namespace SQLiteXM
     /// <list type="bullet">
     ///   <item>
     ///     <description>
-    ///     Construction validates that <see cref="SxmInit.InitDbAsync"/> has been called
+    ///     Construction validates that <see cref="SxmDatabase.InitializeAsync"/> has been called
     ///     and resolves the database name from <c>[Table(Database = "...")]</c> attribute
     ///     or the default database.
     ///     </description>
@@ -172,15 +172,15 @@ namespace SQLiteXM
         /// </summary>
         /// <remarks>
         /// Schema initialization (table creation, indexes, triggers, etc.) is no longer performed during construction.
-        /// Call <see cref="SxmInit.RegisterSchemaAsync"/> at application startup to register entity types
+        /// Call <see cref="SxmDatabase.RegisterEntitiesAsync"/> at application startup to register entity types
         /// and initialize their schemas explicitly.
         /// </remarks>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the entity type has not been registered via <see cref="SxmInit.RegisterSchemaAsync"/>.
+        /// Thrown when the entity type has not been registered via <see cref="SxmDatabase.RegisterEntitiesAsync"/>.
         /// </exception>
         public SxmEntity()
         {
-            SxmInit.EnsureInitialized();
+            SxmDatabase.EnsureInitialized();
 
             // RULE 2: Fail-fast if entity type has not been registered
             Type entityType = GetType();
@@ -189,8 +189,8 @@ namespace SQLiteXM
                 throw new InvalidOperationException(
                     $"Entity type '{entityType.Name}' has not been registered. " +
                     $"Schema registration is required before creating entity instances. " +
-                    $"Add the following to your application startup code (after SxmInit.InitDbAsync): " +
-                    $"await SxmInit.RegisterSchemaAsync(typeof({entityType.Name}));");
+                    $"Add the following to your application startup code (after SxmDatabase.InitializeAsync): " +
+                    $"await SxmDatabase.RegisterEntitiesAsync(typeof({entityType.Name}));");
             }
 
             this._databaseName = ResolveTableAttributeDatabaseName();
@@ -266,13 +266,13 @@ namespace SQLiteXM
         /// Saves the current entity to the database using the provided transaction, 
         /// either inserting it if it is new, or updating it if it already exists.
         /// 
-        /// This method is a semantic alias for <see cref="SaveAsync(SxmTransaction?)"/>. 
+        /// This method is a semantic alias for <see cref="SaveAsync(SxmSqlTransaction?)"/>. 
         /// It ensures that the entity's identity field (Id) is correctly populated 
         /// after a successful insert.
         /// </summary>
-        /// <param name="sxmTrans">An optional <see cref="SxmTransaction"/> to execute within.</param>
+        /// <param name="sxmTrans">An optional <see cref="SxmSqlTransaction"/> to execute within.</param>
         /// <remarks>
-        /// Currently, this method behaves the same as <see cref="SaveAsync(SxmTransaction?)"/>:
+        /// Currently, this method behaves the same as <see cref="SaveAsync(SxmSqlTransaction?)"/>:
         /// - If the entity does not exist in the database, it is inserted.
         /// - If the entity exists, it is updated in place.
         /// 
@@ -280,7 +280,7 @@ namespace SQLiteXM
         /// existing rows. This preserves triggers, foreign keys, and the entity's identity.
         /// </remarks>
         /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task InsertOrUpdateAsync(SxmTransaction? sxmTrans)
+        public async Task InsertOrUpdateAsync(SxmSqlTransaction? sxmTrans)
         {
             await InsertOrReplaceAsync(sxmTrans).ConfigureFalse();
         }
@@ -307,12 +307,12 @@ namespace SQLiteXM
         /// <summary>
         /// Saves the current entity to the database using the provided transaction,
         /// either inserting it if it is new, or updating it if it already exists.
-        /// This is a semantic alias for <see cref="SaveAsync(SxmTransaction?)"/>.
+        /// This is a semantic alias for <see cref="SaveAsync(SxmSqlTransaction?)"/>.
         /// </summary>
-        /// <param name="sxmTrans">An optional <see cref="SxmTransaction"/> to execute within.</param>
+        /// <param name="sxmTrans">An optional <see cref="SxmSqlTransaction"/> to execute within.</param>
         /// <remarks>
         /// The name "InsertOrReplace" is provided for semantic clarity.
-        /// Internally, it behaves identically to <see cref="SaveAsync(SxmTransaction?)"/>:
+        /// Internally, it behaves identically to <see cref="SaveAsync(SxmSqlTransaction?)"/>:
         /// - Inserts if the entity is new.
         /// - Updates in place if it already exists.
         /// 
@@ -320,7 +320,7 @@ namespace SQLiteXM
         /// the entity's identity, foreign keys, and triggers.
         /// </remarks>
         /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task InsertOrReplaceAsync(SxmTransaction? sxmTrans)
+        public async Task InsertOrReplaceAsync(SxmSqlTransaction? sxmTrans)
         {
             await SaveAsync(sxmTrans).ConfigureFalse();
         }
@@ -348,7 +348,7 @@ namespace SQLiteXM
         /// Saves the current entity to the database using the provided transaction, if any.
         /// This method automatically determines whether to insert a new record or update an existing one.
         /// </summary>
-        /// <param name="sxmTrans">An optional <see cref="SxmTransaction"/> to execute within.</param>
+        /// <param name="sxmTrans">An optional <see cref="SxmSqlTransaction"/> to execute within.</param>
         /// <returns>A task representing the asynchronous save operation.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the insert or update SQL statement is not found for the table.</exception>
         /// <remarks>
@@ -361,7 +361,7 @@ namespace SQLiteXM
         /// - Throws <see cref="InvalidOperationException"/> if the insert or update SQL statement is not found for the table.
         /// </remarks>
         /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SaveAsync(SxmTransaction? sxmTrans)
+        public async Task SaveAsync(SxmSqlTransaction? sxmTrans)
         {
             string tableName = this.GetType().Name;
 
@@ -397,7 +397,7 @@ namespace SQLiteXM
             Dictionary<string, object?> result = await SxmStatement.InsertAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
             SxmHelpers.LoadDbValues(result, this);
         }
-        private async Task InsertAsync(string sqlStatementName, SxmTransaction sxmTrans)
+        private async Task InsertAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
         {
             Dictionary<string, object?> result = await sxmTrans.InsertAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
             SxmHelpers.LoadDbValues(result, this);
@@ -408,13 +408,13 @@ namespace SQLiteXM
         {
             await SxmStatement.UpdateAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
         }
-        private async Task UpdateAsync(string sqlStatementName, SxmTransaction sxmTrans)
+        private async Task UpdateAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
         {
             await sxmTrans.UpdateAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
         }
 
         /// <summary>
-        /// Delete this entity from the database. Uses the ambient <see cref="SxmTransaction"/> if present.
+        /// Delete this entity from the database. Uses the ambient <see cref="SxmSqlTransaction"/> if present.
         /// </summary>
         public async Task DeleteAsync()
         {
@@ -426,7 +426,7 @@ namespace SQLiteXM
         /// Delete this entity using the provided transaction (if any). No-op if the record does not exist.
         /// </summary>
         /// <param name="sxmTrans">Optional transaction to use; if null a standalone connection is used.</param>
-        public async Task DeleteAsync(SxmTransaction? sxmTrans)
+        public async Task DeleteAsync(SxmSqlTransaction? sxmTrans)
         {
             // If a transaction/connection is provided, check existence using that connection
             // so we see uncommitted rows that live in the same transaction.
@@ -451,7 +451,7 @@ namespace SQLiteXM
         {
             await SxmStatement.DeleteAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
         }
-        private async Task DeleteAsync(string sqlStatementName, SxmTransaction sxmTrans)
+        private async Task DeleteAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
         {
             await sxmTrans.DeleteAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
         }
@@ -468,7 +468,7 @@ namespace SQLiteXM
 
             // The per-type column map must already exist. Fail fast if not.
             if (!_columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
-                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Schema must be registered via SxmInit.RegisterSchemaAsync before using entities.");
+                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Schema must be registered via SxmDatabase.RegisterEntitiesAsync before using entities.");
 
 
             // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
@@ -507,7 +507,7 @@ namespace SQLiteXM
 
             // The per-type column map must already exist. Fail fast if not.
             if (!_columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
-                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Schema must be registered via SxmInit.RegisterSchemaAsync before using entities.");
+                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Schema must be registered via SxmDatabase.RegisterEntitiesAsync before using entities.");
 
             // Atomically register a GUID and SQL once. The valueFactory will run only when the key is absent.
             _updateGuidDict.GetOrAdd(tableName, _ =>
@@ -539,7 +539,7 @@ namespace SQLiteXM
 
             // The per-type column map should exist; if not, fail fast so callers can fix initialization ordering.
             if (!_columnNameAndTypeDict.TryGetValue(tableName, out _))
-                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Schema must be registered via SxmInit.RegisterSchemaAsync before using entities.");
+                throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Schema must be registered via SxmDatabase.RegisterEntitiesAsync before using entities.");
 
             _deleteGuidDict.GetOrAdd(tableName, _ =>
             {
@@ -556,7 +556,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sxmTrans">Optional transaction to examine; if provided the check will use the transaction's connection.</param>
         /// <returns>True if a row with the current id exists, otherwise false.</returns>
-        private async Task<bool> DoesRecordExistAsync(SxmTransaction? sxmTrans)
+        private async Task<bool> DoesRecordExistAsync(SxmSqlTransaction? sxmTrans)
         {
             bool exists = false;
 

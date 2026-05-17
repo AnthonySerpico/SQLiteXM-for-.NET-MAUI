@@ -10,7 +10,7 @@ public class SubmitChangesRefactorTests : TestBase
     public async Task SubmitChanges_AllSucceeded_GetErrorSummary_ShouldReturnSuccessMessage()
     {
         // Arrange
-        using var context = new SxmLinqContext();
+        using var context = new SxmLinqDbContext();
         context.InsertOnSubmit(new SimpleEntity { Name = "Success1" });
         context.InsertOnSubmit(new SimpleEntity { Name = "Success2" });
 
@@ -26,7 +26,7 @@ public class SubmitChangesRefactorTests : TestBase
     public async Task SubmitChanges_WithThrowIfFailed_PassesWhenAllSucceed()
     {
         // Arrange
-        using var context = new SxmLinqContext();
+        using var context = new SxmLinqDbContext();
 
         var entity = new SimpleEntity { Name = "Test" };
         context.InsertOnSubmit(entity);
@@ -42,7 +42,7 @@ public class SubmitChangesRefactorTests : TestBase
     public async Task SubmitChanges_ManualInspection_AllowsGracefulHandling()
     {
         // Arrange: Create a simple success case
-        using var context = new SxmLinqContext();
+        using var context = new SxmLinqDbContext();
         context.InsertOnSubmit(new SimpleEntity { Name = "Test1" });
         context.InsertOnSubmit(new SimpleEntity { Name = "Test2" });
 
@@ -60,7 +60,7 @@ public class SubmitChangesRefactorTests : TestBase
     public async Task SubmitChanges_ResultProperties_ShouldBeCorrect()
     {
         // Arrange
-        using var context = new SxmLinqContext();
+        using var context = new SxmLinqDbContext();
         context.InsertOnSubmit(new SimpleEntity { Name = "Test1" });
         context.InsertOnSubmit(new SimpleEntity { Name = "Test2" });
         context.InsertOnSubmit(new SimpleEntity { Name = "Test3" });

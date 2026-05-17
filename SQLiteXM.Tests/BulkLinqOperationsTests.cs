@@ -17,7 +17,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -63,7 +63,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -111,7 +111,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entity = new SimpleEntity 
@@ -152,7 +152,7 @@ public class BulkLinqOperationsTests : TestBase
         await InitializeSqliteXMAsync();
 
         // Create a context and insert entity
-        using (var ctx = new SxmLinqContext(TestDatabaseName))
+        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
         {
             var entity = new SimpleEntity { Name = "NoContextTest", Age = 10 };
             ctx.InsertOnSubmit(entity);
@@ -162,7 +162,7 @@ public class BulkLinqOperationsTests : TestBase
         long entityId;
 
         // Act - Enqueue bulk update but dispose context without submitting
-        using (var ctx = new SxmLinqContext(TestDatabaseName))
+        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
         {
             var entity = ctx.GetTable<SimpleEntity>().Single(e => e.Name == "NoContextTest");
             entityId = entity.id;
@@ -176,7 +176,7 @@ public class BulkLinqOperationsTests : TestBase
         }
 
         // Assert - Update should NOT be persisted
-        using var ctx2 = new SxmLinqContext(TestDatabaseName);
+        using var ctx2 = new SxmLinqDbContext(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>().Single(e => e.id == entityId);
         result.Age.Should().Be(10, "update was not committed");
 
@@ -190,7 +190,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entity = new SimpleEntity { Name = $"Rollback_{uniquePrefix}", Age = 10 };
@@ -210,7 +210,7 @@ public class BulkLinqOperationsTests : TestBase
         ctx.Dispose();
 
         // Assert - Changes should NOT be persisted
-        using var ctx2 = new SxmLinqContext(TestDatabaseName);
+        using var ctx2 = new SxmLinqDbContext(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>()
             .Single(e => e.id == entityId);
 
@@ -230,7 +230,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -278,7 +278,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -316,7 +316,7 @@ public class BulkLinqOperationsTests : TestBase
         await InitializeSqliteXMAsync();
 
         // Create a context and insert entity
-        using (var ctx = new SxmLinqContext(TestDatabaseName))
+        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
         {
             var entity = new SimpleEntity { Name = "NoContextDeleteTest", Age = 10 };
             ctx.InsertOnSubmit(entity);
@@ -326,7 +326,7 @@ public class BulkLinqOperationsTests : TestBase
         long entityId;
 
         // Act - Enqueue bulk delete but dispose context without submitting
-        using (var ctx = new SxmLinqContext(TestDatabaseName))
+        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
         {
             var entity = ctx.GetTable<SimpleEntity>().Single(e => e.Name == "NoContextDeleteTest");
             entityId = entity.id;
@@ -339,7 +339,7 @@ public class BulkLinqOperationsTests : TestBase
         }
 
         // Assert - Entity should still exist
-        using var ctx2 = new SxmLinqContext(TestDatabaseName);
+        using var ctx2 = new SxmLinqDbContext(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>().SingleOrDefault(e => e.id == entityId);
         result.Should().NotBeNull("delete was not committed");
 
@@ -353,7 +353,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entity = new SimpleEntity { Name = $"RollbackDelete_{uniquePrefix}", Age = 10 };
@@ -372,7 +372,7 @@ public class BulkLinqOperationsTests : TestBase
         ctx.Dispose();
 
         // Assert - Entity should still exist
-        using var ctx2 = new SxmLinqContext(TestDatabaseName);
+        using var ctx2 = new SxmLinqDbContext(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>()
             .SingleOrDefault(e => e.id == entityId);
 
@@ -392,7 +392,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
@@ -450,7 +450,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entity = new SimpleEntity { Name = $"FailTest_{uniquePrefix}", Age = 10 };
@@ -471,7 +471,7 @@ public class BulkLinqOperationsTests : TestBase
         ctx.Dispose();  // Implicit rollback
 
         // Assert - Bulk update should NOT be applied
-        using var ctx2 = new SxmLinqContext(TestDatabaseName);
+        using var ctx2 = new SxmLinqDbContext(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>()
             .Single(e => e.id == entityId);
 
@@ -491,7 +491,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        using var ctx = new SxmLinqContext(TestDatabaseName);
+        using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 

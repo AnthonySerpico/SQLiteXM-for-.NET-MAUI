@@ -641,7 +641,7 @@ namespace SQLiteXM
             SQLiteErrorCode ec = await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.CommitTransaction).ConfigureFalse();
             if (_interruptSynchronize == true)
             {
-                //SxmInit.interruptSynchronize (connection.DatabaseName);
+                //SxmDatabase.interruptSynchronize (connection.DatabaseName);
                 _interruptSynchronize = false;
             }
             return ec;

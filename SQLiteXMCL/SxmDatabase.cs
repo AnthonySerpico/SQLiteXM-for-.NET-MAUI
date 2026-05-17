@@ -19,7 +19,7 @@ namespace SQLiteXM
     /// database schema objects (tables, indexes, triggers), and maintaining the stored SQL statements
     /// version number in the database (PRAGMA user_version).
     /// </remarks>
-    public static class SxmInit
+    public static class SxmDatabase
     {
         /// <summary>
         /// Cache mapping table name -> (column name -> column type) using thread-safe concurrent dictionaries.
@@ -30,7 +30,7 @@ namespace SQLiteXM
         /// Async gate that serializes database initialization.
         /// </summary>
         /// <remarks>
-        /// Only one InitDbAsync call may execute at a time. The initialization process
+        /// Only one InitializeAsync call may execute at a time. The initialization process
         /// modifies schema and PRAGMA settings and is therefore not concurrency-safe.
         /// This semaphore prevents race conditions without requiring callers to coordinate.
         /// </remarks>
@@ -48,19 +48,19 @@ namespace SQLiteXM
         /// </summary>
         /// <remarks>
         /// This method clears:
-        /// - Initialization flag and cached metadata in SxmInit
+        /// - Initialization flag and cached metadata in SxmDatabase
         /// - Entity schema caches in SxmEntity (column maps, index bags, initialization tasks)
         /// - Database descriptors and SQL statement caches
         /// - Connection manager state
         /// 
-        /// After calling this, you must call InitDbAsync again before using any entities.
+        /// After calling this, you must call InitializeAsync again before using any entities.
         /// </remarks>
         public static async Task ResetForTestingAsync()
         {
             await _initGate.WaitAsync().ConfigureAwait(false);
             try
             {
-                // Reset SxmInit state
+                // Reset SxmDatabase state
                 _initialized = false;
 
                 // Reset SxmEntity static caches via reflection (they're private)
@@ -84,7 +84,7 @@ namespace SQLiteXM
                 SxmSqlStatements.ResetForTesting();
 
                 // Reset init options database registry
-                SxmInitOptions.ResetForTesting();
+                SxmDatabaseOptions.ResetForTesting();
 
                 // Reset schema registration state
                 SxmSchemaRegistration.ResetForTesting();
@@ -115,10 +115,10 @@ namespace SQLiteXM
         /// <summary>
         /// Initialize the database using SQL statements parsed from the specified file.
         /// </summary>
-        /// <param name="sqlStatementsFileName">Path to the SQL statements file (absolute or relative).
-        /// <param name="fileType">Format of the SQL statements file.</param>
+        /// <param name="sqlStatementsFileName">Path to the SQL statements file (absolute or relative).</param>
+        /// <param name="databaseOptions">Options for configuring the database.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        public static async Task InitDbAsync(string sqlStatementsFileName, SxmInitOptions? initOptions = null)
+        private static async Task InitializeAsync(string sqlStatementsFileName, SxmDatabaseOptions? databaseOptions = null)
         {
             await _initGate.WaitAsync().ConfigureFalse();
             try
@@ -134,15 +134,15 @@ namespace SQLiteXM
                 // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
                 // Follow on calls to set will be ignored even if the initial setter value is null.
                 // CRITICAL: Must set DatabaseFolder BEFORE any SxmDatabaseDescriptor is created.
-                SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
+                SxmDatabaseDescriptor.DatabaseFolder = databaseOptions?.DatabaseFolderOverride;
 
                 {
                     using FileStream stream = File.OpenRead(fullPathToSqlStatementsFile);
                     await ParseSqlStatementsFile(stream, fileType).ConfigureFalse();
                 }
 
-                SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
-                await SxmInit.InitializeAsync().ConfigureFalse();
+                SxmDatabaseOptions.AddDatabaseName(databaseOptions, SxmProcessSQLStatements.DatabaseName);
+                await SxmDatabase.BuildSchemaAsync().ConfigureFalse();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -158,9 +158,9 @@ namespace SQLiteXM
         /// Initialize the database using SQL statements parsed from the provided stream.
         /// </summary>
         /// <param name="stream">Open, readable stream containing SQL statement definitions.</param>
-        /// <param name="fileType">Format of the SQL statements contained in the stream.</param>
+        /// <param name="databaseOptions">Options for configuring the database.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        public static async Task InitDbAsync(Stream stream, SxmInitOptions? initOptions = null)
+        public static async Task InitializeAsync(Stream stream, SxmDatabaseOptions? databaseOptions = null)
         {
             await _initGate.WaitAsync().ConfigureFalse();
             try
@@ -171,12 +171,12 @@ namespace SQLiteXM
                 // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
                 // Follow on calls to set will be ignored even if the initial setter value is null.
                 // CRITICAL: Must set DatabaseFolder BEFORE any SxmDatabaseDescriptor is created.
-                SxmDatabaseDescriptor.DatabaseFolder = initOptions?.DatabaseFolderOverride;
+                SxmDatabaseDescriptor.DatabaseFolder = databaseOptions?.DatabaseFolderOverride;
 
                 await ParseSqlStatementsFile(stream, SqlStatementsFileType.Unknown).ConfigureFalse();
 
-                SxmInitOptions.AddDatabaseName(initOptions, SxmProcessSQLStatements.DatabaseName);
-                await SxmInit.InitializeAsync().ConfigureFalse();
+                SxmDatabaseOptions.AddDatabaseName(databaseOptions, SxmProcessSQLStatements.DatabaseName);
+                await SxmDatabase.BuildSchemaAsync().ConfigureFalse();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -193,15 +193,15 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="entityTypes">Array of SxmEntity-derived types to register.</param>
         /// <remarks>
-        /// Call this once at app startup (e.g., in App.xaml.cs or MauiProgram.cs) after calling <see cref="InitDbAsync"/>.
+        /// Call this once at app startup (e.g., in App.xaml.cs or MauiProgram.cs) after calling <see cref="InitializeAsync"/>.
         /// All tables, indexes, triggers, and foreign keys will be created/migrated.
         /// 
         /// This method replaces the legacy constructor-based schema initialization pattern.
         /// Entity classes registered via this method will not trigger schema creation on instantiation.
         /// </remarks>
-        /// <exception cref="InvalidOperationException">Thrown if SQLiteXM has not been initialized via <see cref="InitDbAsync"/>.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if SQLiteXM has not been initialized via <see cref="InitializeAsync"/>.</exception>
         /// <exception cref="ArgumentException">Thrown if any type does not derive from <see cref="SxmEntity"/> or is abstract.</exception>
-        public static async Task RegisterSchemaAsync([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] params Type[] entityTypes)
+        public static async Task RegisterEntitiesAsync([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] params Type[] entityTypes)
         {
             EnsureInitialized();
 
@@ -219,7 +219,7 @@ namespace SQLiteXM
         /// </summary>
         /// <remarks>
         /// Entity classes and database operations require the ORM to be initialized
-        /// via <see cref="SxmInit.InitDbAsync"/> before use. This method provides a
+        /// via <see cref="SxmDatabase.InitializeAsync"/> before use. This method provides a
         /// centralized fail-fast guard that throws a clear exception if initialization
         /// has not yet occurred.
         /// 
@@ -234,7 +234,7 @@ namespace SQLiteXM
             if (!_initialized)
             {
                 throw new InvalidOperationException(
-                    "SQLiteXM has not been initialized. Call SxmInit.InitDbAsync(...) before instantiating entity classes.");
+                    "SQLiteXM has not been initialized. Call SxmDatabase.InitializeAsync(...) before instantiating entity classes.");
             }
         }
 
@@ -336,7 +336,7 @@ namespace SQLiteXM
         /// Initialize the database schema and auxiliary structures using the currently parsed SQL statements.
         /// </summary>
         /// <returns>True on success.</returns>
-        private static async Task<bool> InitializeAsync()
+        private static async Task<bool> BuildSchemaAsync()
         {
             // At this point, the SQL statements file has been parsed, the database name, default status, and version have been loaded into SxmProcessSQLStatements.
             new SxmDatabaseDescriptor();
@@ -622,11 +622,11 @@ namespace SQLiteXM
                    await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
                     {
                         await sxmTransaction.ExecuteTableStatementAsync(tableDefinition.TableSQL).ConfigureFalse();
-                        await SxmInit.AddSynchIdAsync(parts, sxmTransaction).ConfigureFalse();
+                        await SxmDatabase.AddSynchIdAsync(parts, sxmTransaction).ConfigureFalse();
 
-                        await SxmInit.InsertIntoSystemCloudSyncDescriptorAsync(key, databaseName, parts[1], sxmTransaction).ConfigureFalse();
+                        await SxmDatabase.InsertIntoSystemCloudSyncDescriptorAsync(key, databaseName, parts[1], sxmTransaction).ConfigureFalse();
 
-                        //await SxmInit.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction).ConfigureFalse();
+                        //await SxmDatabase.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction).ConfigureFalse();
 
                         await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                     }
@@ -952,7 +952,7 @@ namespace SQLiteXM
             // Delete all triggers in the database.
             await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
             {
-                List<string> existingTriggers = await SxmInit.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty).ConfigureFalse();
+                List<string> existingTriggers = await SxmDatabase.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty).ConfigureFalse();
                 foreach (string existingTrigger in existingTriggers)
                 {
                    await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier(existingTrigger)}").ConfigureFalse();
