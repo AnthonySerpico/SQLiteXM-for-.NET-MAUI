@@ -89,6 +89,9 @@ namespace SQLiteXM
                 // Reset schema registration state
                 SxmSchemaRegistration.ResetForTesting();
 
+                // Reset column name/type cache
+                _columnNameTypes.Clear();
+
                 // Note: We don't reset SxmConnectionManager as it manages active connections
                 // Tests should ensure all connections are properly disposed before calling ResetForTestingAsync
             }
@@ -118,7 +121,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementsFileName">Path to the SQL statements file (absolute or relative).</param>
         /// <param name="databaseOptions">Options for configuring the database.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        private static async Task InitializeAsync(string sqlStatementsFileName, SxmDatabaseOptions? databaseOptions = null)
+        public static async Task InitializeAsync(string sqlStatementsFileName, SxmDatabaseOptions? databaseOptions = null)
         {
             await _initGate.WaitAsync().ConfigureFalse();
             try
@@ -889,6 +892,21 @@ namespace SQLiteXM
                 inner.TryRemove(columnName, out _);
             }
         }
+
+#if DEBUG
+        /// <summary>
+        /// Clear the cached column name/type mapping for a specific table.
+        /// **WARNING:** This is intended ONLY for testing scenarios.
+        /// </summary>
+        /// <param name="tableName">Table name whose column cache should be cleared.</param>
+        internal static void ClearColumnCacheForTable(string tableName)
+        {
+            if (string.IsNullOrEmpty(tableName))
+                throw new ArgumentNullException(nameof(tableName));
+
+            _columnNameTypes.TryRemove(tableName, out _);
+        }
+#endif
 
         /// <summary>
         /// Retrieve column name/type mapping for a table. Results are cached for subsequent calls.

@@ -1,4 +1,5 @@
-﻿using SQLiteXM.Internal.Threading;
+﻿using Microsoft.Data.Sqlite;
+using SQLiteXM.Internal.Threading;
 using System.Collections;
 using System.Data.Common;
 
@@ -102,7 +103,6 @@ namespace SQLiteXM
         private int _lockReentrancy = 0;
 
         private static readonly Dictionary<string, string> _dbConnectionString = new Dictionary<string, string>();
-        private static readonly string _sqliteConnString = "Data Source={0}; Mode=ReadWriteCreate;";
 
         // Lifecycle gate: when true, new connection creation is blocked
         private static volatile bool _lifecycleGateClosed = false;
@@ -270,8 +270,14 @@ namespace SQLiteXM
                     if (databaseFolderPath == null)
                         throw new InvalidOperationException("Database folder path is not configured.");
 
-                    string pathToDatabase = Path.Combine(databaseFolderPath, databaseName);
-                    connectionString = string.Format(_sqliteConnString, pathToDatabase);
+                    SqliteConnectionStringBuilder csb = new SqliteConnectionStringBuilder()
+                    {
+                        DataSource = Path.Combine(databaseFolderPath, databaseName),
+                        Mode = SqliteOpenMode.ReadWriteCreate,
+                        DefaultTimeout = SxmDatabaseOptions.GetDefaultTimeout() ?? new SqliteConnection().DefaultTimeout,
+                        Pooling = SxmDatabaseOptions.ConnectionPooling()
+                    };
+                    connectionString = csb.ToString();
 
                     _dbConnectionString.Add(databaseName, connectionString);
                 }

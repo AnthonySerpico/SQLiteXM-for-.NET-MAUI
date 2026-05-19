@@ -267,6 +267,21 @@ public class ColumnRenameTests : TestBase
                 columnDict.Remove(tableName);
             }
         }
+
+        // Clear the SxmDatabase column cache for these tables
+        var databaseType = typeof(SxmEntity).Assembly.GetType("SQLiteXM.SxmDatabase");
+        if (databaseType != null)
+        {
+            var clearCacheMethod = databaseType.GetMethod("ClearColumnCacheForTable",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (clearCacheMethod != null)
+            {
+                foreach (var tableName in tableNamesToReset)
+                {
+                    clearCacheMethod.Invoke(null, new object[] { tableName });
+                }
+            }
+        }
     }
 
     #endregion

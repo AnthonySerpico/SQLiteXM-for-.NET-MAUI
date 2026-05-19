@@ -62,40 +62,47 @@ public sealed class SxmDatabaseOptions
     /// </summary>
     public int? CheckPointWalMaxSize { get => _checkPointWalMaxSize; init { _checkPointWalMaxSize = value; } }
 
-    private long? _busyTimeout = null;
-
     /// <summary>
     /// Gets or sets the SQLite busy timeout in milliseconds.
     /// </summary>
     public long? BusyTimeout { get => _busyTimeout; init { _busyTimeout = value; } }
-
-    private long? _cacheSize = null;
+    private long? _busyTimeout = null;
 
     /// <summary>
     /// Gets or sets the SQLite cache size in KB.
     /// </summary>
     public long? CacheSize { get => _cacheSize; init { _cacheSize = value; } }
-
-    private long? _walAutoCheckpoint = null;
+    private long? _cacheSize = null;
 
     /// <summary>
     /// Gets or sets the WAL auto-checkpoint threshold in pages.
     /// </summary>
     public long? WalAutoCheckpoint { get => _walAutoCheckpoint; init { _walAutoCheckpoint = value; } }
+    private long? _walAutoCheckpoint = null;
 
-    private bool? _foreignKeys = null;
+    /// <summary>
+    /// Gets or sets whether connection pooling is enabled.
+    /// </summary>
+    public bool? EnableConnectionPooling { get => _enableConnectionPooling; init { _enableConnectionPooling = value; } }
+    private static bool? _enableConnectionPooling = null;
+
+    /// <summary>
+    /// Gets or sets the default timeout in seconds.
+    /// </summary>
+    public int? DefaultTimeout { get => _defaultTimeout; init { _defaultTimeout = value; } }
+    private static int? _defaultTimeout = null;
 
     /// <summary>
     /// Gets or sets whether foreign key enforcement is enabled.
     /// </summary>
     public bool? ForeignKeys { get => _foreignKeys; init { _foreignKeys = value; } }
-
-    private SxmTempStore? _tempStore = null;
+    private bool? _foreignKeys = null;
 
     /// <summary>
     /// Gets or sets the SQLite temp_store setting.
     /// </summary>
     public SxmTempStore? TempStore { get => _tempStore; init { _tempStore = value; } }
+    private SxmTempStore? _tempStore = null;
 
     /// <summary>
     /// Gets or sets the folder override used when creating the database file.
@@ -212,6 +219,16 @@ public sealed class SxmDatabaseOptions
                     connectionOpenedInterceptor(sqliteConnection);
             }
         }
+    }
+
+    internal static bool ConnectionPooling()
+    {
+        return _enableConnectionPooling ?? true;
+    }
+
+    internal static int? GetDefaultTimeout()
+    {
+        return _defaultTimeout;
     }
 
     /// <summary>
