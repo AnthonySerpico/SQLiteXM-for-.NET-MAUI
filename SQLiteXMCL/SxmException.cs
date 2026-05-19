@@ -47,7 +47,7 @@ namespace SQLiteXM
         /// <remarks>
         /// Stores <see cref="SxmDefines.SxmErrorCode.InnerException"/> under <c>Data["sxmErrorCode"]</c>.
         /// </remarks>
-        internal SxmException(string message, Exception inner)
+        internal SxmException(string message, Exception? inner)
             : base(message, inner)
         {
             this.Data["sxmErrorCode"] = SxmDefines.SxmErrorCode.InnerException;
@@ -100,5 +100,17 @@ namespace SQLiteXM
 
             return inner;
         }
+    }
+
+    public sealed class SxmWarning : Exception
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SxmWarning"/> class with a specified message.
+        /// </summary>
+        /// <param name="message">The warning message that explains the reason for the warning.</param>
+        internal SxmWarning(string message) : base(message)
+        {
+        }
+
     }
 }

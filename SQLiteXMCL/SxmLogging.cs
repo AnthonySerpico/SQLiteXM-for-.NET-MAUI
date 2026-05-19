@@ -137,9 +137,9 @@ namespace SQLiteXM
 
                 StringBuilder errorLogText = new StringBuilder();
                 errorLogText.AppendFormat("Method: {0}" + Environment.NewLine, method);
-                errorLogText.AppendFormat("Exception: {0}" + Environment.NewLine, exceptionText);
+                errorLogText.AppendFormat("{0} {1}{2}", (ex is SxmWarning) ? "Warning: " : "Exception: ", exceptionText, Environment.NewLine);
 
-                if(ex != null)
+                if (ex != null)
                 {
                     errorLogText.AppendFormat("Source: {0}" + Environment.NewLine, ex.Source);
                     //errorLogText.AppendFormat("Call Stack: {0}" + Environment.NewLine, GetExceptionDetails(ex, _MaxExceptionTextLength / 2));

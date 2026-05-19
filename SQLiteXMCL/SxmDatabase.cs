@@ -129,6 +129,10 @@ namespace SQLiteXM
                 if (_initialized)
                     return;
 
+                // Throws immediately if any options are invalid, preventing unexpected database or application behavior.
+                // Warnings are logged later, after a database specific logger is built, but do not fail initialization.
+                SxmDatabaseOptionsValidator.ValidationResult validationResult = ValidateDatabaseOptions(databaseOptions);
+
                 string fullPathToSqlStatementsFile = ResolveSqlStatementsFile(sqlStatementsFileName);
                 SqlStatementsFileType fileType = SxmHelpers.GetSqlStatementsFileType(fullPathToSqlStatementsFile);
                 if (fileType == SqlStatementsFileType.Unknown)
@@ -146,6 +150,9 @@ namespace SQLiteXM
 
                 SxmDatabaseOptions.AddDatabaseName(databaseOptions, SxmProcessSQLStatements.DatabaseName);
                 await SxmDatabase.BuildSchemaAsync().ConfigureFalse();
+
+                // Log option warnings if any exist. Need  to wait to log warnings until after a database specific logger is built.
+                validationResult.LogDatabaseOptionWarnings();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -171,6 +178,10 @@ namespace SQLiteXM
                 if (_initialized)
                     return;
 
+                // Throws immediately if any options are invalid, preventing unexpected database or application behavior.
+                // Warnings are logged later, after a database specific logger is built, but do not fail initialization.
+                SxmDatabaseOptionsValidator.ValidationResult validationResult = ValidateDatabaseOptions(databaseOptions);
+
                 // Only the first call to 'DatabaseFolder' property setter will actually set the 'DatabaseFolder'.
                 // Follow on calls to set will be ignored even if the initial setter value is null.
                 // CRITICAL: Must set DatabaseFolder BEFORE any SxmDatabaseDescriptor is created.
@@ -181,6 +192,9 @@ namespace SQLiteXM
                 SxmDatabaseOptions.AddDatabaseName(databaseOptions, SxmProcessSQLStatements.DatabaseName);
                 await SxmDatabase.BuildSchemaAsync().ConfigureFalse();
 
+                // Log option warnings if any exist. Need  to wait to log warnings until after a database specific logger is built.
+                validationResult.LogDatabaseOptionWarnings();
+
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
                 _initialized = true;
@@ -189,6 +203,17 @@ namespace SQLiteXM
             {
                 _initGate.Release();
             }
+        }
+
+        private static SxmDatabaseOptionsValidator.ValidationResult ValidateDatabaseOptions(SxmDatabaseOptions? databaseOptions)
+        {
+            // Validate options (null is valid - means use all defaults). Only validates properties that are explicitly set (non-null).
+            SxmDatabaseOptionsValidator.ValidationResult validationResult = SxmDatabaseOptionsValidator.Validate(databaseOptions);
+
+            // Throw if validation failed (errors found)
+            validationResult.ThrowIfInvalidDatabaseOptions();
+
+            return validationResult;
         }
 
         /// <summary>
