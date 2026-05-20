@@ -41,7 +41,7 @@ namespace SQLiteXM
             /// Throws an exception if validation failed.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown when validation errors exist.</exception>
-            internal void ThrowIfInvalidDatabaseOptions()
+            internal void ThrowIfValidationErrors()
             {
                 if (!IsValid)
                 {
@@ -50,11 +50,11 @@ namespace SQLiteXM
                 }
             }
 
-            internal void LogDatabaseOptionWarnings()
+            internal void LogValidationWarnings()  
             {
                 if (Warnings.Count > 0)
                 {
-                    string message = $"SxmDatabaseOptions validation failed with {Warnings.Count} warning(s):{Environment.NewLine}" + string.Join(Environment.NewLine, Warnings.Select((w, i) => $"  [{i + 1}] {w}"));
+                    string message = $"SxmDatabaseOptions validation completed with {Warnings.Count} warning(s):{Environment.NewLine}" + string.Join(Environment.NewLine, Warnings.Select((w, i) => $"  [{i + 1}] {w}"));
                     SxmLogging.Log(new SxmWarning(message), "Database Options Warning", $"LogDatabaseWarnings");
                 }
             }

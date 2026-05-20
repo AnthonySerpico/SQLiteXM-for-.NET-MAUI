@@ -152,7 +152,7 @@ namespace SQLiteXM
                 await SxmDatabase.BuildSchemaAsync().ConfigureFalse();
 
                 // Log option warnings if any exist. Need  to wait to log warnings until after a database specific logger is built.
-                validationResult.LogDatabaseOptionWarnings();
+                validationResult.LogValidationWarnings();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -193,7 +193,7 @@ namespace SQLiteXM
                 await SxmDatabase.BuildSchemaAsync().ConfigureFalse();
 
                 // Log option warnings if any exist. Need  to wait to log warnings until after a database specific logger is built.
-                validationResult.LogDatabaseOptionWarnings();
+                validationResult.LogValidationWarnings();
 
                 // Mark initialization complete only after the full pipeline succeeds.
                 // If any step throws, _initialized remains false so a later call can retry.
@@ -211,7 +211,7 @@ namespace SQLiteXM
             SxmDatabaseOptionsValidator.ValidationResult validationResult = SxmDatabaseOptionsValidator.Validate(databaseOptions);
 
             // Throw if validation failed (errors found)
-            validationResult.ThrowIfInvalidDatabaseOptions();
+            validationResult.ThrowIfValidationErrors();
 
             return validationResult;
         }
