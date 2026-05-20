@@ -275,7 +275,7 @@ namespace SQLiteXM
                         DataSource = Path.Combine(databaseFolderPath, databaseName),
                         Mode = SqliteOpenMode.ReadWriteCreate,
                         DefaultTimeout = SxmDatabaseOptions.GetDefaultTimeout() ?? new SqliteConnection().DefaultTimeout,
-                        Pooling = SxmDatabaseOptions.ConnectionPooling()
+                        Pooling = SxmDatabaseOptions.IsConnectionPoolingEnabled()
                     };
                     connectionString = csb.ToString();
 

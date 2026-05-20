@@ -87,6 +87,12 @@ public sealed class SxmDatabaseOptions
     private static bool? _enableConnectionPooling = null;
 
     /// <summary>
+    /// Gets or sets whether connection pooling is enabled.
+    /// </summary>
+    public bool? EnableLogging { get => _enableLogging; init { _enableLogging = value; } }
+    private static bool? _enableLogging = null;
+
+    /// <summary>
     /// Gets or sets the default timeout in seconds.
     /// </summary>
     public int? DefaultTimeout { get => _defaultTimeout; init { _defaultTimeout = value; } }
@@ -221,7 +227,7 @@ public sealed class SxmDatabaseOptions
         }
     }
 
-    internal static bool ConnectionPooling()
+    internal static bool IsConnectionPoolingEnabled()
     {
         return _enableConnectionPooling ?? true;
     }
@@ -229,6 +235,10 @@ public sealed class SxmDatabaseOptions
     internal static int? GetDefaultTimeout()
     {
         return _defaultTimeout;
+    }
+    internal static bool IsLoggingEnabled()
+    {
+        return _enableLogging ?? true;
     }
 
     /// <summary>

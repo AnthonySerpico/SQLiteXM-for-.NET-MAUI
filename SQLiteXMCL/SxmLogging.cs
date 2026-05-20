@@ -104,9 +104,11 @@ namespace SQLiteXM
         /// - The method is intentionally tolerant: if <paramref name="dbName"/> is <c>null</c> or no logger exists
         ///   for the name, the call is a no-op to avoid cascading failures during error handling.
         /// </remarks>
-        [Conditional("SXM_DEBUG")]
         static internal void Log(System.Exception ex, string logLevel = "Error", [System.Runtime.CompilerServices.CallerMemberName] string method = "")
         {
+            if (!SxmDatabaseOptions.IsLoggingEnabled())
+                return;
+
             string? dbName = SxmDatabaseDescriptor.DefaultDatabase;
 
             if (dbName != null)

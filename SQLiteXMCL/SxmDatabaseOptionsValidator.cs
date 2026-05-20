@@ -58,7 +58,6 @@ namespace SQLiteXM
                     SxmLogging.Log(new SxmWarning(message), "Database Options Warning", $"LogDatabaseWarnings");
                 }
             }
-
         }
 
         /// <summary>
