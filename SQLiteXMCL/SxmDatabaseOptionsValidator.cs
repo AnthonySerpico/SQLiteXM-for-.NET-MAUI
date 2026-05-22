@@ -55,7 +55,7 @@ namespace SQLiteXM
                 if (Warnings.Count > 0)
                 {
                     string message = $"SxmDatabaseOptions validation completed with {Warnings.Count} warning(s):{Environment.NewLine}" + string.Join(Environment.NewLine, Warnings.Select((w, i) => $"  [{i + 1}] {w}"));
-                    SxmLogging.Log(new SxmWarning(message), "Database Options Warning", $"LogDatabaseWarnings");
+                    SxmLogging.Log(new SxmWarning(message), "Database options warning", $"LogDatabaseWarnings");
                 }
             }
         }

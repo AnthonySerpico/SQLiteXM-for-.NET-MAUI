@@ -202,8 +202,8 @@ namespace SQLiteXM
             /// <summary>
             /// The trigger name.
             /// </summary>
-            [XmlElement(ElementName = "TriggerName")]
-            public string? TriggerName { get; set; }
+            [XmlElement(ElementName = "TableName")]
+            public string? TableName { get; set; }
 
             /// <summary>
             /// The SQL trigger statement text.

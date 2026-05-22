@@ -236,7 +236,7 @@ namespace SQLiteXM
                 SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootJson?.Trigger != default)
                     foreach (Dictionary<string, string> triggerEntry in rootJson.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry["Statement"]);
+                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry["Table Name"], triggerEntry["Statement"]);
             }
         }
 
@@ -283,7 +283,7 @@ namespace SQLiteXM
                 SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootXml?.Trigger != default)
                     foreach (SxmSerialization.Trigger triggerEntry in rootXml.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.Statement!);
+                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.TableName!, triggerEntry.Statement!);
             }
         }
 

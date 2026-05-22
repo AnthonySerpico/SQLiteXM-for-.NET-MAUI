@@ -272,7 +272,7 @@ namespace SQLiteXM
             if (statementType == SqlStatementType.Update || statementType == SqlStatementType.UpdateDirect)
                 return "UPDATE";
 
-            throw new ArgumentException($"The sql statement type could not be found. Statement type: {statementType.ToString()}");
+            throw new ArgumentException($"The sql statement type could not be found.{Environment.NewLine}Statement type: {statementType.ToString()}");
         }
 
         /// <summary>

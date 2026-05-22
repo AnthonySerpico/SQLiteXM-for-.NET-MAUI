@@ -179,9 +179,9 @@ namespace SQLiteXM
         /// Adds a trigger definition for the specified database.
         /// </summary>
         /// <param name="dbName">The database name the trigger belongs to.</param>
-        /// <param name="triggerName">The trigger name.</param>
+        /// <param name="tableName">The name of the source table for the trigger.</param>
         /// <param name="sqlStatement">The SQL text of the trigger.</param>
-        internal static void AddTriggerDefinition(string dbName, string sqlStatement)
+        internal static void AddTriggerDefinition(string dbName, string tableName, string sqlStatement)
         {
             sqlStatement = sqlStatement.Trim();
             dbName = dbName.Trim();
@@ -194,7 +194,7 @@ namespace SQLiteXM
                 TriggerStatements[dbName] = triggerStatementsList;
             }
 
-            triggerStatementsList.Add(new TriggerDefinition(sqlStatement));
+            triggerStatementsList.Add(new TriggerDefinition(tableName, sqlStatement));
         }
 
         internal static void CreateTriggerStatementsList(string dbName)

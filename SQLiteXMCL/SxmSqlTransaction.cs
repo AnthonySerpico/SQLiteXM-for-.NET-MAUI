@@ -580,7 +580,7 @@ namespace SQLiteXM
                     _encounteredError = true;
 
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                    SxmLogging.Log(ex, $"RunStatementAsync failure for statement '{sqlStatementName}' statement type '{sqlStatementType.ToString()}'.");
+                    SxmLogging.Log(ex, $"RunStatementAsync failure for statement: '{sqlStatementName}' {Environment.NewLine}Statement type: '{sqlStatementType.ToString()}'.");
                     throw;
                 }
                 catch (System.Exception ex)
@@ -588,7 +588,7 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string errStr = $"RunStatementAsync failure for statement '{sqlStatementName}' statement type '{sqlStatementType.ToString()}'.";
+                    string errStr = $"RunStatementAsync failure for statement: '{sqlStatementName}'{Environment.NewLine}Statement type: '{sqlStatementType.ToString()}'.";
                     SxmLogging.Log(ex, errStr);
                     throw ExceptionHelper.Wrap(ex, errStr);
                 }

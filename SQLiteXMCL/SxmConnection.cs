@@ -541,7 +541,7 @@ namespace SQLiteXM
                 }
                 catch (Microsoft.Data.Sqlite.SqliteException ex)
                 {
-                    string errStr = $"DoCommitAsync failure for database: '{this._databaseName}'. Commit flag '{commitFlag}'.";
+                    string errStr = $"DoCommitAsync failure for database: '{this._databaseName}'.{Environment.NewLine}Commit flag '{commitFlag}'.";
                     SxmLogging.Log(ex, errStr);
 
                     if (commitFlag == SQLiteXM.SxmDefines.CommitTransaction)
@@ -551,13 +551,13 @@ namespace SQLiteXM
                 }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
-                    SxmLogging.Log(ex, $"DoCommitAsync failure for database: '{this._databaseName}'. Commit flag '{commitFlag}'.");
+                    SxmLogging.Log(ex, $"DoCommitAsync failure for database: '{this._databaseName}'.{Environment.NewLine}Commit flag '{commitFlag}'.");
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     throw;
                 }
                 catch (System.Exception ex)
                 {
-                    string errStr = $"DoCommitAsync failure for database: '{this._databaseName}'. Commit flag '{commitFlag}'.";
+                    string errStr = $"DoCommitAsync failure for database: '{this._databaseName}'.{Environment.NewLine}Commit flag '{commitFlag}'.";
                     SxmLogging.Log(ex, errStr);
                     throw ExceptionHelper.Wrap(ex, errStr);
                 }
@@ -665,13 +665,13 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"ExecuteQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.");
+                SxmLogging.Log(ex, $"ExecuteQueryAsync failure for database: '{this._databaseName}'.{Environment.NewLine}Command: '{command}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.";
+                string errStr = $"ExecuteQueryAsync failure for database: '{this._databaseName}'.{Environment.NewLine}Command: '{command}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -726,13 +726,13 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"ExecuteNonQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.");
+                SxmLogging.Log(ex, $"ExecuteNonQueryAsync failure for database: '{this._databaseName}'.{Environment.NewLine}Command: '{command}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteNonQueryAsync failure for database: '{this._databaseName}'. Command: '{command}'.";
+                string errStr = $"ExecuteNonQueryAsync failure for database: '{this._databaseName}'.{Environment.NewLine}Command: '{command}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -849,13 +849,13 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"BeginTransaction failure for database: '{this._databaseName}'. Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.");
+                SxmLogging.Log(ex, $"BeginTransaction failure for database: '{this._databaseName}'.{Environment.NewLine}Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"BeginTransaction failure for database: '{this._databaseName}'. Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.";
+                string errStr = $"BeginTransaction failure for database: '{this._databaseName}'.{Environment.NewLine}Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

@@ -212,7 +212,15 @@
     /// </summary>
     public class TriggerDefinition
     {
-        private string triggerSQL;
+        /// <summary>
+        /// Gets the name of the table associated with the trigger.
+        /// </summary>
+        public string TableName
+        {
+            get { return tableName; }
+        }
+        private string tableName;
+
         /// <summary>
         /// Gets the CREATE TRIGGER SQL statement.
         /// </summary>
@@ -220,15 +228,16 @@
         {
             get { return triggerSQL; }
         }
+        private string triggerSQL;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TriggerDefinition"/> class.
         /// </summary>
-        /// <param name="triggerName">The name of the trigger.</param>
+        /// <param name="tableName">The name of the source table for the trigger.</param>
         /// <param name="triggerSQL">The CREATE TRIGGER SQL statement.</param>
-        internal TriggerDefinition(string triggerSQL)
+        internal TriggerDefinition(string tableName, string triggerSQL)
         {
-            //this._triggerName = triggerName;
+            this.tableName = tableName;
             this.triggerSQL = triggerSQL;
         }
     }

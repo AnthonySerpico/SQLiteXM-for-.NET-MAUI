@@ -111,6 +111,17 @@ namespace SQLiteXM
         internal SxmWarning(string message) : base(message)
         {
         }
+    }
+
+    public sealed class SxmInformational : Exception
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SxmInformational"/> class with a specified message.
+        /// </summary>
+        /// <param name="message">The informational message that explains the reason for the information.</param>
+        internal SxmInformational(string message) : base(message)
+        {
+        }
 
     }
 }

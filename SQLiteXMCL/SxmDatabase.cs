@@ -385,6 +385,8 @@ namespace SQLiteXM
                     {
                         Hashtable tableNamesMap = new();
 
+                        await DropTriggersAsync(sxmConnection, new List<string>()).ConfigureFalse();
+
                         foreach (string DatabaseNameTableName in SxmSqlStatements.TableCreateStatements.Keys) // the 'key' string value is 'DatabaseName.TableName'
                         {
                             if (DatabaseNameTableName.Split('.').Length != 2)
@@ -407,10 +409,11 @@ namespace SQLiteXM
                                     await ApplyIndexTableStatementsAsync(DatabaseNameTableName, sxmConnection).ConfigureFalse();
                                 }
                             }
+
+                            await ApplyTriggerTableStatementsAsync(sxmConnection, DatabaseNameTableName, new List<string>()).ConfigureFalse();
                         }
                     }
 
-                    await ApplyTriggerTableStatementsAsync(sxmConnection, databaseName).ConfigureFalse();
                     await StoreDbVersionNumberAsync(sqlStatementsVersionNumber, databaseName, sxmConnection).ConfigureFalse();
                     await SxmAssociationMapper.InitializeAssociationsAsync(databaseName).ConfigureFalse();
                 }
@@ -984,13 +987,16 @@ namespace SQLiteXM
         /// Existing triggers are dropped before new ones are created.
         /// </summary>
         /// <param name="connectionMap">Map of database name to active connection. If null, connections will be created as needed.</param>
-        private static async Task ApplyTriggerTableStatementsAsync(SxmConnection sxmConnection, string dbName)
+        private static async Task ApplyTriggerTableStatementsAsync(SxmConnection sxmConnection, string DatabaseNameTableName, List<string> statementsList)
         {
-            await DropTriggersAsync(sxmConnection).ConfigureFalse();
-            await AddTriggersAsync(sxmConnection, dbName).ConfigureFalse();
+            string[] parts = DatabaseNameTableName.Split('.');
+            string databaseName = parts[0];
+            string tableName = parts[1];
+
+            await AddTriggersAsync(sxmConnection, databaseName, tableName, statementsList).ConfigureFalse();
         }
 
-        internal static async Task DropTriggersAsync(SxmConnection sxmConnection)
+        internal static async Task DropTriggersAsync(SxmConnection sxmConnection, List<string> statementsList)
         {
             // Delete all triggers in the database.
             await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(sxmConnection).ConfigureFalse())
@@ -998,14 +1004,16 @@ namespace SQLiteXM
                 List<string> existingTriggers = await SxmDatabase.GetAllTriggersAsync(sxmTransaction.Connection, string.Empty).ConfigureFalse();
                 foreach (string existingTrigger in existingTriggers)
                 {
-                   await sxmTransaction.ExecuteCreateTriggerAsync($"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier(existingTrigger)}").ConfigureFalse();
+                    string dropTriggerStatement = $"DROP TRIGGER IF EXISTS {SxmHelpers.QuoteIdentifier(existingTrigger)}";
+                    await sxmTransaction.ExecuteCreateTriggerAsync(dropTriggerStatement).ConfigureFalse();
+                    statementsList.Add(dropTriggerStatement);
                 }
 
                 await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
             }
         }
 
-        internal static async Task AddTriggersAsync(SxmConnection sxmConnection, string dbName)
+        internal static async Task AddTriggersAsync(SxmConnection sxmConnection, string dbName, string tableName, List<string> statementsList)
         {
             // Get all triggers in the SQL Statements file and create them.
             List<TriggerDefinition>? triggerStatementsList = SxmSqlStatements.TriggerStatements?[dbName] as List<TriggerDefinition>;
@@ -1017,13 +1025,17 @@ namespace SQLiteXM
                     // Iterate backwards so we can safely remove successful entries without invalidating the iteration.
                     for (int i = triggerStatementsList.Count - 1; i >= 0; i--)
                     {
-                        TriggerDefinition td = triggerStatementsList.ElementAt(i);
+                        TriggerDefinition triggerDefinition = triggerStatementsList.ElementAt(i);
                         try
                         {
-                            await sxmTransaction.ExecuteCreateTriggerAsync(td.TriggerSQL).ConfigureFalse();
+                            if (string.Equals(triggerDefinition.TableName, tableName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                await sxmTransaction.ExecuteCreateTriggerAsync(triggerDefinition.TriggerSQL).ConfigureFalse();
 
-                            // If creation succeeded, remove the entry so the list keeps only those that failed.
-                            triggerStatementsList.RemoveAt(i);
+                                // If creation succeeded, remove the entry so the list keeps only those that failed.
+                                triggerStatementsList.RemoveAt(i);
+                                statementsList.Add(triggerDefinition.TriggerSQL);
+                            }
                         }
                         catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                         {
