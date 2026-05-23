@@ -32,10 +32,12 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">Exceptions thrown by the transaction or execution are propagated to the caller.</exception>
         internal static async Task PerformUpdateAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
+            string? databaseName = default;
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
+                    databaseName = sxmTransaction.Connection?.DatabaseName;
                     await sxmTransaction.ExecuteUpdateAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
                     await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
@@ -43,12 +45,14 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformUpdateAsync failure for statement '{sqlStatementName}' db '{dbName}'.");
+                SxmSqlStatements.UpdateStatements.TryGetValue(sqlStatementName, out UpdateDefinition? updateDefinition);
+                SxmLogging.Log(ex, $"PerformUpdateAsync failure. SQL statement: '{sqlStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {updateDefinition?.UpdateSQL}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformUpdateAsync failure for statement '{sqlStatementName}' db '{dbName}'.";
+                SxmSqlStatements.UpdateStatements.TryGetValue(sqlStatementName, out UpdateDefinition? updateDefinition);
+                string errStr = $"PerformUpdateAsync failure. SQL statement: '{sqlStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {updateDefinition?.UpdateSQL}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -74,12 +78,14 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformUpdateTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
+                SxmSqlStatements.UpdateStatements.TryGetValue(sqlStatementName, out UpdateDefinition? updateDefinition);
+                SxmLogging.Log(ex, $"PerformUpdateTransAsync failure. SQL statement: '{sqlStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {updateDefinition?.UpdateSQL}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformUpdateTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                SxmSqlStatements.UpdateStatements.TryGetValue(sqlStatementName, out UpdateDefinition? updateDefinition);
+                string errStr = $"PerformUpdateTransAsync failure. SQL statement: '{sqlStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {updateDefinition?.UpdateSQL}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -91,30 +97,32 @@ namespace SQLiteXM
         /// Execute a direct update (bypassing statement caching or mapping) inside a fresh transaction.
         /// The transaction is committed if the update completes successfully.
         /// </summary>
-        /// <param name="sqlStatementName">The direct SQL or direct statement identifier to execute.</param>
+        /// <param name="sqlStatement">The direct SQL or direct statement identifier to execute.</param>
         /// <param name="sqlStatementParameters">The parameter values used by the statement (ordered).</param>
         /// <param name="dbName">Optional database name/connection identifier. When null the default database is used.</param>
         /// <returns>A task that completes when the update and commit have finished.</returns>
         /// <exception cref="System.Exception">Exceptions thrown by the transaction or execution are propagated to the caller.</exception>
-        internal static async Task PerformUpdateDirectAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task PerformUpdateDirectAsync(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
+            string? databaseName = default;
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
-                    await sxmTransaction.ExecuteUpdateDirectAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+                    databaseName = sxmTransaction.Connection?.DatabaseName;
+                    await sxmTransaction.ExecuteUpdateDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
                     await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformUpdateDirectAsync failure for statement '{sqlStatementName}' db '{dbName}'.");
+                SxmLogging.Log(ex, $"PerformUpdateDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformUpdateDirectAsync failure for statement '{sqlStatementName}' db '{dbName}'.";
+                string errStr = $"PerformUpdateDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -126,26 +134,26 @@ namespace SQLiteXM
         /// Execute a direct update using an existing transaction.
         /// The caller retains responsibility for committing or rolling back <paramref name="sxmTransaction"/>.
         /// </summary>
-        /// <param name="sqlStatementName">The direct SQL or direct statement identifier to execute.</param>
+        /// <param name="sqlStatement">The direct SQL or direct statement identifier to execute.</param>
         /// <param name="sqlStatementParameters">The parameter values used by the statement (ordered).</param>
         /// <param name="sxmTransaction">An active <see cref="SxmUTransaction"/> to execute against.</param>
         /// <returns>A task that completes when the update has finished.</returns>
         /// <exception cref="System.Exception">Exceptions thrown by the transaction or execution are propagated to the caller.</exception>
-        internal static async Task PerformUpdateDirectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task PerformUpdateDirectTransAsync(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
         {
             try
             {
-                await sxmTransaction.ExecuteUpdateDirectAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+                await sxmTransaction.ExecuteUpdateDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformUpdateDirectTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
+                SxmLogging.Log(ex, $"PerformUpdateDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformUpdateDirectTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                string errStr = $"PerformUpdateDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

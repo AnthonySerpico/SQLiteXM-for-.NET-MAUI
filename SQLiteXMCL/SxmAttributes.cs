@@ -71,14 +71,14 @@ namespace SQLiteXM
                 }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
-                    SxmLogging.Log(ex);
+                    SxmLogging.Log(ex, $"Data type mapping failure. DataType '{base.DataType.ToString()}'.");
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     throw;
                 }
                 catch (System.Exception ex)
                 {
                     SxmLogging.Log(ex);
-                    throw ExceptionHelper.Wrap(ex, $"Data type mapping failed for datatype '{base.DataType.ToString()}'.");
+                    throw ExceptionHelper.Wrap(ex, $"Data type mapping failure. DataType '{base.DataType.ToString()}'.");
                 }
                 return DataType.Default;
             }
@@ -98,7 +98,7 @@ namespace SQLiteXM
                 }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
-                    SxmLogging.Log(ex);
+                    SxmLogging.Log(ex, $"Data type mapping failed for datatype '{typeof(LinqToDB.DataType)}'.");
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     throw;
                 }

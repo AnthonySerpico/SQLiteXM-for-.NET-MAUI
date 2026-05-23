@@ -283,7 +283,7 @@ namespace SQLiteXM
                     catch (Exception ex)
                     {
                         // Best-effort: log and continue releasing remaining leases.
-                        SxmLogging.Log(ex, "Connection lease DisposeAsync failure.");
+                        SxmLogging.Log(ex, $"Connection lease DisposeAsync failure. Database: '{lease.DatabaseName}'.");
                     }
                 }
             }

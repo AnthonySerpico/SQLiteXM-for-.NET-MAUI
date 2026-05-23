@@ -593,12 +593,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{conn.DatabaseName}' table '{this.GetType().Name}'.");
+                SxmLogging.Log(ex, $"DoesRecordExistAsync failure. Database: '{conn.DatabaseName}'. Table: '{this.GetType().Name}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"DoesRecordExistAsync failure for table '{conn.DatabaseName}' table '{this.GetType().Name}'.";
+                string errStr = $"DoesRecordExistAsync failure. Database: '{conn.DatabaseName}'. Table: '{this.GetType().Name}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -625,12 +625,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DoesRecordExistAsync failure for table '{sxmConnection?.DatabaseName}' table '{this.GetType().Name}'.");
+                SxmLogging.Log(ex, $"DoesRecordExistAsync failure. Database: '{sxmConnection?.DatabaseName}'. Table: '{this.GetType().Name}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"DoesRecordExistAsync failure for table '{sxmConnection?.DatabaseName}' table '{this.GetType().Name}'.";
+                string errStr = $"DoesRecordExistAsync failure. Database: '{sxmConnection?.DatabaseName}'. Table: '{this.GetType().Name}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

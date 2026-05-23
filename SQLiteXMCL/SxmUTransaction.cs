@@ -137,12 +137,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"FinalizeTransaction failure for database '{_connection?.DatabaseName}'.");
+                SxmLogging.Log(ex, $"FinalizeTransaction failure. Database: '{_connection?.DatabaseName}'.");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"FinalizeTransaction failure for database '{_connection?.DatabaseName}'.";
+                string errStr = $"FinalizeTransaction failure. Database: '{_connection?.DatabaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -212,7 +212,7 @@ namespace SQLiteXM
             catch (System.Exception ex)
             {
                 // Best-effort: log and swallow to avoid throwing from Dispose.
-                SxmLogging.Log(ex);
+                SxmLogging.Log(ex, $"DisposeAsync failure. Database: '{_connection?.DatabaseName}'.");
             }
             finally
             {
@@ -300,12 +300,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"ExecuteInsertAsync failure for database '{_connection?.DatabaseName}' table '{insertDefinition.TableName}' SQL statement '{insertDefinition.InsertSQL}'.");
+                SxmLogging.Log(ex, $"ExecuteInsertAsync failure. Database: '{_connection?.DatabaseName}'. Table: '{insertDefinition.TableName}'. Command: {insertDefinition.InsertSQL}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteInsertAsync failure for database '{_connection?.DatabaseName}' table '{insertDefinition.TableName}' SQL statement '{insertDefinition.InsertSQL}'.";
+                string errStr = $"ExecuteInsertAsync failure. Database: '{_connection?.DatabaseName}'. Table: '{insertDefinition.TableName}'. Command: {insertDefinition.InsertSQL}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

@@ -22,12 +22,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformTableStatementAsync failure for DDL '{sqlStatement}' db '{dbName}'.");
+                SxmLogging.Log(ex, $"PerformTableStatementAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformTableStatementAsync failure for DDL '{sqlStatement}' db '{dbName}'.";
+                string errStr = $"PerformTableStatementAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

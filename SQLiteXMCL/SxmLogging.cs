@@ -138,10 +138,10 @@ namespace SQLiteXM
                 method ??= "<unknown>";
 
                 StringBuilder errorLogText = new StringBuilder();
-                errorLogText.AppendFormat("Method: {0}" + Environment.NewLine, method);
+                errorLogText.AppendFormat("Method: {0}{1}{2}", method, Environment.NewLine, Environment.NewLine);
 
-                string entryType = (ex is SxmWarning) ? "" : (ex is SxmInformational) ? "" : "Error";
-                errorLogText.AppendFormat("{0}: {1}{2}", entryType, exceptionText, Environment.NewLine);
+                string entryType = (ex is SxmWarning) ? string.Empty : (ex is SxmInformational) ? string.Empty : "Error";
+                errorLogText.AppendFormat("{0} {1}{2}{3}", entryType, exceptionText, Environment.NewLine, Environment.NewLine);
 
                 if (ex != null)
                 {
@@ -150,13 +150,13 @@ namespace SQLiteXM
                 }
 
                 StringBuilder entryBuilder = new StringBuilder();
-                entryBuilder.Append("******************************************************* ").Append(logLevel).Append(Environment.NewLine);
+                entryBuilder.Append("******************************************************* ").Append(logLevel).Append(Environment.NewLine).Append(Environment.NewLine);
                 entryBuilder.Append("Time Stamp: ");
                 entryBuilder.Append(DateTime.UtcNow.ToString("MM/dd/yyyy hh:mm:ss.fff tt", CultureInfo.CreateSpecificCulture("en-US")));
                 entryBuilder.Append(" (UTC)  ");
                 entryBuilder.Append(DateTime.UtcNow.ToLocalTime().ToString("MM/dd/yyyy hh:mm:ss.fff tt", CultureInfo.CreateSpecificCulture("en-US")));
                 entryBuilder.Append(" (Local Time)");
-                entryBuilder.Append(Environment.NewLine);
+                entryBuilder.Append(Environment.NewLine).Append(Environment.NewLine);
                 entryBuilder.Append(errorLogText.ToString()).Append(Environment.NewLine);
                 entryBuilder.Append("*******************************************************").Append(Environment.NewLine).Append(Environment.NewLine);
 

@@ -207,8 +207,8 @@ internal static class SxmSchemaRegistration
 
                     string message = $"{ddlStatementsList.Count} DDL statement(s) executed:{Environment.NewLine}" + string.Join(Environment.NewLine, ddlStatementsList.Select((w, i) => $"  [{i + 1}] {w}"));
 
-                    string buildOrCreate = newTable ? "create" : "migrate";
-                    SxmLogging.Log(new SxmInformational(message), $"DDL statement list to {buildOrCreate}: {databaseName}.{tableName}", $"InitializeSchemaAsync");
+                    string buildOrCreate = newTable ? "Creating" : "Synchronizing";
+                    SxmLogging.Log(new SxmInformational(message), $"{buildOrCreate} schema: Database: '{databaseName}'. Table: '{tableName}'", $"InitializeSchemaAsync");
                 }),
                 LazyThreadSafetyMode.ExecutionAndPublication
             )

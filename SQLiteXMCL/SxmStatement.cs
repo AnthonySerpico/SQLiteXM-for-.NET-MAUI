@@ -345,6 +345,8 @@ namespace SQLiteXM
 
             await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
             {
+                dbName = sxmTransaction.Connection?.DatabaseName;
+
                 if (force)
                 {
                     // Within a transaction, defer_foreign_keys allows for schema changes that would 
@@ -514,7 +516,7 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"RunStatementAsync failure for statement: '{sqlStatementName}{Environment.NewLine}Sstatement type: '{sqlStatementType.ToString()}'.");
+                SxmLogging.Log(ex, $"RunStatementAsync failure for statement: '{sqlStatementName}{Environment.NewLine}Statement type: '{sqlStatementType.ToString()}'.");
                 throw;
             }
             catch (System.Exception ex)

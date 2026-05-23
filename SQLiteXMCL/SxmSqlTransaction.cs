@@ -579,8 +579,19 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
+                    string? statement = GetStatement(sqlStatementType, sqlStatementName);
+                    string statementName = string.Empty;
+                    if (sqlStatementType != SqlStatementType.SelectDirect &&
+                        sqlStatementType != SqlStatementType.UpdateDirect &&
+                        sqlStatementType != SqlStatementType.DeleteDirect &&
+                        sqlStatementType != SqlStatementType.InsertDirect)
+
+                    {
+                        statementName = $"SQL statement: '{sqlStatementName}'.";
+                    }
+
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                    SxmLogging.Log(ex, $"RunStatementAsync failure for statement: '{sqlStatementName}' {Environment.NewLine}Statement type: '{sqlStatementType.ToString()}'.");
+                    SxmLogging.Log(ex, $"RunStatementAsync failure. {statementName} Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}");
                     throw;
                 }
                 catch (System.Exception ex)
@@ -588,16 +599,65 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string errStr = $"RunStatementAsync failure for statement: '{sqlStatementName}'{Environment.NewLine}Statement type: '{sqlStatementType.ToString()}'.";
+                    string? statement = GetStatement(sqlStatementType, sqlStatementName);
+                    string statementName = string.Empty;
+                    if (sqlStatementType != SqlStatementType.SelectDirect &&
+                        sqlStatementType != SqlStatementType.UpdateDirect &&
+                        sqlStatementType != SqlStatementType.DeleteDirect &&
+                        sqlStatementType != SqlStatementType.InsertDirect)
+
+                    {
+                        statementName = $"SQL statement: '{sqlStatementName}'.";
+                    }
+
+                    string errStr = $"RunStatementAsync failure. {statementName} Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
                     SxmLogging.Log(ex, errStr);
                     throw ExceptionHelper.Wrap(ex, errStr);
                 }
             }
 
-            if (recordData == default(List<Dictionary<string, object?>>))
-                recordData = new List<Dictionary<string, object?>>();
-
+            recordData ??= new List<Dictionary<string, object?>>();
             return await Task.FromResult(recordData).ConfigureFalse();
+        }
+
+        private string? GetStatement(SqlStatementType sqlStatementType, string sqlStatementName)
+        {
+            string? statement = null;
+
+            switch (sqlStatementType)
+            {
+                case SqlStatementType.Select:
+                    SxmSqlStatements.SelectStatements.TryGetValue(sqlStatementName, out SelectDefinition? selectDefinition);
+                    statement = selectDefinition?.SelectSQL;
+                    break;
+
+                case SqlStatementType.Update:
+                    SxmSqlStatements.UpdateStatements.TryGetValue(sqlStatementName, out UpdateDefinition? updateDefinition);
+                    statement = updateDefinition?.UpdateSQL;
+                    break;
+
+                case SqlStatementType.Delete:
+                    SxmSqlStatements.DeleteStatements.TryGetValue(sqlStatementName, out DeleteDefinition? deleteDefinition);
+                    statement = deleteDefinition?.DeleteSQL;
+                    break;
+
+                case SqlStatementType.Insert:
+                    SxmSqlStatements.InsertStatements.TryGetValue(sqlStatementName, out InsertDefinition? insertDefinition);
+                    statement = insertDefinition?.InsertSQL;
+                    break;
+
+                // Direct SQL statements.
+                case SqlStatementType.SelectDirect:
+                case SqlStatementType.UpdateDirect:
+                case SqlStatementType.DeleteDirect:
+                case SqlStatementType.InsertDirect:
+                    statement = sqlStatementName;
+                    break;
+
+                default: break;
+            }
+
+            return statement;
         }
     }
 }

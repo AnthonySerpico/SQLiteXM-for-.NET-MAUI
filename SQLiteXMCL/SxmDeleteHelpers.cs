@@ -30,10 +30,12 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
         internal static async Task PerformDeleteAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
         {
+            string? databaseName = null;    
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
+                    databaseName = sxmTransaction.Connection?.DatabaseName;
                     await sxmTransaction.ExecuteDeleteAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
                     await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
@@ -41,12 +43,14 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformDeleteAsync failure for statement '{sqlStatementName}' db '{dbName}'.");
+                SxmSqlStatements.DeleteStatements.TryGetValue(sqlStatementName, out DeleteDefinition? deleteDefinition);
+                SxmLogging.Log(ex, $"PerformDeleteAsync failure. SQL statement: '{sqlStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {deleteDefinition?.DeleteSQL}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformDeleteAsync failure for statement '{sqlStatementName}' db '{dbName}'.";
+                SxmSqlStatements.DeleteStatements.TryGetValue(sqlStatementName, out DeleteDefinition? deleteDefinition);
+                string errStr = $"PerformDeleteAsync failure. SQL statement: '{sqlStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {deleteDefinition?.DeleteSQL}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -69,12 +73,14 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformDeleteTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
+                SxmSqlStatements.DeleteStatements.TryGetValue(sqlStatementName, out DeleteDefinition? deleteDefinition);
+                SxmLogging.Log(ex, $"PerformDeleteTransAsync failure. SQL statement: '{sqlStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {deleteDefinition?.DeleteSQL}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformDeleteTransAsync failure for statement '{sqlStatementName}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                SxmSqlStatements.DeleteStatements.TryGetValue(sqlStatementName, out DeleteDefinition? deleteDefinition);
+                string errStr = $"PerformDeleteTransAsync failure. SQL statement: '{sqlStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {deleteDefinition?.DeleteSQL}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -90,10 +96,13 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">Any exception thrown by the underlying transaction operations is rethrown unchanged.</exception>
         internal static async Task PerformDeleteDirectAsync(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
         {
+            string? databaseName = default;
+
             try
             {
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
+                    databaseName = sxmTransaction.Connection?.DatabaseName;
                     await sxmTransaction.ExecuteDeleteDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
                     await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
@@ -101,12 +110,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformDeleteDirectAsync failure for statement '{sqlStatement}' db '{dbName}'.");
+                SxmLogging.Log(ex, $"PerformDeleteDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformDeleteDirectAsync failure for statement '{sqlStatement}' db '{dbName}'.";
+                string errStr = $"PerformDeleteDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -129,12 +138,12 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformDeleteDirectTransAsync failure for statement '{sqlStatement}' db '{sxmTransaction?.Connection?.DatabaseName}'.");
+                SxmLogging.Log(ex, $"PerformDeleteDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformDeleteDirectTransAsync failure for statement '{sqlStatement}' db '{sxmTransaction?.Connection?.DatabaseName}'.";
+                string errStr = $"PerformDeleteDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

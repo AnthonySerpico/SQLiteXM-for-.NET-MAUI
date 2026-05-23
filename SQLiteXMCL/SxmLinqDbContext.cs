@@ -39,13 +39,13 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"SxmLinqDbContext ctor failure for database '{databaseName}'.");
+                SxmLogging.Log(ex, $"SxmLinqDbContext ctor failure. Database: '{databaseName}'.");
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"SxmLinqDbContext ctor failure for database '{databaseName}'.";
+                string errStr = $"SxmLinqDbContext ctor failure. Database: '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
