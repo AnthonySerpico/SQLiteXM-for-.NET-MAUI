@@ -1,5 +1,7 @@
 using LinqToDB.Mapping;
+using SQLiteXM.Internal.Threading;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using static SQLiteXM.SxmDefines;
@@ -76,7 +78,7 @@ internal static class SxmSchemaRegistration
         ValidateDatabaseName(ref resolvedDbName);
 
         // Initialize schema
-        await InitializeSchemaAsync(entityType, resolvedDbName!).ConfigureAwait(false);
+        await InitializeSchemaAsync(entityType, resolvedDbName!).ConfigureFalse();
     }
 
     /// <summary>
@@ -185,30 +187,34 @@ internal static class SxmSchemaRegistration
         Lazy<Task> lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
                 () => Task.Run(async () =>
                 {
+                    Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
                     List<string> ddlStatementsList = new List<string>();
 
                     List<MemberInfoWithAlias> props = GetEntityProperties(entityType);
                     GetColumnNamesAndDataTypes(entityType, props, databaseName);
 
                     bool newTable;
-                    if (!(newTable = await CreateTableAsync(entityType, databaseName, ddlStatementsList).ConfigureAwait(false)))
-                        await AddColumnsAsync(entityType, databaseName, ddlStatementsList).ConfigureAwait(false);
+                    if (!(newTable = await CreateTableAsync(entityType, databaseName, ddlStatementsList).ConfigureFalse()))
+                        await AddColumnsAsync(entityType, databaseName, ddlStatementsList).ConfigureFalse();
 
                     var std = new List<string>();
                     var uniq = new List<string>();
-                    await GetIndexTableStatementsAsync(entityType, databaseName, std, uniq).ConfigureAwait(false);
+                    await GetIndexTableStatementsAsync(entityType, databaseName, std, uniq).ConfigureFalse();
 
-                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Standard, std, ddlStatementsList).ConfigureAwait(false);
-                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Unique, uniq, ddlStatementsList).ConfigureAwait(false);
-                    await ProcessTriggerAttributesAsync(entityType, databaseName, ddlStatementsList).ConfigureAwait(false);
+                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Standard, std, ddlStatementsList).ConfigureFalse();
+                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Unique, uniq, ddlStatementsList).ConfigureFalse();
+                    await ProcessTriggerAttributesAsync(entityType, databaseName, ddlStatementsList).ConfigureFalse();
 
                     if (!newTable)
-                        await DropColumnsAsync(entityType, databaseName, ddlStatementsList).ConfigureAwait(false);
+                        await DropColumnsAsync(entityType, databaseName, ddlStatementsList).ConfigureFalse();
+
+                    stopwatch.Stop();
 
                     string message = $"{ddlStatementsList.Count} DDL statement(s) executed:{Environment.NewLine}" + string.Join(Environment.NewLine, ddlStatementsList.Select((w, i) => $"  [{i + 1}] {w}"));
 
                     string buildOrCreate = newTable ? "Creating" : "Synchronizing";
-                    SxmLogging.Log(new SxmInformational(message), $"{buildOrCreate} schema: Database: '{databaseName}'. Table: '{tableName}'", $"InitializeSchemaAsync");
+                    SxmLogging.Log(new SxmInformational(message), $"{buildOrCreate} schema: Database: '{databaseName}'. Table: '{tableName}'. Duration: {stopwatch.ElapsedMilliseconds}ms", $"InitializeSchemaAsync");
                 }),
                 LazyThreadSafetyMode.ExecutionAndPublication
             )
@@ -216,7 +222,7 @@ internal static class SxmSchemaRegistration
 
         try
         {
-            await lazyInit.Value.ConfigureAwait(false);
+            await lazyInit.Value.ConfigureFalse();
         }
         catch
         {
@@ -503,11 +509,11 @@ internal static class SxmSchemaRegistration
         try
         {
             sxmConnection = new SxmConnection(databaseName);
-            tableExists = await SxmDatabase.DoesTableExistAsync(tableName, sxmConnection).ConfigureAwait(false);
+            tableExists = await SxmDatabase.DoesTableExistAsync(tableName, sxmConnection).ConfigureFalse();
         }
         finally
         {
-            await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureAwait(false);
+            await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureFalse();
         }
 
         if (!tableExists)
@@ -536,7 +542,7 @@ internal static class SxmSchemaRegistration
 
             ddlStatementsList.Add(sb.ToString());
             SxmSqlStatements.AddTableDefinition(string.Format("{0}.{1}", databaseName, tableName), sb.ToString());
-            await SxmDatabase.CreateTableAsync(databaseName, tableName).ConfigureAwait(false);
+            await SxmDatabase.CreateTableAsync(databaseName, tableName).ConfigureFalse();
             SxmSqlStatements.RemoveTableDefinitions();
         }
 
@@ -548,13 +554,13 @@ internal static class SxmSchemaRegistration
         string tableName = entityType.Name;
         string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-        Dictionary<string, string> dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+        Dictionary<string, string> dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureFalse();
 
         // Step 1: Process column renames first
-        await ProcessColumnRenamesAsync(entityType, databaseName, dbTableColumnNameAndType, ddlStatementsList).ConfigureAwait(false);
+        await ProcessColumnRenamesAsync(entityType, databaseName, dbTableColumnNameAndType, ddlStatementsList).ConfigureFalse();
 
         // Step 2: Refresh database column list after renames
-        dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+        dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureFalse();
 
         // Step 3: Add any new columns that don't exist yet
         foreach (KeyValuePair<string, string> kvp in SxmEntity._columnNameAndTypeDict[tableName])
@@ -563,11 +569,11 @@ internal static class SxmSchemaRegistration
             {
                 string alterDefinition = $"ALTER TABLE {quotedTable} ADD COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)} {kvp.Value}";
 
-                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+                await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureFalse())
                 {
                     ddlStatementsList.Add(alterDefinition);
-                    await sxmTransaction.ExecuteAlterTableAsync(alterDefinition).ConfigureAwait(false);
-                    await sxmTransaction.CommitTransactionAsync().ConfigureAwait(false);
+                    await sxmTransaction.ExecuteAlterTableAsync(alterDefinition).ConfigureFalse();
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
 
                 int offset = 0;
@@ -646,11 +652,11 @@ internal static class SxmSchemaRegistration
             // Rename the old column to the new column name
             string alterDefinition = $"ALTER TABLE {quotedTable} RENAME COLUMN {SxmHelpers.QuoteIdentifier(foundOldName)} TO {SxmHelpers.QuoteIdentifier(newColumnName)}";
 
-            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+            await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureFalse())
             {
                 ddlStatementsList.Add(alterDefinition);
-                await sxmTransaction.ExecuteAlterTableAsync(alterDefinition).ConfigureAwait(false);
-                await sxmTransaction.CommitTransactionAsync().ConfigureAwait(false);
+                await sxmTransaction.ExecuteAlterTableAsync(alterDefinition).ConfigureFalse();
+                await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
             }
 
             // Update internal column tracking: remove old name, add new name
@@ -669,18 +675,18 @@ internal static class SxmSchemaRegistration
         string tableName = entityType.Name;
         string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-        Dictionary<string, string> dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureAwait(false);
+        Dictionary<string, string> dbTableColumnNameAndType = await SxmDatabase.GetTableColumnNamesAsync(databaseName, tableName).ConfigureFalse();
 
         foreach (KeyValuePair<string, string> kvp in dbTableColumnNameAndType)
         {
             if (!SxmEntity._columnNameAndTypeDict[tableName].ContainsKey(kvp.Key) && !IsIgnored(kvp.Key))
             {
                 string alterDefinition = $"ALTER TABLE {quotedTable} DROP COLUMN {SxmHelpers.QuoteIdentifier(kvp.Key)}";
-                await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+                await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureFalse())
                 {
                     ddlStatementsList.Add(alterDefinition);
-                    await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition).ConfigureAwait(false);
-                    await sxmTransaction1.CommitTransactionAsync().ConfigureAwait(false);
+                    await sxmTransaction1.ExecuteAlterTableAsync(alterDefinition).ConfigureFalse();
+                    await sxmTransaction1.CommitTransactionAsync().ConfigureFalse();
                 }
 
                 SxmDatabase.RemoveColumnNameType(tableName, kvp.Key);
@@ -693,9 +699,9 @@ internal static class SxmSchemaRegistration
         string tableName = entityType.Name;
         string pragma = $"PRAGMA index_list({SxmHelpers.QuoteIdentifier(tableName)})";
 
-        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+        await using (SxmUTransaction sxmTransaction = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureFalse())
         {
-            await sxmTransaction.Connection!.ExecuteQueryAsync(pragma, null).ConfigureAwait(false);
+            await sxmTransaction.Connection!.ExecuteQueryAsync(pragma, null).ConfigureFalse();
 
             while (sxmTransaction.Connection.NextRow() == true)
             {
@@ -778,15 +784,15 @@ internal static class SxmSchemaRegistration
 
         if (indexSqlStatements.Count > 0)
         {
-            await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureAwait(false))
+            await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureFalse())
             {
                 foreach (string indexStatement in indexSqlStatements)
                 {
                     ddlStatementsList.Add(indexStatement);
-                    await sxmTransaction1.ExecuteIndexAsync(indexStatement).ConfigureAwait(false);
+                    await sxmTransaction1.ExecuteIndexAsync(indexStatement).ConfigureFalse();
                 }
 
-                await sxmTransaction1.CommitTransactionAsync().ConfigureAwait(false);
+                await sxmTransaction1.CommitTransactionAsync().ConfigureFalse();
             }
         }
 
@@ -831,11 +837,11 @@ internal static class SxmSchemaRegistration
             SxmConnection sxmConnection = new SxmConnection(databaseName, shared: false);
             try
             {
-                await SxmDatabase.AddTriggersAsync(sxmConnection, databaseName, tableName, ddlStatementsList).ConfigureAwait(false);
+                await SxmDatabase.AddTriggersAsync(sxmConnection, databaseName, tableName, ddlStatementsList).ConfigureFalse();
             }
             finally
             {
-                await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureAwait(false);
+                await (sxmConnection?.DestroyConnectionAsync() ?? Task.CompletedTask).ConfigureFalse();
             }
         }
     }

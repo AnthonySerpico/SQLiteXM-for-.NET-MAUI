@@ -1,3 +1,4 @@
+using SQLiteXM.Internal.Threading;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,8 +38,7 @@ namespace SQLiteXM
 
             try
             {
-                await Task.Delay(_suspendGracePeriod, _cts.Token)
-                          .ConfigureAwait(false);
+                await Task.Delay(_suspendGracePeriod, _cts.Token).ConfigureFalse();
             }
             catch (OperationCanceledException)
             {

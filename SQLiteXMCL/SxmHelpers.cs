@@ -66,7 +66,7 @@ namespace SQLiteXM
         {
             List<string> tableNames = new List<string>();
 
-            if (sxmConnection != null)
+            if (sxmConnection is not null)
             {
                 await sxmConnection.ExecuteQueryAsync("SELECT tableName FROM _systemCloudSynchDescriptor", null as List<object>).ConfigureFalse();
 

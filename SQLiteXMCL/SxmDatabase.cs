@@ -58,7 +58,7 @@ namespace SQLiteXM
         /// </remarks>
         public static async Task ResetForTestingAsync()
         {
-            await _initGate.WaitAsync().ConfigureAwait(false);
+            await _initGate.WaitAsync().ConfigureFalse();
             try
             {
                 // Reset SxmDatabase state
@@ -240,7 +240,7 @@ namespace SQLiteXM
             // Register all of the entities.
             foreach (var type in entityTypes)
             {
-                await SxmSchemaRegistration.RegisterEntitySchemaAsync(type).ConfigureAwait(false);
+                await SxmSchemaRegistration.RegisterEntitySchemaAsync(type).ConfigureFalse();
             }
 
             // Add a check to see if there are any unassigned triggers in the TriggerStatements collection. This would indicate
@@ -392,11 +392,23 @@ namespace SQLiteXM
                     await CreateSystemTablesAsync(databaseName).ConfigureFalse();
                     sxmConnection = new SxmConnection(databaseName, shared: true);
 
-                    if (SxmSqlStatements.TableCreateStatements != default(Dictionary<string, TableDefinition>))
+                    // One time cleanup of all existing triggers before applying any new statements. This ensures that triggers for dropped tables or
+                    // columns are removed, and prevents conflicts with triggers being recreated later in this method or in SxmSchemaRegistration.
+                    await DropTriggersAsync(sxmConnection, new List<string>()).ConfigureFalse();
+
+                    // INTERNAL IMPLEMENTATION DETAIL:
+                    // This code path is triggered by specific, undocumented entries within the otherwise supported SQL statements JSON/XML configuration file.
+                    //
+                    // The SQL statements file itself is a supported and documented extension mechanism that is safe to use in a manner consistent with its documentation.
+                    // However, certain entries are NOT documented, NOT part of any supported contract, and are not intended to be used, discovered, or relied upon.
+                    //
+                    // DO NOT use undocumented configuration entries to trigger the code path below.
+                    //
+                    // This logic exists only as an internal implementation detail. It may be changed, refactored, or removed at any time without notice.
+                    // No compatibility guarantees are provided.
+                    if (SxmSqlStatements.TableCreateStatements != default(Dictionary<string, TableDefinition>) && SxmSqlStatements.TableCreateStatements.Count > 0)
                     {
                         Hashtable tableNamesMap = new();
-
-                        await DropTriggersAsync(sxmConnection, new List<string>()).ConfigureFalse();
 
                         foreach (string DatabaseNameTableName in SxmSqlStatements.TableCreateStatements.Keys) // the 'key' string value is 'DatabaseName.TableName'
                         {
@@ -443,8 +455,11 @@ namespace SQLiteXM
             }
             finally
             {
-                if (sxmConnection != null)
+                if (sxmConnection is not null)
+                {
                     await sxmConnection.DestroyConnectionAsync().ConfigureFalse();
+                }
+
                 SxmSqlStatements.ClearStatementTables();
             }
 
@@ -1322,7 +1337,7 @@ namespace SQLiteXM
         {
             List<string> triggerNames = new List<string>();
 
-            if (sxmConnection != null)
+            if (sxmConnection is not null)
             {
                 // With parameterized call:
                 string sql = "SELECT name FROM sqlite_master WHERE type='trigger'";
