@@ -492,7 +492,8 @@ namespace SQLiteXM
                             recordData.Add(await SxmInsertHelpers.PerformInsertAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse());
                             break;
 
-                        // Direct SQL statement queries are processed here. These are statements where the SQL is embedded in the code, not inside the SqlStatemenst file.
+
+                        // Direct SQL statement queries. These are statements where the SQL is embedded in the code, not inside the SqlStatemenst file.
                         case SqlStatementType.SelectDirect:
                             recordData = await SxmSelectHelpers.PerformSelectDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
                             break;
@@ -515,13 +516,36 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, sqlStatementType);
+                string statementName = string.Empty;
+                if (sqlStatementType != SqlStatementType.SelectDirect &&
+                    sqlStatementType != SqlStatementType.UpdateDirect &&
+                    sqlStatementType != SqlStatementType.DeleteDirect &&
+                    sqlStatementType != SqlStatementType.InsertDirect)
+
+                {
+                    statementName = $"SQL statement: '{sqlStatementName}'.";
+                }
+
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"RunStatementAsync failure for statement: '{sqlStatementName}{Environment.NewLine}Statement type: '{sqlStatementType.ToString()}'.");
+                SxmLogging.Log(ex, $"RunStatementAsync failure. {statementName} Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"RunStatementAsync failure for statement: '{sqlStatementName}'{Environment.NewLine}Statement type: '{sqlStatementType.ToString()}'.";
+
+                string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, sqlStatementType);
+                string statementName = string.Empty;
+                if (sqlStatementType != SqlStatementType.SelectDirect &&
+                    sqlStatementType != SqlStatementType.UpdateDirect &&
+                    sqlStatementType != SqlStatementType.DeleteDirect &&
+                    sqlStatementType != SqlStatementType.InsertDirect)
+
+                {
+                    statementName = $"SQL statement: '{sqlStatementName}'.";
+                }
+
+                string errStr = $"RunStatementAsync failure. {statementName} Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

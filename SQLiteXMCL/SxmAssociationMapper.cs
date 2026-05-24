@@ -146,7 +146,7 @@ namespace SQLiteXM
                                 {
                                     // log a warning so maintainers see skipped FK
                                     string msg = $"Skipping FK on table '{tableName}' column '{currentSourceKey}' -> '{currentTargetTableName}.{to}'. Mapper expects target column 'id'.";
-                                    SxmLogging.Log(new System.Exception(msg), "Warning", nameof(AttachAssociationAsync));
+                                    SxmLogging.Log(new SxmWarning(msg), "Warning", nameof(AttachAssociationAsync));
                                     continue; // skip registration for this row.
                                 }
 

@@ -1570,6 +1570,47 @@ namespace SQLiteXM
             return returnDictionary;
         }
 
+
+        internal static string? SqlStatementFromStatementName(string sqlStatementName, SqlStatementType sqlStatementType)
+        {
+            string? statement = null;
+
+            switch (sqlStatementType)
+            {
+                case SqlStatementType.Select:
+                    SxmSqlStatements.SelectStatements.TryGetValue(sqlStatementName, out SelectDefinition? selectDefinition);
+                    statement = selectDefinition?.SelectSQL;
+                    break;
+
+                case SqlStatementType.Update:
+                    SxmSqlStatements.UpdateStatements.TryGetValue(sqlStatementName, out UpdateDefinition? updateDefinition);
+                    statement = updateDefinition?.UpdateSQL;
+                    break;
+
+                case SqlStatementType.Delete:
+                    SxmSqlStatements.DeleteStatements.TryGetValue(sqlStatementName, out DeleteDefinition? deleteDefinition);
+                    statement = deleteDefinition?.DeleteSQL;
+                    break;
+
+                case SqlStatementType.Insert:
+                    SxmSqlStatements.InsertStatements.TryGetValue(sqlStatementName, out InsertDefinition? insertDefinition);
+                    statement = insertDefinition?.InsertSQL;
+                    break;
+
+                // Direct SQL statements.
+                case SqlStatementType.SelectDirect:
+                case SqlStatementType.UpdateDirect:
+                case SqlStatementType.DeleteDirect:
+                case SqlStatementType.InsertDirect:
+                    statement = sqlStatementName;
+                    break;
+
+                default: break;
+            }
+
+            return statement;
+        }
+
         /// <summary>
         /// Creates an <see cref="ArgumentException"/> indicating that the provided database
         /// storage type is not supported for the mapped CLR property type.

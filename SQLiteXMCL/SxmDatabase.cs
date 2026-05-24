@@ -7,6 +7,7 @@ using System.IO;
 using System.Xml.Linq;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
+using static SQLiteXM.SxmSerialization;
 //using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
@@ -236,14 +237,20 @@ namespace SQLiteXM
             if (entityTypes == null || entityTypes.Length == 0)
                 return;
 
+            // Register all of the entities.
             foreach (var type in entityTypes)
             {
                 await SxmSchemaRegistration.RegisterEntitySchemaAsync(type).ConfigureAwait(false);
             }
 
-            // Could add a check to see if there are any unassigned triggers in the TriggerStatements collection. This would indicate
+            // Add a check to see if there are any unassigned triggers in the TriggerStatements collection. This would indicate
             // that there are triggers defined in the SQL statements file that were not applied to any registered entities, which could
             // be a configuration error worth warning about.
+            if (SxmSqlStatements.TriggerStatements.Count > 0)
+            {
+                string message = $"Check that trigger source table names match registered entity table names.{Environment.NewLine}" + string.Join(Environment.NewLine, SxmSqlStatements.TriggerStatements.Select((w, i) => $"  [{i + 1}] Unknown table: '{w.Value[i].TableName}'{Environment.NewLine}      Trigger SQL: {w.Value[i].TriggerSQL}"));
+                SxmLogging.Log(new SxmWarning(message), "Warning: Unassigned trigger(s) detected", nameof(RegisterEntitiesAsync));
+            }
         }
 
         /// <summary>
