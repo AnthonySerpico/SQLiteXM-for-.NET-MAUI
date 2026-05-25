@@ -212,9 +212,7 @@ internal static class SxmSchemaRegistration
                     stopwatch.Stop();
 
                     string message = $"{ddlStatementsList.Count} DDL statement(s) executed:{Environment.NewLine}" + string.Join(Environment.NewLine, ddlStatementsList.Select((w, i) => $"  [{i + 1}] {w}"));
-
-                    string buildOrCreate = newTable ? "Creating" : "Synchronizing";
-                    SxmLogging.Log(new SxmInformational(message), $"{buildOrCreate} schema: Database: '{databaseName}'. Table: '{tableName}'. Duration: {stopwatch.ElapsedMilliseconds}ms", $"InitializeSchemaAsync");
+                    SxmLogging.Log(new SxmInformational(message), $"{(newTable ? "Creating" : "Synchronizing")} schema: Database: '{databaseName}'. Table: '{tableName}'. Duration: {stopwatch.ElapsedMilliseconds}ms", $"InitializeSchemaAsync");
                 }),
                 LazyThreadSafetyMode.ExecutionAndPublication
             )
