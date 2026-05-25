@@ -248,7 +248,15 @@ namespace SQLiteXM
             // be a configuration error worth warning about.
             if (SxmSqlStatements.TriggerStatements.Count > 0)
             {
-                string message = $"Check that trigger source table names match registered entity table names.{Environment.NewLine}" + string.Join(Environment.NewLine, SxmSqlStatements.TriggerStatements.Select((w, i) => $"  [{i + 1}] Unknown table: '{w.Value[i].TableName}'{Environment.NewLine}      Trigger SQL: {w.Value[i].TriggerSQL}"));
+                IEnumerable<string?> unassignedTriggers = SxmSqlStatements.TriggerStatements
+                    .SelectMany((KeyValuePair<string, List<TriggerDefinition>> kvp) => kvp.Value.Select((triggerDefinition, index) => new { 
+                        Database = kvp.Key, 
+                        TriggerDefinition = triggerDefinition, 
+                        Index = index 
+                    }))
+                    .Select((item, i) => $"  [{i + 1}] Unknown Table: '{item.TriggerDefinition.TableName}'{Environment.NewLine}      Trigger SQL: {item.TriggerDefinition.TriggerSQL}");
+
+                string message = $"Check that trigger source table names match registered entity table names.{Environment.NewLine}" + string.Join(Environment.NewLine, unassignedTriggers);
                 SxmLogging.Log(new SxmWarning(message), "Warning: Unassigned trigger(s) detected", nameof(RegisterEntitiesAsync));
             }
         }

@@ -3,8 +3,11 @@ using LinqToDB.SqlQuery;
 using SQLiteXM.Internal.Threading;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
@@ -13,10 +16,34 @@ using static SQLiteXM.SxmDefines;
 namespace SQLiteXM
 {
     /// <summary>
-    /// Base class for mapped entities that provides persistence operations (Save, Update, Delete)
-    /// and property mapping utilities for domain entities.
+    /// Base class for mapped entities that provides persistence operations (Save, Update, Delete),
+    /// property mapping utilities, and built-in support for .NET MAUI data binding.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <strong>MAUI Data Binding Support:</strong>
+    /// SxmEntity implements <see cref="INotifyPropertyChanged"/> to enable seamless integration
+    /// with .NET MAUI's data binding system. Use the <see cref="SetProperty{T}"/> helper method
+    /// in your property setters to automatically notify the UI when values change.
+    /// </para>
+    /// 
+    /// <code>
+    /// [Table(IsColumnAttributeRequired = false)]
+    /// public class Customer : SxmEntity
+    /// {
+    ///     private string? _name;
+    ///     public string? Name
+    ///     {
+    ///         get => _name;
+    ///         set => SetProperty(ref _name, value);  // Automatically notifies UI
+    ///     }
+    /// }
+    /// 
+    /// // In XAML:
+    /// // &lt;Entry Text="{Binding Customer.Name}" /&gt;
+    /// // Changes to Customer.Name will automatically update the UI
+    /// </code>
+    /// 
     /// <para>
     /// <strong>Schema Registration:</strong>
     /// Entity schema (tables, indexes, triggers, foreign keys) must be registered explicitly at
@@ -122,8 +149,243 @@ namespace SQLiteXM
     /// </remarks>
 
     [Table(IsColumnAttributeRequired = false)]
-    public class SxmEntity
+    public class SxmEntity : INotifyPropertyChanged
     {
+        #region INotifyPropertyChanged Implementation
+
+        /// <summary>
+        /// Occurs when a property value changes. This event is used by .NET MAUI's data binding system
+        /// to automatically update the UI when entity properties are modified.
+        /// </summary>
+        /// <remarks>
+        /// You typically don't need to subscribe to this event directly. The MAUI binding system
+        /// handles subscriptions automatically when you bind controls to entity properties.
+        /// </remarks>
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        /// <summary>
+        /// Raises the <see cref="PropertyChanged"/> event to notify listeners that a property value has changed.
+        /// </summary>
+        /// <param name="propertyName">
+        /// The name of the property that changed. This parameter is automatically provided by the compiler
+        /// when called from a property setter using the <see cref="CallerMemberNameAttribute"/>.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// This method is typically called by the <see cref="SetProperty{T}"/> helper, which handles
+        /// both value comparison and notification. You can call this method directly for computed
+        /// properties or when you need to notify changes without using <see cref="SetProperty{T}"/>.
+        /// </para>
+        /// <para>
+        /// <strong>Example - Computed Property:</strong>
+        /// </para>
+        /// <code>
+        /// private string? _firstName;
+        /// public string? FirstName
+        /// {
+        ///     get => _firstName;
+        ///     set
+        ///     {
+        ///         if (SetProperty(ref _firstName, value))
+        ///             OnPropertyChanged(nameof(FullName));  // Notify dependent property
+        ///     }
+        /// }
+        /// 
+        /// public string FullName => $"{FirstName} {LastName}";
+        /// </code>
+        /// </remarks>
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        /// <summary>
+        /// Sets the property value and raises <see cref="PropertyChanged"/> if the new value differs from the current value.
+        /// </summary>
+        /// <typeparam name="T">The type of the property.</typeparam>
+        /// <param name="storage">Reference to the backing field that stores the property value.</param>
+        /// <param name="value">The new value to assign to the property.</param>
+        /// <param name="propertyName">
+        /// The name of the property being set. This parameter is automatically provided by the compiler
+        /// using the <see cref="CallerMemberNameAttribute"/> when called from a property setter.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> if the value was changed and the event was raised; <c>false</c> if the new value
+        /// is equal to the current value (no change, no event raised).
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This is the recommended way to implement property setters in entities that will be bound to MAUI UI controls.
+        /// It performs three operations automatically:
+        /// </para>
+        /// <list type="number">
+        ///   <item><description>Compares the new value with the current value using <see cref="EqualityComparer{T}"/></description></item>
+        ///   <item><description>Updates the backing field if values differ</description></item>
+        ///   <item><description>Raises <see cref="PropertyChanged"/> to notify the UI</description></item>
+        /// </list>
+        /// 
+        /// <para>
+        /// <strong>Standard Usage:</strong>
+        /// </para>
+        /// <code>
+        /// [Table(IsColumnAttributeRequired = false)]
+        /// public class Customer : SxmEntity
+        /// {
+        ///     private string? _name;
+        ///     public string? Name
+        ///     {
+        ///         get => _name;
+        ///         set => SetProperty(ref _name, value);
+        ///     }
+        /// 
+        ///     private string? _email;
+        ///     public string? Email
+        ///     {
+        ///         get => _email;
+        ///         set => SetProperty(ref _email, value);
+        ///     }
+        /// }
+        /// </code>
+        /// 
+        /// <para>
+        /// <strong>Mixed Approach (some properties bindable, others not):</strong>
+        /// </para>
+        /// <code>
+        /// public class Order : SxmEntity
+        /// {
+        ///     // Bindable property for UI
+        ///     private decimal _total;
+        ///     public decimal Total
+        ///     {
+        ///         get => _total;
+        ///         set => SetProperty(ref _total, value);
+        ///     }
+        /// 
+        ///     // Simple auto-property (not bound to UI)
+        ///     [ForeignKey(foreignTable: "Customer")]
+        ///     public long CustomerFK { get; set; }
+        /// }
+        /// </code>
+        /// 
+        /// <para>
+        /// <strong>Performance Note:</strong>
+        /// The equality check prevents unnecessary UI updates and event notifications when the same value
+        /// is assigned multiple times. This is especially important in scenarios like data binding where
+        /// the UI may attempt to write back the same value it just read.
+        /// </para>
+        /// </remarks>
+        protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
+        {
+            // Use default equality comparer for the type (handles null, value types, reference types)
+            if (EqualityComparer<T>.Default.Equals(storage, value))
+                return false;
+
+            storage = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
+
+        /// <summary>
+        /// Sets the property value, raises <see cref="PropertyChanged"/>, and executes a callback if the value differs.
+        /// </summary>
+        /// <typeparam name="T">The type of the property.</typeparam>
+        /// <param name="storage">Reference to the backing field that stores the property value.</param>
+        /// <param name="value">The new value to assign to the property.</param>
+        /// <param name="onChanged">
+        /// Action to execute after the property has changed and the <see cref="PropertyChanged"/> event has been raised.
+        /// This is useful for triggering side effects or updating dependent properties.
+        /// </param>
+        /// <param name="propertyName">
+        /// The name of the property being set. This parameter is automatically provided by the compiler
+        /// using the <see cref="CallerMemberNameAttribute"/> when called from a property setter.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> if the value was changed and the callback was executed; <c>false</c> if the new value
+        /// is equal to the current value (no change, no callback).
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// Use this overload when changing a property should trigger additional logic, such as updating
+        /// computed properties, validating related fields, or triggering business logic.
+        /// </para>
+        /// 
+        /// <para>
+        /// <strong>Example - Updating Dependent Properties:</strong>
+        /// </para>
+        /// <code>
+        /// [Table]
+        /// public class ShoppingCart : SxmEntity
+        /// {
+        ///     private int _quantity;
+        ///     public int Quantity
+        ///     {
+        ///         get => _quantity;
+        ///         set => SetProperty(ref _quantity, value, () =>
+        ///         {
+        ///             // Recalculate total when quantity changes
+        ///             OnPropertyChanged(nameof(Total));
+        ///             OnPropertyChanged(nameof(DisplayText));
+        ///         });
+        ///     }
+        /// 
+        ///     private decimal _price;
+        ///     public decimal Price
+        ///     {
+        ///         get => _price;
+        ///         set => SetProperty(ref _price, value, () =>
+        ///         {
+        ///             // Recalculate total when price changes
+        ///             OnPropertyChanged(nameof(Total));
+        ///         });
+        ///     }
+        /// 
+        ///     public decimal Total => Quantity * Price;
+        ///     public string DisplayText => $"{Quantity} x ${Price:F2} = ${Total:F2}";
+        /// }
+        /// </code>
+        /// 
+        /// <para>
+        /// <strong>Example - Validation:</strong>
+        /// </para>
+        /// <code>
+        /// private string? _email;
+        /// public string? Email
+        /// {
+        ///     get => _email;
+        ///     set => SetProperty(ref _email, value, () =>
+        ///     {
+        ///         // Validate email format after change
+        ///         IsEmailValid = !string.IsNullOrEmpty(value) &amp;&amp; value.Contains("@");
+        ///         OnPropertyChanged(nameof(IsEmailValid));
+        ///     });
+        /// }
+        /// 
+        /// public bool IsEmailValid { get; private set; }
+        /// </code>
+        /// 
+        /// <para>
+        /// <strong>Execution Order:</strong>
+        /// </para>
+        /// <list type="number">
+        ///   <item><description>Compare new value with current value</description></item>
+        ///   <item><description>If different: update backing field</description></item>
+        ///   <item><description>Raise <see cref="PropertyChanged"/> for the property</description></item>
+        ///   <item><description>Execute the <paramref name="onChanged"/> callback</description></item>
+        /// </list>
+        /// </remarks>
+        protected bool SetProperty<T>(ref T storage, T value, Action onChanged, [CallerMemberName] string? propertyName = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(storage, value))
+                return false;
+
+            storage = value;
+            OnPropertyChanged(propertyName);
+            onChanged?.Invoke();
+            return true;
+        }
+
+        #endregion
+
         // Cache mapping CLR `Type` -> resolved `[Table].Database` (or `null` when missing/empty).
         // Thread-safe ConcurrentDictionary used to avoid repeated reflection on first access.
         private static readonly ConcurrentDictionary<Type, string?> _tableAttributeNameCache = new ConcurrentDictionary<Type, string?>();
