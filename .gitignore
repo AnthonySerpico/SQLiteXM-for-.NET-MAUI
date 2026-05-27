@@ -360,4 +360,7 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
+
+# Temporary PowerShell utility scripts
+*.ps1
 FodyWeavers.xsd

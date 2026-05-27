@@ -487,16 +487,16 @@ namespace SQLiteXM
         /// <returns>The configured table/database name from <see cref="TableAttribute"/>, or <c>null</c> when not set.</returns>
         internal string? ResolveTableAttributeDatabaseName()
         {
-            Type ctorType = GetType();
+            Type entityType = GetType();
 
-            if (_tableAttributeNameCache.TryGetValue(ctorType, out string? cachedName))
-                return cachedName;
+            if (_tableAttributeNameCache.TryGetValue(entityType, out string? databaseName))
+                return databaseName;
 
-            string? resolved = _tableAttributeNameCache.GetOrAdd(ctorType, t =>
+            string? resolved = _tableAttributeNameCache.GetOrAdd(entityType, t =>
             {
-                TableAttribute? tbl = t.GetCustomAttribute<TableAttribute>(inherit: false);
-                string? name = tbl?.DatabaseName;
-                return string.IsNullOrWhiteSpace(name) ? null : name;
+                TableAttribute? tableAttribute = t.GetCustomAttribute<TableAttribute>(inherit: false);
+                string? databaseName = tableAttribute?.DatabaseName;
+                return string.IsNullOrWhiteSpace(databaseName) ? null : databaseName;
             });
 
             return resolved;
@@ -631,25 +631,25 @@ namespace SQLiteXM
             {
                 BuildSaveSql();
 
-                if (!_insertGuidDict.TryGetValue(tableName, out var insertGuid) || string.IsNullOrEmpty(insertGuid))
+                if (!_insertGuidDict.TryGetValue(tableName, out string? insertStatementName) || string.IsNullOrEmpty(insertStatementName))
                     throw new InvalidOperationException($"Insert statement not found for '{tableName}'.");
 
                 if (sxmTrans == null)
-                    await InsertAsync(insertGuid).ConfigureFalse();
+                    await InsertAsync(insertStatementName).ConfigureFalse();
                 else
-                    await InsertAsync(insertGuid, sxmTrans).ConfigureFalse();
+                    await InsertAsync(insertStatementName, sxmTrans).ConfigureFalse();
             }
             else
             {
                 BuildUpdateSql();
 
-                if (!_updateGuidDict.TryGetValue(tableName, out var updateGuid) || string.IsNullOrEmpty(updateGuid))
+                if (!_updateGuidDict.TryGetValue(tableName, out string? updateStatementName) || string.IsNullOrEmpty(updateStatementName))
                     throw new InvalidOperationException($"Update statement not found for '{tableName}'.");
 
                 if (sxmTrans == null)
-                    await UpdateAsync(updateGuid).ConfigureFalse();
+                    await UpdateAsync(updateStatementName).ConfigureFalse();
                 else
-                    await UpdateAsync(updateGuid, sxmTrans).ConfigureFalse();
+                    await UpdateAsync(updateStatementName, sxmTrans).ConfigureFalse();
             }
         }
 
@@ -698,14 +698,14 @@ namespace SQLiteXM
             BuildDeleteSql();
             string tableName = this.GetType().Name;
 
-            if (!_deleteGuidDict.TryGetValue(tableName, out var deleteGuid) || string.IsNullOrEmpty(deleteGuid))
+            if (!_deleteGuidDict.TryGetValue(tableName, out string? deleteStatementName) || string.IsNullOrEmpty(deleteStatementName))
                 throw new InvalidOperationException($"Delete statement not found for '{tableName}'.");
 
             // If no transaction supplied, perform non-transactional delete; otherwise use the provided transaction.
             if (sxmTrans == null)
-                await DeleteAsync(deleteGuid).ConfigureFalse();
+                await DeleteAsync(deleteStatementName).ConfigureFalse();
             else
-                await DeleteAsync(deleteGuid, sxmTrans).ConfigureFalse();
+                await DeleteAsync(deleteStatementName, sxmTrans).ConfigureFalse();
         }
 
         // Delete statements.
@@ -729,7 +729,7 @@ namespace SQLiteXM
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
             // The per-type column map must already exist. Fail fast if not.
-            if (!_columnNameAndTypeDict.TryGetValue(tableName, out var perTypeColumns))
+            if (!_columnNameAndTypeDict.TryGetValue(tableName, out ConcurrentDictionary<string, string>? perTypeColumns))
                 throw new InvalidOperationException($"Column map for type '{tableName}' is not initialized. Schema must be registered via SxmDatabase.RegisterEntitiesAsync before using entities.");
 
 
@@ -753,9 +753,9 @@ namespace SQLiteXM
                     insertStatement = $"INSERT INTO {quotedTable} ({insertColumns}) VALUES ({insertValues})";
                 }
 
-                string newGuid = Guid.NewGuid().ToString();
-                SxmSqlStatements.AddInsertDefinition(newGuid, tableName, insertStatement);
-                return newGuid;
+                string statementName = Guid.NewGuid().ToString();
+                SxmSqlStatements.AddInsertDefinition(statementName, tableName, insertStatement);
+                return statementName;
             });
         }
 
@@ -784,10 +784,10 @@ namespace SQLiteXM
 
                 string setClause = string.Join(", ", columns.Select(c => $"{SxmHelpers.QuoteIdentifier(c)}=@{c}"));
                 string updateStatement = $"UPDATE {quotedTable} SET {setClause} WHERE {SxmHelpers.QuoteIdentifier("id")}=@id";
-                string newGuid = Guid.NewGuid().ToString();
+                string statementName = Guid.NewGuid().ToString();
 
-                SxmSqlStatements.AddUpdateDefinition(newGuid, tableName, updateStatement);
-                return newGuid;
+                SxmSqlStatements.AddUpdateDefinition(statementName, tableName, updateStatement);
+                return statementName;
             });
         }
 

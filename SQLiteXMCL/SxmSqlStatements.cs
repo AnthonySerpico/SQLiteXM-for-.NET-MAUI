@@ -85,43 +85,43 @@ namespace SQLiteXM
         /// <summary>
         /// Adds a named insert definition.
         /// </summary>
-        /// <param name="insertName">The name used to reference the insert statement.</param>
+        /// <param name="statementName">The name used to reference the insert statement.</param>
         /// <param name="tableName">The target table name for the insert.</param>
         /// <param name="insertSQL">The SQL text of the insert statement.</param>
-        internal static void AddInsertDefinition(string insertName, string tableName, string insertSQL)
+        internal static void AddInsertDefinition(string statementName, string tableName, string insertSQL)
         {
-            insertName = insertName.Trim();
+            statementName = statementName.Trim();
 
-            if (!InsertStatements.ContainsKey(insertName))
-                InsertStatements.Add(insertName, new InsertDefinition(tableName.Trim(), insertSQL.Trim()));
+            if (!InsertStatements.ContainsKey(statementName))
+                InsertStatements.Add(statementName, new InsertDefinition(tableName.Trim(), insertSQL.Trim()));
         }
 
         /// <summary>
         /// Adds a named select definition.
         /// </summary>
-        /// <param name="selectName">The name used to reference the select statement.</param>
+        /// <param name="statementName">The name used to reference the select statement.</param>
         /// <param name="tableName">The table that the select targets.</param>
         /// <param name="selectSQL">The SQL text of the select statement.</param>
-        internal static void AddSelectDefinition(string selectName, string tableName, string selectSQL)
+        internal static void AddSelectDefinition(string statementName, string tableName, string selectSQL)
         {
-            selectName = selectName.Trim();
+            statementName = statementName.Trim();
 
-            if (!SelectStatements.ContainsKey(selectName))
-                SelectStatements.Add(selectName, new SelectDefinition(tableName.Trim(), selectSQL.Trim()));
+            if (!SelectStatements.ContainsKey(statementName))
+                SelectStatements.Add(statementName, new SelectDefinition(tableName.Trim(), selectSQL.Trim()));
         }
 
         /// <summary>
         /// Adds a named update definition.
         /// </summary>
-        /// <param name="updateName">The name used to reference the update statement.</param>
+        /// <param name="statementName">The name used to reference the update statement.</param>
         /// <param name="tableName">The table that the update targets.</param>
         /// <param name="updateSQL">The SQL text of the update statement.</param>
-		internal static void AddUpdateDefinition(string updateName, string tableName, string updateSQL)
+		internal static void AddUpdateDefinition(string statementName, string tableName, string updateSQL)
         {
-            updateName = updateName.Trim();
+            statementName = statementName.Trim();
 
-            if (!UpdateStatements.ContainsKey(updateName))
-                UpdateStatements.Add(updateName, new UpdateDefinition(tableName.Trim(), updateSQL.Trim()));
+            if (!UpdateStatements.ContainsKey(statementName))
+                UpdateStatements.Add(statementName, new UpdateDefinition(tableName.Trim(), updateSQL.Trim()));
         }
 
         /// <summary>
