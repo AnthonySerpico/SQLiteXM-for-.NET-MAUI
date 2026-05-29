@@ -12,12 +12,9 @@ namespace SQLiteXM
     {
         private static ConcurrentBag<string> _dbDescriptors = new();
 
-        private static string? _defaultDatabase;
         public static string? DefaultDatabase
         {
-            get { 
-                return _defaultDatabase; 
-            }
+            get { return SxmProcessSQLStatements.DefaultDatabaseName; }
         }
 
         /// <summary>
@@ -55,6 +52,16 @@ namespace SQLiteXM
             }
         }
 
+        internal static void SxmDatabaseDescriptorFactory()
+        {
+            // At this point, the SQL statements file has been parsed, and all database definitions have been loaded into SxmProcessSQLStatements.
+            // Create descriptors for all parsed databases (not just the default).
+            foreach (string dbName in SxmProcessSQLStatements.Databases)
+            {
+                new SxmDatabaseDescriptor(dbName);
+            }
+        }
+
         /// <summary>
         /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the database name provided by <see cref="SxmDatabaseDescriptor.DefaultDatabase"/>.
         /// </summary>
@@ -63,23 +70,25 @@ namespace SQLiteXM
         /// The constructor avoids double-creation of descriptors, validates the database name, ensures the database file exists,
         /// registers the descriptor, and initializes logging for the database.
         /// </remarks>
-        internal SxmDatabaseDescriptor()
+        internal SxmDatabaseDescriptor() : this(SxmProcessSQLStatements.DefaultDatabaseName)
         {
-            string databaseName = SxmProcessSQLStatements.DatabaseName;
+        }
 
+        /// <summary>
+        /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the specified database name.
+        /// </summary>
+        /// <param name="databaseName">The name of the database to create a descriptor for.</param>
+        /// <remarks>
+        /// The constructor avoids double-creation of descriptors, validates the database name, ensures the database file exists,
+        /// registers the descriptor, and initializes logging for the database.
+        /// </remarks>
+        internal SxmDatabaseDescriptor(string databaseName)
+        {
             try
             {
                 // Avoid double-creation without relying on a coarse lock.
                 if (_dbDescriptors.Contains(databaseName))
                     return;
-
-                if (SxmProcessSQLStatements.IsDefaultDatabase)
-                {
-                    if (SxmDatabaseDescriptor.DefaultDatabase != null)
-                        throw new ArgumentException($"Invalid default database. The databse {SxmDatabaseDescriptor.DefaultDatabase} was already set as the default databse when you tried to set the database {databaseName} as the default database. There can only be one default database.");
-
-                    SxmDatabaseDescriptor._defaultDatabase = databaseName;
-                }
 
                 CreateDB(databaseName);
 
@@ -108,11 +117,11 @@ namespace SQLiteXM
             const long defaultMaxLogSize = 4 * 1024 * 1024; // 4 MB
             string logFileName = databaseName + ".log";
 
-            string? logPath = SxmDatabaseDescriptor.DatabaseFolder;
-            if (logPath == null)
+            string? logFilePath = SxmDatabaseDescriptor.DatabaseFolder;
+            if (logFilePath == null)
                 throw new InvalidOperationException("Database folder path is not configured for logging.");
 
-            SxmLogging.SxmLoggingFactory(logFileName, logPath, defaultMaxLogSize);
+            SxmLogging.SxmLoggingFactory(logFileName, logFilePath, defaultMaxLogSize);
         }
 
         private void CreateDB(string databaseName)
@@ -165,7 +174,6 @@ namespace SQLiteXM
         internal static void ResetForTesting()
         {
             _dbDescriptors = new ConcurrentBag<string>();
-            _defaultDatabase = null;
             _databaseFolder = null;
         }
 #endif

@@ -6,7 +6,7 @@ namespace SQLiteXM.Tests;
 /// <summary>
 /// Tests for fail-fast behavior when using deterministic schema registration incorrectly.
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class FailFastTests : TestBase
 {
     [Fact]

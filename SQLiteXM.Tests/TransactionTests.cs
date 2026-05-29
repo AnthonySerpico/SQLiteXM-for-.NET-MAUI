@@ -6,7 +6,7 @@ namespace SQLiteXM.Tests;
 /// <summary>
 /// Tests for transaction support with entities.
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class TransactionTests : TestBase
 {
     [Fact]

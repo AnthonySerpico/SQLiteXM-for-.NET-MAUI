@@ -11,21 +11,7 @@ namespace SQLiteXM
     /// </summary>
     public class SxmSqlStatements
     {
-        /// <summary>
-        /// Table create definitions keyed by "database.table".
-        /// </summary>
         internal static Dictionary<string, TableDefinition>? TableCreateStatements = new Dictionary<string, TableDefinition>();
-
-        /// <summary>
-        /// ALTER statements keyed by "database.table".
-        /// </summary>
-        internal static Dictionary<string, List<AlterDefinition>>? AlterStatements = default(Dictionary<string, List<AlterDefinition>>);
-
-        /// <summary>
-        /// Index definitions keyed by "database.table".
-        /// </summary>
-		internal static Dictionary<string, List<IndexDefinition>>? IndexStatements = default(Dictionary<string, List<IndexDefinition>>);
-
         /// <summary>
         /// Trigger definitions keyed by database name.
         /// </summary>
@@ -139,43 +125,6 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Adds an index definition for a database table.
-        /// </summary>
-        /// <param name="dbAndTableName">The combined database and table name used as the key.</param>
-        /// <param name="indexName">The name of the index.</param>
-        /// <param name="sqlStatement">The SQL text that creates the index.</param>
-		internal static void AddIndexDefinition(string dbAndTableName, string indexName, string sqlStatement)
-        {
-            dbAndTableName = dbAndTableName.Trim();
-            sqlStatement = sqlStatement.Trim();
-            indexName = indexName.Trim();
-
-            if (IndexStatements == null)
-                IndexStatements = new Dictionary<string, List<IndexDefinition>>();
-
-            IndexStatements.TryGetValue(dbAndTableName, out List<IndexDefinition>? indexStatementsList);
-            if (indexStatementsList == null)
-            {
-                indexStatementsList = new List<IndexDefinition>();
-                IndexStatements.Add(dbAndTableName, indexStatementsList);
-            }
-
-            indexStatementsList.Add(new IndexDefinition(indexName, sqlStatement));
-        }
-
-        /// <summary>
-        /// Removes all index definitions and resets the index store to uninitialized.
-        /// </summary>
-        internal static void RemoveIndexDefinitions()
-        {
-            if (IndexStatements != default(Dictionary<string, List<IndexDefinition>>))
-            {
-                IndexStatements.Clear();
-                IndexStatements = default(Dictionary<string, List<IndexDefinition>>);
-            }
-        }
-
-        /// <summary>
         /// Adds a trigger definition for the specified database.
         /// </summary>
         /// <param name="dbName">The database name the trigger belongs to.</param>
@@ -206,31 +155,6 @@ namespace SQLiteXM
                 triggerStatementsList = new List<TriggerDefinition>();
                 TriggerStatements[dbName] = triggerStatementsList;
             }
-        }
-
-        /// <summary>
-        /// Adds an ALTER definition for a specific database.table entry.
-        /// </summary>
-        /// <param name="dbAndTableName">The combined database and table name used as the key.</param>
-        /// <param name="columnName">The column being altered.</param>
-        /// <param name="sqlStatement">The SQL text of the ALTER operation.</param>
-        internal static void AddAlterDefinition(string dbAndTableName, string columnName, string sqlStatement)
-        {
-            dbAndTableName = dbAndTableName.Trim();
-            sqlStatement = sqlStatement.Trim();
-            columnName = columnName.Trim();
-
-            if (AlterStatements == null)
-                AlterStatements = new Dictionary<string, List<AlterDefinition>>();
-
-            AlterStatements.TryGetValue(dbAndTableName, out List<AlterDefinition>? alterStatementsList);
-            if (alterStatementsList == null)
-            {
-                alterStatementsList = new List<AlterDefinition>();
-                AlterStatements.Add(dbAndTableName, alterStatementsList);
-            }
-
-            alterStatementsList.Add(new AlterDefinition(columnName, sqlStatement));
         }
 
         /// <summary>
@@ -285,22 +209,10 @@ namespace SQLiteXM
         /// </summary>
         internal static void ClearStatementTables()
         {
-            if (AlterStatements != default(Dictionary<string, List<AlterDefinition>>))
-            {
-                AlterStatements.Clear();
-                AlterStatements = default(Dictionary<string, List<AlterDefinition>>);
-            }
-
             if (TableCreateStatements != default(Dictionary<string, TableDefinition>))
             {
                 TableCreateStatements?.Clear();
                 TableCreateStatements = default(Dictionary<string, TableDefinition>)!;
-            }
-
-            if (IndexStatements != default(Dictionary<string, List<IndexDefinition>>))
-            {
-                IndexStatements.Clear();
-                IndexStatements = default(Dictionary<string, List<IndexDefinition>>);
             }
         }
 
@@ -312,8 +224,6 @@ namespace SQLiteXM
         internal static void ResetForTesting()
         {
             TableCreateStatements?.Clear();
-            AlterStatements?.Clear();
-            IndexStatements?.Clear();
             TriggerStatements?.Clear();
             InsertStatements?.Clear();
             SelectStatements?.Clear();
@@ -321,8 +231,6 @@ namespace SQLiteXM
             DeleteStatements?.Clear();
 
             TableCreateStatements = new Dictionary<string, TableDefinition>();
-            AlterStatements = default;
-            IndexStatements = default;
             TriggerStatements = new ConcurrentDictionary<string, List<TriggerDefinition>>(StringComparer.Ordinal);
             InsertStatements = new Dictionary<string, InsertDefinition>();
             SelectStatements = new Dictionary<string, SelectDefinition>();

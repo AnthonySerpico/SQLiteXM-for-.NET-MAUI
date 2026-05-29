@@ -12,11 +12,13 @@ namespace SQLiteXM
     /// Class-level table attribute (alias to <c>LinqToDB.Mapping.TableAttribute</c>).
     /// Apply to a class to specify the mapped database table name.
     /// </summary>
+    /// <remarks>
+    /// The <see cref="LinqToDB.Mapping.TableAttribute.Database"/> property specifies which database 
+    /// this entity belongs to in a multi-database configuration.
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public class TableAttribute : LinqToDB.Mapping.TableAttribute
     {
-        public string? DatabaseName { get; set; }
-
         /// <summary>
         /// Initializes a new instance of the <see cref="TableAttribute"/> class.
         /// Uses the default table name resolution from LinqToDB.

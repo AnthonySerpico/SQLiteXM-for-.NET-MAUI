@@ -8,9 +8,15 @@ namespace SQLiteXM.Tests;
 /// Verifies that multiple workers can execute concurrently against a shared connection
 /// with proper lease management and deterministic cleanup.
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class ConnectionManagerWorkerTests : TestBase
 {
+    public ConnectionManagerWorkerTests()
+    {
+        // Ensure database and entities are registered (multi-database tests may have reset)
+        InitializeSqliteXMAsync().GetAwaiter().GetResult();
+    }
+
     [Fact]
     public async Task RunWorkersAsync_TwoWorkers_ShouldExecuteConcurrently()
     {

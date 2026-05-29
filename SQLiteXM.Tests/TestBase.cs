@@ -145,12 +145,18 @@ public abstract class TestBase : IDisposable
     /// </summary>
     private static void CreateTestSqlStatementsFile()
     {
-        // Match the RootJson structure: database, isDefault, version at root level
+        // Match the new RootJson structure: version and databases array at root level
         var config = new
         {
-            database = TestDatabaseName,
-            isDefault = true,
-            version = 1L
+            version = 1L,
+            databases = new[]
+            {
+                new
+                {
+                    database = TestDatabaseName,
+                    isDefault = true
+                }
+            }
             // No need for Table, Insert, etc. arrays - SQLiteXM entities create their own schema
         };
 
@@ -561,21 +567,23 @@ public abstract class TestBase : IDisposable
 
         if (disposing)
         {
-            try
-            {
-                // Give a small delay for any pending file operations
-                Thread.Sleep(100);
-
-                // Delete entire test directory
-                if (Directory.Exists(TestDatabaseFolder))
-                {
-                    Directory.Delete(TestDatabaseFolder, recursive: true);
-                }
-            }
-            catch
-            {
-                // Ignore cleanup errors in tests
-            }
+            // DO NOT delete the test database folder here!
+            // The database is SHARED across all test classes (initialized once in static constructor).
+            // Deleting it here would break subsequent test classes.
+            // 
+            // The temp folder cleanup happens automatically by the OS, or can be done manually
+            // between full test suite runs if needed.
+            //
+            // Original problematic code that deleted shared resources:
+            // try
+            // {
+            //     Thread.Sleep(100);
+            //     if (Directory.Exists(TestDatabaseFolder))
+            //     {
+            //         Directory.Delete(TestDatabaseFolder, recursive: true);
+            //     }
+            // }
+            // catch { }
         }
 
         _disposed = true;

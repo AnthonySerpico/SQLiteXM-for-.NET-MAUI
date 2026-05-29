@@ -17,78 +17,6 @@ namespace SQLiteXM
         // }
 
         /// <summary>
-        /// Represents a table entry in an XML SQL statements file.
-        /// </summary>
-        [XmlRoot(ElementName = "table")]
-        public class Table
-        {
-
-            /// <summary>
-            /// The name of the table (as found in the source SQL definition).
-            /// </summary>
-            [XmlElement(ElementName = "TableName")]
-            public string? TableName { get; set; }
-
-            /// <summary>
-            /// The SQL statement text used to create or define the table.
-            /// </summary>
-            [XmlElement(ElementName = "Statement")]
-            public string? Statement { get; set; }
-        }
-
-        /// <summary>
-        /// Represents an alter (column) entry in an XML SQL statements file.
-        /// </summary>
-        [XmlRoot(ElementName = "alter")]
-        public class Alter
-        {
-
-            /// <summary>
-            /// The column name affected by the alter command.
-            /// </summary>
-            [XmlElement(ElementName = "ColumnName")]
-            public string? ColumnName { get; set; }
-
-            /// <summary>
-            /// The table name associated with the alter command.
-            /// </summary>
-            [XmlElement(ElementName = "TableName")]
-            public string? TableName { get; set; }
-
-            /// <summary>
-            /// The SQL alter statement text.
-            /// </summary>
-            [XmlElement(ElementName = "Statement")]
-            public string? Statement { get; set; }
-        }
-
-        /// <summary>
-        /// Represents an index definition entry in an XML SQL statements file.
-        /// </summary>
-        [XmlRoot(ElementName = "index")]
-        public class Index
-        {
-
-            /// <summary>
-            /// The index name.
-            /// </summary>
-            [XmlElement(ElementName = "IndexName")]
-            public string? IndexName { get; set; }
-
-            /// <summary>
-            /// The table name the index belongs to.
-            /// </summary>
-            [XmlElement(ElementName = "TableName")]
-            public string? TableName { get; set; }
-
-            /// <summary>
-            /// The SQL index statement text.
-            /// </summary>
-            [XmlElement(ElementName = "Statement")]
-            public string? Statement { get; set; }
-        }
-
-        /// <summary>
         /// Represents an insert statement entry in an XML SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "insert")]
@@ -193,11 +121,37 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Represents a database definition entry in the SQL statements file.
+        /// </summary>
+        [XmlRoot(ElementName = "Database")]
+        public class Database
+        {
+            /// <summary>
+            /// The database name.
+            /// </summary>
+            [XmlElement(ElementName = "database")]
+            public string? database { get; set; }
+
+            /// <summary>
+            /// Flag indicating if this is the default database.
+            /// </summary>
+            [XmlElement(ElementName = "isDefault")]
+            public bool isDefault { get; set; }
+        }
+
+        /// <summary>
         /// Represents a trigger entry in an XML SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "trigger")]
         public class Trigger
         {
+
+            /// <summary>
+            /// The database name where the trigger will be created.
+            /// This field is required for all trigger definitions.
+            /// </summary>
+            [XmlElement(ElementName = "Database")]
+            public string? Database { get; set; }
 
             /// <summary>
             /// The trigger name.
@@ -221,40 +175,16 @@ namespace SQLiteXM
         {
 
             /// <summary>
-            /// Database identifier/name included in the SQL statements file.
-            /// </summary>
-            [XmlElement(ElementName = "database")]
-            public string? Database { get; set; }
-
-            /// <summary>
-            /// Is default database flag.
-            /// </summary>
-            [XmlElement(ElementName = "isDefault")]
-            public bool IsDefault { get; set; }
-
-            /// <summary>
             /// Version number of the SQL statements file format/content.
             /// </summary>
             [XmlElement(ElementName = "version")]
             public long Version { get; set; }
 
             /// <summary>
-            /// Collection of table definitions.
+            /// Collection of database definitions.
             /// </summary>
-            [XmlElement(ElementName = "table")]
-            public List<Table>? Table { get; set; }
-
-            /// <summary>
-            /// Collection of alter definitions.
-            /// </summary>
-            [XmlElement(ElementName = "alter")]
-            public List<Alter>? Alter { get; set; }
-
-            /// <summary>
-            /// Collection of index definitions.
-            /// </summary>
-            [XmlElement(ElementName = "index")]
-            public List<Index>? Index { get; set; }
+            [XmlElement(ElementName = "Database")]
+            public List<Database>? Databases { get; set; }
 
             /// <summary>
             /// Collection of insert statements.
@@ -295,27 +225,19 @@ namespace SQLiteXM
         public class RootJson
         {
             /// <summary>
-            /// Database identifier/name included in the SQL statements file.
-            /// </summary>
-            public string? database { get; set; }
-
-            /// <summary>
-            /// Default database flag.
-            /// </summary>
-            public bool isDefault { get; set; }
-
-            /// <summary>
             /// Version number of the SQL statements file format/content.
             /// </summary>
             public long version { get; set; }
 
             /// <summary>
+            /// Collection of database definitions.
+            /// </summary>
+            public List<Dictionary<string, object>>? databases { get; set; }
+
+            /// <summary>
             /// Collections of statement entries represented as dictionaries keyed by column names.
             /// Expected keys differ slightly from XML variant (e.g. "Table Name" vs "TableName").
             /// </summary>
-            public List<Dictionary<string, string>>? Table { get; set; }
-            public List<Dictionary<string, string>>? Alter { get; set; }
-            public List<Dictionary<string, string>>? Index { get; set; }
             public List<Dictionary<string, string>>? Insert { get; set; }
             public List<Dictionary<string, string>>? Select { get; set; }
             public List<Dictionary<string, string>>? Update { get; set; }

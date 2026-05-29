@@ -495,7 +495,7 @@ namespace SQLiteXM
             string? resolved = _tableAttributeNameCache.GetOrAdd(entityType, t =>
             {
                 TableAttribute? tableAttribute = t.GetCustomAttribute<TableAttribute>(inherit: false);
-                string? databaseName = tableAttribute?.DatabaseName;
+                string? databaseName = tableAttribute?.Database;
                 return string.IsNullOrWhiteSpace(databaseName) ? null : databaseName;
             });
 

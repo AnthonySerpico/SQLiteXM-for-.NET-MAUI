@@ -8,7 +8,7 @@ namespace SQLiteXM.Tests;
 /// Tests for shared connection behavior with concurrent access and lock contention.
 /// Verifies that multiple callers can safely share a connection with proper locking.
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class SharedConnectionTests : TestBase
 {
     [Fact]

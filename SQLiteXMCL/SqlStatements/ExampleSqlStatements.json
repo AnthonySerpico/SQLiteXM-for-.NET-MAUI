@@ -1,45 +1,18 @@
 {
-  "database": "sqlitexmtest",
-  "default": true | false,
   "version": 1,
+  "databases": [
+    {
+      "database": "sqlitexmtest",
+      "isDefault": true
+    }
+  ],
 
   "_comment": "Do not include any comments in your SQL. For example, INSERT INTO user (name) /*comment */ VALUES('Bob');, or SELECT * FROM user WHERE name = 'Bob'; -- comment",
 
-  "table": [
-    {
-      "Table Name": "user",
-      "Statement": "CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, address TEXT, name TEXT, datetimee TEXT)"
-    },
-    {
-      "Table Name": "customer",
-      "Statement": "CREATE TABLE customer (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT)"
-    }
-  ],
-
-  "alter": [
-    {
-      "Column Name": "datetimee",
-      "Table Name": "user",
-      "Statement": "ALTER TABLE user ADD datetimee TEXT"
-    }
-  ],
-
-  "index": [
-    {
-      "Index Name": "memberIdIDX",
-      "Table Name": "user",
-      "Statement": "DROP INDEX memberIdIDX"
-    },
-    {
-      "Index Name": "flNameIDX",
-      "Table Name": "user",
-      "Statement": "CREATE INDEX flNameIDX ON user (intt, longg)"
-    }
-  ],
-
   "trigger": [
     {
-      "Trigger Name": "updateCustomer",
+      "Database": "sqlitexmtest",
+      "Table Name": "user",
       "Statement": "CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;"
     }
   ],

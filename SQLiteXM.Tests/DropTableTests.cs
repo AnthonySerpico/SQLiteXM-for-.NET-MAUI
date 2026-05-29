@@ -12,9 +12,14 @@ namespace SQLiteXM.Tests;
 /// Tests for SxmStatement.DropTableAsync public API.
 /// Validates table dropping behavior including force flag and foreign key handling.
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class DropTableTests : TestBase
 {
+    public DropTableTests()
+    {
+        // Ensure database and entities are registered (multi-database tests may have reset)
+        InitializeSqliteXMAsync().GetAwaiter().GetResult();
+    }
     [Fact]
     public async Task DropTableAsync_NonExistentTable_ShouldSucceed()
     {

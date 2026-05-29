@@ -7,7 +7,7 @@ namespace SQLiteXM.Tests;
 /// <summary>
 /// Tests for entity property mapping functionality.
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class EntityMappingTests : TestBase
 {
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]

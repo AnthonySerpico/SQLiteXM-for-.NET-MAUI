@@ -9,7 +9,7 @@ namespace SQLiteXM.Tests;
 /// <summary>
 /// Tests for entity schema migration (adding/removing properties, indexes, constraints).
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class EntityMigrationTests : TestBase
 {
     #region Category 1: Column Migration Tests

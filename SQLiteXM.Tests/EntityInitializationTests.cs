@@ -8,7 +8,7 @@ namespace SQLiteXM.Tests;
 /// After the refactor, entity constructors no longer create/migrate tables.
 /// Schema must be registered explicitly via SxmDatabase.RegisterEntitiesAsync.
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class EntityInitializationTests : TestBase
 {
     [Fact]

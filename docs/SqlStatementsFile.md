@@ -135,8 +135,15 @@ The SQL Statements file contains five arrays for different statement types:
 4. **`delete`** - DELETE statements
 5. **`trigger`** - TRIGGER definitions
 
-Each statement must have:
+#### Common Fields
+
+**INSERT, SELECT, UPDATE, DELETE statements:**
 - **Statement Name** - Unique identifier for the statement
+- **Table Name** - The target table
+- **Statement** - The actual SQL code
+
+**TRIGGER statements:**
+- **Database** - The target database (REQUIRED)
 - **Table Name** - The target table
 - **Statement** - The actual SQL code
 
@@ -364,20 +371,49 @@ await transaction.CommitTransactionAsync();
 
 Register database triggers that execute automatically on INSERT, UPDATE, or DELETE operations.
 
+**⚠️ REQUIRED FIELD:** Each trigger must specify a `Database` field indicating which database the trigger belongs to.
+
 ```json
 {
   "trigger": [
 	{
+	  "Database": "myapp_database",
 	  "Table Name": "Users",
 	  "Statement": "CREATE TRIGGER update_user_timestamp AFTER UPDATE ON Users BEGIN UPDATE Users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;"
 	},
 	{
+	  "Database": "myapp_database",
 	  "Table Name": "Orders",
 	  "Statement": "CREATE TRIGGER log_order_insert AFTER INSERT ON Orders BEGIN INSERT INTO OrderAuditLog (order_id, action, timestamp) VALUES (NEW.id, 'created', CURRENT_TIMESTAMP); END;"
 	},
 	{
+	  "Database": "analytics_database",
+	  "Table Name": "Events",
+	  "Statement": "CREATE TRIGGER track_event_changes AFTER INSERT ON Events BEGIN INSERT INTO EventHistory (event_id, action, timestamp) VALUES (NEW.id, 'created', CURRENT_TIMESTAMP); END;"
+	}
+  ]
+}
+```
+
+**Multi-Database Support:**
+
+Triggers can target different databases within the same SQL Statements file. Each trigger must explicitly specify its target database via the `Database` field.
+
+```json
+{
+  "database": "myapp_database",
+  "isDefault": true,
+
+  "trigger": [
+	{
+	  "Database": "myapp_database",
 	  "Table Name": "Users",
-	  "Statement": "CREATE TRIGGER cascade_delete_orders BEFORE DELETE ON Users BEGIN DELETE FROM Orders WHERE user_id = OLD.id; END;"
+	  "Statement": "CREATE TRIGGER ..."
+	},
+	{
+	  "Database": "analytics_database",
+	  "Table Name": "Events",
+	  "Statement": "CREATE TRIGGER ..."
 	}
   ]
 }
@@ -385,6 +421,7 @@ Register database triggers that execute automatically on INSERT, UPDATE, or DELE
 
 **Trigger Notes:**
 
+- **`Database` field is REQUIRED** - Each trigger must specify which database it belongs to
 - Triggers are created automatically during entity schema registration
 - They apply to the specified table
 - Use `NEW` to reference new row values (INSERT/UPDATE)

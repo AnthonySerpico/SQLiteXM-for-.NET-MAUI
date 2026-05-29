@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Uncomment the line below to preserve multi-database test files for inspection -->
+    <DefineConstants>$(DefineConstants);KEEP_MULTI_DB_TEST_FILES</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

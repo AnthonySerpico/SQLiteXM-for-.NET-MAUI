@@ -22,23 +22,28 @@ namespace SQLiteXM
         internal static long SqlStatementsVersionNumber { get => _versionNumber; }
 
 
-        // Backing field for the database name identified in the parsed file.
-        private static string _databaseName = string.Empty;
+        // Backing field for all database names identified in the parsed file.
+        private static List<string> _databases = new();
 
         /// <summary>
-        /// Gets the database name parsed from the last SQL statements file.
+        /// Gets the list of all database names parsed from the last SQL statements file.
         /// </summary>
-        internal static string DatabaseName { get => _databaseName; }
+        internal static IReadOnlyList<string> Databases { get => _databases.AsReadOnly(); }
 
 
-        // Backing field for IsDefaultDatabase flag.
-        private static bool _isDefaultDatabase = false;
+        // Backing field for the default database name identified in the parsed file.
+        private static string _defaultDatabaseName = string.Empty;
 
         /// <summary>
-        /// Gets the defaultdatabase flag.
+        /// Gets the default database name parsed from the last SQL statements file.
         /// </summary>
-        internal static bool IsDefaultDatabase { get => _isDefaultDatabase; }
+        internal static string DefaultDatabaseName { get => _defaultDatabaseName; }
 
+
+        /// <summary>
+        /// Checks if the given database name is the default database.
+        /// </summary>
+        internal static bool IsDefaultDatabase(string t) => string.Equals(t, _defaultDatabaseName, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Parse SQL statements from a stream that contains either a JSON or XML SQL-statements file and populate
@@ -201,21 +206,15 @@ namespace SQLiteXM
         {
             if (rootJson != default)
             {
-                SetDatabaseName(rootJson.database?.Trim());
-                SetIsDefault(rootJson.isDefault);
                 SetVersionNumber(rootJson.version);
 
-                if (rootJson?.Table != default)
-                    foreach (Dictionary<string, string> tableEntry in rootJson.Table)
-                        SxmSqlStatements.AddTableDefinition(_databaseName + "." + tableEntry["Table Name"], tableEntry["Statement"]);
+                // Parse databases array
+                if (rootJson.databases == null || rootJson.databases.Count == 0)
+                {
+                    throw new ArgumentException("REQUIRED FIELD MISSING: SqlStatements file must contain a 'databases' array with at least one database definition.");
+                }
 
-                if (rootJson?.Index != default)
-                    foreach (Dictionary<string, string> indexEntry in rootJson.Index)
-                        SxmSqlStatements.AddIndexDefinition(_databaseName + "." + indexEntry["Table Name"], indexEntry["Index Name"], indexEntry["Statement"]);
-
-                if (rootJson?.Alter != default)
-                    foreach (Dictionary<string, string> alterEntry in rootJson.Alter)
-                        SxmSqlStatements.AddAlterDefinition(_databaseName + "." + alterEntry["Table Name"], alterEntry["Column Name"], alterEntry["Statement"]);
+                ProcessDatabases(rootJson.databases);
 
                 if (rootJson?.Delete != default)
                     foreach (Dictionary<string, string> deleteEntry in rootJson.Delete)
@@ -233,10 +232,51 @@ namespace SQLiteXM
                     foreach (Dictionary<string, string> insertEntry in rootJson.Insert)
                         SxmSqlStatements.AddInsertDefinition(insertEntry["Statement Name"], insertEntry["Table Name"], insertEntry["Statement"]);
 
-                SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootJson?.Trigger != default)
+                {
                     foreach (Dictionary<string, string> triggerEntry in rootJson.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry["Table Name"], triggerEntry["Statement"]);
+                    {
+                        // Database field is required for triggers
+                        if (!triggerEntry.TryGetValue("Database", out string? triggerDatabase) || string.IsNullOrWhiteSpace(triggerDatabase))
+                        {
+                            throw new ArgumentException(
+                                "REQUIRED FIELD MISSING: Each trigger entry must specify a 'Database' field.\n" +
+                                $"Trigger for table '{triggerEntry.GetValueOrDefault("Table Name", "[unknown]")}' is missing the required 'Database' field.\n" +
+                                "SOLUTION: Add a \"Database\": \"<database-name>\" field to each trigger entry in your SqlStatements file.\n" +
+                                "EXAMPLE:\n" +
+                                "  \"trigger\": [\n" +
+                                "    {\n" +
+                                "      \"Database\": \"sqlitexmtest\",\n" +
+                                "      \"Table Name\": \"user\",\n" +
+                                "      \"Statement\": \"CREATE TRIGGER ...\"\n" +
+                                "    }\n" +
+                                "  ]");
+                        }
+
+                        // Validate that trigger database references a defined database
+                        if (!_databases.Contains(triggerDatabase, StringComparer.OrdinalIgnoreCase))
+                        {
+                            throw new ArgumentException(
+                                $"TRIGGER DATABASE MISMATCH: Trigger references database '{triggerDatabase}' which is not defined in the 'databases' array.\n" +
+                                $"Defined databases: {string.Join(", ", _databases)}\n" +
+                                $"Trigger table: {triggerEntry.GetValueOrDefault("Table Name", "[unknown]")}");
+                        }
+
+                        if (!triggerEntry.TryGetValue("Table Name", out string? tableName) || string.IsNullOrWhiteSpace(tableName))
+                        {
+                            throw new ArgumentException(
+                                $"REQUIRED FIELD MISSING: Trigger for database '{triggerDatabase}' is missing the required 'Table Name' field.");
+                        }
+
+                        if (!triggerEntry.TryGetValue("Statement", out string? statement) || string.IsNullOrWhiteSpace(statement))
+                        {
+                            throw new ArgumentException(
+                                $"REQUIRED FIELD MISSING: Trigger for database '{triggerDatabase}', table '{tableName}' is missing the required 'Statement' field.");
+                        }
+
+                        SxmSqlStatements.AddTriggerDefinition(triggerDatabase, tableName, statement);
+                    }
+                }
             }
         }
 
@@ -248,21 +288,15 @@ namespace SQLiteXM
         {
             if (rootXml != default)
             {
-                SetDatabaseName(rootXml.Database?.Trim());
-                SetIsDefault(rootXml.IsDefault);
                 SetVersionNumber(rootXml.Version);
 
-                if (rootXml?.Table != default)
-                    foreach (Table tableEntry in rootXml.Table)
-                        SxmSqlStatements.AddTableDefinition(_databaseName + "." + tableEntry.TableName, tableEntry.Statement!);
+                // Parse databases list
+                if (rootXml.Databases == null || rootXml.Databases.Count == 0)
+                {
+                    throw new ArgumentException("REQUIRED FIELD MISSING: SqlStatements file must contain a 'Databases' list with at least one database definition.");
+                }
 
-                if (rootXml?.Index != default)
-                    foreach (SQLiteXM.SxmSerialization.Index indexEntry in rootXml.Index)
-                        SxmSqlStatements.AddIndexDefinition(_databaseName + "." + indexEntry.TableName, indexEntry.IndexName!, indexEntry.Statement!);
-
-                if (rootXml?.Alter != default)
-                    foreach (Alter alterEntry in rootXml.Alter)
-                        SxmSqlStatements.AddAlterDefinition(_databaseName + "." + alterEntry.TableName, alterEntry.ColumnName!, alterEntry.Statement!);
+                ProcessDatabasesXml(rootXml.Databases);
 
                 if (rootXml?.Delete != default)
                     foreach (Delete deleteEntry in rootXml.Delete)
@@ -280,32 +314,164 @@ namespace SQLiteXM
                     foreach (Insert insertEntry in rootXml.Insert)
                         SxmSqlStatements.AddInsertDefinition(insertEntry.StatementName!, insertEntry.TableName!, insertEntry.Statement!);
 
-                SxmSqlStatements.CreateTriggerStatementsList(_databaseName);
                 if (rootXml?.Trigger != default)
+                {
                     foreach (SxmSerialization.Trigger triggerEntry in rootXml.Trigger)
-                        SxmSqlStatements.AddTriggerDefinition(_databaseName, triggerEntry.TableName!, triggerEntry.Statement!);
+                    {
+                        // Database field is required for triggers
+                        if (string.IsNullOrWhiteSpace(triggerEntry.Database))
+                        {
+                            throw new ArgumentException(
+                                "REQUIRED FIELD MISSING: Each trigger entry must specify a 'Database' field.\n" +
+                                $"Trigger for table '{triggerEntry.TableName ?? "[unknown]"}' is missing the required 'Database' field.\n" +
+                                "SOLUTION: Add a <Database>database-name</Database> element to each trigger entry in your SqlStatements file.\n" +
+                                "EXAMPLE:\n" +
+                                "  <trigger>\n" +
+                                "    <Database>sqlitexmtest</Database>\n" +
+                                "    <TableName>user</TableName>\n" +
+                                "    <Statement>CREATE TRIGGER ...</Statement>\n" +
+                                "  </trigger>");
+                        }
+
+                        // Validate that trigger database references a defined database
+                        if (!_databases.Contains(triggerEntry.Database, StringComparer.OrdinalIgnoreCase))
+                        {
+                            throw new ArgumentException(
+                                $"TRIGGER DATABASE MISMATCH: Trigger references database '{triggerEntry.Database}' which is not defined in the 'Databases' list.\n" +
+                                $"Defined databases: {string.Join(", ", _databases)}\n" +
+                                $"Trigger table: {triggerEntry.TableName ?? "[unknown]"}");
+                        }
+
+                        if (string.IsNullOrWhiteSpace(triggerEntry.TableName))
+                        {
+                            throw new ArgumentException(
+                                $"REQUIRED FIELD MISSING: Trigger for database '{triggerEntry.Database}' is missing the required 'TableName' field.");
+                        }
+
+                        if (string.IsNullOrWhiteSpace(triggerEntry.Statement))
+                        {
+                            throw new ArgumentException(
+                                $"REQUIRED FIELD MISSING: Trigger for database '{triggerEntry.Database}', table '{triggerEntry.TableName}' is missing the required 'Statement' field.");
+                        }
+
+                        SxmSqlStatements.AddTriggerDefinition(triggerEntry.Database, triggerEntry.TableName, triggerEntry.Statement);
+                    }
+                }
             }
         }
 
         /// <summary>
-        /// Validate the parsed database name for invalid filesystem characters or emptiness.
+        /// Process the databases array from JSON and populate _databases list and _databaseName (default).
         /// </summary>
-        private static void SetDatabaseName(string? databaseName)
+        private static void ProcessDatabases(List<Dictionary<string, object>> databases)
         {
-            char[] pattern = Path.GetInvalidFileNameChars();
+            _databases.Clear();
+            _defaultDatabaseName = string.Empty;
 
-            if (string.IsNullOrEmpty(databaseName)
-                || databaseName.Any(pattern.Contains)
-                || databaseName.ToLower().Equals("main", StringComparison.OrdinalIgnoreCase)
-                || databaseName.ToLower().Equals("temp", StringComparison.OrdinalIgnoreCase))
-                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidDBName, databaseName));
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+            bool foundDefault = false;
 
-            SxmProcessSQLStatements._databaseName = databaseName;
+            foreach (var dbDict in databases)
+            {
+                if (!dbDict.TryGetValue("database", out var nameObj) || nameObj == null)
+                {
+                    throw new ArgumentException("Each database entry must have a 'database' field.");
+                }
+
+                string? dbName = nameObj.ToString()?.Trim();
+                if (string.IsNullOrEmpty(dbName))
+                {
+                    throw new ArgumentException("Database name cannot be empty.");
+                }
+
+                // Validate database name
+                if (dbName.Any(invalidChars.Contains)
+                    || dbName.Equals("main", StringComparison.OrdinalIgnoreCase)
+                    || dbName.Equals("temp", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidDBName, dbName));
+                }
+
+                _databases.Add(dbName);
+
+                // Check if this is the default database
+                bool isDefault = false;
+                if (dbDict.TryGetValue("isDefault", out var defaultObj) && defaultObj != null)
+                {
+                    // Handle JsonElement from System.Text.Json
+                    if (defaultObj is System.Text.Json.JsonElement jsonElement)
+                    {
+                        isDefault = jsonElement.ValueKind == System.Text.Json.JsonValueKind.True;
+                    }
+                    else
+                    {
+                        isDefault = Convert.ToBoolean(defaultObj);
+                    }
+                }
+
+                if (isDefault)
+                {
+                    if (foundDefault)
+                    {
+                        throw new ArgumentException($"Multiple databases marked as default. Only one database can have 'isDefault: true'. Duplicate found at: {dbName}");
+                    }
+                    _defaultDatabaseName = dbName;
+                    foundDefault = true;
+                }
+            }
+
+            // If no default was specified, throw error (user must explicitly mark one as default)
+            if (!foundDefault)
+            {
+                throw new ArgumentException("No default database specified. At least one database must have 'isDefault: true'.");
+            }
         }
 
-        private static void SetIsDefault(bool isDefault)
+        /// <summary>
+        /// Process the databases list from XML and populate _databases list and _databaseName (default).
+        /// </summary>
+        private static void ProcessDatabasesXml(List<SxmSerialization.Database> databases)
         {
-            SxmProcessSQLStatements._isDefaultDatabase = isDefault;
+            _databases.Clear();
+            _defaultDatabaseName = string.Empty;
+
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+            bool foundDefault = false;
+
+            foreach (var db in databases)
+            {
+                string? dbName = db.database?.Trim();
+                if (string.IsNullOrEmpty(dbName))
+                {
+                    throw new ArgumentException("Database name cannot be empty.");
+                }
+
+                // Validate database name
+                if (dbName.Any(invalidChars.Contains)
+                    || dbName.Equals("main", StringComparison.OrdinalIgnoreCase)
+                    || dbName.Equals("temp", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.InvalidDBName, dbName));
+                }
+
+                _databases.Add(dbName);
+
+                if (db.isDefault)
+                {
+                    if (foundDefault)
+                    {
+                        throw new ArgumentException($"Multiple databases marked as default. Only one database can have 'isDefault: true'. Duplicate found at: {dbName}");
+                    }
+                    _defaultDatabaseName = dbName;
+                    foundDefault = true;
+                }
+            }
+
+            // If no default was specified, throw error (user must explicitly mark one as default)
+            if (!foundDefault)
+            {
+                throw new ArgumentException("No default database specified. At least one database must have 'isDefault: true'.");
+            }
         }
 
         /// <summary>

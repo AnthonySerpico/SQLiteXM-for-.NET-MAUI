@@ -56,6 +56,19 @@ namespace SQLiteXM
         {
             var ms = new MappingSchema();
 
+            // CRITICAL: Clear Database property from all entity descriptors
+            // SQLiteXM uses the Database property for routing entities to specific database files,
+            // but LinqToDB should NOT use it for SQL generation (which would create "database.table" syntax).
+            // Since each SxmLinqDbContext connects to a single database file, table names should be unqualified.
+            MappingSchema.EntityDescriptorCreatedCallback = (mappingSchema, entityDescriptor) =>
+            {
+                if (!string.IsNullOrEmpty(entityDescriptor.DatabaseName))
+                {
+                    // Clear the database name so LinqToDB doesn't qualify table names in SQL
+                    entityDescriptor.DatabaseName = null;
+                }
+            };
+
             // Configure default data types for CLR types when stored in SQLite
             // This tells LINQ-to-DB what SQLite column type to expect for each CLR type
             ms.SetDataType(typeof(DateTimeOffset), LinqToDB.DataType.Int64);

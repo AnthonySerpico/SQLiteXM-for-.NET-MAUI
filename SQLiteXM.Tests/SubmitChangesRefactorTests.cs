@@ -6,6 +6,13 @@ namespace SQLiteXM.Tests;
 [Collection("Sequential")]
 public class SubmitChangesRefactorTests : TestBase
 {
+    public SubmitChangesRefactorTests()
+    {
+        // Ensure database is initialized and all entities are registered
+        // Multi-database tests call ResetForTestingAsync() which clears registrations
+        InitializeSqliteXMAsync().GetAwaiter().GetResult();
+    }
+
     [Fact]
     public async Task SubmitChanges_AllSucceeded_GetErrorSummary_ShouldReturnSuccessMessage()
     {

@@ -139,15 +139,19 @@ public sealed class SxmDatabaseOptions
     /// </summary>
     /// <param name="initOptions">The initialization options to associate.</param>
     /// <param name="databaseName">The database name used as the key.</param>
-    internal static void AddDatabaseName(SxmDatabaseOptions? initOptions, string databaseName)
+    internal static void AddDatabaseNames(SxmDatabaseOptions? initOptions)
     {
-        if (initOptions is null || string.IsNullOrEmpty(databaseName))
+        if (initOptions is null)
             return;
 
         _databaseNames ??= new();
-        if (!_databaseNames.TryAdd(databaseName, initOptions))
+
+        foreach(string databaseName in  SxmProcessSQLStatements.Databases)
         {
-            throw new InvalidOperationException($"Initialization failed. Database name '{databaseName}' was already registered.");
+            if (!_databaseNames.TryAdd(databaseName, initOptions))
+            {
+                throw new InvalidOperationException($"Initialization failed. Database name '{databaseName}' was already registered.");
+            }
         }
     }
 

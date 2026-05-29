@@ -6,9 +6,14 @@ namespace SQLiteXM.Tests;
 /// <summary>
 /// Tests for entity CRUD operations (Create, Read, Update, Delete).
 /// </summary>
-[Collection("SQLiteXM Tests")]
+[Collection("Sequential")]
 public class EntityCrudTests : TestBase
 {
+    public EntityCrudTests()
+    {
+        // Ensure database and entities are registered (multi-database tests may have reset)
+        InitializeSqliteXMAsync().GetAwaiter().GetResult();
+    }
     [Fact]
     public async Task SaveAsync_NewEntity_ShouldInsertAndPopulateId()
     {

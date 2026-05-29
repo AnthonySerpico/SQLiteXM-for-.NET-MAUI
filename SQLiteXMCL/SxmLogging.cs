@@ -38,18 +38,18 @@ namespace SQLiteXM
         // Maximum characters retained for exception text to avoid very large queued entries on mobile.
         private const int _maxExceptionTextLength = 2048;
 
-        internal static void SxmLoggingFactory(string logFileName, string logPathSpecialFolder, long maxLogSize)
+        internal static void SxmLoggingFactory(string logFileName, string logFilePath, long maxLogSize)
         {
             string databaseName = Path.GetFileNameWithoutExtension(logFileName);
 
             // Create a database-specific logger only when the extracted name is non-empty.
             if (!string.IsNullOrEmpty(databaseName))
             {
-                _loggers.GetOrAdd(databaseName, _ => new SxmLogging(logFileName, logPathSpecialFolder, maxLogSize));
+                _loggers.GetOrAdd(databaseName, _ => new SxmLogging(logFileName, logFilePath, maxLogSize));
             }
 
             // Ensure a default (general) logger exists under the empty-string key.
-            _loggers.GetOrAdd(string.Empty, _ => new SxmLogging("defaultsxmlog.log", logPathSpecialFolder, maxLogSize));
+            _loggers.GetOrAdd(string.Empty, _ => new SxmLogging("defaultsxmlog.log", logFilePath, maxLogSize));
         }
 
         /// <summary>

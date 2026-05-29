@@ -212,7 +212,7 @@ internal static class SxmSchemaRegistration
                     stopwatch.Stop();
 
                     string message = $"{ddlStatementsList.Count} DDL statement(s) executed:{Environment.NewLine}" + string.Join(Environment.NewLine, ddlStatementsList.Select((w, i) => $"  [{i + 1}] {w}"));
-                    SxmLogging.Log(new SxmInformational(message), $"{(newTable ? "Creating" : "Synchronizing")} schema: Database: '{databaseName}'. Table: '{tableName}'. Duration: {stopwatch.ElapsedMilliseconds}ms", $"InitializeSchemaAsync");
+                    SxmLogging.Log(new SxmInformational(message), $"{(newTable ? "Creating" : "Synchronizing")} schema. Database: '{databaseName}'. Table: '{tableName}'. Duration: {stopwatch.ElapsedMilliseconds}ms", $"InitializeSchemaAsync");
                 }),
                 LazyThreadSafetyMode.ExecutionAndPublication
             )
@@ -816,7 +816,13 @@ internal static class SxmSchemaRegistration
     private static async Task ProcessTriggerAttributesAsync(Type entityType, string databaseName, List<string> ddlStatementsList)
     {
         string tableName = entityType.Name;
-        List<TriggerDefinition> triggerStatementsList = SxmSqlStatements.TriggerStatements[databaseName] as List<TriggerDefinition>;
+
+        // Get or create trigger list for this database
+        if (!SxmSqlStatements.TriggerStatements.TryGetValue(databaseName, out List<TriggerDefinition>? triggerStatementsList))
+        {
+            triggerStatementsList = new List<TriggerDefinition>();
+            SxmSqlStatements.TriggerStatements[databaseName] = triggerStatementsList;
+        }
 
         TriggerAttribute[] customAttributes = (TriggerAttribute[])entityType.GetCustomAttributes(typeof(TriggerAttribute), true);
         if (customAttributes.Length > 0)

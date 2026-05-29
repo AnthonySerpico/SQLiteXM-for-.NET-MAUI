@@ -1,32 +1,13 @@
 ﻿<?xml version="1.0" encoding="UTF-8" ?>
 <rootxml>
-	<database>sqlitexmtest</database>
-	<version>0</version>
-	<table>
-		<TableName>user</TableName>
-		<Statement>CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, intt INTEGER, longg LONG, floatt FLOAT, doublee DOUBLE, decimall DECIMAL, booll BOOL, address TEXT, name TEXT, datetimee TEXT)</Statement>
-	</table>
-	<table>
-		<TableName>customer</TableName>
-		<Statement>CREATE TABLE customer (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, address TEXT)</Statement>
-	</table>
-	<alter>
-		<ColumnName>datetimee</ColumnName>
-		<TableName>user</TableName>
-		<Statement>ALTER TABLE user ADD datetimee TEXT</Statement>
-	</alter>
-	<index>
-		<IndexName>memberIdIDX</IndexName>
-		<TableName>user</TableName>
-		<Statement>DROP INDEX memberIdIDX</Statement>
-	</index>
-	<index>
-		<IndexName>flNameIDX</IndexName>
-		<TableName>user</TableName>
-		<Statement>CREATE INDEX flNameIDX ON user (intt, longg)</Statement>
-	</index>
+	<version>1</version>
+	<Database>
+		<database>sqlitexmtest</database>
+		<isDefault>true</isDefault>
+	</Database>
 	<trigger>
-		<TableName>customer</TableName>
+		<Database>sqlitexmtest</Database>
+		<TableName>user</TableName>
 		<Statement>CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;</Statement>
 	</trigger>
 	<insert>
@@ -59,4 +40,5 @@
 		<TableName>user</TableName>
 		<Statement>DELETE FROM user WHERE doublee = @p0</Statement>
 	</delete>
+</rootxml>
 </rootxml>
