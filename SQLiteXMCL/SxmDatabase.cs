@@ -255,7 +255,7 @@ namespace SQLiteXM
             // Add a check to see if there are any unassigned triggers in the TriggerStatements collection. This would indicate
             // that there are triggers defined in the SQL statements file that were not applied to any registered entities, which could
             // be a configuration error worth warning about.
-            if (SxmSqlStatements.TriggerStatements.Count > 0)
+            if (SxmSqlStatements.TriggerStatements.Count > 0 && SxmSqlStatements.TriggerStatements.Any(kvp => kvp.Value.Count > 0))
             {
                 IEnumerable<string?> unassignedTriggers = SxmSqlStatements.TriggerStatements
                     .SelectMany((KeyValuePair<string, List<TriggerDefinition>> kvp) => kvp.Value.Select((triggerDefinition, index) => new
@@ -264,7 +264,7 @@ namespace SQLiteXM
                         TriggerDefinition = triggerDefinition,
                         Index = index
                     }))
-                    .Select((item, i) => $"  [{i + 1}] Unknown Table: '{item.TriggerDefinition.TableName}'{Environment.NewLine}      Trigger SQL: {item.TriggerDefinition.TriggerSQL}");
+                    .Select((item, i) => $"  [{i + 1}] Unknown Table Name: '{item.TriggerDefinition.TableName}'{Environment.NewLine}      Database: '{item.Database}'{Environment.NewLine}      Trigger SQL: {item.TriggerDefinition.TriggerSQL}");
 
                 string message = $"Check that trigger source table names match registered entity table names.{Environment.NewLine}" + string.Join(Environment.NewLine, unassignedTriggers);
                 SxmLogging.Log(new SxmWarning(message), "Warning: Unassigned trigger(s) detected", nameof(RegisterEntitiesAsync));
