@@ -274,6 +274,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed design documentation.
 - SQLite 3.x (via Microsoft.Data.Sqlite)
 - LinqToDB 5.x (for LINQ support)
 
+**iOS Deployment:** For iOS apps with AOT/trimming enabled, see the [iOS Deployment Guide](./docs/iOS-Deployment.md) for recommended configuration.
+
 ## 📖 Documentation
 
 - [Quick Start Guide](./docs/QuickStart.md) - Get up and running in 5 minutes
@@ -281,6 +283,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed design documentation.
 - [Transaction Guide](./docs/Transactions.md) - Transaction patterns and best practices
 - [Testing Guide](./TESTING.md) - How to write tests with SQLiteXM
 - [Migration Guide](./docs/Migrations.md) - Schema evolution strategies
+- [iOS Deployment Guide](./docs/iOS-Deployment.md) - AOT/trimming configuration for iOS apps
 - [API Reference](./docs/API.md) - Complete API documentation
 
 ## 🤝 Contributing

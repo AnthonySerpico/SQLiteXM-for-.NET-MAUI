@@ -121,11 +121,12 @@ namespace SQLiteXM
 
         /// <summary>
         /// Initialize the database using SQL statements parsed from the specified file.
+        /// Internal use only. MAUI apps should use the Stream overload with FileSystem.OpenAppPackageFileAsync.
         /// </summary>
         /// <param name="sqlStatementsFileName">Path to the SQL statements file (absolute or relative).</param>
         /// <param name="databaseOptions">Options for configuring the database.</param>
         /// <returns>A task that completes when initialization is finished.</returns>
-        public static async Task InitializeAsync(string sqlStatementsFileName, SxmDatabaseOptions? databaseOptions = null)
+        private static async Task InitializeAsync(string sqlStatementsFileName, SxmDatabaseOptions? databaseOptions = null)
         {
             await _initGate.WaitAsync().ConfigureFalse();
             try

@@ -949,8 +949,9 @@ public class PageView : SxmEntity
 **Usage:**
 
 ```csharp
-// Initialize at startup
-await SxmDatabase.InitializeAsync("SqlStatements.json");
+// Initialize at startup (MAUI)
+await using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+await SxmDatabase.InitializeAsync(stream);
 await SxmDatabase.RegisterEntitiesAsync(
     typeof(Product),
     typeof(Order),

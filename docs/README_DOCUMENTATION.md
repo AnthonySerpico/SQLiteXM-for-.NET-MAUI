@@ -9,6 +9,7 @@ Welcome to SQLiteXM - a powerful, transaction-first ORM for .NET MAUI and SQLite
 ### **Getting Started**
 - [Quick Start Guide](#quick-start-guide) *(below)*
 - [Cheat Sheet](SQLITEXM_CHEATSHEET.md) - One-page quick reference
+- [iOS Deployment Guide](iOS-Deployment.md) - AOT/trimming configuration for iOS apps
 
 ### **Core Concepts**
 - [SubmitChanges API Summary](SUBMITCHANGES_API_SUMMARY.md) - API overview and design principles

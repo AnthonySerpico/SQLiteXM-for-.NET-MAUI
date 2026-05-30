@@ -56,7 +56,8 @@ namespace SQLiteXM
     /// </para>
     /// <code>
     /// // At application startup (e.g., MauiProgram.cs)
-    /// await SxmDatabase.InitializeAsync("statements.json");
+    /// await using var stream = await FileSystem.OpenAppPackageFileAsync("statements.json");
+    /// await SxmDatabase.InitializeAsync(stream);
     /// await SxmDatabase.RegisterEntitiesAsync(
     ///     typeof(Dog),
     ///     typeof(Cat),

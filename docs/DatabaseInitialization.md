@@ -72,11 +72,11 @@ public static class MauiProgram
 
 ## Initialization Methods
 
-`SxmDatabase` provides two overloads for initialization:
+`SxmDatabase` provides a stream-based initialization method:
 
-### Method 1: Initialize from Stream
+### Initialize from Stream
 
-**Best for:** .NET MAUI apps with embedded resources
+**Recommended for:** .NET MAUI apps with embedded resources
 
 ```csharp
 public static async Task InitializeAsync(
@@ -105,40 +105,11 @@ var options = new SxmDatabaseOptions
 await SxmDatabase.InitializeAsync(stream, options);
 ```
 
----
-
-### Method 2: Initialize from File Path
-
-**Best for:** Desktop apps, file system access
-
-```csharp
-public static async Task InitializeAsync(
-	string sqlStatementsFileName,
-	SxmDatabaseOptions? databaseOptions = null
-)
-```
-
-**Parameters:**
-- `sqlStatementsFileName` - Absolute or relative path to SQL statements file
-- `databaseOptions` - Optional configuration
-
-**Example:**
-
-```csharp
-// Relative path (resolved against AppContext.BaseDirectory)
-await SxmDatabase.InitializeAsync("SqlStatements.json");
-
-// Absolute path
-await SxmDatabase.InitializeAsync(
-	@"C:\MyApp\Config\SqlStatements.json"
-);
-
-// With options
-await SxmDatabase.InitializeAsync(
-	"SqlStatements.json",
-	new SxmDatabaseOptions { ForeignKeys = true }
-);
-```
+> **Note for desktop/test scenarios:** You can still use file streams explicitly:
+> ```csharp
+> await using var stream = File.OpenRead("path/to/SqlStatements.json");
+> await SxmDatabase.InitializeAsync(stream, options);
+> ```
 
 ---
 

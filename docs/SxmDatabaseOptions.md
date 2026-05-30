@@ -31,8 +31,9 @@ var options = new SxmDatabaseOptions
 	EnableConnectionPooling = true
 };
 
-// Initialize database with options
-await SxmDatabase.InitializeAsync("SqlStatements.json", options);
+// Initialize database with options (MAUI)
+await using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+await SxmDatabase.InitializeAsync(stream, options);
 ```
 
 ---
