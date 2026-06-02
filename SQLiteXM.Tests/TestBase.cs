@@ -53,7 +53,8 @@ public abstract class TestBase : IDisposable
         };
 
         // Run async initialization synchronously - safe in static constructor
-        SxmDatabase.InitializeAsync(TestSqlStatementsPath, initOptions).GetAwaiter().GetResult();
+        using var stream = File.OpenRead(TestSqlStatementsPath);
+        SxmDatabase.InitializeAsync(stream, initOptions).GetAwaiter().GetResult();
 
         // CRITICAL: Register all test entity schemas at startup.
         // With the deterministic schema registration refactor, entity constructors
@@ -178,7 +179,8 @@ public abstract class TestBase : IDisposable
             DatabaseFolderOverride = TestDatabaseFolder
         };
 
-        await SxmDatabase.InitializeAsync(TestSqlStatementsPath, initOptions);
+        using var stream = File.OpenRead(TestSqlStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, initOptions);
 
         // Register all test entity schemas (idempotent - safe to call multiple times)
         await SxmDatabase.RegisterEntitiesAsync(

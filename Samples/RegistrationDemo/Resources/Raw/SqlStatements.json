@@ -1,0 +1,14 @@
+{
+  "databases": [
+    {
+      "database": "UserData",
+      "isDefault": true,
+      "version": 1
+    },
+    {
+      "database": "Session",
+      "isDefault": false,
+      "version": 1
+    }
+  ]
+}

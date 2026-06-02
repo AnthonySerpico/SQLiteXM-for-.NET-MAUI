@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RegistrationDemo.ViewModels"
+             x:Class="RegistrationDemo.Views.PreferencesPage"
+             x:DataType="vm:PreferencesViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <!-- Progress Indicator -->
+            <Label Text="Step 3 of 3"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}"
+                   HorizontalTextAlignment="Center"/>
+
+            <Label Text="Preferences"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,0,0,20"/>
+
+            <!-- Notifications Toggle -->
+            <Frame BorderColor="{StaticResource Gray300}" Padding="15">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                    <Label Text="Enable Notifications"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           Grid.Column="0"
+                           Grid.Row="0"/>
+                    <Label Text="Get updates about your account"
+                           FontSize="12"
+                           TextColor="{StaticResource Gray600}"
+                           Grid.Column="0"
+                           Grid.Row="1"/>
+                    <Switch IsToggled="{Binding EnableNotifications}"
+                            Grid.Column="1"
+                            Grid.Row="0"
+                            Grid.RowSpan="2"
+                            VerticalOptions="Center"/>
+                </Grid>
+            </Frame>
+
+            <!-- Referral Code Entry -->
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Referral Code (Optional)"
+                       FontSize="14"
+                       TextColor="{StaticResource Gray900}"/>
+                <Entry Text="{Binding ReferralCode}"
+                       Placeholder="Enter code"
+                       MaxLength="20"/>
+                <Label Text="Have a referral code? Enter it here"
+                       FontSize="12"
+                       TextColor="{StaticResource Gray600}"/>
+            </VerticalStackLayout>
+
+            <!-- Terms and Conditions -->
+            <Frame BorderColor="{StaticResource Gray300}" Padding="15" Margin="0,10,0,0">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Terms and Conditions"
+                           FontSize="16"
+                           FontAttributes="Bold"/>
+                    <Label Text="By creating an account, you agree to our Terms of Service and Privacy Policy."
+                           FontSize="12"
+                           TextColor="{StaticResource Gray600}"/>
+                    <HorizontalStackLayout Spacing="10">
+                        <CheckBox IsChecked="{Binding AcceptedTerms}"/>
+                        <Label Text="I accept the terms and conditions"
+                               FontSize="14"
+                               VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Error Message -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   FontSize="14"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringToBoolConverter}}"
+                   Margin="0,10,0,0"/>
+
+            <!-- Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,20,0,0">
+                <Button Text="Back"
+                        Command="{Binding BackCommand}"
+                        Grid.Column="0"
+                        BackgroundColor="{StaticResource Gray300}"
+                        TextColor="{StaticResource Gray900}"/>
+
+                <Button Text="Review"
+                        Command="{Binding NextCommand}"
+                        Grid.Column="1"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"/>
+            </Grid>
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                              IsVisible="{Binding IsBusy}"
+                              HorizontalOptions="Center"
+                              Margin="0,10,0,0"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

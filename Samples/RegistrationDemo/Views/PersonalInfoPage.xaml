@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RegistrationDemo.ViewModels"
+             x:Class="RegistrationDemo.Views.PersonalInfoPage"
+             x:DataType="vm:PersonalInfoViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <!-- Progress Indicator -->
+            <Label Text="Step 2 of 3"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}"
+                   HorizontalTextAlignment="Center"/>
+
+            <Label Text="Personal Information"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,0,0,20"/>
+
+            <!-- First Name Entry -->
+            <VerticalStackLayout Spacing="5">
+                <Label Text="First Name"
+                       FontSize="14"
+                       TextColor="{StaticResource Gray900}"/>
+                <Entry Text="{Binding FirstName}"
+                       Placeholder="John"
+                       MaxLength="50"/>
+            </VerticalStackLayout>
+
+            <!-- Last Name Entry -->
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Last Name"
+                       FontSize="14"
+                       TextColor="{StaticResource Gray900}"/>
+                <Entry Text="{Binding LastName}"
+                       Placeholder="Doe"
+                       MaxLength="50"/>
+            </VerticalStackLayout>
+
+            <!-- Date of Birth Picker -->
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Date of Birth"
+                       FontSize="14"
+                       TextColor="{StaticResource Gray900}"/>
+                <DatePicker Date="{Binding DateOfBirth}"
+                           MinimumDate="{Binding MinimumDate}"
+                           MaximumDate="{Binding MaximumDate}"
+                           Format="MMMM d, yyyy"/>
+                <Label Text="You must be at least 13 years old"
+                       FontSize="12"
+                       TextColor="{StaticResource Gray600}"/>
+            </VerticalStackLayout>
+
+            <!-- Error Message -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   FontSize="14"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringToBoolConverter}}"
+                   Margin="0,10,0,0"/>
+
+            <!-- Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,20,0,0">
+                <Button Text="Back"
+                        Command="{Binding BackCommand}"
+                        Grid.Column="0"
+                        BackgroundColor="{StaticResource Gray300}"
+                        TextColor="{StaticResource Gray900}"/>
+
+                <Button Text="Next"
+                        Command="{Binding NextCommand}"
+                        Grid.Column="1"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"/>
+            </Grid>
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                              IsVisible="{Binding IsBusy}"
+                              HorizontalOptions="Center"
+                              Margin="0,10,0,0"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

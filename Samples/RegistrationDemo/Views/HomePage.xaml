@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RegistrationDemo.ViewModels"
+             x:Class="RegistrationDemo.Views.HomePage"
+             x:DataType="vm:HomeViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="25" VerticalOptions="Center">
+
+            <!-- Success Icon -->
+            <Label Text="🎉"
+                   FontSize="80"
+                   HorizontalTextAlignment="Center"/>
+
+            <!-- Welcome Message -->
+            <Label Text="{Binding WelcomeMessage}"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{StaticResource Primary}"/>
+
+            <Label Text="Registration Complete!"
+                   FontSize="18"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{StaticResource Success}"
+                   Margin="0,0,0,20"/>
+
+            <!-- User Details -->
+            <Frame BorderColor="{StaticResource Gray300}" Padding="20" Margin="0,10,0,0">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Your Account"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}"/>
+
+                    <Label Text="{Binding UserDetails}"
+                           FontSize="14"
+                           LineHeight="1.5"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Database Info (Demo purposes) -->
+            <Frame BorderColor="{StaticResource Success}" 
+                   BackgroundColor="#F0FFF0"
+                   Padding="20">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="SQLiteXM Multi-Database Demo"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Success}"/>
+
+                    <Label Text="{Binding DatabaseInfo}"
+                           FontSize="12"
+                           LineHeight="1.5"
+                           TextColor="{StaticResource Gray900}"/>
+
+                    <Label Text="Session draft was automatically cleaned from the Session database after successful registration."
+                           FontSize="11"
+                           TextColor="{StaticResource Gray600}"
+                           Margin="0,10,0,0"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Error Message -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   FontSize="14"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringToBoolConverter}}"
+                   Margin="0,10,0,0"/>
+
+            <!-- Start Over Button -->
+            <Button Text="Start New Registration"
+                    Command="{Binding StartOverCommand}"
+                    Margin="0,20,0,0"
+                    BackgroundColor="{StaticResource Gray300}"
+                    TextColor="{StaticResource Gray900}"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

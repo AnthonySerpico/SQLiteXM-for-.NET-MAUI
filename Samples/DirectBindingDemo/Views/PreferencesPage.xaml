@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:DirectBindingDemo.ViewModels"
+             x:Class="DirectBindingDemo.Views.PreferencesPage"
+             x:DataType="vm:PreferencesViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <Label Text="Step 3: Preferences" 
+                   Style="{StaticResource SubHeadline}"/>
+
+            <!-- DIRECT BINDING: Switch binds to CurrentPreferences.EnableNotifications -->
+            <Frame BorderColor="{StaticResource Gray300}" Padding="15">
+                <HorizontalStackLayout Spacing="15">
+                    <Switch IsToggled="{Binding CurrentPreferences.EnableNotifications}" 
+                            VerticalOptions="Center"/>
+                    <VerticalStackLayout>
+                        <Label Text="Enable Notifications" 
+                               FontAttributes="Bold"/>
+                        <Label Text="Receive updates and alerts"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"/>
+                    </VerticalStackLayout>
+                </HorizontalStackLayout>
+            </Frame>
+
+            <Label Text="Direct Binding in Action"
+                   FontSize="12"
+                   TextColor="{StaticResource Info}"
+                   FontAttributes="Italic">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="The switch above binds to: " />
+                        <Span Text="CurrentPreferences.EnableNotifications" FontFamily="Courier" TextColor="{StaticResource Success}" />
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" Padding="10" Margin="0,20,0,0">
+                <VerticalStackLayout>
+                    <Label Text="Referral Code (Optional)" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                    <Entry Text="{Binding ReferralCode}" 
+                           Placeholder="Enter code"
+                           MaxLength="10"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource Danger}"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}"
+                   Margin="0,10"/>
+
+            <Button Text="Next" 
+                    Command="{Binding NextCommand}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"
+                    Margin="0,20,0,0"/>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" 
+                              IsVisible="{Binding IsBusy}"
+                              HorizontalOptions="Center"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RegistrationDemo.ViewModels"
+             x:Class="RegistrationDemo.Views.ReviewPage"
+             x:DataType="vm:ReviewViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <Label Text="Review Your Information"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,0,0,20"/>
+
+            <Label Text="Please review your details before completing registration"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,0,0,20"/>
+
+            <!-- Account Information -->
+            <Frame BorderColor="{StaticResource Gray300}" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Account"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}"/>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Email:" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                        <Label Text="{Binding Email}" FontSize="14" Margin="0,-5,0,0"/>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Personal Information -->
+            <Frame BorderColor="{StaticResource Gray300}" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Personal"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}"/>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Name:" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                        <Label Text="{Binding FullName}" FontSize="14" Margin="0,-5,0,0"/>
+
+                        <Label Text="Birth Date:" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                        <Label Text="{Binding DateOfBirth}" FontSize="14" Margin="0,-5,0,0"/>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Preferences -->
+            <Frame BorderColor="{StaticResource Gray300}" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Preferences"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}"/>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Notifications:" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                        <Label Text="{Binding Notifications}" FontSize="14" Margin="0,-5,0,0"/>
+
+                        <Label Text="Referral Code:" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                        <Label Text="{Binding ReferralCode}" FontSize="14" Margin="0,-5,0,0"/>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Error Message -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   FontSize="14"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringToBoolConverter}}"
+                   Margin="0,10,0,0"/>
+
+            <!-- Buttons -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,20,0,0">
+                <Button Text="Back"
+                        Command="{Binding BackCommand}"
+                        Grid.Column="0"
+                        BackgroundColor="{StaticResource Gray300}"
+                        TextColor="{StaticResource Gray900}"/>
+
+                <Button Text="Complete Registration"
+                        Command="{Binding CompleteRegistrationCommand}"
+                        Grid.Column="1"
+                        BackgroundColor="{StaticResource Success}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"/>
+            </Grid>
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                              IsVisible="{Binding IsBusy}"
+                              HorizontalOptions="Center"
+                              Margin="0,10,0,0"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

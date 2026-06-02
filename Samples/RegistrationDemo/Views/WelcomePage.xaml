@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RegistrationDemo.ViewModels"
+             x:Class="RegistrationDemo.Views.WelcomePage"
+             x:DataType="vm:WelcomeViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="25" VerticalOptions="Center">
+
+            <!-- App Logo/Icon -->
+            <Image Source="dotnet_bot.png"
+                   HeightRequest="200"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,30"/>
+
+            <!-- Welcome Text -->
+            <Label Text="SQLiteXM Registration Demo"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{StaticResource Primary}"/>
+
+            <Label Text="A multi-database registration flow showcasing SQLiteXM's capabilities"
+                   FontSize="16"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{StaticResource Gray600}"
+                   Margin="0,0,0,20"/>
+
+            <!-- Features List -->
+            <VerticalStackLayout Spacing="10">
+                <HorizontalStackLayout Spacing="10">
+                    <Label Text="✓" FontSize="20" TextColor="{StaticResource Success}"/>
+                    <Label Text="Multi-database routing"
+                           FontSize="14"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Spacing="10">
+                    <Label Text="✓" FontSize="20" TextColor="{StaticResource Success}"/>
+                    <Label Text="Transaction support"
+                           FontSize="14"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Spacing="10">
+                    <Label Text="✓" FontSize="20" TextColor="{StaticResource Success}"/>
+                    <Label Text="LINQ query support"
+                           FontSize="14"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Spacing="10">
+                    <Label Text="✓" FontSize="20" TextColor="{StaticResource Success}"/>
+                    <Label Text="Entity-first design"
+                           FontSize="14"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+
+            <!-- Start Button -->
+            <Button Text="Create Account"
+                    Command="{Binding StartRegistrationCommand}"
+                    FontSize="18"
+                    Padding="20,15"
+                    Margin="0,30,0,0"
+                    HorizontalOptions="Fill"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

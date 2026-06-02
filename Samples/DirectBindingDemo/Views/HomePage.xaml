@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:DirectBindingDemo.ViewModels"
+             x:Class="DirectBindingDemo.Views.HomePage"
+             x:DataType="vm:HomeViewModel"
+             Title="{Binding Title}"
+             Shell.NavBarIsVisible="False">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="25">
+
+            <Label Text="🎉" 
+                   FontSize="60"
+                   HorizontalOptions="Center"
+                   Margin="0,40,0,0"/>
+
+            <Label Text="{Binding WelcomeMessage}" 
+                   Style="{StaticResource Headline}"
+                   SemanticProperties.HeadingLevel="Level1"/>
+
+            <Label Text="Registration Complete!" 
+                   Style="{StaticResource SubHeadline}"
+                   TextColor="{StaticResource Success}"
+                   SemanticProperties.HeadingLevel="Level2"/>
+
+            <BoxView HeightRequest="2" 
+                     Color="{StaticResource Success}"
+                     Margin="0,20"/>
+
+            <!-- User Details Card -->
+            <Frame BorderColor="{StaticResource Primary}" Padding="20" Margin="0,10">
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Your Profile"
+                           FontAttributes="Bold"
+                           FontSize="18"
+                           TextColor="{StaticResource Primary}"/>
+
+                    <!-- DIRECT BINDING: Display entity properties -->
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto" 
+                          ColumnDefinitions="120,*"
+                          RowSpacing="10">
+
+                        <Label Text="Full Name:" FontAttributes="Bold" Grid.Row="0" Grid.Column="0"/>
+                        <Label Text="{Binding CurrentUser.FullName}" Grid.Row="0" Grid.Column="1"/>
+
+                        <Label Text="Email:" FontAttributes="Bold" Grid.Row="1" Grid.Column="0"/>
+                        <Label Text="{Binding CurrentUser.Email}" Grid.Row="1" Grid.Column="1"/>
+
+                        <Label Text="Age:" FontAttributes="Bold" Grid.Row="2" Grid.Column="0"/>
+                        <Label Text="{Binding CurrentUser.Age}" Grid.Row="2" Grid.Column="1"/>
+
+                        <Label Text="Registered:" FontAttributes="Bold" Grid.Row="3" Grid.Column="0"/>
+                        <Label Text="{Binding CurrentUser.CreatedAt, StringFormat='{0:g}'}" Grid.Row="3" Grid.Column="1"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Database Info -->
+            <Frame BorderColor="{StaticResource Info}" Padding="15">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="Database Information"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Info}"/>
+                    <Label Text="{Binding DatabaseInfo}"
+                           FontSize="12"
+                           TextColor="{StaticResource Gray600}"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Direct Binding Success Message -->
+            <Frame BorderColor="{StaticResource Success}" Padding="15" Margin="0,20,0,0">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="✨ Direct Binding Success!"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource Success}"/>
+                    <Label FontSize="12" TextColor="{StaticResource Gray600}">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="This demo showed how to:" />
+                                <Span Text="&#x0a;&#x0a;✓ Bind UI directly to entity properties&#x0a;" />
+                                <Span Text="✓ Use computed properties (FullName, Age)&#x0a;" />
+                                <Span Text="✓ Eliminate field copying&#x0a;" />
+                                <Span Text="✓ Save entities with transactions&#x0a;" />
+                                <Span Text="✓ Share entities across pages&#x0a;" />
+                                <Span Text="&#x0a;All powered by " />
+                                <Span Text="SxmEntity.SetProperty()" FontFamily="Courier" TextColor="{StaticResource Success}" />
+                                <Span Text=" and " />
+                                <Span Text="INotifyPropertyChanged" FontFamily="Courier" TextColor="{StaticResource Success}" />
+                                <Span Text="!" />
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Button Text="Start Over" 
+                    Command="{Binding StartOverCommand}"
+                    BackgroundColor="{StaticResource Gray500}"
+                    Margin="0,20,0,40"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

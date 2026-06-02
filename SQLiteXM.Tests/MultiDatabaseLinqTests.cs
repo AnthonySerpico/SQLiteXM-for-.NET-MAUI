@@ -70,7 +70,8 @@ public class MultiDatabaseLinqTests : IDisposable
                 DatabaseFolderOverride = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "test_database")
             };
             var testStatementsPath = Path.Combine(initOptions.DatabaseFolderOverride, "statements.json");
-            SxmDatabase.InitializeAsync(testStatementsPath, initOptions).GetAwaiter().GetResult();
+            using var stream = File.OpenRead(testStatementsPath);
+            SxmDatabase.InitializeAsync(stream, initOptions).GetAwaiter().GetResult();
 
             // Re-register standard test entities
             SxmDatabase.RegisterEntitiesAsync(
@@ -120,7 +121,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream1 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream1, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order));
 
         // Insert test data
@@ -151,7 +153,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream2 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream2, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -186,7 +189,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream3 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream3, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -226,7 +230,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -256,7 +261,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -292,7 +298,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Cherry", Price = 2.99m, InStock = true }.SaveAsync();
@@ -324,7 +331,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -356,7 +364,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -393,7 +402,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -422,7 +432,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -450,7 +461,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Order));
 
         await new Order { CustomerName = "Alice", Total = 100.00m, IsPaid = true }.SaveAsync();
@@ -479,7 +491,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.00m, InStock = true }.SaveAsync();
@@ -506,7 +519,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -539,7 +553,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         for (int i = 1; i <= 10; i++)
@@ -588,7 +603,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -625,7 +641,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -654,7 +671,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "UniqueProduct", Price = 9.99m, InStock = true }.SaveAsync();
@@ -687,7 +705,8 @@ public class MultiDatabaseLinqTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();

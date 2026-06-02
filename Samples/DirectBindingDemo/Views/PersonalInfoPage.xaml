@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:DirectBindingDemo.ViewModels"
+             x:Class="DirectBindingDemo.Views.PersonalInfoPage"
+             x:DataType="vm:PersonalInfoViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <Label Text="Step 2: Personal Information" 
+                   Style="{StaticResource SubHeadline}"/>
+
+            <Label Text="Watch Computed Properties!"
+                   FontSize="12"
+                   TextColor="{StaticResource Info}"
+                   FontAttributes="Italic"
+                   Margin="0,0,0,10">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="As you type, " />
+                        <Span Text="FullName" FontFamily="Courier" TextColor="{StaticResource Success}" />
+                        <Span Text=" updates automatically! This demonstrates direct entity binding - the computed property lives in the entity itself, not the ViewModel. No manual field copying or property synchronization needed." />
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+
+            <!-- DIRECT BINDING: FirstName entry binds to CurrentUser.FirstName -->
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" Padding="10">
+                <VerticalStackLayout>
+                    <Label Text="First Name *" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                    <Entry Text="{Binding CurrentUser.FirstName}" 
+                           Placeholder="John"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- DIRECT BINDING: LastName entry binds to CurrentUser.LastName -->
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" Padding="10">
+                <VerticalStackLayout>
+                    <Label Text="Last Name *" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                    <Entry Text="{Binding CurrentUser.LastName}" 
+                           Placeholder="Doe"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- COMPUTED PROPERTY BINDING: Displays CurrentUser.FullName -->
+            <Frame BorderColor="{StaticResource Primary}" Padding="15" Margin="0,10">
+                <HorizontalStackLayout Spacing="10">
+                    <Label Text="✨ Full Name:" 
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}"/>
+                    <Label Text="{Binding CurrentUser.FullName}" 
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Success}"/>
+                </HorizontalStackLayout>
+            </Frame>
+
+            <!-- DIRECT BINDING: DatePicker binds to CurrentUser.DateOfBirth -->
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" Padding="10" Margin="0,10,0,0">
+                <VerticalStackLayout>
+                    <Label Text="Date of Birth *" FontSize="12" TextColor="{StaticResource Gray600}"/>
+                    <DatePicker Date="{Binding CurrentUser.DateOfBirth}" 
+                                MinimumDate="{Binding MinimumDate}"
+                                MaximumDate="{Binding MaximumDate}"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="Another Computed Property Example"
+                   FontSize="12"
+                   TextColor="{StaticResource Info}"
+                   FontAttributes="Italic"
+                   Margin="0,5,0,0">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="Change the date above and " />
+                        <Span Text="Age" FontFamily="Courier" TextColor="{StaticResource Success}" />
+                        <Span Text=" updates instantly! The entity calculates it from DateOfBirth - zero ViewModel logic required. This is the power of direct binding to intelligent entities." />
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+
+            <!-- COMPUTED PROPERTY BINDING: Displays CurrentUser.Age -->
+            <Frame BorderColor="{StaticResource Info}" Padding="15">
+                <HorizontalStackLayout Spacing="10">
+                    <Label Text="🎂 Age:" 
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Info}"/>
+                    <Label Text="{Binding CurrentUser.Age}" 
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Info}"/>
+                </HorizontalStackLayout>
+            </Frame>
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource Danger}"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}"
+                   Margin="0,10"/>
+
+            <Button Text="Next" 
+                    Command="{Binding NextCommand}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"
+                    Margin="0,20,0,0"/>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" 
+                              IsVisible="{Binding IsBusy}"
+                              HorizontalOptions="Center"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

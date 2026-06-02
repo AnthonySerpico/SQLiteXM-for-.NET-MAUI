@@ -71,7 +71,8 @@ public class MultiDatabasePerformanceTests : IDisposable
                 DatabaseFolderOverride = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "test_database")
             };
             var testStatementsPath = Path.Combine(initOptions.DatabaseFolderOverride, "statements.json");
-            SxmDatabase.InitializeAsync(testStatementsPath, initOptions).GetAwaiter().GetResult();
+            using var stream = File.OpenRead(testStatementsPath);
+            SxmDatabase.InitializeAsync(stream, initOptions).GetAwaiter().GetResult();
 
             // Re-register standard test entities
             SxmDatabase.RegisterEntitiesAsync(
@@ -125,7 +126,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream1 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream1, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var stopwatch = Stopwatch.StartNew();
@@ -166,7 +168,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream2 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream2, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order), typeof(AuditLog));
 
         var stopwatch = Stopwatch.StartNew();
@@ -215,7 +218,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream3 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream3, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         Console.WriteLine("Creating 50,000 test products...");
@@ -266,7 +270,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream4 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream4, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         // Create 20K products with varied data
@@ -322,7 +327,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream5 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream5, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Order));
 
         // Create 30K orders
@@ -374,7 +380,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream6 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream6, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order));
 
         // Act - Simulate 100 concurrent operations across both databases (50 each)
@@ -435,7 +442,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream7 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream7, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order), typeof(AuditLog));
 
         // Act - Simulate 200 concurrent operations across 3 databases
@@ -484,7 +492,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream8 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream8, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order));
 
         // Pre-populate with some data
@@ -552,7 +561,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream9 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream9, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         // Force GC and get baseline memory
@@ -607,7 +617,8 @@ public class MultiDatabasePerformanceTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream10 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream10, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         // Create 5000 products

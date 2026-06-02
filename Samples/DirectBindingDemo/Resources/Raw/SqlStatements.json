@@ -1,0 +1,9 @@
+{
+  "databases": [
+    {
+      "database": "AppData",
+      "isDefault": true,
+      "version": 1
+    }
+  ]
+}

@@ -83,7 +83,8 @@ public class MultiDatabaseTests : IDisposable
                 DatabaseFolderOverride = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "test_database")
             };
             var testStatementsPath = Path.Combine(initOptions.DatabaseFolderOverride, "statements.json");
-            SxmDatabase.InitializeAsync(testStatementsPath, initOptions).GetAwaiter().GetResult();
+            using var stream = File.OpenRead(testStatementsPath);
+            SxmDatabase.InitializeAsync(stream, initOptions).GetAwaiter().GetResult();
 
             // Re-register standard test entities (matching TestBase.RegisterAllTestEntitySchemasSync)
             SxmDatabase.RegisterEntitiesAsync(
@@ -198,7 +199,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var streamFix1 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(streamFix1, options);
 
         // Assert
         var databases = GetParsedDatabases();
@@ -235,7 +237,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
 
         // Assert
         var defaultDb = GetDefaultDatabaseName();
@@ -261,7 +264,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var streamFix2 = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(streamFix2, options);
 
         // Assert
         var databases = GetParsedDatabases();
@@ -303,7 +307,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
 
         var databases = GetParsedDatabases();
         Assert.Equal(2, databases.Count);
@@ -335,7 +340,8 @@ public class MultiDatabaseTests : IDisposable
 #endif
         var exception = await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+            using var stream = File.OpenRead(_testStatementsPath);
+            await SxmDatabase.InitializeAsync(stream, options);
         });
 
         Assert.Contains("default", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -369,7 +375,8 @@ public class MultiDatabaseTests : IDisposable
 #endif
         var exception = await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+            using var stream = File.OpenRead(_testStatementsPath);
+            await SxmDatabase.InitializeAsync(stream, options);
         });
 
         Assert.Contains("default", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -408,7 +415,8 @@ public class MultiDatabaseTests : IDisposable
 #endif
         var exception = await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+            using var stream = File.OpenRead(_testStatementsPath);
+            await SxmDatabase.InitializeAsync(stream, options);
         });
 
         Assert.Contains("database", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -438,7 +446,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(
             typeof(DatabaseAEntity),
             typeof(SecondDatabaseAEntity),
@@ -505,7 +514,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(
             typeof(DatabaseAEntity),
             typeof(DatabaseBEntity)
@@ -572,7 +582,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(
             typeof(DatabaseAEntity),
             typeof(DatabaseBEntity)
@@ -637,7 +648,8 @@ public class MultiDatabaseTests : IDisposable
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        await SxmDatabase.InitializeAsync(_testStatementsPath, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(
             typeof(DatabaseAEntity),
             typeof(DatabaseBEntity)
