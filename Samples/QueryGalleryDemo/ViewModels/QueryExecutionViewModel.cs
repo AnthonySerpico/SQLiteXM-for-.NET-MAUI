@@ -1,15 +1,16 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using QueryGalleryDemo.Models;
+using QueryGalleryDemo.Services;
 using SQLiteXM;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace QueryGalleryDemo.ViewModels;
 
 /// <summary>
 /// ViewModel for executing queries and displaying split-view results
 /// </summary>
-[QueryProperty(nameof(QueryExample), "QueryExample")]
 public partial class QueryExecutionViewModel : BaseViewModel
 {
     [ObservableProperty]
@@ -37,13 +38,74 @@ public partial class QueryExecutionViewModel : BaseViewModel
     [ObservableProperty]
     private bool hasResults;
 
+    // Called when the page appears to load the selected query
+    public void LoadSelectedQuery()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("LoadSelectedQuery called");
+            var query = NavigationService.GetSelectedQuery();
+            if (query != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Loading query: {query.Id} - {query.Name}");
+                QueryExample = query;
+                System.Diagnostics.Debug.WriteLine("Query loaded successfully");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("Warning: No query found in NavigationService");
+                ErrorMessage = "No query selected";
+
+                // Show alert to user
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    if (Application.Current?.MainPage != null)
+                    {
+                        await Application.Current.MainPage.DisplayAlert(
+                            "Error", 
+                            "No query was selected. The navigation service returned null.", 
+                            "OK");
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading query: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            ErrorMessage = $"Failed to load query: {ex.Message}";
+
+            // Show alert to user
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                if (Application.Current?.MainPage != null)
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Error", 
+                        $"Failed to load query: {ex.Message}\n\nType: {ex.GetType().Name}", 
+                        "OK");
+                }
+            });
+        }
+    }
+
     partial void OnQueryExampleChanged(QueryExample? value)
     {
-        if (value != null)
+        try
         {
-            Title = value.Name;
-            FormattedCode = value.Code;
-            HasResults = false;
+            if (value != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"QueryExample changed: {value.Name}");
+                Title = value.Name;
+                FormattedCode = value.Code;
+                HasResults = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in OnQueryExampleChanged: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            ErrorMessage = $"Failed to update query details: {ex.Message}";
         }
     }
 
@@ -110,24 +172,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
                         else
                         {
                             // Use reflection for regular objects
-                            var type = item?.GetType();
-                            if (type != null)
-                            {
-                                var properties = type.GetProperties();
-                                foreach (var prop in properties)
-                                {
-                                    try
-                                    {
-                                        var value = prop.GetValue(item);
-                                        var displayValue = FormatValue(value);
-                                        sb.AppendLine($"  {prop.Name}: {displayValue}");
-                                    }
-                                    catch
-                                    {
-                                        sb.AppendLine($"  {prop.Name}: (error reading value)");
-                                    }
-                                }
-                            }
+                            FormatObjectProperties(item, sb);
                         }
 
                         sb.AppendLine();
@@ -455,22 +500,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
             else
             {
                 // Use reflection for regular objects
-                var type = item.GetType();
-                var properties = type.GetProperties();
-
-                foreach (var prop in properties)
-                {
-                    try
-                    {
-                        var value = prop.GetValue(item);
-                        var displayValue = FormatValue(value);
-                        sb.AppendLine($"  {prop.Name}: {displayValue}");
-                    }
-                    catch
-                    {
-                        sb.AppendLine($"  {prop.Name}: (error reading value)");
-                    }
-                }
+                FormatObjectProperties(item, sb);
             }
 
             sb.AppendLine();
@@ -498,5 +528,43 @@ public partial class QueryExecutionViewModel : BaseViewModel
             float flt => flt.ToString("N2"),
             _ => value.ToString() ?? "(null)"
         };
+    }
+
+    /// <summary>
+    /// Formats object properties using reflection. The DynamicallyAccessedMembers attribute
+    /// tells the linker to preserve the properties of the object type.
+    /// </summary>
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Artist))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Album))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Track))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Genre))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Playlist))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(PlaylistTrack))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Customer))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Invoice))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(InvoiceLine))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Employee))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(MediaType))]
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "All model types are preserved via DynamicDependency attributes")]
+    private void FormatObjectProperties([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] object? item, System.Text.StringBuilder sb)
+    {
+        if (item == null) return;
+
+        var type = item.GetType();
+        var properties = type.GetProperties();
+
+        foreach (var prop in properties)
+        {
+            try
+            {
+                var value = prop.GetValue(item);
+                var displayValue = FormatValue(value);
+                sb.AppendLine($"  {prop.Name}: {displayValue}");
+            }
+            catch
+            {
+                sb.AppendLine($"  {prop.Name}: (error reading value)");
+            }
+        }
     }
 }

@@ -16,6 +16,8 @@ public partial class WelcomePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        System.Diagnostics.Debug.WriteLine("WelcomePage: OnAppearing called");
         await _viewModel.InitializeAsync();
+        System.Diagnostics.Debug.WriteLine("WelcomePage: InitializeAsync completed");
     }
 }

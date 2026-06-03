@@ -11,6 +11,11 @@ public class QueryExample
     public QueryCategory Category { get; set; }
     public QueryType Type { get; set; }
     public string Code { get; set; } = string.Empty;
+
+    /// <summary>
+    /// For RawSql queries, contains the actual SQL statement from SqlStatements.json
+    /// </summary>
+    public string? ActualSqlStatement { get; set; }
 }
 
 /// <summary>

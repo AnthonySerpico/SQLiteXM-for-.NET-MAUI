@@ -12,15 +12,25 @@
         <Frame Grid.Row="0" 
                Padding="15"
                BorderColor="{StaticResource Primary}"
-               BackgroundColor="{StaticResource Gray100}">
-            <VerticalStackLayout Spacing="5">
-                <Label Text="{Binding QueryExample.Description}"
+               BackgroundColor="{StaticResource Gray100}"
+               IsVisible="{Binding QueryExample, Converter={StaticResource IsNotNullConverter}}">
+            <VerticalStackLayout Spacing="8">
+                <Label Text="{Binding QueryExample.Description, FallbackValue='Loading...'}"
                        FontSize="14"
                        TextColor="{StaticResource Gray900}"/>
-                <Label Text="{Binding QueryExample.Type, StringFormat='Type: {0}'}"
+                <Label Text="{Binding QueryExample.Type, StringFormat='Type: {0}', FallbackValue='Type: Unknown'}"
                        FontSize="12"
                        TextColor="{StaticResource Primary}"
                        FontFamily="Courier"/>
+
+                <!-- Show actual SQL statement for RawSql queries -->
+                <Label Text="{Binding QueryExample.ActualSqlStatement}"
+                       FontSize="11"
+                       FontFamily="Courier"
+                       TextColor="{StaticResource Gray600}"
+                       LineBreakMode="WordWrap"
+                       IsVisible="{Binding QueryExample.ActualSqlStatement, Converter={StaticResource StringNotEmptyConverter}}"
+                       Margin="0,5,0,0"/>
             </VerticalStackLayout>
         </Frame>
 
@@ -37,7 +47,7 @@
             <ScrollView Grid.Row="1">
                 <Frame Padding="15"
                        BorderColor="{StaticResource Gray300}"
-                       BackgroundColor="{StaticResource Gray50}">
+                       BackgroundColor="{StaticResource Gray100}">
                     <Label Text="{Binding FormattedCode}"
                            FontFamily="Courier"
                            FontSize="12"
@@ -86,7 +96,7 @@
             <ScrollView Grid.Row="1">
                 <Frame Padding="10"
                        BorderColor="{StaticResource Gray300}"
-                       BackgroundColor="{StaticResource Gray50}">
+                       BackgroundColor="{StaticResource Gray100}">
                     <!-- Formatted results display -->
                     <Label Text="{Binding FormattedResults}"
                            FontFamily="Courier"

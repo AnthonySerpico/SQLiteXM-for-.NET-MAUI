@@ -90,6 +90,57 @@ public class DatabaseSeeder
     }
 
     /// <summary>
+    /// Checks if seeding is needed by verifying both the preference flag and actual data existence.
+    /// This handles cases where the database file was manually deleted but the preference wasn't cleared.
+    /// </summary>
+    public Task<bool> CheckIfSeedingNeededAsync()
+    {
+        System.Diagnostics.Debug.WriteLine("DatabaseSeeder: CheckIfSeedingNeededAsync START");
+
+        // First check the preference flag
+        var isSeededPref = Preferences.Get(SEED_KEY, false);
+        System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Preference flag is {isSeededPref}");
+
+        if (!isSeededPref)
+        {
+            // Preference says not seeded, so we need seeding
+            System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Preference says not seeded, needs seeding");
+            return Task.FromResult(true);
+        }
+
+        // Preference says it's seeded, verify the database file actually exists
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Checking if database file exists...");
+
+            // Get the database file path
+            var dbFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SQLiteXM");
+            var dbPath = Path.Combine(dbFolder, "Chinook.db");
+
+            System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Checking path: {dbPath}");
+
+            if (!File.Exists(dbPath))
+            {
+                // Database file doesn't exist but preference says it's seeded - clear stale preference
+                System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Database file not found, clearing preference and needs seeding");
+                Preferences.Remove(SEED_KEY);
+                return Task.FromResult(true);
+            }
+
+            // File exists and preference is set, assume database is good
+            System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Database file exists and preference is set, no seeding needed");
+            return Task.FromResult(false);
+        }
+        catch (Exception ex)
+        {
+            // Error checking file - assume we need seeding to be safe
+            System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Exception checking database file: {ex.Message}");
+            Preferences.Remove(SEED_KEY);
+            return Task.FromResult(true);
+        }
+    }
+
+    /// <summary>
     /// Registers all entity types with SQLiteXM. Must be called before querying.
     /// </summary>
     public async Task RegisterEntitiesAsync()
@@ -102,9 +153,37 @@ public class DatabaseSeeder
 
     public async Task SeedDatabaseAsync(IProgress<string>? progress = null)
     {
+        // Convert to the new progress type
+        Action<(string status, double progress)>? newProgress = null;
+        if (progress != null)
+        {
+            newProgress = update => progress.Report(update.status);
+        }
+        await SeedDatabaseAsync(newProgress);
+    }
+
+    public async Task SeedDatabaseAsync(Action<(string status, double progress)>? progress = null)
+    {
         try
         {
-            progress?.Report("Starting database seeding...");
+            System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Starting SeedDatabaseAsync, progress is {(progress == null ? "null" : "not null")}");
+
+            const int totalSteps = 11;  // Fixed: Was 10, but there are 11 seeding steps
+            int currentStep = 0;
+
+            async Task ReportProgressAsync(string status)
+            {
+                currentStep++;
+                double progressValue = (double)currentStep / totalSteps;
+                System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Reporting progress - Step {currentStep}/{totalSteps} ({progressValue:P0}) - {status}");
+                progress?.Invoke((status, progressValue));
+
+                // Give UI thread time to process the update
+                await Task.Delay(150);
+            }
+
+            progress?.Invoke(("Starting database seeding...", 0.0));
+            await Task.Delay(200); // Initial delay to ensure UI is ready
 
             // Register all entities with SQLiteXM
             await RegisterEntitiesAsync();
@@ -113,34 +192,51 @@ public class DatabaseSeeder
             // If tables exist but are empty or incomplete, we'll detect it in individual seed methods
 
             // Seed reference data first
-            var genres = await SeedGenresAsync(progress);
-            var mediaTypes = await SeedMediaTypesAsync(progress);
-            var artists = await SeedArtistsAsync(progress);
+            await ReportProgressAsync("Seeding genres...");
+            var genres = await SeedGenresAsync(null);
+
+            await ReportProgressAsync("Seeding media types...");
+            var mediaTypes = await SeedMediaTypesAsync(null);
+
+            await ReportProgressAsync("Seeding artists...");
+            var artists = await SeedArtistsAsync(null);
 
             // Seed albums and tracks (large datasets)
-            var albums = await SeedAlbumsAsync(artists, progress);
-            var tracks = await SeedTracksAsync(albums, mediaTypes, genres, progress);
+            await ReportProgressAsync("Seeding albums...");
+            var albums = await SeedAlbumsAsync(artists, null);
+
+            await ReportProgressAsync("Seeding tracks...");
+            var tracks = await SeedTracksAsync(albums, mediaTypes, genres, null);
 
             // Seed playlists and many-to-many relationships
-            var playlists = await SeedPlaylistsAsync(progress);
-            await SeedPlaylistTracksAsync(playlists, tracks, progress);
+            await ReportProgressAsync("Seeding playlists...");
+            var playlists = await SeedPlaylistsAsync(null);
+
+            await ReportProgressAsync("Linking playlists with tracks...");
+            await SeedPlaylistTracksAsync(playlists, tracks, null);
 
             // Seed customers and employees
-            var employees = await SeedEmployeesAsync(progress);
-            var customers = await SeedCustomersAsync(employees, progress);
+            await ReportProgressAsync("Seeding employees...");
+            var employees = await SeedEmployeesAsync(null);
+
+            await ReportProgressAsync("Seeding customers...");
+            var customers = await SeedCustomersAsync(employees, null);
 
             // Seed invoices and invoice lines
-            var invoices = await SeedInvoicesAsync(customers, progress);
-            await SeedInvoiceLinesAsync(invoices, tracks, progress);
+            await ReportProgressAsync("Seeding invoices...");
+            var invoices = await SeedInvoicesAsync(customers, null);
+
+            await ReportProgressAsync("Seeding invoice lines...");
+            await SeedInvoiceLinesAsync(invoices, tracks, null);
 
             // Mark as seeded
             Preferences.Set(SEED_KEY, true);
 
-            progress?.Report("Database seeding completed successfully!");
+            progress?.Invoke(("Database seeding completed successfully!", 1.0));
         }
         catch (Exception ex)
         {
-            progress?.Report($"Error seeding database: {ex.Message}");
+            progress?.Invoke(($"Error seeding database: {ex.Message}", 0.0));
             throw;
         }
     }
@@ -232,23 +328,29 @@ public class DatabaseSeeder
         var albumTitles = new[] { "Greatest Hits", "Live", "The Best Of", "Unplugged", "Acoustic",
             "Anthology", "Collection", "Classics", "Volume 1", "Volume 2", "Deluxe Edition" };
 
-        for (int i = 0; i < 400; i++)
+        // Use a single transaction for all inserts
+        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
         {
-            var artist = artists[_random.Next(artists.Count)];
-            var titleSuffix = albumTitles[_random.Next(albumTitles.Length)];
-
-            var album = new Album
+            for (int i = 0; i < 400; i++)
             {
-                Title = $"{artist.Name} - {titleSuffix} {_random.Next(1980, 2025)}",
-                ArtistId = artist.id
-            };
-            await album.SaveAsync();
-            albums.Add(album);
+                var artist = artists[_random.Next(artists.Count)];
+                var titleSuffix = albumTitles[_random.Next(albumTitles.Length)];
 
-            if (i % 50 == 0 && i > 0)
-            {
-                progress?.Report($"Seeded {i}/400 albums...");
+                var album = new Album
+                {
+                    Title = $"{artist.Name} - {titleSuffix} {_random.Next(1980, 2025)}",
+                    ArtistId = artist.id
+                };
+                await album.SaveAsync(transaction);
+                albums.Add(album);
+
+                if (i % 50 == 0 && i > 0)
+                {
+                    progress?.Report($"Seeded {i}/400 albums...");
+                }
             }
+
+            await transaction.CommitTransactionAsync();
         }
 
         return albums;
@@ -261,31 +363,37 @@ public class DatabaseSeeder
 
         var tracks = new List<Track>();
 
-        for (int i = 0; i < 3500; i++)
+        // Use a single transaction for all inserts
+        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
         {
-            var album = albums[_random.Next(albums.Count)];
-            var mediaType = mediaTypes[_random.Next(mediaTypes.Count)];
-            var genre = genres[_random.Next(genres.Count)];
-
-            var track = new Track
+            for (int i = 0; i < 3500; i++)
             {
-                Name = i < _trackTitles.Length ? _trackTitles[i] : $"Track {i + 1}",
-                AlbumId = album.id,
-                MediaTypeId = mediaType.id,
-                GenreId = genre.id,
-                Composer = _random.Next(2) == 0 ? $"{_firstNames[_random.Next(_firstNames.Length)]} {_lastNames[_random.Next(_lastNames.Length)]}" : null,
-                Milliseconds = _random.Next(120000, 420000), // 2-7 minutes
-                Bytes = _random.Next(2000000, 10000000),
-                UnitPrice = (decimal)(_random.Next(69, 199) / 100.0), // $0.69 - $1.99
-                TrackNumber = _random.Next(1, 20)
-            };
-            await track.SaveAsync();
-            tracks.Add(track);
+                var album = albums[_random.Next(albums.Count)];
+                var mediaType = mediaTypes[_random.Next(mediaTypes.Count)];
+                var genre = genres[_random.Next(genres.Count)];
 
-            if (i % 500 == 0 && i > 0)
-            {
-                progress?.Report($"Seeded {i}/3,500 tracks...");
+                var track = new Track
+                {
+                    Name = i < _trackTitles.Length ? _trackTitles[i] : $"Track {i + 1}",
+                    AlbumId = album.id,
+                    MediaTypeId = mediaType.id,
+                    GenreId = genre.id,
+                    Composer = _random.Next(2) == 0 ? $"{_firstNames[_random.Next(_firstNames.Length)]} {_lastNames[_random.Next(_lastNames.Length)]}" : null,
+                    Milliseconds = _random.Next(120000, 420000), // 2-7 minutes
+                    Bytes = _random.Next(2000000, 10000000),
+                    UnitPrice = (decimal)(_random.Next(69, 199) / 100.0), // $0.69 - $1.99
+                    TrackNumber = _random.Next(1, 20)
+                };
+                await track.SaveAsync(transaction);
+                tracks.Add(track);
+
+                if (i % 500 == 0 && i > 0)
+                {
+                    progress?.Report($"Seeded {i}/3,500 tracks...");
+                }
             }
+
+            await transaction.CommitTransactionAsync();
         }
 
         return tracks;
@@ -319,28 +427,51 @@ public class DatabaseSeeder
         progress?.Report("Seeding 10,000 playlist-track relationships...");
 
         var addedPairs = new HashSet<string>();
+        const int batchSize = 1000;
+        var batch = new List<PlaylistTrack>();
 
-        for (int i = 0; i < 10000; i++)
+        // Use a single transaction for all inserts - MASSIVE performance improvement
+        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
         {
-            var playlist = playlists[_random.Next(playlists.Count)];
-            var track = tracks[_random.Next(tracks.Count)];
-            var key = $"{playlist.id}_{track.id}";
-
-            if (!addedPairs.Contains(key))
+            for (int i = 0; i < 10000; i++)
             {
-                var playlistTrack = new PlaylistTrack
+                var playlist = playlists[_random.Next(playlists.Count)];
+                var track = tracks[_random.Next(tracks.Count)];
+                var key = $"{playlist.id}_{track.id}";
+
+                if (!addedPairs.Contains(key))
                 {
-                    PlaylistId = playlist.id,
-                    TrackId = track.id
-                };
-                await playlistTrack.SaveAsync();
-                addedPairs.Add(key);
+                    var playlistTrack = new PlaylistTrack
+                    {
+                        PlaylistId = playlist.id,
+                        TrackId = track.id
+                    };
+                    batch.Add(playlistTrack);
+                    addedPairs.Add(key);
+
+                    // Insert batch when it reaches batch size
+                    if (batch.Count >= batchSize)
+                    {
+                        foreach (var pt in batch)
+                        {
+                            await pt.SaveAsync(transaction);
+                        }
+                        batch.Clear();
+                        progress?.Report($"Seeded {i + 1}/10,000 playlist tracks...");
+                    }
+                }
             }
 
-            if (i % 1000 == 0 && i > 0)
+            // Insert any remaining items
+            if (batch.Count > 0)
             {
-                progress?.Report($"Seeded {i}/10,000 playlist tracks...");
+                foreach (var pt in batch)
+                {
+                    await pt.SaveAsync(transaction);
+                }
             }
+
+            await transaction.CommitTransactionAsync();
         }
     }
 
@@ -383,29 +514,35 @@ public class DatabaseSeeder
 
         var customers = new List<Customer>();
 
-        for (int i = 0; i < 500; i++)
+        // Use a single transaction for all inserts
+        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
         {
-            var customer = new Customer
+            for (int i = 0; i < 500; i++)
             {
-                FirstName = _firstNames[_random.Next(_firstNames.Length)],
-                LastName = _lastNames[_random.Next(_lastNames.Length)],
-                Company = _random.Next(3) == 0 ? $"{_lastNames[_random.Next(_lastNames.Length)]} Inc." : null,
-                Address = $"{_random.Next(100, 9999)} {_lastNames[_random.Next(_lastNames.Length)]} Ave",
-                City = _cities[_random.Next(_cities.Length)],
-                State = "CA",
-                Country = _countries[_random.Next(_countries.Length)],
-                PostalCode = $"{_random.Next(10000, 99999)}",
-                Phone = $"+1 (555) {_random.Next(100, 999)}-{_random.Next(1000, 9999)}",
-                Email = $"customer{i + 1}@email.com",
-                SupportRepId = employees[_random.Next(employees.Count)].id
-            };
-            await customer.SaveAsync();
-            customers.Add(customer);
+                var customer = new Customer
+                {
+                    FirstName = _firstNames[_random.Next(_firstNames.Length)],
+                    LastName = _lastNames[_random.Next(_lastNames.Length)],
+                    Company = _random.Next(3) == 0 ? $"{_lastNames[_random.Next(_lastNames.Length)]} Inc." : null,
+                    Address = $"{_random.Next(100, 9999)} {_lastNames[_random.Next(_lastNames.Length)]} Ave",
+                    City = _cities[_random.Next(_cities.Length)],
+                    State = "CA",
+                    Country = _countries[_random.Next(_countries.Length)],
+                    PostalCode = $"{_random.Next(10000, 99999)}",
+                    Phone = $"+1 (555) {_random.Next(100, 999)}-{_random.Next(1000, 9999)}",
+                    Email = $"customer{i + 1}@email.com",
+                    SupportRepId = employees[_random.Next(employees.Count)].id
+                };
+                await customer.SaveAsync(transaction);
+                customers.Add(customer);
 
-            if (i % 100 == 0 && i > 0)
-            {
-                progress?.Report($"Seeded {i}/500 customers...");
+                if (i % 100 == 0 && i > 0)
+                {
+                    progress?.Report($"Seeded {i}/500 customers...");
+                }
             }
+
+            await transaction.CommitTransactionAsync();
         }
 
         return customers;
@@ -418,27 +555,33 @@ public class DatabaseSeeder
 
         var invoices = new List<Invoice>();
 
-        for (int i = 0; i < 2000; i++)
+        // Use a single transaction for all inserts
+        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
         {
-            var customer = customers[_random.Next(customers.Count)];
-            var invoice = new Invoice
+            for (int i = 0; i < 2000; i++)
             {
-                CustomerId = customer.id,
-                InvoiceDate = DateTime.Now.AddDays(-_random.Next(1, 1095)), // Last 3 years
-                BillingAddress = customer.Address,
-                BillingCity = customer.City,
-                BillingState = customer.State,
-                BillingCountry = customer.Country,
-                BillingPostalCode = customer.PostalCode,
-                Total = 0 // Will be calculated when adding invoice lines
-            };
-            await invoice.SaveAsync();
-            invoices.Add(invoice);
+                var customer = customers[_random.Next(customers.Count)];
+                var invoice = new Invoice
+                {
+                    CustomerId = customer.id,
+                    InvoiceDate = DateTime.Now.AddDays(-_random.Next(1, 1095)), // Last 3 years
+                    BillingAddress = customer.Address,
+                    BillingCity = customer.City,
+                    BillingState = customer.State,
+                    BillingCountry = customer.Country,
+                    BillingPostalCode = customer.PostalCode,
+                    Total = 0 // Will be calculated when adding invoice lines
+                };
+                await invoice.SaveAsync(transaction);
+                invoices.Add(invoice);
 
-            if (i % 500 == 0 && i > 0)
-            {
-                progress?.Report($"Seeded {i}/2,000 invoices...");
+                if (i % 500 == 0 && i > 0)
+                {
+                    progress?.Report($"Seeded {i}/2,000 invoices...");
+                }
             }
+
+            await transaction.CommitTransactionAsync();
         }
 
         return invoices;
@@ -449,29 +592,66 @@ public class DatabaseSeeder
     {
         progress?.Report("Seeding 8,000 invoice lines...");
 
-        for (int i = 0; i < 8000; i++)
+        // Track invoice total updates in memory to avoid 8000 individual invoice updates
+        var invoiceTotals = new Dictionary<long, decimal>();
+        const int batchSize = 1000;
+        var batch = new List<InvoiceLine>();
+
+        // Use a single transaction for all inserts - MASSIVE performance improvement
+        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
         {
-            var invoice = invoices[_random.Next(invoices.Count)];
-            var track = tracks[_random.Next(tracks.Count)];
-            var quantity = _random.Next(1, 4);
-
-            var invoiceLine = new InvoiceLine
+            for (int i = 0; i < 8000; i++)
             {
-                InvoiceId = invoice.id,
-                TrackId = track.id,
-                UnitPrice = track.UnitPrice,
-                Quantity = quantity
-            };
-            await invoiceLine.SaveAsync();
+                var invoice = invoices[_random.Next(invoices.Count)];
+                var track = tracks[_random.Next(tracks.Count)];
+                var quantity = _random.Next(1, 4);
 
-            // Update invoice total
-            invoice.Total += track.UnitPrice * quantity;
-            await invoice.SaveAsync();
+                var invoiceLine = new InvoiceLine
+                {
+                    InvoiceId = invoice.id,
+                    TrackId = track.id,
+                    UnitPrice = track.UnitPrice,
+                    Quantity = quantity
+                };
+                batch.Add(invoiceLine);
 
-            if (i % 1000 == 0 && i > 0)
-            {
-                progress?.Report($"Seeded {i}/8,000 invoice lines...");
+                // Accumulate invoice totals in memory
+                var lineTotal = track.UnitPrice * quantity;
+                if (!invoiceTotals.ContainsKey(invoice.id))
+                    invoiceTotals[invoice.id] = invoice.Total;
+                invoiceTotals[invoice.id] += lineTotal;
+
+                // Insert batch when it reaches batch size
+                if (batch.Count >= batchSize)
+                {
+                    foreach (var il in batch)
+                    {
+                        await il.SaveAsync(transaction);
+                    }
+                    batch.Clear();
+                    progress?.Report($"Seeded {i + 1}/8,000 invoice lines...");
+                }
             }
+
+            // Insert any remaining invoice lines
+            if (batch.Count > 0)
+            {
+                foreach (var il in batch)
+                {
+                    await il.SaveAsync(transaction);
+                }
+            }
+
+            // Now update all invoice totals in one batch
+            progress?.Report("Updating invoice totals...");
+            foreach (var kvp in invoiceTotals)
+            {
+                var invoice = invoices.First(inv => inv.id == kvp.Key);
+                invoice.Total = kvp.Value;
+                await invoice.SaveAsync(transaction);
+            }
+
+            await transaction.CommitTransactionAsync();
         }
     }
 }

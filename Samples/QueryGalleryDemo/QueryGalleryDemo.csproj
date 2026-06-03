@@ -40,15 +40,42 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 	</PropertyGroup>
 
-	<!-- iOS AOT/Trimming Configuration -->
-	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios'">
-		<PublishAot>true</PublishAot>
-		<PublishTrimmed>true</PublishTrimmed>
-		<TrimMode>partial</TrimMode>
+	<!-- iOS/MacCatalyst Configuration - Disable AOT and Trimming for Release to avoid crashes -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios' and '$(Configuration)' == 'Release'">
+		<PublishAot>false</PublishAot>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+
+	<!-- iOS Debug Configuration -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios' and '$(Configuration)' == 'Debug'">
+		<PublishAot>false</PublishAot>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+
+	<!-- MacCatalyst Configuration - Disable AOT and Trimming -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-maccatalyst'">
+		<PublishAot>false</PublishAot>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+
+	<!-- Android Linker Configuration for Release builds -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('android')) and '$(Configuration)' == 'Release'">
+		<AndroidLinkMode>SdkOnly</AndroidLinkMode>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+
+	<!-- Windows Configuration -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('windows')) and '$(Configuration)' == 'Release'">
+		<PublishTrimmed>false</PublishTrimmed>
 	</PropertyGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-ios'">
 		<TrimmerRootAssembly Include="linq2db" />
+		<TrimmerRootAssembly Include="QueryGalleryDemo" />
+	</ItemGroup>
+
+	<!-- Preserve model types for reflection in iOS builds -->
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-ios'">
 		<TrimmerRootAssembly Include="QueryGalleryDemo" />
 	</ItemGroup>
 

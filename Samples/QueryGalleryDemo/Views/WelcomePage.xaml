@@ -60,16 +60,27 @@
 
         <!-- Seeding Status -->
         <VerticalStackLayout Grid.Row="2" Spacing="15" IsVisible="{Binding IsSeeding}">
-            <ActivityIndicator IsRunning="{Binding IsSeeding}"
-                             HeightRequest="40"
-                             WidthRequest="40"
-                             HorizontalOptions="Center"
-                             Color="{StaticResource Primary}"/>
+            <ProgressBar Progress="{Binding ProgressValue}"
+                        HeightRequest="20"
+                        ProgressColor="{StaticResource Primary}"
+                        Margin="0,10,0,0"/>
+
+            <Label Text="{Binding ProgressText}"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{StaticResource Primary}"/>
 
             <Label Text="{Binding SeedingStatus}"
                    FontSize="14"
                    HorizontalOptions="Center"
                    TextColor="{StaticResource Gray600}"/>
+
+            <ActivityIndicator IsRunning="{Binding IsSeeding}"
+                             HeightRequest="30"
+                             WidthRequest="30"
+                             HorizontalOptions="Center"
+                             Color="{StaticResource Primary}"/>
         </VerticalStackLayout>
 
         <!-- Continue Button -->

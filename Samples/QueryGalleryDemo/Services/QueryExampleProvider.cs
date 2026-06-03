@@ -316,6 +316,9 @@ return tracks;"
 
     private static List<QueryExample> GetRawSqlExamples()
     {
+        // Load SQL statements from JSON file
+        var sqlStatements = LoadSqlStatementsFromJson();
+
         return new List<QueryExample>
         {
             new QueryExample
@@ -326,7 +329,8 @@ return tracks;"
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<Artist>(""GetAllArtistsRaw"");
-return results;"
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAllArtistsRaw")
             },
             new QueryExample
             {
@@ -336,7 +340,8 @@ return results;"
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTracksWithArtistAlbum"");
-return results;"
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithArtistAlbum")
             },
             new QueryExample
             {
@@ -346,9 +351,47 @@ return results;"
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTopSellingTracks"");
-return results;"
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopSellingTracks")
             }
         };
+    }
+
+    /// <summary>
+    /// Loads SQL statements from the SqlStatements.json file
+    /// </summary>
+    private static Dictionary<string, string> LoadSqlStatementsFromJson()
+    {
+        var statements = new Dictionary<string, string>();
+
+        try
+        {
+            using var stream = FileSystem.OpenAppPackageFileAsync("SqlStatements.json").Result;
+            if (stream != null)
+            {
+                using var reader = new System.IO.StreamReader(stream);
+                var json = reader.ReadToEnd();
+                var doc = System.Text.Json.JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("select", out var selectArray))
+                {
+                    foreach (var item in selectArray.EnumerateArray())
+                    {
+                        if (item.TryGetProperty("Statement Name", out var nameElement) &&
+                            item.TryGetProperty("Statement", out var statementElement))
+                        {
+                            statements[nameElement.GetString() ?? ""] = statementElement.GetString() ?? "";
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading SQL statements: {ex.Message}");
+        }
+
+        return statements;
     }
 
     private static List<QueryExample> GetPerformanceExamples()
