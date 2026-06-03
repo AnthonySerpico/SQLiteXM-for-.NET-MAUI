@@ -55,8 +55,8 @@ public partial class WelcomeViewModel : BaseViewModel
 
             // Test if UI updates work at all
             SeedingStatus = "Checking database...";
-            ProgressValue = 0.08;
-            ProgressText = "8%";
+            ProgressValue = 0.0;
+            ProgressText = "0%";
             await Task.Delay(500); // Pause so user can see this change
             System.Diagnostics.Debug.WriteLine($"Updated to 'Checking database...' 8% - did UI update?");
 
