@@ -1,0 +1,42 @@
+{
+  "databases": [
+    {
+      "database": "Chinook",
+      "isDefault": true,
+      "version": 1
+    }
+  ],
+
+  "select": [
+    {
+      "Statement Name": "GetAllArtistsRaw",
+      "Statement": "SELECT * FROM Artist ORDER BY Name",
+      "Table Name": "Artist"
+    },
+    {
+      "Statement Name": "GetTracksWithArtistAlbum",
+      "Statement": "SELECT t.Name AS TrackName, a.Title AS AlbumTitle, ar.Name AS ArtistName, t.Milliseconds, g.Name AS GenreName FROM Track t INNER JOIN Album a ON t.AlbumId = a.id INNER JOIN Artist ar ON a.ArtistId = ar.id LEFT JOIN Genre g ON t.GenreId = g.id ORDER BY ar.Name, a.Title LIMIT 100",
+      "Table Name": "Track"
+    },
+    {
+      "Statement Name": "GetTopSellingTracks",
+      "Statement": "SELECT t.Name AS TrackName, COUNT(il.id) AS TimesSold, SUM(il.Quantity) AS TotalQuantity, SUM(il.UnitPrice * il.Quantity) AS TotalRevenue FROM Track t INNER JOIN InvoiceLine il ON t.id = il.TrackId GROUP BY t.id, t.Name ORDER BY TotalRevenue DESC LIMIT 20",
+      "Table Name": "Track"
+    },
+    {
+      "Statement Name": "GetCustomerPurchaseStats",
+      "Statement": "SELECT c.FirstName || ' ' || c.LastName AS CustomerName, c.Country, COUNT(i.id) AS TotalOrders, SUM(i.Total) AS TotalSpent FROM Customer c LEFT JOIN Invoice i ON c.id = i.CustomerId GROUP BY c.id ORDER BY TotalSpent DESC",
+      "Table Name": "Customer"
+    },
+    {
+      "Statement Name": "GetGenrePopularity",
+      "Statement": "SELECT g.Name AS Genre, COUNT(t.id) AS TrackCount, SUM(t.Milliseconds) / 1000 / 60 AS TotalMinutes FROM Genre g INNER JOIN Track t ON g.id = t.GenreId GROUP BY g.id, g.Name ORDER BY TrackCount DESC",
+      "Table Name": "Genre"
+    },
+    {
+      "Statement Name": "GetPlaylistDetails",
+      "Statement": "SELECT p.Name AS PlaylistName, COUNT(pt.TrackId) AS TrackCount, SUM(t.Milliseconds) / 1000 / 60 AS TotalMinutes FROM Playlist p LEFT JOIN PlaylistTrack pt ON p.id = pt.PlaylistId LEFT JOIN Track t ON pt.TrackId = t.id GROUP BY p.id, p.Name ORDER BY TrackCount DESC",
+      "Table Name": "Playlist"
+    }
+  ]
+}

@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:QueryGalleryDemo.ViewModels"
+             x:Class="QueryGalleryDemo.Views.QueryMenuPage"
+             x:DataType="vm:QueryMenuViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="20">
+
+            <!-- Header -->
+            <Label Text="🎵 Query Categories"
+                   FontSize="32"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="{StaticResource Primary}"
+                   Margin="0,10,0,20"/>
+
+            <Label Text="Select a category to explore SQLiteXM query examples"
+                   FontSize="16"
+                   HorizontalOptions="Center"
+                   TextColor="{StaticResource Gray600}"
+                   Margin="0,0,0,30"/>
+
+            <!-- Category Buttons Grid -->
+            <Grid RowSpacing="15" ColumnSpacing="15">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Basic Queries -->
+                <Frame Grid.Row="0" Grid.Column="0" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="Basic"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="📋"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Basic Queries"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Simple SELECT, WHERE, ORDER BY"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Relationship Queries -->
+                <Frame Grid.Row="0" Grid.Column="1" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="Relationships"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="🔗"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Relationships"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="JOIN queries, navigation"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Aggregation Queries -->
+                <Frame Grid.Row="1" Grid.Column="0" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="Aggregations"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="📊"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Aggregations"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="COUNT, SUM, AVG, GROUP BY"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Advanced LINQ -->
+                <Frame Grid.Row="1" Grid.Column="1" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="AdvancedLinq"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="⚡"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Advanced LINQ"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Complex queries, paging"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Raw SQL -->
+                <Frame Grid.Row="2" Grid.Column="0" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="RawSql"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="💻"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Raw SQL"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Custom SQL from JSON"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Performance -->
+                <Frame Grid.Row="2" Grid.Column="1" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="Performance"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="🚀"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Performance"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Large datasets, benchmarks"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Many-to-Many -->
+                <Frame Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="ManyToMany"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="🔀"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Many-to-Many"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Junction tables, playlist/track relationships"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+            </Grid>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
