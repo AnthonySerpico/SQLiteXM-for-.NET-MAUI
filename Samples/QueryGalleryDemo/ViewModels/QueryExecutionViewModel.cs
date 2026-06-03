@@ -221,25 +221,61 @@ public partial class QueryExecutionViewModel : BaseViewModel
             "basic_3" => ExecuteBasic3(),
             "basic_4" => context.GetTable<Artist>().Where(a => a.Name.Contains("Zeppelin")).ToList(),
             "basic_5" => context.GetTable<Track>().Where(t => t.UnitPrice >= 0.99m && t.UnitPrice <= 1.49m).OrderBy(t => t.UnitPrice).ThenBy(t => t.Name).Take(100).ToList(),
+            "basic_6" => context.GetTable<Track>().OrderByDescending(t => t.UnitPrice).ThenBy(t => t.Name).Take(10).ToList(),
+            "basic_7" => context.GetTable<Track>().Where(t => t.Milliseconds >= 180000 && t.Milliseconds <= 300000).OrderBy(t => t.Milliseconds).Take(100).ToList(),
+            "basic_8" => context.GetTable<Artist>().Where(a => a.Name.ToLower().Contains("led")).OrderBy(a => a.Name).ToList(),
+            "basic_9" => context.GetTable<Track>().Where(t => t.Composer != null && t.Composer != "").OrderBy(t => t.Composer).ThenBy(t => t.Name).Take(100).ToList(),
+            "basic_10" => context.GetTable<MediaType>().OrderBy(m => m.Name).ToList(),
 
             "rel_1" => ExecuteRel1(),
             "rel_2" => ExecuteRel2(),
             "rel_3" => ExecuteRel3(),
+            "rel_4" => ExecuteRel4(),
+            "rel_5" => ExecuteRel5(),
+            "rel_6" => ExecuteRel6(),
+            "rel_7" => ExecuteRel7(),
+            "rel_8" => ExecuteRel8(),
 
             "agg_1" => ExecuteAgg1(),
             "agg_2" => ExecuteAgg2(),
             "agg_3" => ExecuteAgg3(),
+            "agg_4" => ExecuteAgg4(),
+            "agg_5" => ExecuteAgg5(),
+            "agg_6" => ExecuteAgg6(),
+            "agg_7" => ExecuteAgg7(),
+            "agg_8" => ExecuteAgg8(),
+            "agg_9" => ExecuteAgg9(),
+            "agg_10" => ExecuteAgg10(),
 
             "adv_1" => context.GetTable<Track>().OrderBy(t => t.Name).Skip(0).Take(20).ToList(),
             "adv_2" => ExecuteAdv2(),
-            "adv_3" => context.GetTable<Track>().Where(t => (t.UnitPrice > 1.0m && t.Milliseconds > 300000) || (t.Name.Contains("Love") || t.Name.Contains("Rock"))).OrderBy(t => t.UnitPrice).Take(50).ToList(),
+            "adv_3" => ExecuteAdv3(),
+            "adv_4" => ExecuteAdv4(),
+            "adv_5" => ExecuteAdv5(),
+            "adv_6" => ExecuteAdv6(),
+            "adv_7" => ExecuteAdv7(),
+            "adv_8" => ExecuteAdv8(),
+            "adv_9" => ExecuteAdv9(),
+            "adv_10" => ExecuteAdv10(),
+            "adv_11" => ExecuteAdv11(),
 
             "perf_1" => context.GetTable<Track>().OrderBy(t => t.Name).Take(1000).ToList(),
             "perf_2" => ExecutePerf2(),
+            "perf_3" => context.GetTable<Track>().OrderBy(t => t.id).Skip(20).Take(20).ToList(),
+            "perf_4" => context.GetTable<Track>().Select(t => new { t.id, t.Name, t.UnitPrice }).Take(100).ToList(),
+            "perf_5" => ExecutePerf5(),
+            "perf_6" => ExecutePerf6(),
+            "perf_7" => ExecutePerf7(),
+            "perf_8" => ExecutePerf8(),
 
             "m2m_1" => ExecuteM2M1(),
             "m2m_2" => ExecuteM2M2(),
             "m2m_3" => ExecuteM2M3(),
+            "m2m_4" => ExecuteM2M4(),
+            "m2m_5" => ExecuteM2M5(),
+            "m2m_6" => ExecuteM2M6(),
+            "m2m_7" => ExecuteM2M7(),
+            "m2m_8" => ExecuteM2M8(),
 
             _ => new List<object>()
         };
@@ -428,6 +464,512 @@ public partial class QueryExecutionViewModel : BaseViewModel
                     TotalDurationMinutes = g.Where(t => t != null).Sum(t => t.Milliseconds) / 1000 / 60
                 })
                 .OrderByDescending(x => x.TrackCount)
+                .ToList();
+    }
+
+    // Relationship queries
+    private object ExecuteRel4()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from customer in context.GetTable<Customer>()
+                join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
+                from employee in empGroup.DefaultIfEmpty()
+                orderby customer.LastName, customer.FirstName
+                select new
+                {
+                    CustomerName = customer.FirstName + " " + customer.LastName,
+                    customer.Email,
+                    SupportRep = employee != null ? employee.FirstName + " " + employee.LastName : "None",
+                    SupportRepEmail = employee != null ? employee.Email : ""
+                })
+                .Take(50)
+                .ToList();
+    }
+
+    private object ExecuteRel5()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from emp in context.GetTable<Employee>()
+                join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
+                from manager in mgrGroup.DefaultIfEmpty()
+                orderby emp.LastName, emp.FirstName
+                select new
+                {
+                    EmployeeName = emp.FirstName + " " + emp.LastName,
+                    emp.Title,
+                    ManagerName = manager != null ? manager.FirstName + " " + manager.LastName : "No Manager",
+                    ManagerTitle = manager != null ? manager.Title : ""
+                })
+                .ToList();
+    }
+
+    private object ExecuteRel6()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from invoice in context.GetTable<Invoice>()
+                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                orderby invoice.InvoiceDate descending
+                select new
+                {
+                    invoice.id,
+                    invoice.InvoiceDate,
+                    CustomerName = customer.FirstName + " " + customer.LastName,
+                    customer.Country,
+                    invoice.Total
+                })
+                .Take(100)
+                .ToList();
+    }
+
+    private object ExecuteRel7()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from track in context.GetTable<Track>()
+                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
+                from genre in genreGroup.DefaultIfEmpty()
+                join mediaType in context.GetTable<MediaType>() on track.MediaTypeId equals mediaType.id into mtGroup
+                from mediaType in mtGroup.DefaultIfEmpty()
+                orderby artist.Name, album.Title, track.TrackNumber
+                select new
+                {
+                    TrackName = track.Name,
+                    ArtistName = artist.Name,
+                    AlbumTitle = album.Title,
+                    GenreName = genre != null ? genre.Name : "Unknown",
+                    MediaTypeName = mediaType != null ? mediaType.Name : "Unknown",
+                    track.UnitPrice,
+                    DurationMinutes = track.Milliseconds / 1000.0 / 60.0
+                })
+                .Take(50)
+                .ToList();
+    }
+
+    private object ExecuteRel8()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from track in context.GetTable<Track>()
+                select new 
+                { 
+                    track.Name, 
+                    Composer = track.Composer ?? "No Composer"
+                })
+                .Take(50)
+                .ToList();
+    }
+
+    // Aggregation queries
+    private object ExecuteAgg4()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from invoice in context.GetTable<Invoice>()
+                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                group invoice by new { customer.id, CustomerName = customer.FirstName + " " + customer.LastName, customer.Country } into g
+                select new
+                {
+                    Customer = g.Key.CustomerName,
+                    Country = g.Key.Country,
+                    TotalSpent = g.Sum(i => i.Total),
+                    InvoiceCount = g.Count()
+                })
+                .OrderByDescending(x => x.TotalSpent)
+                .Take(20)
+                .ToList();
+    }
+
+    private object ExecuteAgg5()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from invoiceLine in context.GetTable<InvoiceLine>()
+                join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
+                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                group invoiceLine by new { genre.id, genre.Name } into g
+                select new
+                {
+                    Genre = g.Key.Name,
+                    TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
+                    UnitsSold = g.Sum(il => il.Quantity)
+                })
+                .OrderByDescending(x => x.TotalRevenue)
+                .ToList();
+    }
+
+    private object ExecuteAgg6()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from invoice in context.GetTable<Invoice>()
+                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                group invoice by customer.Country into g
+                select new
+                {
+                    Country = g.Key,
+                    AvgInvoiceTotal = g.Average(i => i.Total),
+                    InvoiceCount = g.Count(),
+                    TotalRevenue = g.Sum(i => i.Total)
+                })
+                .OrderByDescending(x => x.TotalRevenue)
+                .ToList();
+    }
+
+    private object ExecuteAgg7()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var tracks = context.GetTable<Track>().ToList();
+        return new List<object>
+        {
+            new
+            {
+                MinPrice = tracks.Min(t => t.UnitPrice),
+                MaxPrice = tracks.Max(t => t.UnitPrice),
+                AvgPrice = tracks.Average(t => t.UnitPrice),
+                TotalTracks = tracks.Count
+            }
+        };
+    }
+
+    private object ExecuteAgg8()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from customer in context.GetTable<Customer>()
+                join invoice in context.GetTable<Invoice>() on customer.id equals invoice.CustomerId into invoices
+                from invoice in invoices.DefaultIfEmpty()
+                group invoice by new { customer.id, CustomerName = customer.FirstName + " " + customer.LastName, customer.Country } into g
+                select new
+                {
+                    Customer = g.Key.CustomerName,
+                    Country = g.Key.Country,
+                    TotalSpent = g.Where(i => i != null).Sum(i => i.Total),
+                    OrderCount = g.Count(i => i != null),
+                    AvgOrderValue = g.Where(i => i != null).Any() ? g.Where(i => i != null).Average(i => i.Total) : 0
+                })
+                .Where(x => x.OrderCount > 0)
+                .OrderByDescending(x => x.TotalSpent)
+                .Take(30)
+                .ToList();
+    }
+
+    private object ExecuteAgg9()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from track in context.GetTable<Track>()
+                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                group track by new { album.id, album.Title, artist.Name } into g
+                select new
+                {
+                    AlbumTitle = g.Key.Title,
+                    ArtistName = g.Key.Name,
+                    TrackCount = g.Count(),
+                    TotalDurationMinutes = g.Sum(t => t.Milliseconds) / 1000.0 / 60.0,
+                    AvgTrackDuration = g.Average(t => t.Milliseconds) / 1000.0 / 60.0
+                })
+                .OrderByDescending(x => x.TrackCount)
+                .Take(30)
+                .ToList();
+    }
+
+    private object ExecuteAgg10()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from invoiceLine in context.GetTable<InvoiceLine>()
+                join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
+                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                group invoiceLine by new { artist.id, artist.Name } into g
+                select new
+                {
+                    ArtistName = g.Key.Name,
+                    TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
+                    TracksSold = g.Sum(il => il.Quantity)
+                })
+                .OrderByDescending(x => x.TotalRevenue)
+                .Take(20)
+                .ToList();
+    }
+
+    // Advanced LINQ queries
+    private object ExecuteAdv3()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return context.GetTable<Track>()
+            .Where(t => (t.UnitPrice >= 1.0m && t.Milliseconds >= 180000) || 
+                        (t.UnitPrice < 1.0m && t.Milliseconds < 180000))
+            .OrderBy(t => t.UnitPrice)
+            .Take(50)
+            .ToList();
+    }
+
+    private object ExecuteAdv4()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var artistIds = context.GetTable<Artist>()
+            .OrderBy(a => a.Name)
+            .Take(50)
+            .Select(a => a.id)
+            .ToList();
+
+        return (from track in context.GetTable<Track>()
+                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                where artistIds.Contains(album.ArtistId)
+                orderby track.Name
+                select track)
+                .Take(100)
+                .ToList();
+    }
+
+    private object ExecuteAdv5()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from customer in context.GetTable<Customer>()
+                let invoiceCount = (from invoice in context.GetTable<Invoice>()
+                                   where invoice.CustomerId == customer.id
+                                   select invoice).Count()
+                orderby invoiceCount
+                select new
+                {
+                    CustomerName = customer.FirstName + " " + customer.LastName,
+                    customer.Country,
+                    InvoiceCount = invoiceCount
+                })
+                .Take(50)
+                .ToList();
+    }
+
+    private object ExecuteAdv6()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from album in context.GetTable<Album>()
+                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                group album by new { artist.id, artist.Name } into g
+                orderby g.Count() descending
+                select new
+                {
+                    ArtistName = g.Key.Name,
+                    AlbumCount = g.Count()
+                })
+                .Take(50)
+                .ToList();
+    }
+
+    private object ExecuteAdv7()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var tracks = context.GetTable<Track>().ToList();
+        return new List<object>
+        {
+            new
+            {
+                CheapTracks = tracks.Count(t => t.UnitPrice < 1.0m),
+                MidPriceTracks = tracks.Count(t => t.UnitPrice >= 1.0m && t.UnitPrice < 1.5m),
+                ExpensiveTracks = tracks.Count(t => t.UnitPrice >= 1.5m),
+                AvgPrice = tracks.Average(t => t.UnitPrice),
+                MaxPrice = tracks.Max(t => t.UnitPrice),
+                MinPrice = tracks.Min(t => t.UnitPrice)
+            }
+        };
+    }
+
+    private object ExecuteAdv8()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from track in context.GetTable<Track>()
+                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                group track by new { genre.id, genre.Name } into g
+                from track in g.OrderByDescending(t => t.Milliseconds).Take(3)
+                select new
+                {
+                    Genre = g.Key.Name,
+                    TrackName = track.Name,
+                    DurationMinutes = track.Milliseconds / 1000.0 / 60.0
+                })
+                .OrderBy(x => x.Genre)
+                .ThenByDescending(x => x.DurationMinutes)
+                .ToList();
+    }
+
+    private object ExecuteAdv9()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from invoice in context.GetTable<Invoice>()
+                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                orderby invoice.InvoiceDate descending
+                select new
+                {
+                    invoice.InvoiceDate,
+                    CustomerName = customer.FirstName + " " + customer.LastName,
+                    invoice.Total,
+                    DaysAgo = (DateTime.Now - invoice.InvoiceDate).Days
+                })
+                .Take(100)
+                .ToList();
+    }
+
+    private object ExecuteAdv10()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return context.GetTable<Artist>()
+            .Select(a => new
+            {
+                OriginalName = a.Name,
+                UpperName = a.Name.ToUpper(),
+                LowerName = a.Name.ToLower(),
+                FirstThreeChars = a.Name.Length >= 3 ? a.Name.Substring(0, 3) : a.Name,
+                NameLength = a.Name.Length
+            })
+            .OrderBy(a => a.OriginalName)
+            .Take(20)
+            .ToList();
+    }
+
+    private object ExecuteAdv11()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var artistNames = context.GetTable<Artist>()
+            .Select(a => new { Name = a.Name, Type = "Artist" })
+            .Take(10);
+
+        var albumTitles = context.GetTable<Album>()
+            .Select(a => new { Name = a.Title, Type = "Album" })
+            .Take(10);
+
+        return artistNames.Union(albumTitles)
+            .OrderBy(x => x.Type)
+            .ThenBy(x => x.Name)
+            .ToList();
+    }
+
+    // Performance queries
+    private object ExecutePerf5()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var expensiveAlbums = context.GetTable<Album>()
+            .Where(a => a.Title.StartsWith("A"))
+            .Take(50);
+
+        return (from album in expensiveAlbums
+                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                select new { album.Title, artist.Name })
+                .ToList();
+    }
+
+    private object ExecutePerf6()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var hasExpensiveTracks = context.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
+        var expensiveCount = context.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
+
+        return new List<object>
+        {
+            new { HasExpensiveTracks = hasExpensiveTracks, Count = expensiveCount }
+        };
+    }
+
+    private object ExecutePerf7()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from track in context.GetTable<Track>()
+                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                select new 
+                { 
+                    TrackName = track.Name, 
+                    AlbumTitle = album.Title 
+                })
+                .Take(100)
+                .ToList();
+    }
+
+    private object ExecutePerf8()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return context.GetTable<Customer>()
+            .Select(c => c.Country)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+    }
+
+    // Many-to-Many queries
+    private object ExecuteM2M4()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from pt in context.GetTable<PlaylistTrack>()
+                join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                group pt by new { track.id, track.Name } into g
+                where g.Select(x => x.PlaylistId).Distinct().Count() > 1
+                select new
+                {
+                    TrackName = g.Key.Name,
+                    PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                })
+                .OrderByDescending(x => x.PlaylistCount)
+                .Take(30)
+                .ToList();
+    }
+
+    private object ExecuteM2M5()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from pt in context.GetTable<PlaylistTrack>()
+                join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                group pt by new { track.id, TrackName = track.Name, ArtistName = artist.Name } into g
+                select new
+                {
+                    TrackName = g.Key.TrackName,
+                    ArtistName = g.Key.ArtistName,
+                    PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                })
+                .OrderByDescending(x => x.PlaylistCount)
+                .Take(20)
+                .ToList();
+    }
+
+    private object ExecuteM2M6()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from playlist in context.GetTable<Playlist>()
+                let trackCount = (from pt in context.GetTable<PlaylistTrack>()
+                                 where pt.PlaylistId == playlist.id
+                                 select pt).Count()
+                where trackCount < 100
+                orderby trackCount
+                select new
+                {
+                    playlist.Name,
+                    TrackCount = trackCount
+                })
+                .Take(20)
+                .ToList();
+    }
+
+    private object ExecuteM2M7()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return new List<object>
+        {
+            new { Message = "Pattern: Create PlaylistTrack with both IDs and SaveAsync()" }
+        };
+    }
+
+    private object ExecuteM2M8()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        return (from pt1 in context.GetTable<PlaylistTrack>()
+                join pt2 in context.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
+                where pt1.PlaylistId < pt2.PlaylistId
+                join p1 in context.GetTable<Playlist>() on pt1.PlaylistId equals p1.id
+                join p2 in context.GetTable<Playlist>() on pt2.PlaylistId equals p2.id
+                group pt1 by new { Playlist1Name = p1.Name, Playlist2Name = p2.Name } into g
+                select new
+                {
+                    Playlist1 = g.Key.Playlist1Name,
+                    Playlist2 = g.Key.Playlist2Name,
+                    SharedTracks = g.Count()
+                })
+                .OrderByDescending(x => x.SharedTracks)
+                .Take(10)
                 .ToList();
     }
 
