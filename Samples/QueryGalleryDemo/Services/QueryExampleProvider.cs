@@ -536,26 +536,36 @@ return new[] { summary };"
             {
                 Id = "agg_8",
                 Name = "Customer Purchase Statistics",
-                Description = "Detailed customer purchasing patterns",
+                Description = "Detailed customer purchasing patterns (optimized)",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
                 Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-var results = (from customer in context.GetTable<Customer>()
-               join invoice in context.GetTable<Invoice>() on customer.id equals invoice.CustomerId into invoices
-               from invoice in invoices.DefaultIfEmpty()
-               group invoice by new { customer.id, CustomerName = customer.FirstName + "" "" + customer.LastName, customer.Country } into g
-               select new
-               {
-                   Customer = g.Key.CustomerName,
-                   Country = g.Key.Country,
-                   TotalSpent = g.Where(i => i != null).Sum(i => i.Total),
-                   OrderCount = g.Count(i => i != null),
-                   AvgOrderValue = g.Where(i => i != null).Any() ? g.Where(i => i != null).Average(i => i.Total) : 0
-               })
-               .Where(x => x.OrderCount > 0)
-               .OrderByDescending(x => x.TotalSpent)
-               .Take(30)
-               .ToList();
+// Optimized: Pre-aggregate invoice data first
+var customerStats = (from invoice in context.GetTable<Invoice>()
+                    group invoice by invoice.CustomerId into g
+                    select new
+                    {
+                        CustomerId = g.Key,
+                        TotalSpent = g.Sum(i => i.Total),
+                        OrderCount = g.Count(),
+                        AvgOrderValue = g.Average(i => i.Total)
+                    }).ToList();
+
+var customers = context.GetTable<Customer>().ToList();
+
+var results = (from stat in customerStats
+              join customer in customers on stat.CustomerId equals customer.id
+              select new
+              {
+                  Customer = customer.FirstName + "" "" + customer.LastName,
+                  Country = customer.Country,
+                  stat.TotalSpent,
+                  stat.OrderCount,
+                  stat.AvgOrderValue
+              })
+              .OrderByDescending(x => x.TotalSpent)
+              .Take(30)
+              .ToList();
 return results;"
             },
             new QueryExample
@@ -759,20 +769,31 @@ return new[] { priceAnalysis };"
             {
                 Id = "adv_8",
                 Name = "Top N per Group",
-                Description = "Get top 3 longest tracks per genre",
+                Description = "Get top 3 longest tracks per genre (SQLite-compatible)",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
                 Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-var results = (from track in context.GetTable<Track>()
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-               group track by new { genre.id, genre.Name } into g
-               from track in g.OrderByDescending(t => t.Milliseconds).Take(3)
-               select new
-               {
-                   Genre = g.Key.Name,
-                   TrackName = track.Name,
-                   DurationMinutes = track.Milliseconds / 1000.0 / 60.0
-               })
+// SQLite doesn't support CROSS/OUTER APPLY, so materialize first
+var tracksWithGenre = (from track in context.GetTable<Track>()
+                      join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                      select new
+                      {
+                          GenreId = genre.id,
+                          GenreName = genre.Name,
+                          TrackName = track.Name,
+                          Milliseconds = track.Milliseconds
+                      }).ToList();
+
+// Perform Top-3 per group in memory
+var results = tracksWithGenre
+               .GroupBy(t => new { t.GenreId, t.GenreName })
+               .SelectMany(g => g.OrderByDescending(t => t.Milliseconds).Take(3)
+                   .Select(track => new
+                   {
+                       Genre = g.Key.GenreName,
+                       TrackName = track.TrackName,
+                       DurationMinutes = track.Milliseconds / 1000.0 / 60.0
+                   }))
                .OrderBy(x => x.Genre)
                .ThenByDescending(x => x.DurationMinutes)
                .ToList();
@@ -1284,75 +1305,106 @@ var results = (from playlist in context.GetTable<Playlist>()
                                .ToList();
                return results;"
                            },
-                           new QueryExample
-                           {
-                               Id = "m2m_4",
-                               Name = "Tracks Shared Between Playlists",
-                               Description = "Find tracks that appear in multiple playlists",
-                               Category = QueryCategory.ManyToMany,
-                               Type = QueryType.Linq,
-                               Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-               var sharedTracks = (from pt in context.GetTable<PlaylistTrack>()
-                                   join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                                   group pt by new { track.id, track.Name } into g
-                                   where g.Select(x => x.PlaylistId).Distinct().Count() > 1
-                                   select new
-                                   {
-                                       TrackName = g.Key.Name,
-                                       PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-                                   })
-                                   .OrderByDescending(x => x.PlaylistCount)
-                                   .Take(30)
-                                   .ToList();
-               return sharedTracks;"
-                           },
-                           new QueryExample
-                           {
-                               Id = "m2m_5",
-                               Name = "Popular Tracks in Playlists",
-                               Description = "Count how many playlists each track appears in",
-                               Category = QueryCategory.ManyToMany,
-                               Type = QueryType.Linq,
-                               Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-               var popularTracks = (from pt in context.GetTable<PlaylistTrack>()
-                                    join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                                    group pt by new { track.id, track.Name, artist.Name } into g
-                                    select new
-                                    {
-                                        TrackName = g.Key.Name,
-                                        ArtistName = g.Key.Name1,
-                                        PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-                                    })
-                                    .OrderByDescending(x => x.PlaylistCount)
-                                    .Take(20)
-                                    .ToList();
-               return popularTracks;"
-                           },
-                                       new QueryExample
-                                       {
-                                           Id = "m2m_6",
-                                           Name = "Playlists with Few Tracks",
-                                           Description = "Find playlists with fewer than 100 tracks",
-                                           Category = QueryCategory.ManyToMany,
-                                           Type = QueryType.Linq,
-                                           Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-                           var smallPlaylists = (from playlist in context.GetTable<Playlist>()
-                                                 let trackCount = (from pt in context.GetTable<PlaylistTrack>()
-                                                                  where pt.PlaylistId == playlist.id
-                                                                  select pt).Count()
-                                                 where trackCount < 100
-                                                 orderby trackCount
-                                                 select new
-                                                 {
-                                                     playlist.Name,
-                                                     TrackCount = trackCount
-                                                 })
-                                                 .Take(20)
-                                                 .ToList();
-                           return smallPlaylists;"
-                                       },
+                                                       new QueryExample
+                                                       {
+                                                           Id = "m2m_4",
+                                                           Name = "Tracks Shared Between Playlists",
+                                                           Description = "Find tracks that appear in multiple playlists (SQLite-compatible)",
+                                                           Category = QueryCategory.ManyToMany,
+                                                           Type = QueryType.Linq,
+                                                           Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                           // Materialize first - SQLite can't translate Distinct().Count() in projection
+                           var trackPlaylistGroups = (from pt in context.GetTable<PlaylistTrack>()
+                                                     join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                                                     select new
+                                                     {
+                                                         TrackId = track.id,
+                                                         TrackName = track.Name,
+                                                         PlaylistId = pt.PlaylistId
+                                                     }).ToList();
+
+                           // Perform distinct count in memory
+                           var sharedTracks = trackPlaylistGroups
+                                              .GroupBy(x => new { x.TrackId, x.TrackName })
+                                              .Select(g => new
+                                              {
+                                                  TrackName = g.Key.TrackName,
+                                                  PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                                              })
+                                              .Where(x => x.PlaylistCount > 1)
+                                              .OrderByDescending(x => x.PlaylistCount)
+                                              .Take(30)
+                                              .ToList();
+                           return sharedTracks;"
+                                                       },
+                                                       new QueryExample
+                                                       {
+                                                           Id = "m2m_5",
+                                                           Name = "Popular Tracks in Playlists",
+                                                           Description = "Count how many playlists each track appears in (optimized)",
+                                                           Category = QueryCategory.ManyToMany,
+                                                           Type = QueryType.Linq,
+                                                           Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                           // Materialize joins first - avoid hanging on Distinct().Count()
+                           var trackData = (from pt in context.GetTable<PlaylistTrack>()
+                                           join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                                           join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                                           join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                                           select new
+                                           {
+                                               TrackId = track.id,
+                                               TrackName = track.Name,
+                                               ArtistName = artist.Name,
+                                               PlaylistId = pt.PlaylistId
+                                           }).ToList();
+
+                           // Perform distinct count in memory
+                           var popularTracks = trackData
+                                              .GroupBy(x => new { x.TrackId, x.TrackName, x.ArtistName })
+                                              .Select(g => new
+                                              {
+                                                  TrackName = g.Key.TrackName,
+                                                  ArtistName = g.Key.ArtistName,
+                                                  PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                                              })
+                                              .OrderByDescending(x => x.PlaylistCount)
+                                              .Take(20)
+                                              .ToList();
+                           return popularTracks;"
+                                                       },
+                                                                               new QueryExample
+                                                                               {
+                                                                                   Id = "m2m_6",
+                                                                                   Name = "Playlists with Few Tracks",
+                                                                                   Description = "Find playlists with fewer than 250 tracks (optimized)",
+                                                                                   Category = QueryCategory.ManyToMany,
+                                                                                   Type = QueryType.Linq,
+                                                                                   Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                       // Materialize playlist track counts first
+                                       var playlistCounts = (from pt in context.GetTable<PlaylistTrack>()
+                                                            group pt by pt.PlaylistId into g
+                                                            select new
+                                                            {
+                                                                PlaylistId = g.Key,
+                                                                TrackCount = g.Count()
+                                                            }).ToList();
+
+                                       var playlists = context.GetTable<Playlist>().ToList();
+
+                                       // Join in memory and filter
+                                       var smallPlaylists = (from pc in playlistCounts
+                                                            join p in playlists on pc.PlaylistId equals p.id
+                                                            where pc.TrackCount < 250
+                                                            orderby pc.TrackCount
+                                                            select new
+                                                            {
+                                                                Name = p.Name,
+                                                                TrackCount = pc.TrackCount
+                                                            })
+                                                            .Take(20)
+                                                            .ToList();
+                                       return smallPlaylists;"
+                                                                               },
                            new QueryExample
                            {
                                Id = "m2m_7",

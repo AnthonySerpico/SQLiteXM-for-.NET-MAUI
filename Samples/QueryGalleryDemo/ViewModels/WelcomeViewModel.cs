@@ -34,7 +34,7 @@ public partial class WelcomeViewModel : BaseViewModel
     public WelcomeViewModel(DatabaseSeeder databaseSeeder)
     {
         _databaseSeeder = databaseSeeder;
-        Title = "QueryGallery Demo";
+        Title = "Query Gallery Demo";
     }
 
     public async Task InitializeAsync()

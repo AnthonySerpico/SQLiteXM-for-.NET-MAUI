@@ -436,7 +436,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     private object ExecuteM2M2()
     {
         using var context = new SxmLinqDbContext("Chinook");
-        var track = context.GetTable<Track>().FirstOrDefault(t => t.Name.Contains("Rock"));
+        var track = context.GetTable<Track>().FirstOrDefault(t => t.Name.Contains("Track"));
         if (track != null)
         {
             return (from pt in context.GetTable<PlaylistTrack>()
@@ -631,19 +631,34 @@ public partial class QueryExecutionViewModel : BaseViewModel
     private object ExecuteAgg8()
     {
         using var context = new SxmLinqDbContext("Chinook");
-        return (from customer in context.GetTable<Customer>()
-                join invoice in context.GetTable<Invoice>() on customer.id equals invoice.CustomerId into invoices
-                from invoice in invoices.DefaultIfEmpty()
-                group invoice by new { customer.id, CustomerName = customer.FirstName + " " + customer.LastName, customer.Country } into g
+
+        var dbTimer = Stopwatch.StartNew();
+        // Optimized: Pre-aggregate invoice data first, then join with customers
+        // This avoids multiple Where() iterations in the SELECT projection
+        var customerStats = (from invoice in context.GetTable<Invoice>()
+                            group invoice by invoice.CustomerId into g
+                            select new
+                            {
+                                CustomerId = g.Key,
+                                TotalSpent = g.Sum(i => i.Total),
+                                OrderCount = g.Count(),
+                                AvgOrderValue = g.Average(i => i.Total)
+                            }).ToList();
+
+        var customers = context.GetTable<Customer>().ToList();
+        dbTimer.Stop();
+        System.Diagnostics.Debug.WriteLine($"[agg_8] Database query time: {dbTimer.ElapsedMilliseconds}ms");
+
+        return (from stat in customerStats
+                join customer in customers on stat.CustomerId equals customer.id
                 select new
                 {
-                    Customer = g.Key.CustomerName,
-                    Country = g.Key.Country,
-                    TotalSpent = g.Where(i => i != null).Sum(i => i.Total),
-                    OrderCount = g.Count(i => i != null),
-                    AvgOrderValue = g.Where(i => i != null).Any() ? g.Where(i => i != null).Average(i => i.Total) : 0
+                    Customer = customer.FirstName + " " + customer.LastName,
+                    Country = customer.Country,
+                    TotalSpent = stat.TotalSpent,
+                    OrderCount = stat.OrderCount,
+                    AvgOrderValue = stat.AvgOrderValue
                 })
-                .Where(x => x.OrderCount > 0)
                 .OrderByDescending(x => x.TotalSpent)
                 .Take(30)
                 .ToList();
@@ -773,16 +788,31 @@ public partial class QueryExecutionViewModel : BaseViewModel
     private object ExecuteAdv8()
     {
         using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-                group track by new { genre.id, genre.Name } into g
-                from track in g.OrderByDescending(t => t.Milliseconds).Take(3)
-                select new
-                {
-                    Genre = g.Key.Name,
-                    TrackName = track.Name,
-                    DurationMinutes = track.Milliseconds / 1000.0 / 60.0
-                })
+
+        var dbTimer = Stopwatch.StartNew();
+        // SQLite doesn't support CROSS/OUTER APPLY, so materialize first
+        var tracksWithGenre = (from track in context.GetTable<Track>()
+                               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                               select new
+                               {
+                                   GenreId = genre.id,
+                                   GenreName = genre.Name,
+                                   TrackName = track.Name,
+                                   Milliseconds = track.Milliseconds
+                               }).ToList();
+        dbTimer.Stop();
+        System.Diagnostics.Debug.WriteLine($"[adv_8] Database query time: {dbTimer.ElapsedMilliseconds}ms");
+
+        // Now perform Top-3 per group in memory
+        return tracksWithGenre
+                .GroupBy(t => new { t.GenreId, t.GenreName })
+                .SelectMany(g => g.OrderByDescending(t => t.Milliseconds).Take(3)
+                    .Select(track => new
+                    {
+                        Genre = g.Key.GenreName,
+                        TrackName = track.TrackName,
+                        DurationMinutes = track.Milliseconds / 1000.0 / 60.0
+                    }))
                 .OrderBy(x => x.Genre)
                 .ThenByDescending(x => x.DurationMinutes)
                 .ToList();
@@ -893,15 +923,29 @@ public partial class QueryExecutionViewModel : BaseViewModel
     private object ExecuteM2M4()
     {
         using var context = new SxmLinqDbContext("Chinook");
-        return (from pt in context.GetTable<PlaylistTrack>()
-                join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                group pt by new { track.id, track.Name } into g
-                where g.Select(x => x.PlaylistId).Distinct().Count() > 1
-                select new
+
+        var dbTimer = Stopwatch.StartNew();
+        // Materialize the grouped data first - SQLite can't translate Distinct().Count() in projection
+        var trackPlaylistGroups = (from pt in context.GetTable<PlaylistTrack>()
+                                   join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                                   select new
+                                   {
+                                       TrackId = track.id,
+                                       TrackName = track.Name,
+                                       PlaylistId = pt.PlaylistId
+                                   }).ToList();
+        dbTimer.Stop();
+        System.Diagnostics.Debug.WriteLine($"[m2m_4] Database query time: {dbTimer.ElapsedMilliseconds}ms");
+
+        // Now perform distinct count in memory
+        return trackPlaylistGroups
+                .GroupBy(x => new { x.TrackId, x.TrackName })
+                .Select(g => new
                 {
-                    TrackName = g.Key.Name,
+                    TrackName = g.Key.TrackName,
                     PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
                 })
+                .Where(x => x.PlaylistCount > 1)
                 .OrderByDescending(x => x.PlaylistCount)
                 .Take(30)
                 .ToList();
@@ -910,12 +954,27 @@ public partial class QueryExecutionViewModel : BaseViewModel
     private object ExecuteM2M5()
     {
         using var context = new SxmLinqDbContext("Chinook");
-        return (from pt in context.GetTable<PlaylistTrack>()
-                join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                group pt by new { track.id, TrackName = track.Name, ArtistName = artist.Name } into g
-                select new
+
+        var dbTimer = Stopwatch.StartNew();
+        // Materialize the joins first - avoid hanging on Distinct().Count() in projection
+        var trackData = (from pt in context.GetTable<PlaylistTrack>()
+                        join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                        select new
+                        {
+                            TrackId = track.id,
+                            TrackName = track.Name,
+                            ArtistName = artist.Name,
+                            PlaylistId = pt.PlaylistId
+                        }).ToList();
+        dbTimer.Stop();
+        System.Diagnostics.Debug.WriteLine($"[m2m_5] Database query time: {dbTimer.ElapsedMilliseconds}ms");
+
+        // Perform distinct count in memory
+        return trackData
+                .GroupBy(x => new { x.TrackId, x.TrackName, x.ArtistName })
+                .Select(g => new
                 {
                     TrackName = g.Key.TrackName,
                     ArtistName = g.Key.ArtistName,
@@ -929,16 +988,30 @@ public partial class QueryExecutionViewModel : BaseViewModel
     private object ExecuteM2M6()
     {
         using var context = new SxmLinqDbContext("Chinook");
-        return (from playlist in context.GetTable<Playlist>()
-                let trackCount = (from pt in context.GetTable<PlaylistTrack>()
-                                 where pt.PlaylistId == playlist.id
-                                 select pt).Count()
-                where trackCount < 100
-                orderby trackCount
+
+        var dbTimer = Stopwatch.StartNew();
+        // Materialize playlist track counts (10k playlist tracks / 50 playlists = ~200 avg)
+        var playlistCounts = (from pt in context.GetTable<PlaylistTrack>()
+                             group pt by pt.PlaylistId into g
+                             select new
+                             {
+                                 PlaylistId = g.Key,
+                                 TrackCount = g.Count()
+                             }).ToList();
+
+        var playlists = context.GetTable<Playlist>().ToList();
+        dbTimer.Stop();
+        System.Diagnostics.Debug.WriteLine($"[m2m_6] Database query time: {dbTimer.ElapsedMilliseconds}ms");
+
+        // Join in memory and filter for playlists with fewer than 250 tracks
+        return (from pc in playlistCounts
+                join p in playlists on pc.PlaylistId equals p.id
+                where pc.TrackCount < 250
+                orderby pc.TrackCount
                 select new
                 {
-                    playlist.Name,
-                    TrackCount = trackCount
+                    Name = p.Name,
+                    TrackCount = pc.TrackCount
                 })
                 .Take(20)
                 .ToList();

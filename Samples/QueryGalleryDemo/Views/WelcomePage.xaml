@@ -16,7 +16,7 @@
 
         <!-- Title -->
         <VerticalStackLayout Grid.Row="0" Spacing="10">
-            <Label Text="🎵 QueryGallery Demo"
+            <Label Text="🎵 Query Gallery Demo"
                    FontSize="36"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
