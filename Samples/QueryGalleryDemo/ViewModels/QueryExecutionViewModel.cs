@@ -984,6 +984,18 @@ public partial class QueryExecutionViewModel : BaseViewModel
             "raw_1" => "GetAllArtistsRaw",
             "raw_2" => "GetTracksWithArtistAlbum",
             "raw_3" => "GetTopSellingTracks",
+            "raw_4" => "GetCustomerPurchaseStats",
+            "raw_5" => "GetGenrePopularity",
+            "raw_6" => "GetPlaylistDetails",
+            "raw_7" => "GetArtistRevenue",
+            "raw_8" => "GetExpensiveTracksByGenre",
+            "raw_9" => "GetCustomersByCountryWithStats",
+            "raw_10" => "GetMonthlyRevenueTrend",
+            "raw_11" => "GetTopCustomersWithDetails",
+            "raw_12" => "GetTracksWithPriceTier",
+            "raw_13" => "GetAlbumCompletion",
+            "raw_14" => "GetEmployeePerformance",
+            "raw_15" => "GetPlaylistPopularity",
             _ => null
         };
 

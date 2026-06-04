@@ -37,6 +37,51 @@
       "Statement Name": "GetPlaylistDetails",
       "Statement": "SELECT p.Name AS PlaylistName, COUNT(pt.TrackId) AS TrackCount, SUM(t.Milliseconds) / 1000 / 60 AS TotalMinutes FROM Playlist p LEFT JOIN PlaylistTrack pt ON p.id = pt.PlaylistId LEFT JOIN Track t ON pt.TrackId = t.id GROUP BY p.id, p.Name ORDER BY TrackCount DESC",
       "Table Name": "Playlist"
+    },
+    {
+      "Statement Name": "GetArtistRevenue",
+      "Statement": "SELECT ar.Name AS ArtistName, COUNT(DISTINCT al.id) AS AlbumCount, COUNT(DISTINCT t.id) AS TrackCount, COALESCE(SUM(il.UnitPrice * il.Quantity), 0) AS TotalRevenue FROM Artist ar LEFT JOIN Album al ON ar.id = al.ArtistId LEFT JOIN Track t ON al.id = t.AlbumId LEFT JOIN InvoiceLine il ON t.id = il.TrackId GROUP BY ar.id, ar.Name ORDER BY TotalRevenue DESC LIMIT 30",
+      "Table Name": "Artist"
+    },
+    {
+      "Statement Name": "GetExpensiveTracksByGenre",
+      "Statement": "SELECT g.Name AS Genre, t.Name AS TrackName, t.UnitPrice, t.Milliseconds / 1000 / 60.0 AS DurationMinutes FROM Track t INNER JOIN Genre g ON t.GenreId = g.id WHERE t.UnitPrice >= (SELECT AVG(UnitPrice) * 1.2 FROM Track) ORDER BY t.UnitPrice DESC, g.Name LIMIT 50",
+      "Table Name": "Track"
+    },
+    {
+      "Statement Name": "GetCustomersByCountryWithStats",
+      "Statement": "SELECT Country, COUNT(*) AS CustomerCount, ROUND(AVG(TotalSpent), 2) AS AvgSpentPerCustomer, ROUND(SUM(TotalSpent), 2) AS TotalCountryRevenue FROM (SELECT c.Country, c.id, COALESCE(SUM(i.Total), 0) AS TotalSpent FROM Customer c LEFT JOIN Invoice i ON c.id = i.CustomerId GROUP BY c.Country, c.id) GROUP BY Country ORDER BY TotalCountryRevenue DESC",
+      "Table Name": "Customer"
+    },
+    {
+      "Statement Name": "GetMonthlyRevenueTrend",
+      "Statement": "SELECT strftime('%Y-%m', InvoiceDate) AS Month, COUNT(*) AS InvoiceCount, ROUND(SUM(Total), 2) AS MonthlyRevenue, ROUND(AVG(Total), 2) AS AvgInvoiceValue FROM Invoice GROUP BY strftime('%Y-%m', InvoiceDate) ORDER BY Month DESC LIMIT 24",
+      "Table Name": "Invoice"
+    },
+    {
+      "Statement Name": "GetTopCustomersWithDetails",
+      "Statement": "SELECT c.FirstName || ' ' || c.LastName AS CustomerName, c.Email, c.Country, e.FirstName || ' ' || e.LastName AS SupportRep, COUNT(i.id) AS OrderCount, ROUND(SUM(i.Total), 2) AS TotalSpent, ROUND(AVG(i.Total), 2) AS AvgOrderValue, MAX(i.InvoiceDate) AS LastPurchase FROM Customer c LEFT JOIN Employee e ON c.SupportRepId = e.id LEFT JOIN Invoice i ON c.id = i.CustomerId GROUP BY c.id HAVING COUNT(i.id) > 0 ORDER BY TotalSpent DESC LIMIT 25",
+      "Table Name": "Customer"
+    },
+    {
+      "Statement Name": "GetTracksWithPriceTier",
+      "Statement": "SELECT t.Name AS TrackName, t.UnitPrice, CASE WHEN t.UnitPrice < 1.0 THEN 'Budget' WHEN t.UnitPrice >= 1.0 AND t.UnitPrice < 1.5 THEN 'Standard' ELSE 'Premium' END AS PriceTier, g.Name AS Genre, t.Milliseconds / 1000 / 60.0 AS DurationMinutes FROM Track t INNER JOIN Genre g ON t.GenreId = g.id ORDER BY t.UnitPrice DESC, t.Name LIMIT 100",
+      "Table Name": "Track"
+    },
+    {
+      "Statement Name": "GetAlbumCompletion",
+      "Statement": "SELECT al.Title AS AlbumTitle, ar.Name AS ArtistName, COUNT(t.id) AS TotalTracks, COUNT(DISTINCT il.InvoiceId) AS TimesSold, ROUND(SUM(t.Milliseconds) / 1000.0 / 60.0, 2) AS TotalMinutes FROM Album al INNER JOIN Artist ar ON al.ArtistId = ar.id LEFT JOIN Track t ON al.id = t.AlbumId LEFT JOIN InvoiceLine il ON t.id = il.TrackId GROUP BY al.id, al.Title, ar.Name HAVING COUNT(t.id) > 5 ORDER BY TimesSold DESC, TotalTracks DESC LIMIT 30",
+      "Table Name": "Album"
+    },
+    {
+      "Statement Name": "GetEmployeePerformance",
+      "Statement": "SELECT e.FirstName || ' ' || e.LastName AS EmployeeName, e.Title, COUNT(DISTINCT c.id) AS CustomersManaged, COUNT(DISTINCT i.id) AS TotalOrders, COALESCE(ROUND(SUM(i.Total), 2), 0) AS TotalRevenue, manager.FirstName || ' ' || manager.LastName AS ReportsTo FROM Employee e LEFT JOIN Customer c ON e.id = c.SupportRepId LEFT JOIN Invoice i ON c.id = i.CustomerId LEFT JOIN Employee manager ON e.ReportsTo = manager.id GROUP BY e.id ORDER BY TotalRevenue DESC",
+      "Table Name": "Employee"
+    },
+    {
+      "Statement Name": "GetPlaylistPopularity",
+      "Statement": "SELECT p.Name AS PlaylistName, COUNT(DISTINCT pt.TrackId) AS UniqueTrackCount, COUNT(DISTINCT t.GenreId) AS GenreVariety, ROUND(AVG(t.UnitPrice), 2) AS AvgTrackPrice, ROUND(SUM(t.Milliseconds) / 1000.0 / 60.0, 2) AS TotalDurationMinutes FROM Playlist p INNER JOIN PlaylistTrack pt ON p.id = pt.PlaylistId INNER JOIN Track t ON pt.TrackId = t.id GROUP BY p.id, p.Name ORDER BY UniqueTrackCount DESC LIMIT 20",
+      "Table Name": "Playlist"
     }
   ]
 }

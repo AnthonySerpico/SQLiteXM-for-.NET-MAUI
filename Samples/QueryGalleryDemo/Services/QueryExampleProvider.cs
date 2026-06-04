@@ -887,6 +887,138 @@ return results;",
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTopSellingTracks"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopSellingTracks")
+            },
+            new QueryExample
+            {
+                Id = "raw_4",
+                Name = "Customer Purchase Statistics",
+                Description = "LEFT JOIN with aggregations for customer analysis",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetCustomerPurchaseStats"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomerPurchaseStats")
+            },
+            new QueryExample
+            {
+                Id = "raw_5",
+                Name = "Genre Popularity Analysis",
+                Description = "GROUP BY with calculated fields",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetGenrePopularity"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetGenrePopularity")
+            },
+            new QueryExample
+            {
+                Id = "raw_6",
+                Name = "Playlist Details with Duration",
+                Description = "Multiple LEFT JOINs with SUM aggregation",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetPlaylistDetails"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistDetails")
+            },
+            new QueryExample
+            {
+                Id = "raw_7",
+                Name = "Artist Revenue Report",
+                Description = "Complex multi-table JOIN with COALESCE",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetArtistRevenue"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetArtistRevenue")
+            },
+            new QueryExample
+            {
+                Id = "raw_8",
+                Name = "Expensive Tracks by Genre (Subquery)",
+                Description = "WHERE clause with subquery for average comparison",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetExpensiveTracksByGenre"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetExpensiveTracksByGenre")
+            },
+            new QueryExample
+            {
+                Id = "raw_9",
+                Name = "Country Statistics (Nested Query)",
+                Description = "Subquery in FROM clause with multiple aggregations",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetCustomersByCountryWithStats"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomersByCountryWithStats")
+            },
+            new QueryExample
+            {
+                Id = "raw_10",
+                Name = "Monthly Revenue Trend",
+                Description = "Date functions with GROUP BY for time series analysis",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetMonthlyRevenueTrend"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetMonthlyRevenueTrend")
+            },
+            new QueryExample
+            {
+                Id = "raw_11",
+                Name = "Top Customers with Full Details",
+                Description = "String concatenation, HAVING clause, multiple aggregates",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTopCustomersWithDetails"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopCustomersWithDetails")
+            },
+            new QueryExample
+            {
+                Id = "raw_12",
+                Name = "Tracks with Price Tier (CASE)",
+                Description = "CASE expression for conditional categorization",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTracksWithPriceTier"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithPriceTier")
+            },
+            new QueryExample
+            {
+                Id = "raw_13",
+                Name = "Album Completion Analysis",
+                Description = "Complex aggregation with HAVING filter",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetAlbumCompletion"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAlbumCompletion")
+            },
+            new QueryExample
+            {
+                Id = "raw_14",
+                Name = "Employee Performance Report",
+                Description = "Self-join with multiple aggregations",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetEmployeePerformance"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetEmployeePerformance")
+            },
+            new QueryExample
+            {
+                Id = "raw_15",
+                Name = "Playlist Popularity Metrics",
+                Description = "Multiple DISTINCT aggregations for variety analysis",
+                Category = QueryCategory.RawSql,
+                Type = QueryType.RawSql,
+                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetPlaylistPopularity"");
+return results;",
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistPopularity")
             }
         };
     }
