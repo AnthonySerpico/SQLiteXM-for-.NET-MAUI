@@ -51,7 +51,10 @@
                         • Advanced LINQ<br/>
                         • Raw SQL Examples<br/>
                         • Performance Demos<br/>
-                        • Many-to-Many Relationships
+                        • Many-to-Many Relationships<br/>
+                        • Transactions (ACID Operations)<br/>
+                        • Parameterized Queries (Safe SQL)<br/>
+                        • Data Modification (INSERT/UPDATE/DELETE)
                         ]]>
                     </Label.Text>
                 </Label>

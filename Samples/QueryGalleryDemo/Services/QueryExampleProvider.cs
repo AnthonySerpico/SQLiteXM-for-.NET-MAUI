@@ -1443,7 +1443,19 @@ return combined;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<Artist>(""GetAllArtistsRaw"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAllArtistsRaw")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAllArtistsRaw"),
+                Explanation = @"**How It Works:**
+1. SQL query loaded from SqlStatements.json file
+2. ExecuteQueryAsync<Artist> runs raw SQL
+3. Results mapped to Artist entity type
+4. Returns strongly-typed list of Artist objects
+
+**Key Concepts:**
+• Raw SQL allows full SQLite feature access
+• SQL statements stored in JSON for easy maintenance
+• Type mapping: SQL rows → C# entities
+• Useful when LINQ limitations exist
+• Best for complex queries LINQ can't express"
             },
             new QueryExample
             {
@@ -1454,7 +1466,19 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTracksWithArtistAlbum"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithArtistAlbum")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithArtistAlbum"),
+                Explanation = @"**How It Works:**
+1. Load SQL with multiple INNER JOINs
+2. Use dynamic type for flexible result shape
+3. Execute joins across Track, Album, Artist
+4. Return anonymous objects with mixed properties
+
+**Key Concepts:**
+• dynamic allows flexible result shapes
+• Raw SQL handles complex joins easily
+• No entity mapping required for ad-hoc queries
+• Good for reporting/analytics queries
+• Trade-off: lose compile-time type safety"
             },
             new QueryExample
             {
@@ -1465,7 +1489,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTopSellingTracks"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopSellingTracks")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopSellingTracks"),
+                Explanation = @"**How It Works:**
+1. SQL aggregates invoice line data
+2. GROUP BY to summarize by track
+3. COUNT/SUM calculate sales metrics
+4. ORDER BY + LIMIT for top N
+5. Return ranked results
+
+**Key Concepts:**
+• Aggregation functions: COUNT, SUM
+• GROUP BY groups rows for summarization
+• Raw SQL great for analytics
+• LIMIT controls result size
+• Common sales reporting pattern"
             },
             new QueryExample
             {
@@ -1476,7 +1513,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetCustomerPurchaseStats"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomerPurchaseStats")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomerPurchaseStats"),
+                Explanation = @"**How It Works:**
+1. LEFT JOIN ensures all customers included
+2. Aggregate purchase data per customer
+3. Calculate total spent, order count
+4. Handle NULL values for customers with no purchases
+5. Return complete customer profile
+
+**Key Concepts:**
+• LEFT JOIN includes rows even without matches
+• COALESCE/IFNULL handle NULLs gracefully
+• Aggregates work with GROUP BY
+• Common in customer analytics
+• Raw SQL simplifies outer join logic"
             },
             new QueryExample
             {
@@ -1487,7 +1537,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetGenrePopularity"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetGenrePopularity")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetGenrePopularity"),
+                Explanation = @"**How It Works:**
+1. Join Track and Genre tables
+2. GROUP BY genre to aggregate metrics
+3. COUNT tracks per genre
+4. Calculate average price
+5. Order by popularity (track count)
+
+**Key Concepts:**
+• GROUP BY creates one row per genre
+• COUNT(*) counts rows in each group
+• AVG() calculates mean values
+• Useful for popularity/trending analysis
+• Raw SQL simplifies grouping logic"
             },
             new QueryExample
             {
@@ -1498,7 +1561,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetPlaylistDetails"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistDetails")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistDetails"),
+                Explanation = @"**How It Works:**
+1. Start with Playlist table
+2. LEFT JOIN through junction to tracks
+3. SUM track durations per playlist
+4. COUNT tracks in each playlist
+5. Include playlists with zero tracks
+
+**Key Concepts:**
+• Multiple LEFT JOINs chain relationships
+• SUM() aggregates numeric values
+• GROUP BY playlist to summarize
+• Handles many-to-many via junction table
+• NULL-safe aggregation"
             },
             new QueryExample
             {
@@ -1509,7 +1585,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetArtistRevenue"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetArtistRevenue")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetArtistRevenue"),
+                Explanation = @"**How It Works:**
+1. Join Artist → Album → Track → InvoiceLine
+2. Sum revenue from all sales
+3. COALESCE provides default for no sales
+4. GROUP BY artist to aggregate
+5. ORDER BY revenue descending
+
+**Key Concepts:**
+• Multi-table joins trace relationships
+• COALESCE(value, 0) handles NULLs
+• SUM() calculates total revenue
+• Common financial reporting pattern
+• Raw SQL simplifies deep joins"
             },
             new QueryExample
             {
@@ -1520,7 +1609,19 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetExpensiveTracksByGenre"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetExpensiveTracksByGenre")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetExpensiveTracksByGenre"),
+                Explanation = @"**How It Works:**
+1. Subquery calculates AVG price per genre
+2. Outer query compares track price to avg
+3. Filter tracks above their genre's average
+4. Return tracks that are 'expensive' for their genre
+
+**Key Concepts:**
+• Subquery in WHERE clause
+• Correlated subquery uses outer table
+• Compares individual vs. group aggregate
+• Complex logic hard to express in LINQ
+• Raw SQL enables advanced filtering"
             },
             new QueryExample
             {
@@ -1531,7 +1632,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetCustomersByCountryWithStats"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomersByCountryWithStats")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomersByCountryWithStats"),
+                Explanation = @"**How It Works:**
+1. Subquery in FROM becomes derived table
+2. Inner query aggregates by country
+3. Outer query can further process results
+4. Multiple aggregates: COUNT, SUM, AVG
+5. Return country-level statistics
+
+**Key Concepts:**
+• Derived table (subquery as table source)
+• Two-stage aggregation possible
+• Complex analytics patterns
+• Common in business intelligence
+• LINQ struggles with nested aggregates"
             },
             new QueryExample
             {
@@ -1542,7 +1656,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetMonthlyRevenueTrend"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetMonthlyRevenueTrend")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetMonthlyRevenueTrend"),
+                Explanation = @"**How It Works:**
+1. Extract year/month from invoice date
+2. GROUP BY year and month
+3. SUM revenue within each period
+4. ORDER BY time for trend analysis
+5. Return time series data
+
+**Key Concepts:**
+• Date/time functions: strftime, YEAR, MONTH
+• Time-based grouping
+• Revenue trending over time
+• Common in dashboards/reports
+• SQLite date handling via functions"
             },
             new QueryExample
             {
@@ -1553,7 +1680,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTopCustomersWithDetails"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopCustomersWithDetails")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopCustomersWithDetails"),
+                Explanation = @"**How It Works:**
+1. Concatenate first + last name
+2. Aggregate purchase metrics per customer
+3. HAVING filters groups (not rows)
+4. Return only high-value customers
+5. ORDER BY total spent
+
+**Key Concepts:**
+• String concatenation: || operator
+• HAVING filters after GROUP BY
+• WHERE filters before, HAVING filters after
+• Common in CRM/loyalty analysis
+• Multiple aggregates per group"
             },
             new QueryExample
             {
@@ -1564,7 +1704,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTracksWithPriceTier"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithPriceTier")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithPriceTier"),
+                Explanation = @"**How It Works:**
+1. CASE expression evaluates conditions
+2. Assign tier based on price range
+3. Returns 'Budget', 'Standard', 'Premium'
+4. Computed column in SELECT
+5. Useful for categorization logic
+
+**Key Concepts:**
+• CASE = SQL's if-then-else
+• Conditional computed columns
+• Categorizes data into buckets
+• Hard to express in LINQ projections
+• Common in pricing/tier analysis"
             },
             new QueryExample
             {
@@ -1575,7 +1728,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetAlbumCompletion"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAlbumCompletion")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAlbumCompletion"),
+                Explanation = @"**How It Works:**
+1. Count tracks per album
+2. Calculate total duration
+3. AVG price across album
+4. HAVING filters for 'complete' albums (10+ tracks)
+5. Return only substantial albums
+
+**Key Concepts:**
+• HAVING with COUNT threshold
+• Multiple aggregates in one query
+• Filter aggregated results
+• Useful for quality/completeness checks
+• Raw SQL simplifies complex HAVING"
             },
             new QueryExample
             {
@@ -1586,7 +1752,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetEmployeePerformance"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetEmployeePerformance")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetEmployeePerformance"),
+                Explanation = @"**How It Works:**
+1. Self-join Employee to Employee (manager)
+2. Aggregate sales per employee
+3. Include manager name via self-join
+4. Calculate employee metrics
+5. Return hierarchical sales report
+
+**Key Concepts:**
+• Self-join: table joins to itself
+• Hierarchical data (employee/manager)
+• LEFT JOIN handles employees without managers
+• Common in org chart queries
+• LINQ self-joins are complex"
             },
             new QueryExample
             {
@@ -1597,7 +1776,20 @@ return results;",
                 Type = QueryType.RawSql,
                 Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetPlaylistPopularity"");
 return results;",
-                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistPopularity")
+                ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistPopularity"),
+                Explanation = @"**How It Works:**
+1. Count total tracks in playlist
+2. COUNT(DISTINCT) unique artists
+3. COUNT(DISTINCT) unique genres
+4. Measure playlist diversity
+5. Return variety metrics
+
+**Key Concepts:**
+• COUNT(DISTINCT) eliminates duplicates
+• Multiple DISTINCT counts in one query
+• Measures data variety/diversity
+• Common in content analysis
+• LINQ DISTINCT in aggregates is tricky"
             }
         };
     }
