@@ -105,6 +105,7 @@ namespace SQLiteXM
             ms.SetConvertExpression<long, DateTime?>(
                 t => SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(t));
 
+
             // DateOnly TEXT + numeric (DayNumber)
             ms.SetConverter<DateOnly, string?>(d => SxmColumnDataConverters.DateOnlyToString(d));
             ms.SetConverter<string, DateOnly?>(s => SxmColumnDataConverters.DateOnlyFromString(s));

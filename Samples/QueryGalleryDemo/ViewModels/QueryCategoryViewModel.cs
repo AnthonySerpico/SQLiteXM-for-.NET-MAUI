@@ -72,6 +72,9 @@ public partial class QueryCategoryViewModel : BaseViewModel
             QueryCategory.RawSql => "Raw SQL Examples",
             QueryCategory.Performance => "Performance Demos",
             QueryCategory.ManyToMany => "Many-to-Many Queries",
+            QueryCategory.Transactions => "Transaction Examples",
+            QueryCategory.ParameterizedQueries => "Parameterized Queries",
+            QueryCategory.DataModification => "Data Modification",
             _ => "Queries"
         };
     }

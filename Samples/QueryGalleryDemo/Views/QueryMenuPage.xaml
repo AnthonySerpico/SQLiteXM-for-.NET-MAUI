@@ -30,6 +30,8 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -204,6 +206,81 @@
                                FontAttributes="Bold"
                                HorizontalOptions="Center"/>
                         <Label Text="Junction tables, playlist/track relationships"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Transactions -->
+                <Frame Grid.Row="4" Grid.Column="0" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="Transactions"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="🔒"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Transactions"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Atomic operations, rollback"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Parameterized Queries -->
+                <Frame Grid.Row="4" Grid.Column="1" 
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="ParameterizedQueries"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="🔐"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Parameterized Queries"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="SQL injection prevention"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Data Modification -->
+                <Frame Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="DataModification"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="✏️"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Data Modification"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="INSERT, UPDATE, DELETE operations"
                                FontSize="12"
                                TextColor="{StaticResource Gray600}"
                                HorizontalOptions="Center"

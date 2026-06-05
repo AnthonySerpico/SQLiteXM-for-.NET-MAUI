@@ -277,6 +277,29 @@ public partial class QueryExecutionViewModel : BaseViewModel
             "m2m_7" => ExecuteM2M7(),
             "m2m_8" => ExecuteM2M8(),
 
+            "trans_1" => await ExecuteTrans1Async(),
+            "trans_2" => await ExecuteTrans2Async(),
+            "trans_3" => await ExecuteTrans3Async(),
+            "trans_4" => await ExecuteTrans4Async(),
+            "trans_5" => await ExecuteTrans5Async(),
+            "trans_6" => await ExecuteTrans6Async(),
+
+            "param_1" => ExecuteParam1(),
+            "param_2" => ExecuteParam2(),
+            "param_3" => ExecuteParam3(),
+            "param_4" => ExecuteParam4(),
+            "param_5" => ExecuteParam5(),
+            "param_6" => ExecuteParam6(),
+
+            "mod_1" => await ExecuteMod1Async(),
+            "mod_2" => await ExecuteMod2Async(),
+            "mod_3" => await ExecuteMod3Async(),
+            "mod_4" => await ExecuteMod4Async(),
+            "mod_5" => await ExecuteMod5Async(),
+            "mod_6" => await ExecuteMod6Async(),
+            "mod_7" => await ExecuteMod7Async(),
+            "mod_8" => await ExecuteMod8Async(),
+
             _ => new List<object>()
         };
     }
@@ -1194,4 +1217,426 @@ public partial class QueryExecutionViewModel : BaseViewModel
             }
         }
     }
+
+    // Transaction examples
+    private async Task<object> ExecuteTrans1Async()
+    {
+        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        try
+        {
+            var invoice = new Invoice
+            {
+                CustomerId = 1,
+                InvoiceDate = DateTime.Now,
+                BillingAddress = "123 Demo St",
+                BillingCity = "Portland",
+                BillingCountry = "USA",
+                Total = 5.97m
+            };
+            await invoice.SaveAsync(transaction);
+
+            var line1 = new InvoiceLine { InvoiceId = invoice.id, TrackId = 1, UnitPrice = 1.99m, Quantity = 1 };
+            await line1.SaveAsync(transaction);
+
+            var line2 = new InvoiceLine { InvoiceId = invoice.id, TrackId = 2, UnitPrice = 1.99m, Quantity = 2 };
+            await line2.SaveAsync(transaction);
+
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
+            await transaction.CommitTransactionAsync();
+
+            return new[] { new { Success = true, InvoiceId = invoice.id, TotalAmount = invoice.Total, LineCount = 2 } };
+        }
+        catch (Exception ex)
+        {
+            return new[] { new { Success = false, Error = ex.Message } };
+        }
+    }
+
+    private async Task<object> ExecuteTrans2Async()
+    {
+        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        try
+        {
+            var artist = new Artist { Name = "Transaction Test Artist" };
+            await artist.SaveAsync(transaction);
+
+            var album = new Album { Title = "Test Album", ArtistId = artist.id };
+            await album.SaveAsync(transaction);
+
+            throw new Exception("Simulated error - all changes will be rolled back");
+
+#pragma warning disable CS0162
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
+            await transaction.CommitTransactionAsync();
+            return new[] { new { Success = true } };
+#pragma warning restore CS0162
+        }
+        catch (Exception ex)
+        {
+            return new[] { new { Success = false, Error = ex.Message, Note = "All changes were rolled back" } };
+        }
+    }
+
+    private async Task<object> ExecuteTrans3Async()
+    {
+        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        try
+        {
+            var insertedCount = 0;
+            var startTime = DateTime.Now;
+
+            for (int i = 1; i <= 50; i++)
+            {
+                var track = new Track
+                {
+                    Name = $"Batch Track {i}",
+                    AlbumId = 1,
+                    MediaTypeId = 1,
+                    GenreId = 1,
+                    Milliseconds = 180000,
+                    UnitPrice = 0.99m
+                };
+                await track.SaveAsync(transaction);
+                insertedCount++;
+            }
+
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
+            await transaction.CommitTransactionAsync();
+
+            var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+
+            return new[] { new { Success = true, TracksInserted = insertedCount, ElapsedMs = elapsed, Note = "All inserts in single transaction" } };
+        }
+        catch (Exception ex)
+        {
+            return new[] { new { Success = false, Error = ex.Message } };
+        }
+    }
+
+    private async Task<object> ExecuteTrans4Async()
+    {
+        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        using var context = new SxmLinqDbContext("Chinook");
+        try
+        {
+            var artist = context.GetTable<Artist>().First();
+            var albums = context.GetTable<Album>().Where(a => a.ArtistId == artist.id).Take(3).ToList();
+
+            var originalName = artist.Name;
+            artist.Name = artist.Name + " (Updated)";
+            await artist.SaveAsync(transaction);
+
+            foreach (var album in albums)
+            {
+                album.Title = album.Title + " [Remastered]";
+                await album.SaveAsync(transaction);
+            }
+
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
+            await transaction.CommitTransactionAsync();
+
+            return new[] { new { Success = true, ArtistOriginal = originalName, ArtistUpdated = artist.Name, AlbumsUpdated = albums.Count } };
+        }
+        catch (Exception ex)
+        {
+            return new[] { new { Success = false, Error = ex.Message } };
+        }
+    }
+
+    private async Task<object> ExecuteTrans5Async()
+    {
+        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        using var context = new SxmLinqDbContext("Chinook");
+        try
+        {
+            var playlist = new Playlist { Name = $"Transaction Demo Playlist {DateTime.Now:HHmmss}" };
+            await playlist.SaveAsync(transaction);
+
+            var topTracks = context.GetTable<Track>().OrderBy(t => t.Name).Take(10).ToList();
+
+            var trackCount = 0;
+            foreach (var track in topTracks)
+            {
+                var pt = new PlaylistTrack { PlaylistId = playlist.id, TrackId = track.id };
+                await pt.SaveAsync(transaction);
+                trackCount++;
+            }
+
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
+            await transaction.CommitTransactionAsync();
+
+            return new[] { new { Success = true, PlaylistId = playlist.id, PlaylistName = playlist.Name, TracksAdded = trackCount, Note = "All operations committed together" } };
+        }
+        catch (Exception ex)
+        {
+            return new[] { new { Success = false, Error = ex.Message } };
+        }
+    }
+
+    private async Task<object> ExecuteTrans6Async()
+    {
+        var results = new List<object>();
+
+        var start1 = DateTime.Now;
+        for (int i = 1; i <= 20; i++)
+        {
+            var track = new Track { Name = $"No-Transaction Track {i}", AlbumId = 1, MediaTypeId = 1, GenreId = 1, Milliseconds = 180000, UnitPrice = 0.99m };
+            await track.SaveAsync();
+        }
+        var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
+
+        var start2 = DateTime.Now;
+        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        {
+            for (int i = 1; i <= 20; i++)
+            {
+                var track = new Track { Name = $"Transaction Track {i}", AlbumId = 1, MediaTypeId = 1, GenreId = 1, Milliseconds = 180000, UnitPrice = 0.99m };
+                await track.SaveAsync(transaction);
+            }
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
+            await transaction.CommitTransactionAsync();
+        }
+        var transTime = (DateTime.Now - start2).TotalMilliseconds;
+
+        results.Add(new { Method = "Without Transaction", Inserts = 20, TimeMs = noTransTime });
+        results.Add(new { Method = "With Transaction", Inserts = 20, TimeMs = transTime, SpeedupFactor = Math.Round(noTransTime / transTime, 2) });
+
+        return results;
+    }
+
+    // Parameterized query examples
+    private object ExecuteParam1()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        string searchTerm = "Love";
+        return context.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList();
+    }
+
+    private object ExecuteParam2()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        decimal minPrice = 0.99m;
+        decimal maxPrice = 1.49m;
+        return context.GetTable<Track>()
+            .Where(t => t.UnitPrice >= minPrice && t.UnitPrice <= maxPrice)
+            .OrderBy(t => t.UnitPrice).ThenBy(t => t.Name).Take(50)
+            .Select(t => new { t.Name, t.UnitPrice, DurationMinutes = t.Milliseconds / 1000.0 / 60.0 })
+            .ToList();
+    }
+
+    private object ExecuteParam3()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+
+        var startDate = DateTime.Now.AddYears(-3);
+        var endDate = DateTime.Now;
+
+        // Two-phase approach: DateTime comparisons in WHERE clauses with JOINs don't translate
+        // correctly due to linq2db's expression tree handling of custom type conversions.
+        // Phase 1: Fetch all invoices with customer data from database
+        var invoicesWithCustomers = (from invoice in context.GetTable<Invoice>()
+                                      join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                                      select new
+                                      {
+                                          InvoiceId = invoice.id,
+                                          Date = invoice.InvoiceDate,
+                                          Customer = customer.FirstName + " " + customer.LastName,
+                                          Total = invoice.Total
+                                      }).ToList();
+
+        // Phase 2: Filter by date in memory
+        return invoicesWithCustomers
+            .Where(i => i.Date >= startDate && i.Date <= endDate)
+            .OrderByDescending(i => i.Date)
+            .Take(30)
+            .ToList();
+    }
+
+    private object ExecuteParam4()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        string artistSearchTerm = "Led";
+        int genreId = 1;
+        decimal maxPrice = 1.50m;
+        return (from track in context.GetTable<Track>()
+                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                where artist.Name.Contains(artistSearchTerm) && track.GenreId == genreId && track.UnitPrice <= maxPrice
+                orderby track.Name
+                select new { Track = track.Name, Artist = artist.Name, Genre = genre.Name, Price = track.UnitPrice })
+                .Take(30).ToList();
+    }
+
+    private object ExecuteParam5()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        string? artistFilter = "Led";  // Search for "Led" (Led Zeppelin)
+        decimal? minDuration = 180000;
+
+        var query = context.GetTable<Track>()
+            .Join(context.GetTable<Album>(), t => t.AlbumId, a => a.id, (t, a) => new { Track = t, Album = a })
+            .Join(context.GetTable<Artist>(), ta => ta.Album.ArtistId, ar => ar.id, (ta, ar) => new { ta.Track, ta.Album, Artist = ar });
+
+        if (!string.IsNullOrEmpty(artistFilter))
+            query = query.Where(x => x.Artist.Name.Contains(artistFilter));
+        if (minDuration.HasValue)
+            query = query.Where(x => x.Track.Milliseconds >= minDuration.Value);
+
+        return query.OrderBy(x => x.Track.Name).Take(30)
+            .Select(x => new { Track = x.Track.Name, Artist = x.Artist.Name, DurationMinutes = x.Track.Milliseconds / 1000.0 / 60.0 })
+            .ToList();
+    }
+
+    private object ExecuteParam6()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        string pattern = "Track";  // Searches for "Track" in track names
+        return context.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
+            .Select(t => new { TrackName = t.Name, t.UnitPrice, DurationSeconds = t.Milliseconds / 1000 })
+            .ToList();
+    }
+
+    // Data modification examples
+    private async Task<object> ExecuteMod1Async()
+    {
+        var track = new Track
+        {
+            Name = $"New Demo Track {DateTime.Now:HHmmss}",
+            AlbumId = 1,
+            MediaTypeId = 1,
+            GenreId = 1,
+            Composer = "Demo Composer",
+            Milliseconds = 240000,
+            Bytes = 4000000,
+            UnitPrice = 1.29m,
+            TrackNumber = 1
+        };
+        await track.SaveAsync();
+        return new[] { new { Success = true, TrackId = track.id, TrackName = track.Name, Message = "Track inserted successfully" } };
+    }
+
+    private async Task<object> ExecuteMod2Async()
+    {
+        var artist = new Artist { Name = $"New Artist {DateTime.Now:HHmmss}" };
+        await artist.SaveAsync();
+        var artistId = artist.id;
+
+        var album = new Album { Title = "Debut Album", ArtistId = artistId };
+        await album.SaveAsync();
+
+        return new[] { new { ArtistId = artistId, ArtistName = artist.Name, AlbumId = album.id, AlbumTitle = album.Title, Message = "Artist and Album created with auto-generated IDs" } };
+    }
+
+    private async Task<object> ExecuteMod3Async()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var track = context.GetTable<Track>().First();
+        var originalPrice = track.UnitPrice;
+        track.UnitPrice = 1.99m;
+        await track.SaveAsync();
+        return new[] { new { TrackId = track.id, TrackName = track.Name, OriginalPrice = originalPrice, NewPrice = track.UnitPrice, Message = "Price updated successfully" } };
+    }
+
+    private async Task<object> ExecuteMod4Async()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var cheapTracks = context.GetTable<Track>().Where(t => t.UnitPrice < 1.00m).Take(10).ToList();
+        var updateCount = 0;
+        foreach (var track in cheapTracks)
+        {
+            track.UnitPrice = 1.29m;
+            await track.SaveAsync();
+            updateCount++;
+        }
+        return new[] { new { TracksUpdated = updateCount, NewPrice = 1.29m, Message = $"Updated {updateCount} tracks to new price" } };
+    }
+
+    private async Task<object> ExecuteMod5Async()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name.Contains("Rock"));
+        if (rockGenre != null)
+        {
+            var rockTracks = context.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).Take(20).ToList();
+            var updateCount = 0;
+            foreach (var track in rockTracks)
+            {
+                track.UnitPrice = track.UnitPrice * 1.10m;
+                await track.SaveAsync();
+                updateCount++;
+            }
+            return new[] { new { Genre = rockGenre.Name, TracksUpdated = updateCount, PriceIncrease = "10%", Message = $"Updated {updateCount} rock tracks" } };
+        }
+        return new[] { new { Message = "Rock genre not found" } };
+    }
+
+    private async Task<object> ExecuteMod6Async()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.Name.Contains("Demo"));
+        if (playlist != null)
+        {
+            var playlistName = playlist.Name;
+            await playlist.DeleteAsync();
+            return new[] { new { Success = true, DeletedPlaylist = playlistName, Message = "Playlist deleted successfully" } };
+        }
+        return new[] { new { Success = false, Message = "No demo playlist found to delete" } };
+    }
+
+    private async Task<object> ExecuteMod7Async()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var oldPlaylists = context.GetTable<Playlist>().Where(p => p.Name.Contains("Old") || p.Name.Contains("Demo")).Take(5).ToList();
+        var deleteCount = 0;
+        foreach (var playlist in oldPlaylists)
+        {
+            await playlist.DeleteAsync();
+            deleteCount++;
+        }
+        return new[] { new { PlaylistsDeleted = deleteCount, Message = $"Deleted {deleteCount} old playlists" } };
+    }
+
+    private async Task<object> ExecuteMod8Async()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        try
+        {
+            var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.Name.Contains("Test"));
+            if (playlist != null)
+            {
+                var playlistTracks = context.GetTable<PlaylistTrack>().Where(pt => pt.PlaylistId == playlist.id).ToList();
+                var trackCount = playlistTracks.Count;
+                foreach (var pt in playlistTracks)
+                {
+                    await pt.DeleteAsync(transaction);
+                }
+                await playlist.DeleteAsync(transaction);
+                // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                // on Dispose (If No Errors)
+                await transaction.CommitTransactionAsync();
+                return new[] { new { Success = true, PlaylistName = playlist.Name, TracksRemoved = trackCount, Message = "Playlist and tracks deleted in transaction" } };
+            }
+            return new[] { new { Success = false, Message = "Playlist not found" } };
+        }
+        catch (Exception ex)
+        {
+            return new[] { new { Success = false, Error = ex.Message } };
+        }
+    }
 }
+

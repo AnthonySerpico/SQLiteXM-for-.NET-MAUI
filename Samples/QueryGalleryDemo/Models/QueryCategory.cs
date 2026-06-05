@@ -11,5 +11,8 @@ public enum QueryCategory
     AdvancedLinq,
     RawSql,
     Performance,
-    ManyToMany
+    ManyToMany,
+    Transactions,
+    ParameterizedQueries,
+    DataModification
 }

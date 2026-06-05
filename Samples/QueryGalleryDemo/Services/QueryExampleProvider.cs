@@ -19,6 +19,9 @@ public static class QueryExampleProvider
         examples.AddRange(GetRawSqlExamples());
         examples.AddRange(GetPerformanceExamples());
         examples.AddRange(GetManyToManyExamples());
+        examples.AddRange(GetTransactionExamples());
+        examples.AddRange(GetParameterizedQueryExamples());
+        examples.AddRange(GetDataModificationExamples());
 
         return examples;
     }
@@ -34,6 +37,9 @@ public static class QueryExampleProvider
             QueryCategory.RawSql => GetRawSqlExamples(),
             QueryCategory.Performance => GetPerformanceExamples(),
             QueryCategory.ManyToMany => GetManyToManyExamples(),
+            QueryCategory.Transactions => GetTransactionExamples(),
+            QueryCategory.ParameterizedQueries => GetParameterizedQueryExamples(),
+            QueryCategory.DataModification => GetDataModificationExamples(),
             _ => new List<QueryExample>()
         };
     }
@@ -1446,10 +1452,819 @@ var results = (from playlist in context.GetTable<Playlist>()
                                         SharedTracks = g.Count()
                                     })
                                     .OrderByDescending(x => x.SharedTracks)
-                                    .Take(10)
-                                    .ToList();
-               return playlistPairs;"
-                           }
-                       };
-                   }
-}
+                                                                         .Take(10)
+                                                                         .ToList();
+                                                    return playlistPairs;"
+                                                                }
+                                                            };
+                                                        }
+
+                                        private static List<QueryExample> GetTransactionExamples()
+                                        {
+                                            return new List<QueryExample>
+                                            {
+                                                new QueryExample
+                                                {
+                                                    Id = "trans_1",
+                                                    Name = "Basic Transaction - Insert Invoice with Lines",
+                                                    Description = "Insert invoice + invoice lines atomically",
+                                                    Category = QueryCategory.Transactions,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                    try 
+                                    {
+                                        // Create invoice
+                                        var invoice = new Invoice 
+                                        { 
+                                            CustomerId = 1, 
+                                            InvoiceDate = DateTime.Now, 
+                                            BillingAddress = ""123 Demo St"",
+                                            BillingCity = ""Portland"",
+                                            BillingCountry = ""USA"",
+                                            Total = 5.97m 
+                                        };
+                                        await invoice.SaveAsync(transaction);
+
+                                        // Add invoice lines - all succeed or all fail
+                                        var line1 = new InvoiceLine 
+                                        { 
+                                            InvoiceId = invoice.id, 
+                                            TrackId = 1, 
+                                            UnitPrice = 1.99m, 
+                                            Quantity = 1 
+                                        };
+                                        await line1.SaveAsync(transaction);
+
+                                        var line2 = new InvoiceLine 
+                                        { 
+                                            InvoiceId = invoice.id, 
+                                            TrackId = 2, 
+                                            UnitPrice = 1.99m, 
+                                            Quantity = 2 
+                                        };
+                                        await line2.SaveAsync(transaction);
+
+                                        // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                                        // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                                        // on Dispose (If No Errors)
+                                        await transaction.CommitTransactionAsync();
+
+                                        return new[] { new 
+                                        { 
+                                            Success = true, 
+                                            InvoiceId = invoice.id, 
+                                            TotalAmount = invoice.Total,
+                                            LineCount = 2
+                                        } };
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Transaction automatically rolls back on error
+                                        return new[] { new { Success = false, Error = ex.Message } };
+                                    }"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "trans_2",
+                                                    Name = "Transaction Rollback on Error",
+                                                    Description = "Demonstrate automatic rollback when error occurs",
+                                                    Category = QueryCategory.Transactions,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                    try 
+                                    {
+                                        // Insert a valid artist
+                                        var artist = new Artist { Name = ""Transaction Test Artist"" };
+                                        await artist.SaveAsync(transaction);
+
+                                        // Insert an album
+                                        var album = new Album 
+                                        { 
+                                            Title = ""Test Album"", 
+                                            ArtistId = artist.id 
+                                        };
+                                        await album.SaveAsync(transaction);
+
+                                        // Simulate an error - this will cause rollback
+                                        throw new Exception(""Simulated error - all changes will be rolled back"");
+
+                                        // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                                        // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                                        // on Dispose (If No Errors)
+                                        await transaction.CommitTransactionAsync(); // Never reached
+
+                                        return new[] { new { Success = true } };
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Both artist and album inserts are automatically rolled back
+                                        return new[] { new 
+                                        { 
+                                            Success = false, 
+                                            Error = ex.Message,
+                                            Note = ""All changes were rolled back"" 
+                                        } };
+                                    }"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "trans_3",
+                                                    Name = "Batch Insert with Transaction",
+                                                    Description = "Efficiently insert multiple tracks in one transaction",
+                                                    Category = QueryCategory.Transactions,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                    try 
+                                    {
+                                        var insertedCount = 0;
+                                        var startTime = DateTime.Now;
+
+                                        // Insert 50 tracks in a single transaction (fast!)
+                                        for (int i = 1; i <= 50; i++)
+                                        {
+                                            var track = new Track
+                                            {
+                                                Name = $""Batch Track {i}"",
+                                                AlbumId = 1, // Use existing album
+                                                MediaTypeId = 1,
+                                                GenreId = 1,
+                                                Milliseconds = 180000,
+                                                UnitPrice = 0.99m
+                                            };
+                                            await track.SaveAsync(transaction);
+                                            insertedCount++;
+                                        }
+
+                                        // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                                        // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                                        // on Dispose (If No Errors)
+                                        await transaction.CommitTransactionAsync();
+
+                                        var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+
+                                        return new[] { new 
+                                        { 
+                                            Success = true, 
+                                            TracksInserted = insertedCount,
+                                            ElapsedMs = elapsed,
+                                            Note = ""All inserts in single transaction""
+                                        } };
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        return new[] { new { Success = false, Error = ex.Message } };
+                                    }"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "trans_4",
+                                                    Name = "Update Multiple Tables in Transaction",
+                                                    Description = "Update artist and all their albums atomically",
+                                                    Category = QueryCategory.Transactions,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                    using var context = new SxmLinqDbContext(""Chinook"");
+                                    try 
+                                    {
+                                        // Find an artist and their albums
+                                        var artist = context.GetTable<Artist>().First();
+                                        var albums = context.GetTable<Album>()
+                                            .Where(a => a.ArtistId == artist.id)
+                                            .Take(3)
+                                            .ToList();
+
+                                        // Update artist name
+                                        var originalName = artist.Name;
+                                        artist.Name = artist.Name + "" (Updated)"";
+                                        await artist.SaveAsync(transaction);
+
+                                        // Update all album titles for this artist
+                                        foreach (var album in albums)
+                                        {
+                                            album.Title = album.Title + "" [Remastered]"";
+                                            await album.SaveAsync(transaction);
+                                        }
+
+                                        // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                                        // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                                        // on Dispose (If No Errors)
+                                        await transaction.CommitTransactionAsync();
+
+                                        return new[] { new 
+                                        { 
+                                            Success = true,
+                                            ArtistOriginal = originalName,
+                                            ArtistUpdated = artist.Name,
+                                            AlbumsUpdated = albums.Count
+                                        } };
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        return new[] { new { Success = false, Error = ex.Message } };
+                                    }"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "trans_5",
+                                                    Name = "Complex Multi-Table Transaction",
+                                                    Description = "Create playlist, add tracks, update statistics",
+                                                    Category = QueryCategory.Transactions,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                    using var context = new SxmLinqDbContext(""Chinook"");
+                                    try 
+                                    {
+                                        // 1. Create new playlist
+                                        var playlist = new Playlist 
+                                        { 
+                                            Name = $""Transaction Demo Playlist {DateTime.Now:HHmmss}""
+                                        };
+                                        await playlist.SaveAsync(transaction);
+
+                                        // 2. Get top 10 tracks
+                                        var topTracks = context.GetTable<Track>()
+                                            .OrderBy(t => t.Name)
+                                            .Take(10)
+                                            .ToList();
+
+                                        // 3. Add tracks to playlist
+                                        var trackCount = 0;
+                                        foreach (var track in topTracks)
+                                        {
+                                            var pt = new PlaylistTrack
+                                            {
+                                                PlaylistId = playlist.id,
+                                                TrackId = track.id
+                                            };
+                                            await pt.SaveAsync(transaction);
+                                            trackCount++;
+                                        }
+
+                                        // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                                        // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                                        // on Dispose (If No Errors)
+                                        await transaction.CommitTransactionAsync();
+
+                                        return new[] { new 
+                                        { 
+                                            Success = true,
+                                            PlaylistId = playlist.id,
+                                            PlaylistName = playlist.Name,
+                                            TracksAdded = trackCount,
+                                            Note = ""All operations committed together""
+                                        } };
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        return new[] { new { Success = false, Error = ex.Message } };
+                                    }"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "trans_6",
+                                                    Name = "Transaction vs No Transaction Performance",
+                                                    Description = "Compare performance: transaction vs individual saves",
+                                                    Category = QueryCategory.Transactions,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"var results = new List<object>();
+
+                                    // Method 1: Without transaction (slower)
+                                    var start1 = DateTime.Now;
+                                    for (int i = 1; i <= 20; i++)
+                                    {
+                                        var track = new Track
+                                        {
+                                            Name = $""No-Transaction Track {i}"",
+                                            AlbumId = 1,
+                                            MediaTypeId = 1,
+                                            GenreId = 1,
+                                            Milliseconds = 180000,
+                                            UnitPrice = 0.99m
+                                        };
+                                        await track.SaveAsync(); // Individual commit per save
+                                    }
+                                    var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
+
+                                    // Method 2: With transaction (faster)
+                                    var start2 = DateTime.Now;
+                                    await using (var transaction = SxmSqlTransaction.Create(""Chinook""))
+                                    {
+                                        for (int i = 1; i <= 20; i++)
+                                        {
+                                            var track = new Track
+                                            {
+                                                Name = $""Transaction Track {i}"",
+                                                AlbumId = 1,
+                                                MediaTypeId = 1,
+                                                GenreId = 1,
+                                                Milliseconds = 180000,
+                                                UnitPrice = 0.99m
+                                            };
+                                            await track.SaveAsync(transaction);
+                                        }
+                                        // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                                        // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                                        // on Dispose (If No Errors)
+                                        await transaction.CommitTransactionAsync();
+                                    }
+                                    var transTime = (DateTime.Now - start2).TotalMilliseconds;
+
+                                    results.Add(new 
+                                    { 
+                                        Method = ""Without Transaction"",
+                                        Inserts = 20,
+                                        TimeMs = noTransTime
+                                    });
+                                    results.Add(new 
+                                    { 
+                                        Method = ""With Transaction"",
+                                        Inserts = 20,
+                                        TimeMs = transTime,
+                                        SpeedupFactor = Math.Round(noTransTime / transTime, 2)
+                                    });
+
+                                    return results;"
+                                                }
+                                            };
+                                        }
+
+                                        private static List<QueryExample> GetParameterizedQueryExamples()
+                                        {
+                                            return new List<QueryExample>
+                                            {
+                                                new QueryExample
+                                                {
+                                                    Id = "param_1",
+                                                    Name = "Search by Name Parameter",
+                                                    Description = "Find tracks matching a search term (safe from SQL injection)",
+                                                    Category = QueryCategory.ParameterizedQueries,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Parameter: user input (simulated)
+                                    string searchTerm = ""Love"";
+
+                                    // Safe parameterized query - searchTerm is treated as data, not SQL
+                                    var results = context.GetTable<Track>()
+                                        .Where(t => t.Name.Contains(searchTerm))
+                                        .OrderBy(t => t.Name)
+                                        .Take(20)
+                                        .ToList();
+
+                                    return results;"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "param_2",
+                                                    Name = "Price Range Filter",
+                                                    Description = "Find tracks within a price range using parameters",
+                                                    Category = QueryCategory.ParameterizedQueries,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Parameters: user-defined price range
+                                    decimal minPrice = 0.99m;
+                                    decimal maxPrice = 1.49m;
+
+                                    var results = context.GetTable<Track>()
+                                        .Where(t => t.UnitPrice >= minPrice && t.UnitPrice <= maxPrice)
+                                        .OrderBy(t => t.UnitPrice)
+                                        .ThenBy(t => t.Name)
+                                        .Take(50)
+                                        .Select(t => new
+                                        {
+                                            t.Name,
+                                            t.UnitPrice,
+                                            DurationMinutes = t.Milliseconds / 1000.0 / 60.0
+                                        })
+                                        .ToList();
+
+                                    return results;"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "param_3",
+                                                    Name = "Date Range Query",
+                                                    Description = "Find invoices within a date range (demonstrates safe parameterization)",
+                                                    Category = QueryCategory.ParameterizedQueries,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    var startDate = DateTime.Now.AddYears(-3);
+                                    var endDate = DateTime.Now;
+
+                                    // Two-phase approach: DateTime comparisons in WHERE clauses with JOINs don't translate
+                                    // correctly due to linq2db's expression tree handling of custom type conversions.
+                                    // Phase 1: Fetch all invoices with customer data from database
+                                    var invoicesWithCustomers = (from invoice in context.GetTable<Invoice>()
+                                                                 join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                                                                 select new
+                                                                 {
+                                                                     InvoiceId = invoice.id,
+                                                                     Date = invoice.InvoiceDate,
+                                                                     Customer = customer.FirstName + "" "" + customer.LastName,
+                                                                     Total = invoice.Total
+                                                                 }).ToList();
+
+                                    // Phase 2: Filter by date in memory
+                                    var results = invoicesWithCustomers
+                                        .Where(i => i.Date >= startDate && i.Date <= endDate)
+                                        .OrderByDescending(i => i.Date)
+                                        .Take(30)
+                                        .ToList();
+
+                                    return results;"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "param_4",
+                                                    Name = "Multiple Search Parameters",
+                                                    Description = "Search with artist, genre, and price filters",
+                                                    Category = QueryCategory.ParameterizedQueries,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Multiple parameters
+                                    string artistSearchTerm = ""Led"";
+                                    int genreId = 1; // Rock
+                                    decimal maxPrice = 1.50m;
+
+                                    var results = (from track in context.GetTable<Track>()
+                                                   join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                                                   join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                                                   join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                                                   where artist.Name.Contains(artistSearchTerm)
+                                                         && track.GenreId == genreId
+                                                         && track.UnitPrice <= maxPrice
+                                                   orderby track.Name
+                                                   select new
+                                                   {
+                                                       Track = track.Name,
+                                                       Artist = artist.Name,
+                                                       Genre = genre.Name,
+                                                       Price = track.UnitPrice
+                                                   })
+                                                   .Take(30)
+                                                   .ToList();
+
+                                    return results;"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "param_5",
+                                                    Name = "Optional Parameter Handling",
+                                                    Description = "Handle nullable/optional search parameters",
+                                                    Category = QueryCategory.ParameterizedQueries,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Optional parameters - null means 'don't filter'
+                                    string? artistFilter = ""Led""; // Search for Led Zeppelin (exists in seeded data)
+                                    decimal? minDuration = 180000; // milliseconds, Try: null to see all durations
+
+                                    var query = context.GetTable<Track>()
+                                        .Join(context.GetTable<Album>(), 
+                                              t => t.AlbumId, 
+                                              a => a.id, 
+                                              (t, a) => new { Track = t, Album = a })
+                                        .Join(context.GetTable<Artist>(),
+                                              ta => ta.Album.ArtistId,
+                                              ar => ar.id,
+                                              (ta, ar) => new { ta.Track, ta.Album, Artist = ar });
+
+                                    // Apply filters only if parameters are provided
+                                    if (!string.IsNullOrEmpty(artistFilter))
+                                        query = query.Where(x => x.Artist.Name.Contains(artistFilter));
+
+                                    if (minDuration.HasValue)
+                                        query = query.Where(x => x.Track.Milliseconds >= minDuration.Value);
+
+                                    var results = query
+                                        .OrderBy(x => x.Track.Name)
+                                        .Take(30)
+                                        .Select(x => new
+                                        {
+                                            Track = x.Track.Name,
+                                            Artist = x.Artist.Name,
+                                            DurationMinutes = x.Track.Milliseconds / 1000.0 / 60.0
+                                        })
+                                        .ToList();
+
+                                    return results;"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "param_6",
+                                                    Name = "LIKE Pattern Search",
+                                                    Description = "Wildcard search using parameters",
+                                                    Category = QueryCategory.ParameterizedQueries,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Pattern parameter - user defines the search pattern
+                                    string pattern = ""Track""; // Searches for tracks containing 'Track'
+
+                                    // Different search patterns:
+                                    // ""Track"" - contains Track
+                                    // ""The%"" - starts with The (if provider supports it)
+                                    // ""%Live%"" - contains Live
+
+                                    var results = context.GetTable<Track>()
+                                        .Where(t => t.Name.Contains(pattern))
+                                        .OrderBy(t => t.Name)
+                                        .Take(30)
+                                        .Select(t => new
+                                        {
+                                            TrackName = t.Name,
+                                            t.UnitPrice,
+                                            DurationSeconds = t.Milliseconds / 1000
+                                        })
+                                        .ToList();
+
+                                    return results;"
+                                                }
+                                            };
+                                        }
+
+                                        private static List<QueryExample> GetDataModificationExamples()
+                                        {
+                                            return new List<QueryExample>
+                                            {
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_1",
+                                                    Name = "Insert New Track",
+                                                    Description = "Add a single new track to the database",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"var track = new Track
+                                    {
+                                        Name = $""New Demo Track {DateTime.Now:HHmmss}"",
+                                        AlbumId = 1, // Use existing album
+                                        MediaTypeId = 1,
+                                        GenreId = 1,
+                                        Composer = ""Demo Composer"",
+                                        Milliseconds = 240000, // 4 minutes
+                                        Bytes = 4000000,
+                                        UnitPrice = 1.29m,
+                                        TrackNumber = 1
+                                    };
+
+                                    await track.SaveAsync();
+
+                                    return new[] { new 
+                                    { 
+                                        Success = true,
+                                        TrackId = track.id,
+                                        TrackName = track.Name,
+                                        Message = ""Track inserted successfully""
+                                    } };"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_2",
+                                                    Name = "Insert and Get Generated ID",
+                                                    Description = "Insert record and retrieve auto-generated ID",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"// Create new artist
+                                    var artist = new Artist 
+                                    { 
+                                        Name = $""New Artist {DateTime.Now:HHmmss}""
+                                    };
+                                    await artist.SaveAsync();
+
+                                    // ID is automatically populated after save
+                                    var artistId = artist.id;
+
+                                    // Now create album using the new artist's ID
+                                    var album = new Album
+                                    {
+                                        Title = ""Debut Album"",
+                                        ArtistId = artistId
+                                    };
+                                    await album.SaveAsync();
+
+                                    return new[] { new 
+                                    { 
+                                        ArtistId = artistId,
+                                        ArtistName = artist.Name,
+                                        AlbumId = album.id,
+                                        AlbumTitle = album.Title,
+                                        Message = ""Artist and Album created with auto-generated IDs""
+                                    } };"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_3",
+                                                    Name = "Update Track Price",
+                                                    Description = "Modify a single field on existing record",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Find a track to update
+                                    var track = context.GetTable<Track>().First();
+
+                                    var originalPrice = track.UnitPrice;
+                                    track.UnitPrice = 1.99m; // Update price
+
+                                    await track.SaveAsync();
+
+                                    return new[] { new 
+                                    { 
+                                        TrackId = track.id,
+                                        TrackName = track.Name,
+                                        OriginalPrice = originalPrice,
+                                        NewPrice = track.UnitPrice,
+                                        Message = ""Price updated successfully""
+                                    } };"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_4",
+                                                    Name = "Conditional Update",
+                                                    Description = "Update records matching specific criteria",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Find all tracks under $1.00
+                                    var cheapTracks = context.GetTable<Track>()
+                                        .Where(t => t.UnitPrice < 1.00m)
+                                        .Take(10)
+                                        .ToList();
+
+                                    var updateCount = 0;
+                                    foreach (var track in cheapTracks)
+                                    {
+                                        track.UnitPrice = 1.29m; // Increase price
+                                        await track.SaveAsync();
+                                        updateCount++;
+                                    }
+
+                                    return new[] { new 
+                                    { 
+                                        TracksUpdated = updateCount,
+                                        NewPrice = 1.29m,
+                                        Message = $""Updated {updateCount} tracks to new price""
+                                    } };"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_5",
+                                                    Name = "Bulk Price Increase by Genre",
+                                                    Description = "Update all tracks in a specific genre",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Find genre
+                                    var rockGenre = context.GetTable<Genre>()
+                                        .FirstOrDefault(g => g.Name.Contains(""Rock""));
+
+                                    if (rockGenre != null)
+                                    {
+                                        // Get all rock tracks
+                                        var rockTracks = context.GetTable<Track>()
+                                            .Where(t => t.GenreId == rockGenre.id)
+                                            .Take(20)
+                                            .ToList();
+
+                                        var updateCount = 0;
+                                        foreach (var track in rockTracks)
+                                        {
+                                            // Increase price by 10%
+                                            track.UnitPrice = track.UnitPrice * 1.10m;
+                                            await track.SaveAsync();
+                                            updateCount++;
+                                        }
+
+                                        return new[] { new 
+                                        { 
+                                            Genre = rockGenre.Name,
+                                            TracksUpdated = updateCount,
+                                            PriceIncrease = ""10%"",
+                                            Message = $""Updated {updateCount} rock tracks""
+                                        } };
+                                    }
+
+                                    return new[] { new { Message = ""Rock genre not found"" } };"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_6",
+                                                    Name = "Delete Single Record",
+                                                    Description = "Remove a playlist from the database",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Find a playlist to delete
+                                    var playlist = context.GetTable<Playlist>()
+                                        .FirstOrDefault(p => p.Name.Contains(""Demo""));
+
+                                    if (playlist != null)
+                                    {
+                                        var playlistName = playlist.Name;
+                                        await playlist.DeleteAsync();
+
+                                        return new[] { new 
+                                        { 
+                                            Success = true,
+                                            DeletedPlaylist = playlistName,
+                                            Message = ""Playlist deleted successfully""
+                                        } };
+                                    }
+
+                                    return new[] { new 
+                                    { 
+                                        Success = false,
+                                        Message = ""No demo playlist found to delete""
+                                    } };"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_7",
+                                                    Name = "Conditional Delete",
+                                                    Description = "Delete records matching specific criteria",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+
+                                    // Find old playlists (simulated - find playlists with 'Old' in name)
+                                    var oldPlaylists = context.GetTable<Playlist>()
+                                        .Where(p => p.Name.Contains(""Old"") || p.Name.Contains(""Demo""))
+                                        .Take(5)
+                                        .ToList();
+
+                                    var deleteCount = 0;
+                                    foreach (var playlist in oldPlaylists)
+                                    {
+                                        await playlist.DeleteAsync();
+                                        deleteCount++;
+                                    }
+
+                                    return new[] { new 
+                                    { 
+                                        PlaylistsDeleted = deleteCount,
+                                        Message = $""Deleted {deleteCount} old playlists""
+                                    } };"
+                                                },
+                                                new QueryExample
+                                                {
+                                                    Id = "mod_8",
+                                                    Name = "Delete with Related Records",
+                                                    Description = "Delete playlist after removing its tracks first",
+                                                    Category = QueryCategory.DataModification,
+                                                    Type = QueryType.Linq,
+                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                    await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+
+                                    try
+                                    {
+                                        // Find playlist
+                                        var playlist = context.GetTable<Playlist>()
+                                            .FirstOrDefault(p => p.Name.Contains(""Test""));
+
+                                        if (playlist != null)
+                                        {
+                                            // First, delete all playlist-track relationships
+                                            var playlistTracks = context.GetTable<PlaylistTrack>()
+                                                .Where(pt => pt.PlaylistId == playlist.id)
+                                                .ToList();
+
+                                            var trackCount = playlistTracks.Count;
+                                            foreach (var pt in playlistTracks)
+                                            {
+                                                await pt.DeleteAsync(transaction);
+                                            }
+
+                                            // Now delete the playlist itself
+                                            await playlist.DeleteAsync(transaction);
+
+                                            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                                            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                                            // on Dispose (If No Errors)
+                                            await transaction.CommitTransactionAsync();
+
+                                            return new[] { new 
+                                            { 
+                                                Success = true,
+                                                PlaylistName = playlist.Name,
+                                                TracksRemoved = trackCount,
+                                                Message = ""Playlist and tracks deleted in transaction""
+                                            } };
+                                        }
+
+                                        return new[] { new { Success = false, Message = ""Playlist not found"" } };
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        return new[] { new { Success = false, Error = ex.Message } };
+                                    }"
+                                                }
+                                            };
+                                        }
+                                    }
+

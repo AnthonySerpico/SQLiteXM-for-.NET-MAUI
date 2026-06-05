@@ -471,6 +471,9 @@ public class DatabaseSeeder
                 }
             }
 
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
             await transaction.CommitTransactionAsync();
         }
     }
@@ -542,6 +545,9 @@ public class DatabaseSeeder
                 }
             }
 
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
             await transaction.CommitTransactionAsync();
         }
 
@@ -581,6 +587,9 @@ public class DatabaseSeeder
                 }
             }
 
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
             await transaction.CommitTransactionAsync();
         }
 
@@ -651,6 +660,9 @@ public class DatabaseSeeder
                 await invoice.SaveAsync(transaction);
             }
 
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
             await transaction.CommitTransactionAsync();
         }
     }
