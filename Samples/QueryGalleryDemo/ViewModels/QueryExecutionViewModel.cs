@@ -1443,25 +1443,24 @@ public partial class QueryExecutionViewModel : BaseViewModel
         var startDate = DateTime.Now.AddYears(-3);
         var endDate = DateTime.Now;
 
-        // Two-phase approach: DateTime comparisons in WHERE clauses with JOINs don't translate
-        // correctly due to linq2db's expression tree handling of custom type conversions.
-        // Phase 1: Fetch all invoices with customer data from database
-        var invoicesWithCustomers = (from invoice in context.GetTable<Invoice>()
-                                      join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                                      select new
-                                      {
-                                          InvoiceId = invoice.id,
-                                          Date = invoice.InvoiceDate,
-                                          Customer = customer.FirstName + " " + customer.LastName,
-                                          Total = invoice.Total
-                                      }).ToList();
+        // Single-query approach using Ticks comparison
+        // Since DateTime is stored as Ticks (Int64), we can compare directly using the .Ticks property
+        var results = (from invoice in context.GetTable<Invoice>()
+                      join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                      where invoice.InvoiceDate.Ticks >= startDate.Ticks 
+                         && invoice.InvoiceDate.Ticks <= endDate.Ticks
+                      orderby invoice.InvoiceDate descending
+                      select new
+                      {
+                          InvoiceId = invoice.id,
+                          Date = invoice.InvoiceDate,
+                          Customer = customer.FirstName + " " + customer.LastName,
+                          Total = invoice.Total
+                      })
+                      .Take(30)
+                      .ToList();
 
-        // Phase 2: Filter by date in memory
-        return invoicesWithCustomers
-            .Where(i => i.Date >= startDate && i.Date <= endDate)
-            .OrderByDescending(i => i.Date)
-            .Take(30)
-            .ToList();
+        return results;
     }
 
     private object ExecuteParam4()
@@ -1585,53 +1584,160 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteMod6Async()
     {
+        // First, create a temporary playlist for deletion demo
+        // (ensures we have a playlist without tracks to safely delete)
+        var tempPlaylist = new Playlist 
+        { 
+            Name = $"SingleDeleteDemo-{DateTime.Now:HHmmss}"
+        };
+        await tempPlaylist.SaveAsync();
+
+        // Verify the ID was assigned after save
+        var savedId = tempPlaylist.id;
+
+        // Now find and delete the playlist we just created using the ID
         using var context = new SxmLinqDbContext("Chinook");
-        var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.Name.Contains("Demo"));
+        var playlist = context.GetTable<Playlist>()
+            .FirstOrDefault(p => p.id == savedId);
+
         if (playlist != null)
         {
             var playlistName = playlist.Name;
             await playlist.DeleteAsync();
-            return new[] { new { Success = true, DeletedPlaylist = playlistName, Message = "Playlist deleted successfully" } };
+
+            return new[] { new 
+            { 
+                Success = true,
+                DeletedPlaylist = playlistName,
+                SavedId = savedId,
+                Message = "Playlist deleted successfully"
+            } };
         }
-        return new[] { new { Success = false, Message = "No demo playlist found to delete" } };
+
+        return new[] { new 
+        { 
+            Success = false,
+            SavedId = savedId,
+            Message = $"Playlist with ID {savedId} not found after save"
+        } };
     }
 
     private async Task<object> ExecuteMod7Async()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var oldPlaylists = context.GetTable<Playlist>().Where(p => p.Name.Contains("Old") || p.Name.Contains("Demo")).Take(5).ToList();
-        var deleteCount = 0;
-        foreach (var playlist in oldPlaylists)
+        // First, create some temporary playlists for deletion demo
+        // (ensures we have playlists without tracks to safely delete)
+        var timestamp = DateTime.Now.Ticks; // Use Ticks for uniqueness
+        var savedIds = new List<long>();
+
+        for (int i = 1; i <= 3; i++)
         {
-            await playlist.DeleteAsync();
-            deleteCount++;
+            var playlist = new Playlist 
+            { 
+                Name = $"BulkDeleteDemo-{timestamp}-{i}"
+            };
+            await playlist.SaveAsync();
+            savedIds.Add(playlist.id);
         }
-        return new[] { new { PlaylistsDeleted = deleteCount, Message = $"Deleted {deleteCount} old playlists" } };
+
+        // Now find and delete playlists using the saved IDs
+        using var context = new SxmLinqDbContext("Chinook");
+        var playlistsToDelete = context.GetTable<Playlist>()
+            .Where(p => savedIds.Contains(p.id))
+            .ToList();
+
+        // Use transaction for better performance and atomicity - all deletes succeed or all fail
+        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        try
+        {
+            var deleteCount = 0;
+            foreach (var playlist in playlistsToDelete)
+            {
+                await playlist.DeleteAsync(transaction);
+                deleteCount++;
+            }
+
+            // Commit transaction. The explicit CommitTransactionAsync() call is optional
+            // but considered good practice. Without it, the transaction will AUTO-COMMIT
+            // on Dispose (If No Errors)
+            await transaction.CommitTransactionAsync();
+
+            return new[] { new 
+            { 
+                PlaylistsCreated = savedIds.Count,
+                PlaylistsDeleted = deleteCount,
+                SavedIds = string.Join(", ", savedIds),
+                Message = $"Created {savedIds.Count} and deleted {deleteCount} temporary playlists (in single transaction)"
+            } };
+        }
+        catch (Exception ex)
+        {
+            return new[] { new { Success = false, Error = ex.Message } };
+        }
     }
 
     private async Task<object> ExecuteMod8Async()
     {
+        // First, create a temporary playlist with tracks for deletion demo
+        var tempPlaylist = new Playlist 
+        { 
+            Name = $"RelatedDeleteDemo-{DateTime.Now:HHmmss}"
+        };
+        await tempPlaylist.SaveAsync();
+        var playlistId = tempPlaylist.id;
+
+        // Add some tracks to the playlist (use existing track IDs 1, 2, 3)
+        var trackIds = new[] { 1, 2, 3 };
+        foreach (var trackId in trackIds)
+        {
+            var playlistTrack = new PlaylistTrack
+            {
+                PlaylistId = playlistId,
+                TrackId = trackId
+            };
+            await playlistTrack.SaveAsync();
+        }
+
+        // Now demonstrate deletion with related records
         using var context = new SxmLinqDbContext("Chinook");
         await using var transaction = SxmSqlTransaction.Create("Chinook");
+
         try
         {
-            var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.Name.Contains("Test"));
+            // Load the playlist we just created
+            var playlist = context.GetTable<Playlist>()
+                .FirstOrDefault(p => p.id == playlistId);
+
             if (playlist != null)
             {
-                var playlistTracks = context.GetTable<PlaylistTrack>().Where(pt => pt.PlaylistId == playlist.id).ToList();
+                // First, delete all playlist-track relationships
+                var playlistTracks = context.GetTable<PlaylistTrack>()
+                    .Where(pt => pt.PlaylistId == playlist.id)
+                    .ToList();
+
                 var trackCount = playlistTracks.Count;
                 foreach (var pt in playlistTracks)
                 {
                     await pt.DeleteAsync(transaction);
                 }
+
+                // Now delete the playlist itself
                 await playlist.DeleteAsync(transaction);
+
                 // Commit transaction. The explicit CommitTransactionAsync() call is optional
                 // but considered good practice. Without it, the transaction will AUTO-COMMIT
                 // on Dispose (If No Errors)
                 await transaction.CommitTransactionAsync();
-                return new[] { new { Success = true, PlaylistName = playlist.Name, TracksRemoved = trackCount, Message = "Playlist and tracks deleted in transaction" } };
+
+                return new[] { new 
+                { 
+                    Success = true,
+                    PlaylistName = playlist.Name,
+                    TracksRemoved = trackCount,
+                    Message = $"Created playlist with {trackCount} tracks, then deleted all in transaction"
+                } };
             }
-            return new[] { new { Success = false, Message = "Playlist not found" } };
+
+            return new[] { new { Success = false, Message = "Playlist not found after creation" } };
         }
         catch (Exception ex)
         {
@@ -1639,4 +1745,3 @@ public partial class QueryExecutionViewModel : BaseViewModel
         }
     }
 }
-

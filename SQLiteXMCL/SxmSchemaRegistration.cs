@@ -408,6 +408,7 @@ internal static class SxmSchemaRegistration
                 {
                     fieldName = columnName,
                     foreignTable = isForeignKey.foreignTable,
+                    onDelete = isForeignKey.OnDelete
                 });
 
                 SxmHelpers.CreateAssociation(entityType, columnName, isForeignKey.foreignTable);
@@ -492,10 +493,29 @@ internal static class SxmSchemaRegistration
                clrType == typeof(double) ? "REAL" :
                clrType == typeof(float) ? "REAL" :
                clrType == typeof(byte[]) ? "BLOB" :
-               null;
-    }
+                           null;
+               }
 
-    private static async Task<bool> CreateTableAsync(Type entityType, string databaseName, List<string> ddlStatementsList)
+               /// <summary>
+               /// Converts a ForeignKeyAction enum value to its SQL representation.
+               /// </summary>
+               /// <param name="action">The foreign key action to convert.</param>
+               /// <returns>The SQL clause for the action (e.g., " ON DELETE CASCADE"), or empty string if None.</returns>
+               private static string GetForeignKeyActionSql(ForeignKeyAction action)
+               {
+                   return action switch
+                   {
+                       ForeignKeyAction.Cascade => " ON DELETE CASCADE",
+                       ForeignKeyAction.SetNull => " ON DELETE SET NULL",
+                       ForeignKeyAction.SetDefault => " ON DELETE SET DEFAULT",
+                       ForeignKeyAction.Restrict => " ON DELETE RESTRICT",
+                       ForeignKeyAction.NoAction => " ON DELETE NO ACTION",
+                       ForeignKeyAction.None => string.Empty,
+                       _ => string.Empty
+                   };
+               }
+
+               private static async Task<bool> CreateTableAsync(Type entityType, string databaseName, List<string> ddlStatementsList)
     {
         bool tableCreated = false;
         string tableName = entityType.Name;
@@ -531,7 +551,8 @@ internal static class SxmSchemaRegistration
             {
                 foreach (ForeignKeyFields attribute in foreignKeyList)
                 {
-                    sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName!)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable!)}({SxmHelpers.QuoteIdentifier("id")})");
+                    string onDeleteClause = GetForeignKeyActionSql(attribute.onDelete);
+                    sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName!)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable!)}({SxmHelpers.QuoteIdentifier("id")}){onDeleteClause}");
                 }
                 _foreignKeyCache.TryRemove(tableName, out _);
             }

@@ -10,10 +10,10 @@ namespace QueryGalleryDemo.Models;
 public class PlaylistTrack : SxmEntity
 {
     [Required]
-    [ForeignKey(foreignTable: nameof(Playlist))]
+    [ForeignKey(foreignTable: nameof(Playlist), OnDelete = ForeignKeyAction.Cascade)]
     public long PlaylistId { get; set; }
 
     [Required]
-    [ForeignKey(foreignTable: nameof(Track))]
+    [ForeignKey(foreignTable: nameof(Track), OnDelete = ForeignKeyAction.Cascade)]
     public long TrackId { get; set; }
 }

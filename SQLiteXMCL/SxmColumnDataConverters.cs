@@ -38,15 +38,14 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Convert a nullable <see cref="DateTime"/> to Unix time in milliseconds.
-        /// The <see cref="DateTime"/> is converted to UTC before computing the Unix timestamp.
+        /// Convert a nullable <see cref="DateTime"/> to .NET Ticks (100-nanosecond intervals since 0001-01-01).
         /// Returns <c>null</c> when <paramref name="dt"/> is <c>null</c>.
         /// </summary>
         /// <param name="dt">The nullable <see cref="DateTime"/> to convert.</param>
-        /// <returns>Unix epoch milliseconds representing <paramref name="dt"/> in UTC, or <c>null</c>.</returns>
-        internal static long? DateTimeToUnixTimeMilliseconds(DateTime? dt)
+        /// <returns>Ticks representing <paramref name="dt"/>, or <c>null</c>.</returns>
+        internal static long? DateTimeToTicks(DateTime? dt)
         {
-            return dt.HasValue ? new DateTimeOffset(dt.Value.ToUniversalTime()).ToUnixTimeMilliseconds() : null;
+            return dt?.Ticks;
         }
 
         /// <summary>
@@ -196,14 +195,14 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Convert a nullable <see cref="DateTimeOffset"/> to Unix time in milliseconds.
+        /// Convert a nullable <see cref="DateTimeOffset"/> to .NET Ticks (100-nanosecond intervals since 0001-01-01).
         /// Returns <c>null</c> when <paramref name="dto"/> is <c>null</c>.
         /// </summary>
         /// <param name="dto">The nullable <see cref="DateTimeOffset"/> to convert.</param>
-        /// <returns>Unix epoch milliseconds representing <paramref name="dto"/>, or <c>null</c>.</returns>
-        internal static long? DateTimeOffsetToUnixTimeMilliseconds(DateTimeOffset? dto)
+        /// <returns>Ticks representing <paramref name="dto"/>, or <c>null</c>.</returns>
+        internal static long? DateTimeOffsetToTicks(DateTimeOffset? dto)
         {
-            return dto.HasValue ? dto.Value.ToUnixTimeMilliseconds() : null;
+            return dto?.Ticks;
         }
 
         /// <summary>
@@ -246,13 +245,14 @@ namespace SQLiteXM
 
         /// <summary>
         /// Create a <see cref="DateTime"/> from Unix time in milliseconds (UTC).
-        /// Returns <c>null</c> when <paramref name="unixMs"/> is <c>null</c>.
+        /// Convert a nullable long representing .NET Ticks back to a <see cref="DateTime"/>.
+        /// Returns <c>null</c> when <paramref name="ticks"/> is <c>null</c>.
         /// </summary>
-        /// <param name="unixMs">Unix epoch milliseconds, or <c>null</c>.</param>
-        /// <returns><see cref="DateTime"/> in UTC corresponding to <paramref name="unixMs"/>, or <c>null</c>.</returns>
-        internal static DateTime? DateTimeFromUnixTimeMilliseconds(long? unixMs)
+        /// <param name="ticks">Ticks (100-nanosecond intervals since 0001-01-01), or <c>null</c>.</param>
+        /// <returns><see cref="DateTime"/> corresponding to <paramref name="ticks"/>, or <c>null</c>.</returns>
+        internal static DateTime? DateTimeFromTicks(long? ticks)
         {
-            return unixMs.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(unixMs.Value).UtcDateTime : (DateTime?)null;
+            return ticks.HasValue ? new DateTime(ticks.Value) : (DateTime?)null;
         }
 
         /// <summary>
@@ -421,27 +421,23 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Create a <see cref="DateTimeOffset"/> from Unix time in milliseconds.
-        /// Returns <c>null</c> when <paramref name="unixTimeMs"/> is <c>null</c>.
+        /// Create a <see cref="DateTimeOffset"/> from .NET Ticks (100-nanosecond intervals since 0001-01-01).
+        /// Returns <c>null</c> when <paramref name="ticks"/> is <c>null</c>.
         /// </summary>
-        /// <param name="unixTimeMs">Unix epoch milliseconds, or <c>null</c>.</param>
-        /// <returns><see cref="DateTimeOffset"/> representing <paramref name="unixTimeMs"/>, or <c>null</c>.</returns>
-        internal static DateTimeOffset? DateTimeOffsetFromUnixTimeMilliseconds(long? unixTimeMs)
+        /// <param name="ticks">Ticks, or <c>null</c>.</param>
+        /// <returns><see cref="DateTimeOffset"/> representing <paramref name="ticks"/>, or <c>null</c>.</returns>
+        internal static DateTimeOffset? DateTimeOffsetFromTicks(long? ticks)
         {
-            if (!unixTimeMs.HasValue) return null;
+            if (!ticks.HasValue) return null;
 
-            // FromUnixTimeMilliseconds has range limitations
-            // Valid range: 0001-01-02T00:00:00.000Z to 9999-12-31T23:59:59.999Z
-            // If value is before Unix epoch minimum or after maximum, clamp or throw
-            const long minUnixMs = -62135596799999; // 0001-01-02T00:00:00.001Z
-            const long maxUnixMs = 253402300799999; // 9999-12-31T23:59:59.999Z
-
-            if (unixTimeMs.Value < minUnixMs)
+            // DateTime Ticks range: 0 to 3155378975999999999 (DateTime.MinValue to MaxValue)
+            // DateTimeOffset has same range constraints as DateTime
+            if (ticks.Value < 0)
                 return DateTimeOffset.MinValue;
-            if (unixTimeMs.Value > maxUnixMs)
+            if (ticks.Value > 3155378975999999999)
                 return DateTimeOffset.MaxValue;
 
-            return DateTimeOffset.FromUnixTimeMilliseconds(unixTimeMs.Value);
+            return new DateTimeOffset(ticks.Value, TimeSpan.Zero);
         }
 
         /// <summary>

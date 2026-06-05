@@ -94,16 +94,16 @@ namespace SQLiteXM
             ms.SetConverter<ulong, string?>(u => SxmColumnDataConverters.ULongToString(u));
             ms.SetConverter<string, ulong?>(s => SxmColumnDataConverters.ULongFromString(s));
 
-            // DateTime TEXT (ISO 8601) DateTime ticks (INTEGER)
+            // DateTime TEXT (ISO 8601) and INTEGER (Ticks)
             ms.SetConverter<DateTime, string?>(d => SxmColumnDataConverters.DateTimeToString(d));
             ms.SetConverter<string, DateTime?>(s => SxmColumnDataConverters.DateTimeFromString(s));
-            ms.SetConverter<DateTime, long?>(d => SxmColumnDataConverters.DateTimeToUnixTimeMilliseconds(d));
-            ms.SetConverter<long, DateTime?>(t => SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(t));
-            ms.SetConverter<long, DateTime>(t => SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(t) ?? DateTime.MinValue);
+            ms.SetConverter<DateTime, long?>(d => SxmColumnDataConverters.DateTimeToTicks(d));
+            ms.SetConverter<long, DateTime?>(t => SxmColumnDataConverters.DateTimeFromTicks(t));
+            ms.SetConverter<long, DateTime>(t => SxmColumnDataConverters.DateTimeFromTicks(t) ?? DateTime.MinValue);
             ms.SetConvertExpression<long, DateTime>(
-                t => SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(t) ?? DateTime.MinValue);
+                t => SxmColumnDataConverters.DateTimeFromTicks(t) ?? DateTime.MinValue);
             ms.SetConvertExpression<long, DateTime?>(
-                t => SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(t));
+                t => SxmColumnDataConverters.DateTimeFromTicks(t));
 
 
             // DateOnly TEXT + numeric (DayNumber)
@@ -143,20 +143,20 @@ namespace SQLiteXM
             ms.SetConvertExpression<long, TimeSpan?>(
                 ticks => SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(ticks));
 
-            // DateTimeOffset TEXT + numeric (Unix ms)
+            // DateTimeOffset TEXT + numeric (Ticks)
             ms.SetConverter<DateTimeOffset, string?>(dto => SxmColumnDataConverters.DateTimeOffsetToString(dto));
             ms.SetConverter<string, DateTimeOffset?>(s => SxmColumnDataConverters.DateTimeOffsetFromString(s));
-            ms.SetConverter<DateTimeOffset, long?>(dto => SxmColumnDataConverters.DateTimeOffsetToUnixTimeMilliseconds(dto));
-            ms.SetConverter<long, DateTimeOffset?>(msVal => SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds(msVal));
+            ms.SetConverter<DateTimeOffset, long?>(dto => SxmColumnDataConverters.DateTimeOffsetToTicks(dto));
+            ms.SetConverter<long, DateTimeOffset?>(ticksVal => SxmColumnDataConverters.DateTimeOffsetFromTicks(ticksVal));
 
             // Add non-nullable version for LINQ-to-DB materialization
-            ms.SetConverter<long, DateTimeOffset>(msVal => SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds(msVal) ?? DateTimeOffset.MinValue);
+            ms.SetConverter<long, DateTimeOffset>(ticksVal => SxmColumnDataConverters.DateTimeOffsetFromTicks(ticksVal) ?? DateTimeOffset.MinValue);
 
             // CRITICAL: Use SetConvertExpression for reader materialization
             ms.SetConvertExpression<long, DateTimeOffset>(
-                msVal => SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds(msVal) ?? DateTimeOffset.MinValue);
+                ticksVal => SxmColumnDataConverters.DateTimeOffsetFromTicks(ticksVal) ?? DateTimeOffset.MinValue);
             ms.SetConvertExpression<long, DateTimeOffset?>(
-                msVal => SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds(msVal));
+                ticksVal => SxmColumnDataConverters.DateTimeOffsetFromTicks(ticksVal));
 
             // Guid TEXT + BLOB (native .NET byte order)
             // TEXT: canonical GUID string format

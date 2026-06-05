@@ -1054,7 +1054,7 @@ namespace SQLiteXM
             if (targetType == typeof(DateTime))
             {
                 if (value is long l)
-                    return SxmColumnDataConverters.DateTimeFromUnixTimeMilliseconds(l);
+                    return SxmColumnDataConverters.DateTimeFromTicks(l);
 
                 if (value is string s)
                     return SxmColumnDataConverters.DateTimeFromString(s);
@@ -1065,7 +1065,7 @@ namespace SQLiteXM
             if (targetType == typeof(DateTimeOffset))
             {
                 if (value is long l)
-                    return SxmColumnDataConverters.DateTimeOffsetFromUnixTimeMilliseconds(l);
+                    return SxmColumnDataConverters.DateTimeOffsetFromTicks(l);
 
                 if (value is string s)
                     return SxmColumnDataConverters.DateTimeOffsetFromString(s);
@@ -1443,7 +1443,7 @@ namespace SQLiteXM
                         }
                         else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
                         {
-                            long? l = SxmColumnDataConverters.DateTimeToUnixTimeMilliseconds((DateTime)value);
+                            long? l = SxmColumnDataConverters.DateTimeToTicks((DateTime)value);
                             dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
                         }
                         else
@@ -1473,7 +1473,7 @@ namespace SQLiteXM
                         }
                     }
 
-                    // DateTimeOffset supports TEXT or INTEGER (Unix ms).
+                    // DateTimeOffset supports TEXT or INTEGER (Ticks).
                     else if (targetType == typeof(DateTimeOffset))
                     {
                         if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
@@ -1483,7 +1483,7 @@ namespace SQLiteXM
                         }
                         else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
                         {
-                            long? l = SxmColumnDataConverters.DateTimeOffsetToUnixTimeMilliseconds((DateTimeOffset)value);
+                            long? l = SxmColumnDataConverters.DateTimeOffsetToTicks((DateTimeOffset)value);
                             dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
                         }
                         else

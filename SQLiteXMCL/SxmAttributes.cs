@@ -425,6 +425,42 @@ namespace SQLiteXM
     }
 
     /// <summary>
+    /// Defines the action to take when a referenced row in the parent table is deleted.
+    /// </summary>
+    public enum ForeignKeyAction
+    {
+        /// <summary>
+        /// No explicit action specified. SQLite will use RESTRICT behavior.
+        /// </summary>
+        None = 0,
+
+        /// <summary>
+        /// Automatically delete child records when parent is deleted.
+        /// </summary>
+        Cascade = 1,
+
+        /// <summary>
+        /// Set the foreign key column to NULL when parent is deleted.
+        /// </summary>
+        SetNull = 2,
+
+        /// <summary>
+        /// Set the foreign key column to its default value when parent is deleted.
+        /// </summary>
+        SetDefault = 3,
+
+        /// <summary>
+        /// Prevent deletion of parent if child records exist (SQLite default).
+        /// </summary>
+        Restrict = 4,
+
+        /// <summary>
+        /// No action taken (deferred constraint check).
+        /// </summary>
+        NoAction = 5
+    }
+
+    /// <summary>
     /// Internal representation of a foreign-key relationship for attribute processing.
     /// </summary>
     internal class ForeignKeyFields
@@ -438,6 +474,11 @@ namespace SQLiteXM
         /// The referenced foreign table name.
         /// </summary>
         public string? foreignTable { get; set; }
+
+        /// <summary>
+        /// The action to take when the referenced row is deleted.
+        /// </summary>
+        public ForeignKeyAction onDelete { get; set; } = ForeignKeyAction.None;
     }
 
     /// <summary>
@@ -450,6 +491,11 @@ namespace SQLiteXM
         /// The referenced foreign table name.
         /// </summary>
         public string foreignTable { get; set; }
+
+        /// <summary>
+        /// The action to take when the referenced row is deleted.
+        /// </summary>
+        public ForeignKeyAction OnDelete { get; set; } = ForeignKeyAction.None;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ForeignKeyAttribute"/> attribute.

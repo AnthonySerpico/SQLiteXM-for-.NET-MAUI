@@ -34,27 +34,57 @@
             </VerticalStackLayout>
         </Frame>
 
-        <!-- Code Display (Top Pane) -->
-        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+        <!-- Code Display (Top Pane) - Split into Code and Explanation -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,10,*">
 
-            <Label Grid.Row="0" 
-                   Text="📝 Query Code"
-                   FontSize="16"
-                   FontAttributes="Bold"
-                   TextColor="{StaticResource Primary}"
-                   Margin="0,0,0,5"/>
+            <!-- Left Side: Query Code -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*">
+                <Label Grid.Row="0" 
+                       Text="📝 Query Code"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Primary}"
+                       Margin="0,0,0,5"/>
 
-            <ScrollView Grid.Row="1">
-                <Frame Padding="15"
-                       BorderColor="{StaticResource Gray300}"
-                       BackgroundColor="{StaticResource Gray100}">
-                    <Label Text="{Binding FormattedCode}"
-                           FontFamily="Courier"
-                           FontSize="12"
-                           TextColor="{StaticResource Gray900}"
-                           LineBreakMode="WordWrap"/>
-                </Frame>
-            </ScrollView>
+                <ScrollView Grid.Row="1">
+                    <Frame Padding="15"
+                           BorderColor="{StaticResource Gray300}"
+                           BackgroundColor="{StaticResource Gray100}">
+                        <Label Text="{Binding FormattedCode}"
+                               FontFamily="Courier"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray900}"
+                               LineBreakMode="WordWrap"/>
+                    </Frame>
+                </ScrollView>
+            </Grid>
+
+            <!-- Visual Separator -->
+            <BoxView Grid.Column="1" 
+                     Color="{StaticResource Gray300}"
+                     WidthRequest="2"
+                     HorizontalOptions="Center"/>
+
+            <!-- Right Side: Explanation -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                <Label Grid.Row="0" 
+                       Text="💡 Explanation"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Primary}"
+                       Margin="0,0,0,5"/>
+
+                <ScrollView Grid.Row="1">
+                    <Frame Padding="15"
+                           BorderColor="{StaticResource Gray300}"
+                           BackgroundColor="{StaticResource Gray100}">
+                        <Label Text="{Binding QueryExample.Explanation, FallbackValue='No explanation available.'}"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray900}"
+                               LineBreakMode="WordWrap"/>
+                    </Frame>
+                </ScrollView>
+            </Grid>
         </Grid>
 
         <!-- Run Button & Status -->

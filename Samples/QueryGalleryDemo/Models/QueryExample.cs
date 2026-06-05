@@ -16,6 +16,11 @@ public class QueryExample
     /// For RawSql queries, contains the actual SQL statement from SqlStatements.json
     /// </summary>
     public string? ActualSqlStatement { get; set; }
+
+    /// <summary>
+    /// Educational explanation of how the query works and key concepts
+    /// </summary>
+    public string Explanation { get; set; } = string.Empty;
 }
 
 /// <summary>
