@@ -235,14 +235,16 @@ public class AdvancedLinqTests : TestBase
         // Create two parents
         var parent1 = new ParentEntity { ParentName = $"JoinParent1_{uniquePrefix}" };
         var parent2 = new ParentEntity { ParentName = $"JoinParent2_{uniquePrefix}" };
-        ctx.InsertOnSubmit(parent1); await ctx.SubmitChangesAsync();
-        ctx.InsertOnSubmit(parent2); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(parent1);
+        ctx.InsertOnSubmit(parent2);
+        await ctx.SubmitChangesAsync();
 
         // Create children - both with valid parents
         var child1 = new ChildEntity { ChildName = $"WithParent_{uniquePrefix}", ParentId = parent1.id };
         var child2 = new ChildEntity { ChildName = $"OtherParent_{uniquePrefix}", ParentId = parent2.id };
-        ctx.InsertOnSubmit(child1); await ctx.SubmitChangesAsync();
-        ctx.InsertOnSubmit(child2); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(child1);
+        ctx.InsertOnSubmit(child2);
+        await ctx.SubmitChangesAsync();
 
         // Act - Left join where we filter to only show children from parent1
         // This simulates a left join where some parents might not have children
@@ -288,8 +290,9 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
+            ctx.InsertOnSubmit(entity);
         }
+        await ctx.SubmitChangesAsync();
 
         // Act
         var setA = ctx.GetTable<SimpleEntity>()
@@ -309,7 +312,8 @@ public class AdvancedLinqTests : TestBase
         union.Distinct().Should().HaveCount(union.Count, "Union should remove duplicates");
 
         // Cleanup
-        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); }
+        await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -329,8 +333,9 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
+            ctx.InsertOnSubmit(entity);
         }
+        await ctx.SubmitChangesAsync();
 
         // Act
         var avgDouble = ctx.GetTable<SimpleEntity>()
@@ -341,7 +346,8 @@ public class AdvancedLinqTests : TestBase
         avgDouble.Should().Be(20.0);
 
         // Cleanup
-        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); }
+        await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -357,14 +363,16 @@ public class AdvancedLinqTests : TestBase
         // Create parents
         var parent1 = new ParentEntity { ParentName = $"SelectMany1_{uniquePrefix}" };
         var parent2 = new ParentEntity { ParentName = $"SelectMany2_{uniquePrefix}" };
-        ctx.InsertOnSubmit(parent1); await ctx.SubmitChangesAsync();
-        ctx.InsertOnSubmit(parent2); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(parent1);
+        ctx.InsertOnSubmit(parent2);
+        await ctx.SubmitChangesAsync();
 
         // Create children
         var child1 = new ChildEntity { ChildName = $"Child1_{uniquePrefix}", ParentId = parent1.id };
         var child2 = new ChildEntity { ChildName = $"Child2_{uniquePrefix}", ParentId = parent2.id };
-        ctx.InsertOnSubmit(child1); await ctx.SubmitChangesAsync();
-        ctx.InsertOnSubmit(child2); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(child1);
+        ctx.InsertOnSubmit(child2);
+        await ctx.SubmitChangesAsync();
 
         // Act - SelectMany (cartesian-style projection)
         var flattened = ctx.GetTable<ChildEntity>()
@@ -402,8 +410,9 @@ public class AdvancedLinqTests : TestBase
 
         foreach (var entity in entities)
         {
-            ctx.InsertOnSubmit(entity); await ctx.SubmitChangesAsync();
+            ctx.InsertOnSubmit(entity);
         }
+        await ctx.SubmitChangesAsync();
 
         // Act - Complex predicate with string functions
         var results = ctx.GetTable<SimpleEntity>()
@@ -416,7 +425,8 @@ public class AdvancedLinqTests : TestBase
         results.Should().Contain(e => e.Name == "ComplexTest2");
 
         // Cleanup
-        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); await ctx.SubmitChangesAsync(); }
+        foreach (var entity in entities) { ctx.DeleteOnSubmit(entity); }
+        await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -428,7 +438,8 @@ public class AdvancedLinqTests : TestBase
         using var ctx = new SxmLinqDbContext(TestDatabaseName);
 
         var entity1 = new SimpleEntity { Name = "Deferred1", Age = 10 };
-        ctx.InsertOnSubmit(entity1); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(entity1);
+        await ctx.SubmitChangesAsync();
 
         // Create deferred query
         var query = ctx.GetTable<SimpleEntity>()
@@ -440,7 +451,8 @@ public class AdvancedLinqTests : TestBase
 
         // Add another entity
         var entity2 = new SimpleEntity { Name = "Deferred1", Age = 20 };
-        ctx.InsertOnSubmit(entity2); await ctx.SubmitChangesAsync();
+        ctx.InsertOnSubmit(entity2);
+        await ctx.SubmitChangesAsync();
 
         // Act - Second materialization should rerun the query
         var secondList = query.ToList();
@@ -449,8 +461,9 @@ public class AdvancedLinqTests : TestBase
         secondList.Should().HaveCount(2, "deferred execution should rerun query and see new data");
 
         // Cleanup
-        ctx.DeleteOnSubmit(entity1); await ctx.SubmitChangesAsync();
-        ctx.DeleteOnSubmit(entity2); await ctx.SubmitChangesAsync();
+        ctx.DeleteOnSubmit(entity1);
+        ctx.DeleteOnSubmit(entity2);
+        await ctx.SubmitChangesAsync();
     }
 
     [Fact]
@@ -483,8 +496,9 @@ public class AdvancedLinqTests : TestBase
         foreach (var entity in entities)
         {
             entity.Age += 10;
-            ctx.UpdateOnSubmit(entity); await ctx.SubmitChangesAsync();
+            ctx.UpdateOnSubmit(entity);
         }
+        await ctx.SubmitChangesAsync();
 
         // Verify updates
         var retrieved = ctx.GetTable<SimpleEntity>()

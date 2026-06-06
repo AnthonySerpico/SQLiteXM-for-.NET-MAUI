@@ -127,11 +127,16 @@ public class LinqContextTests : TestBase
     {
         // Arrange - data cleaned by constructor
 
+        var connection = new SxmConnection(TestDatabaseName, shared: false);
+        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
+
         for (int i = 0; i < 5; i++)
         {
             var entity = new SimpleEntity { Name = $"Entity {i}", Age = i * 10 };
-            await entity.SaveAsync();
+            await entity.SaveAsync(transaction);
         }
+
+        await transaction.CommitTransactionAsync();
 
         // Act
         using var context = new SxmLinqDbContext(TestDatabaseName);
@@ -154,10 +159,15 @@ public class LinqContextTests : TestBase
             new SimpleEntity { Name = "Inactive Old", Age = 65, IsActive = false }
         };
 
+        var connection = new SxmConnection(TestDatabaseName, shared: false);
+        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
+
         foreach (var entity in entities)
         {
-            await entity.SaveAsync();
+            await entity.SaveAsync(transaction);
         }
+
+        await transaction.CommitTransactionAsync();
 
         // Act
         using var context = new SxmLinqDbContext(TestDatabaseName);
