@@ -11,7 +11,7 @@ namespace SQLiteXM
     /// </summary>
     public class SxmSqlStatements
     {
-        internal static Dictionary<string, TableDefinition>? TableCreateStatements = new Dictionary<string, TableDefinition>();
+        internal static ConcurrentDictionary<string, TableDefinition>? TableCreateStatements = new ConcurrentDictionary<string, TableDefinition>();
         /// <summary>
         /// Trigger definitions keyed by database name.
         /// </summary>
@@ -19,22 +19,22 @@ namespace SQLiteXM
         /// <summary>
         /// Insert statements keyed by statement name.
         /// </summary>
-        internal static Dictionary<string, InsertDefinition> InsertStatements = new Dictionary<string, InsertDefinition>();
+        internal static ConcurrentDictionary<string, InsertDefinition> InsertStatements = new ConcurrentDictionary<string, InsertDefinition>();
 
-        /// <summary>
-        /// Select statements keyed by statement name.
-        /// </summary>
-		internal static Dictionary<string, SelectDefinition> SelectStatements = new Dictionary<string, SelectDefinition>();
+		/// <summary>
+		/// Select statements keyed by statement name.
+		/// </summary>
+		internal static ConcurrentDictionary<string, SelectDefinition> SelectStatements = new ConcurrentDictionary<string, SelectDefinition>();
 
-        /// <summary>
-        /// Update statements keyed by statement name.
-        /// </summary>
-		internal static Dictionary<string, UpdateDefinition> UpdateStatements = new Dictionary<string, UpdateDefinition>();
+		/// <summary>
+		/// Update statements keyed by statement name.
+		/// </summary>
+		internal static ConcurrentDictionary<string, UpdateDefinition> UpdateStatements = new ConcurrentDictionary<string, UpdateDefinition>();
 
-        /// <summary>
-        /// Delete statements keyed by statement name.
-        /// </summary>
-		internal static Dictionary<string, DeleteDefinition> DeleteStatements = new Dictionary<string, DeleteDefinition>();
+		/// <summary>
+		/// Delete statements keyed by statement name.
+		/// </summary>
+		internal static ConcurrentDictionary<string, DeleteDefinition> DeleteStatements = new ConcurrentDictionary<string, DeleteDefinition>();
 
         /// <summary>
         /// Returns the SQL text for a named statement.
@@ -77,9 +77,7 @@ namespace SQLiteXM
         internal static void AddInsertDefinition(string statementName, string tableName, string insertSQL)
         {
             statementName = statementName.Trim();
-
-            if (!InsertStatements.ContainsKey(statementName))
-                InsertStatements.Add(statementName, new InsertDefinition(tableName.Trim(), insertSQL.Trim()));
+            InsertStatements.TryAdd(statementName, new InsertDefinition(tableName.Trim(), insertSQL.Trim()));
         }
 
         /// <summary>
@@ -91,9 +89,7 @@ namespace SQLiteXM
         internal static void AddSelectDefinition(string statementName, string tableName, string selectSQL)
         {
             statementName = statementName.Trim();
-
-            if (!SelectStatements.ContainsKey(statementName))
-                SelectStatements.Add(statementName, new SelectDefinition(tableName.Trim(), selectSQL.Trim()));
+            SelectStatements.TryAdd(statementName, new SelectDefinition(tableName.Trim(), selectSQL.Trim()));
         }
 
         /// <summary>
@@ -103,12 +99,10 @@ namespace SQLiteXM
         /// <param name="tableName">The table that the update targets.</param>
         /// <param name="updateSQL">The SQL text of the update statement.</param>
 		internal static void AddUpdateDefinition(string statementName, string tableName, string updateSQL)
-        {
-            statementName = statementName.Trim();
-
-            if (!UpdateStatements.ContainsKey(statementName))
-                UpdateStatements.Add(statementName, new UpdateDefinition(tableName.Trim(), updateSQL.Trim()));
-        }
+		{
+			statementName = statementName.Trim();
+			UpdateStatements.TryAdd(statementName, new UpdateDefinition(tableName.Trim(), updateSQL.Trim()));
+		}
 
         /// <summary>
         /// Adds a named delete definition.
@@ -117,12 +111,10 @@ namespace SQLiteXM
         /// <param name="tableName">The table that the delete targets.</param>
         /// <param name="deleteSQL">The SQL text of the delete statement.</param>
 		internal static void AddDeleteDefinition(string deleteName, string tableName, string deleteSQL)
-        {
-            deleteName = deleteName.Trim();
-
-            if (!DeleteStatements.ContainsKey(deleteName))
-                DeleteStatements.Add(deleteName, new DeleteDefinition(tableName.Trim(), deleteSQL.Trim()));
-        }
+			{
+				deleteName = deleteName.Trim();
+				DeleteStatements.TryAdd(deleteName, new DeleteDefinition(tableName.Trim(), deleteSQL.Trim()));
+			}
 
         /// <summary>
         /// Adds a trigger definition for the specified database.
@@ -182,9 +174,9 @@ namespace SQLiteXM
             tableSQL = tableSQL.Trim();
 
             if (TableCreateStatements == null)
-                TableCreateStatements = new Dictionary<string, TableDefinition>();
+                TableCreateStatements = new ConcurrentDictionary<string, TableDefinition>();
 
-            TableCreateStatements.Add(dbAndTableName, new TableDefinition(tableSQL, cloudPush));
+            TableCreateStatements.TryAdd(dbAndTableName, new TableDefinition(tableSQL, cloudPush));
         }
 
         /// <summary>
@@ -192,10 +184,10 @@ namespace SQLiteXM
         /// </summary>
         internal static void RemoveTableDefinitions()
         {
-            if (TableCreateStatements != default(Dictionary<string, TableDefinition>))
+            if (TableCreateStatements != default(ConcurrentDictionary<string, TableDefinition>))
             {
                 TableCreateStatements.Clear();
-                TableCreateStatements = default(Dictionary<string, TableDefinition>);
+                TableCreateStatements = default(ConcurrentDictionary<string, TableDefinition>);
             }
         }
 
@@ -209,10 +201,10 @@ namespace SQLiteXM
         /// </summary>
         internal static void ClearStatementTables()
         {
-            if (TableCreateStatements != default(Dictionary<string, TableDefinition>))
+            if (TableCreateStatements != default(ConcurrentDictionary<string, TableDefinition>))
             {
                 TableCreateStatements?.Clear();
-                TableCreateStatements = default(Dictionary<string, TableDefinition>)!;
+                TableCreateStatements = default(ConcurrentDictionary<string, TableDefinition>)!;
             }
         }
 
@@ -230,12 +222,12 @@ namespace SQLiteXM
             UpdateStatements?.Clear();
             DeleteStatements?.Clear();
 
-            TableCreateStatements = new Dictionary<string, TableDefinition>();
+            TableCreateStatements = new ConcurrentDictionary<string, TableDefinition>();
             TriggerStatements = new ConcurrentDictionary<string, List<TriggerDefinition>>(StringComparer.Ordinal);
-            InsertStatements = new Dictionary<string, InsertDefinition>();
-            SelectStatements = new Dictionary<string, SelectDefinition>();
-            UpdateStatements = new Dictionary<string, UpdateDefinition>();
-            DeleteStatements = new Dictionary<string, DeleteDefinition>();
+            InsertStatements = new ConcurrentDictionary<string, InsertDefinition>();
+            SelectStatements = new ConcurrentDictionary<string, SelectDefinition>();
+            UpdateStatements = new ConcurrentDictionary<string, UpdateDefinition>();
+            DeleteStatements = new ConcurrentDictionary<string, DeleteDefinition>();
         }
 #endif
 

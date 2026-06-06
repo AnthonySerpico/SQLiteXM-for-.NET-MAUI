@@ -232,12 +232,12 @@ namespace SQLiteXM
             Dictionary<string, object?> insertResponse;
             try
             {
-                SxmSqlStatements.InsertStatements.Add(commandName, id);
+                SxmSqlStatements.InsertStatements.TryAdd(commandName, id);
                 insertResponse = await ExecuteInsertAsync(commandName, parameterValues, cancellationToken).ConfigureFalse();
             }
             finally
             {
-                SxmSqlStatements.InsertStatements.Remove(commandName);
+                SxmSqlStatements.InsertStatements.TryRemove(commandName, out _);
             }
 
             return insertResponse;

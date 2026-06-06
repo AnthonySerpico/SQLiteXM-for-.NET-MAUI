@@ -344,7 +344,9 @@ public class MultiDatabaseTests : IDisposable
             await SxmDatabase.InitializeAsync(stream, options);
         });
 
-        Assert.Contains("default", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Check the full exception chain for the validation message
+        var allMessages = exception.ToString();
+        Assert.Contains("No default database specified", allMessages, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -379,7 +381,9 @@ public class MultiDatabaseTests : IDisposable
             await SxmDatabase.InitializeAsync(stream, options);
         });
 
-        Assert.Contains("default", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Check the full exception chain for the validation message
+        var allMessages = exception.ToString();
+        Assert.Contains("Multiple databases marked as default", allMessages, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -419,7 +423,9 @@ public class MultiDatabaseTests : IDisposable
             await SxmDatabase.InitializeAsync(stream, options);
         });
 
-        Assert.Contains("database", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Check the full exception chain for the validation message
+        var allMessages = exception.ToString();
+        Assert.Contains("TRIGGER DATABASE MISMATCH", allMessages, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
