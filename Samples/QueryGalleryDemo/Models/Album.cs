@@ -7,6 +7,7 @@ namespace QueryGalleryDemo.Models;
 /// Represents a music album
 /// </summary>
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
+[Index("ArtistId", "Title")]
 public class Album : SxmEntity
 {
     [Required]

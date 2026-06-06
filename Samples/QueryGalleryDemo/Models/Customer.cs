@@ -7,6 +7,7 @@ namespace QueryGalleryDemo.Models;
 /// Represents a customer
 /// </summary>
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
+[Index("Country", "LastName", "FirstName")]
 public class Customer : SxmEntity
 {
     [Required]
@@ -32,7 +33,6 @@ public class Customer : SxmEntity
     public string? Fax { get; set; }
 
     [Required]
-    [EmailAddress]
     public string Email { get; set; } = string.Empty;
 
     /// <summary>

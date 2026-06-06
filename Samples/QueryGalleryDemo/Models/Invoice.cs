@@ -7,6 +7,7 @@ namespace QueryGalleryDemo.Models;
 /// Represents a customer invoice
 /// </summary>
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
+[Index("CustomerId", "InvoiceDate")]
 public class Invoice : SxmEntity
 {
     [Required]

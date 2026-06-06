@@ -7,6 +7,8 @@ namespace QueryGalleryDemo.Models;
 /// Represents a line item in an invoice (track purchase)
 /// </summary>
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
+[Index("InvoiceId", "TrackId")]
+[Index("TrackId", "InvoiceId")]
 public class InvoiceLine : SxmEntity
 {
     [Required]

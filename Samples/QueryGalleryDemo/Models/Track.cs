@@ -7,6 +7,9 @@ namespace QueryGalleryDemo.Models;
 /// Represents a music track (song)
 /// </summary>
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
+[Index("AlbumId", "GenreId")]
+[Index("GenreId", "UnitPrice")]
+[Index("AlbumId", "TrackNumber")]
 public class Track : SxmEntity
 {
     [Required]

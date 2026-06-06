@@ -7,6 +7,8 @@ namespace QueryGalleryDemo.Models;
 /// Junction table for many-to-many relationship between Playlist and Track
 /// </summary>
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
+[UniqueIndex("PlaylistId", "TrackId")]
+[Index("TrackId", "PlaylistId")]
 public class PlaylistTrack : SxmEntity
 {
     [Required]
