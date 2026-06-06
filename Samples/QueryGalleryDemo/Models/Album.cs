@@ -14,5 +14,6 @@ public class Album : SxmEntity
 
     [Required]
     [ForeignKey(foreignTable: nameof(Artist))]
+    [Index]
     public long ArtistId { get; set; }
 }

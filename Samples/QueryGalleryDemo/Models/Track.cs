@@ -13,13 +13,16 @@ public class Track : SxmEntity
     public string Name { get; set; } = string.Empty;
 
     [ForeignKey(foreignTable: nameof(Album))]
+    [Index]
     public long? AlbumId { get; set; }
 
     [ForeignKey(foreignTable: nameof(MediaType))]
+    [Index]
     [Required]
     public long MediaTypeId { get; set; }
 
     [ForeignKey(foreignTable: nameof(Genre))]
+    [Index]
     public long? GenreId { get; set; }
 
     public string? Composer { get; set; }

@@ -21,6 +21,7 @@ public class Employee : SxmEntity
     /// Reports to employee (self-referencing foreign key)
     /// </summary>
     [ForeignKey(foreignTable: nameof(Employee))]
+    [Index]
     public long? ReportsTo { get; set; }
 
     public DateTime? BirthDate { get; set; }

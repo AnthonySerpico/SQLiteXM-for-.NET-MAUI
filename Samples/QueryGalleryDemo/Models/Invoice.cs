@@ -11,6 +11,7 @@ public class Invoice : SxmEntity
 {
     [Required]
     [ForeignKey(foreignTable: nameof(Customer))]
+    [Index]
     public long CustomerId { get; set; }
 
     [Required]

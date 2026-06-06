@@ -39,5 +39,6 @@ public class Customer : SxmEntity
     /// Support representative (Employee)
     /// </summary>
     [ForeignKey(foreignTable: nameof(Employee))]
+    [Index]
     public long? SupportRepId { get; set; }
 }

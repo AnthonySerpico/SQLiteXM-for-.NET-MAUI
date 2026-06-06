@@ -11,10 +11,12 @@ public class InvoiceLine : SxmEntity
 {
     [Required]
     [ForeignKey(foreignTable: nameof(Invoice))]
+    [Index]
     public long InvoiceId { get; set; }
 
     [Required]
     [ForeignKey(foreignTable: nameof(Track))]
+    [Index]
     public long TrackId { get; set; }
 
     [Required]

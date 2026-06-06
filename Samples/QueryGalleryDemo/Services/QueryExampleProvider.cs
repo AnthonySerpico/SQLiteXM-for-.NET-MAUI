@@ -1883,9 +1883,9 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
                    invoiceLine.Quantity,
                    invoiceLine.UnitPrice
                })
-                               .Take(500)
-                               .ToList();
-               return results;",
+               .Take(500)
+               .ToList();
+return results;",
                 Explanation = @"**How It Works:**
 1. Start with InvoiceLine (transactional data)
 2. JOIN 4 additional tables
@@ -1900,23 +1900,23 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
 • Consider indexed columns for joins
 • 5-table join is a realistic complexity test"
             },
-                           new QueryExample
-                           {
-                               Id = "perf_3",
-                               Name = "Pagination with Skip/Take",
-                               Description = "Efficiently paginate through large result sets",
-                               Category = QueryCategory.Performance,
-                               Type = QueryType.Linq,
-                               Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-               int pageNumber = 2;
-               int pageSize = 20;
-               var page = context.GetTable<Track>()
-                   .OrderBy(t => t.id)
-                   .Skip((pageNumber - 1) * pageSize)
-                   .Take(pageSize)
-                   .ToList();
-               return page;",
-                               Explanation = @"**How It Works:**
+            new QueryExample
+            {
+                Id = "perf_3",
+                Name = "Pagination with Skip/Take",
+                Description = "Efficiently paginate through large result sets",
+                Category = QueryCategory.Performance,
+                Type = QueryType.Linq,
+                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+int pageNumber = 2;
+int pageSize = 20;
+var page = context.GetTable<Track>()
+    .OrderBy(t => t.id)
+    .Skip((pageNumber - 1) * pageSize)
+    .Take(pageSize)
+    .ToList();
+return page;",
+                Explanation = @"**How It Works:**
 1. Define page size (20 items)
 2. Calculate offset for page 2
 3. OrderBy ensures consistent ordering
@@ -1930,22 +1930,22 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
 • Ideal for infinite scroll or paged lists
 • Reduces memory usage vs loading all data
 • Standard pattern for web APIs"
-                           },
-                           new QueryExample
-                           {
-                               Id = "perf_4",
-                               Name = "Select Only Required Columns",
-                               Description = "Reduce data transfer by projecting only needed fields",
-                               Category = QueryCategory.Performance,
-                               Type = QueryType.Linq,
-                               Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-               // Faster: select only what you need
-               var lightweightTracks = context.GetTable<Track>()
-                   .Select(t => new { t.id, t.Name, t.UnitPrice })
-                   .Take(100)
-                   .ToList();
-               return lightweightTracks;",
-                               Explanation = @"**How It Works:**
+            },
+            new QueryExample
+            {
+                Id = "perf_4",
+                Name = "Select Only Required Columns",
+                Description = "Reduce data transfer by projecting only needed fields",
+                Category = QueryCategory.Performance,
+                Type = QueryType.Linq,
+                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+// Faster: select only what you need
+var lightweightTracks = context.GetTable<Track>()
+    .Select(t => new { t.id, t.Name, t.UnitPrice })
+    .Take(100)
+    .ToList();
+return lightweightTracks;",
+                Explanation = @"**How It Works:**
 1. Access Track table
 2. Project only 3 columns (id, Name, UnitPrice)
 3. Omit unnecessary columns (Composer, Milliseconds, etc.)
@@ -1958,26 +1958,26 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
 • Faster network transfer in distributed apps
 • SQLiteXM generates optimal SELECT
 • Critical for mobile/bandwidth-constrained scenarios"
-                           },
-                           new QueryExample
-                           {
-                               Id = "perf_5",
-                               Name = "Early Filtering",
-                               Description = "Filter before joining for better performance",
-                               Category = QueryCategory.Performance,
-                               Type = QueryType.Linq,
-                               Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-               // Good: filter albums first, then join
-               var expensiveAlbums = context.GetTable<Album>()
-                   .Where(a => a.Title.StartsWith(""A""))
-                   .Take(50);
+            },
+            new QueryExample
+            {
+                Id = "perf_5",
+                Name = "Early Filtering",
+                Description = "Filter before joining for better performance",
+                Category = QueryCategory.Performance,
+                Type = QueryType.Linq,
+                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+// Good: filter albums first, then join
+var expensiveAlbums = context.GetTable<Album>()
+    .Where(a => a.Title.StartsWith(""A""))
+    .Take(50);
 
-               var results = (from album in expensiveAlbums
-                              join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                              select new { album.Title, artist.Name })
-                              .ToList();
-               return results;",
-                               Explanation = @"**How It Works:**
+var results = (from album in expensiveAlbums
+               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+               select new { album.Title, artist.Name })
+               .ToList();
+return results;",
+                Explanation = @"**How It Works:**
 1. Filter albums first (titles starting with 'A')
 2. Limit to 50 albums
 3. Then join to Artist table
@@ -1990,24 +1990,24 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
 • WHERE before JOIN is a key optimization
 • SQLite optimizer benefits from this pattern
 • Avoids processing unnecessary rows"
-                           },
-                                       new QueryExample
-                                       {
-                                           Id = "perf_6",
-                                           Name = "Count Performance",
-                                           Description = "Compare Count() vs Any() for existence checks",
-                                           Category = QueryCategory.Performance,
-                                           Type = QueryType.Linq,
-                                           Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-                           // Faster: use Any() instead of Count() > 0 for existence
-                           var hasExpensiveTracks = context.GetTable<Track>()
-                               .Any(t => t.UnitPrice > 1.50m);
+            },
+            new QueryExample
+            {
+                Id = "perf_6",
+                Name = "Count Performance",
+                Description = "Compare Count() vs Any() for existence checks",
+                Category = QueryCategory.Performance,
+                Type = QueryType.Linq,
+                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+// Faster: use Any() instead of Count() > 0 for existence
+var hasExpensiveTracks = context.GetTable<Track>()
+    .Any(t => t.UnitPrice > 1.50m);
 
-                           var expensiveCount = context.GetTable<Track>()
-                               .Count(t => t.UnitPrice > 1.50m);
+var expensiveCount = context.GetTable<Track>()
+    .Count(t => t.UnitPrice > 1.50m);
 
-                           return new[] { new { HasExpensiveTracks = hasExpensiveTracks, Count = expensiveCount } };",
-                                           Explanation = @"**How It Works:**
+return new[] { new { HasExpensiveTracks = hasExpensiveTracks, Count = expensiveCount } };",
+                Explanation = @"**How It Works:**
 1. Any() checks if at least one track > $1.50
 2. Returns true/false immediately when found
 3. Count() actually counts all matching tracks
@@ -2020,27 +2020,27 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
 • Count() must scan all matching rows
 • Use Any() when you only need yes/no
 • Use Count() when you need the actual number"
-                                       },
-                           new QueryExample
-                           {
-                               Id = "perf_7",
-                               Name = "Avoid N+1 Queries",
-                               Description = "Use joins instead of multiple queries",
-                               Category = QueryCategory.Performance,
-                               Type = QueryType.Linq,
-                               Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-               // Good: single query with join
-               var tracksWithAlbums = (from track in context.GetTable<Track>()
-                                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                                       select new 
-                                       { 
-                                           TrackName = track.Name, 
-                                           AlbumTitle = album.Title 
-                                       })
-                                       .Take(100)
-                                       .ToList();
-               return tracksWithAlbums;",
-                               Explanation = @"**How It Works:**
+            },
+            new QueryExample
+            {
+                Id = "perf_7",
+                Name = "Avoid N+1 Queries",
+                Description = "Use joins instead of multiple queries",
+                Category = QueryCategory.Performance,
+                Type = QueryType.Linq,
+                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+// Good: single query with join
+var tracksWithAlbums = (from track in context.GetTable<Track>()
+                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                        select new 
+                        { 
+                            TrackName = track.Name, 
+                            AlbumTitle = album.Title 
+                        })
+                        .Take(100)
+                        .ToList();
+return tracksWithAlbums;",
+                Explanation = @"**How It Works:**
 1. Single query with JOIN
 2. Fetch tracks and albums together
 3. Project combined result
@@ -2053,22 +2053,22 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
 • Dramatically faster than loops with queries inside
 • Essential for good ORM performance
 • SQLiteXM makes joins easy with LINQ"
-                           },
-                           new QueryExample
-                           {
-                               Id = "perf_8",
-                               Name = "Efficient Distinct",
-                               Description = "Get unique values efficiently",
-                               Category = QueryCategory.Performance,
-                               Type = QueryType.Linq,
-                               Code = @"using var context = new SxmLinqDbContext(""Chinook"");
-               var uniqueCountries = context.GetTable<Customer>()
-                   .Select(c => c.Country)
-                   .Distinct()
-                   .OrderBy(c => c)
-                   .ToList();
-               return uniqueCountries;",
-                               Explanation = @"**How It Works:**
+            },
+            new QueryExample
+            {
+                Id = "perf_8",
+                Name = "Efficient Distinct",
+                Description = "Get unique values efficiently",
+                Category = QueryCategory.Performance,
+                Type = QueryType.Linq,
+                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+var uniqueCountries = context.GetTable<Customer>()
+    .Select(c => c.Country)
+    .Distinct()
+    .OrderBy(c => c)
+    .ToList();
+return uniqueCountries;",
+                Explanation = @"**How It Works:**
 1. Select Country column only
 2. Apply Distinct() to remove duplicates
 3. Sort alphabetically
@@ -2080,9 +2080,68 @@ var results = (from invoiceLine in context.GetTable<InvoiceLine>()
 • Reduces result set size significantly
 • Perfect for dropdown lists, filters
 • OrderBy provides user-friendly sorting"
-                           }
-                       };
-                   }
+            },
+            new QueryExample
+            {
+                Id = "perf_9",
+                Name = "Foreign Key Index Performance",
+                Description = "Demonstrates why indexes on foreign keys matter",
+                Category = QueryCategory.Performance,
+                Type = QueryType.Linq,
+                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+var sw = System.Diagnostics.Stopwatch.StartNew();
+
+// This query benefits from indexed foreign keys
+var tracksForAlbums = (from track in context.GetTable<Track>()
+                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                       where album.Title.StartsWith(""A"")
+                       select new { track.Name, album.Title })
+                       .Take(200)
+                       .ToList();
+
+sw.Stop();
+var elapsedMs = sw.ElapsedMilliseconds;
+
+return new[] { new { 
+    ResultCount = tracksForAlbums.Count, 
+    ElapsedMs = elapsedMs,
+    Message = $""Query completed in {elapsedMs}ms using indexed foreign key""
+} };",
+                Explanation = @"**How It Works:**
+1. Start stopwatch timer
+2. Query tracks joined with albums
+3. Filter albums by title prefix
+4. Index on Track.AlbumId accelerates the JOIN
+5. Return timing and result count
+
+**Why Indexes Matter:**
+• Without index on AlbumId: SQLite scans entire Track table for each album (slow)
+• With index (IFK_Track_AlbumId): SQLite uses index to find matching tracks instantly
+• Standard Chinook schema includes indexes on ALL foreign keys
+• JOIN performance improves dramatically with proper indexing
+• This query would be 10-100x slower without the index on large datasets
+
+**Chinook Database Indexes:**
+• IFK_Album_ArtistId - Album lookups by artist
+• IFK_Track_AlbumId - Track lookups by album
+• IFK_Track_GenreId - Track lookups by genre
+• IFK_Track_MediaTypeId - Track lookups by media type
+• IFK_InvoiceLine_InvoiceId - Line items by invoice
+• IFK_InvoiceLine_TrackId - Line items by track
+• IFK_PlaylistTrack_PlaylistId - Playlist tracks
+• IFK_PlaylistTrack_TrackId - Track playlists
+• IFK_Invoice_CustomerId - Invoices by customer
+• IFK_Customer_SupportRepId - Customers by rep
+• IFK_Employee_ReportsTo - Employee hierarchy
+
+**Real-World Impact:**
+• Indexed foreign keys are essential for OLTP systems
+• Makes JOIN queries scale with data volume
+• Critical for relationship navigation
+• Referential integrity checks are also faster"
+            }
+        };
+    }
 
     private static List<QueryExample> GetManyToManyExamples()
     {

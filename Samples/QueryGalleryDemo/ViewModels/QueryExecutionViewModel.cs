@@ -267,6 +267,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
             "perf_6" => ExecutePerf6(),
             "perf_7" => ExecutePerf7(),
             "perf_8" => ExecutePerf8(),
+            "perf_9" => ExecutePerf9(),
 
             "m2m_1" => ExecuteM2M1(),
             "m2m_2" => ExecuteM2M2(),
@@ -940,6 +941,33 @@ public partial class QueryExecutionViewModel : BaseViewModel
             .Distinct()
             .OrderBy(c => c)
             .ToList();
+    }
+
+    private object ExecutePerf9()
+    {
+        using var context = new SxmLinqDbContext("Chinook");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        // This query benefits from IFK_Track_AlbumId index
+        var tracksForAlbums = (from track in context.GetTable<Track>()
+                               join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                               where album.Title.StartsWith("A")
+                               select new { track.Name, album.Title })
+                               .Take(200)
+                               .ToList();
+
+        sw.Stop();
+        var elapsedMs = sw.ElapsedMilliseconds;
+
+        return new List<object>
+        {
+            new
+            {
+                ResultCount = tracksForAlbums.Count,
+                ElapsedMs = elapsedMs,
+                Message = $"Query completed in {elapsedMs}ms using indexed foreign key"
+            }
+        };
     }
 
     // Many-to-Many queries
