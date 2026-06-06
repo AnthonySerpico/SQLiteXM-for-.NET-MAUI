@@ -260,10 +260,10 @@ public class BulkLinqOperationsTests : TestBase
             .ToList();
 
         remaining.Should().HaveCount(2, "two entities had Age >= 25");
-        remaining.Should().NotContain(e => e.Name!.Contains("_1"));
-        remaining.Should().NotContain(e => e.Name!.Contains("_2"));
-        remaining.Should().Contain(e => e.Name!.Contains("_3"));
-        remaining.Should().Contain(e => e.Name!.Contains("_4"));
+        remaining.Should().NotContain(e => e.Name!.EndsWith("_1"));
+        remaining.Should().NotContain(e => e.Name!.EndsWith("_2"));
+        remaining.Should().Contain(e => e.Name!.EndsWith("_3"));
+        remaining.Should().Contain(e => e.Name!.EndsWith("_4"));
 
         // Cleanup
         foreach (var entity in remaining) 
