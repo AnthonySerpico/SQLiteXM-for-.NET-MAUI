@@ -46,17 +46,37 @@
                        TextColor="{StaticResource Primary}"
                        Margin="0,0,0,5"/>
 
-                <ScrollView Grid.Row="1">
-                    <Frame Padding="15"
-                           BorderColor="{StaticResource Gray300}"
-                           BackgroundColor="{StaticResource Gray100}">
-                        <Label Text="{Binding FormattedCode}"
-                               FontFamily="Courier"
-                               FontSize="12"
-                               TextColor="{StaticResource Gray900}"
-                               LineBreakMode="WordWrap"/>
-                    </Frame>
-                </ScrollView>
+                <!-- Code display with overlay copy button -->
+                <Grid Grid.Row="1">
+                    <ScrollView>
+                        <Frame Padding="15"
+                               BorderColor="{StaticResource Gray300}"
+                               BackgroundColor="{StaticResource Gray100}">
+                            <Label Text="{Binding FormattedCode}"
+                                   FontFamily="Courier"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray900}"
+                                   LineBreakMode="WordWrap"/>
+                        </Frame>
+                    </ScrollView>
+
+                    <!-- Copy button overlay in top-right corner -->
+                    <Button Text="📋"
+                            FontSize="18"
+                            Command="{Binding CopyCodeCommand}"
+                            BackgroundColor="#F5F5F5"
+                            BorderColor="{StaticResource Gray300}"
+                            BorderWidth="1"
+                            TextColor="{StaticResource Primary}"
+                            Padding="8"
+                            Margin="10"
+                            WidthRequest="36"
+                            HeightRequest="36"
+                            HorizontalOptions="End"
+                            VerticalOptions="Start"
+                            CornerRadius="6"
+                            ToolTipProperties.Text="Copy code to clipboard"/>
+                </Grid>
             </Grid>
 
             <!-- Visual Separator -->

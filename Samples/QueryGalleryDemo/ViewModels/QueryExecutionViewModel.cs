@@ -110,6 +110,26 @@ public partial class QueryExecutionViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    private async Task CopyCodeAsync()
+    {
+        if (string.IsNullOrEmpty(QueryExample?.Code))
+            return;
+
+        try
+        {
+            await Clipboard.SetTextAsync(QueryExample.Code);
+
+            // Optional: Show brief confirmation to user
+            await Shell.Current.DisplayAlert("Copied", "Code copied to clipboard!", "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error copying to clipboard: {ex.Message}");
+            ErrorMessage = "Failed to copy code to clipboard.";
+        }
+    }
+
+    [RelayCommand]
     private async Task RunQueryAsync()
     {
         if (QueryExample == null) return;
