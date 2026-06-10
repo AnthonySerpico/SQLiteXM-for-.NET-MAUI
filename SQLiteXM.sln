@@ -1,9 +1,8 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.8.34309.116
+# Visual Studio Version 18
+VisualStudioVersion = 18.7.11903.348 stable
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLiteXM", "SQLiteXMCL\SQLiteXM.csproj", "{90ADB0A8-064F-497B-9440-49F1F7410B1D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLiteXM", "SQLiteXM\SQLiteXM.csproj", "{90ADB0A8-064F-497B-9440-49F1F7410B1D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLiteXM.Tests", "SQLiteXM.Tests\SQLiteXM.Tests.csproj", "{647D501B-A854-40F2-8DC4-F0DF9C64E81A}"
 EndProject
