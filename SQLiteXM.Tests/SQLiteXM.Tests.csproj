@@ -37,7 +37,7 @@
 
   <ItemGroup>
     <!-- Reference to the project being tested -->
-    <ProjectReference Include="..\SQLiteXMCL\SQLiteXM.csproj" />
+    <ProjectReference Include="..\SQLiteXM\SQLiteXM.csproj" />
   </ItemGroup>
 
 </Project>

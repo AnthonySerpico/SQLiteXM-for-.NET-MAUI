@@ -113,7 +113,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\SQLiteXMCL\SQLiteXM.csproj" />
+	  <ProjectReference Include="..\..\SQLiteXM\SQLiteXM.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
