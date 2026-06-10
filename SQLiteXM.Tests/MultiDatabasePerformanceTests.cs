@@ -63,8 +63,9 @@ public class MultiDatabasePerformanceTests : IDisposable
         // CRITICAL: Reset SQLiteXM state so subsequent tests work correctly
         try
         {
+#if DEBUG
             SxmDatabase.ResetForTestingAsync().GetAwaiter().GetResult();
-
+#endif
             // Re-initialize with the standard test configuration from TestBase
             var initOptions = new SxmDatabaseOptions
             {

@@ -58,10 +58,17 @@
 		<PublishTrimmed>false</PublishTrimmed>
 	</PropertyGroup>
 
+	<!-- Android Configuration - Disable trimming and AOT for Debug -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('android')) and '$(Configuration)' == 'Debug'">
+		<PublishTrimmed>false</PublishTrimmed>
+		<PublishAot>false</PublishAot>
+	</PropertyGroup>
+
 	<!-- Android Linker Configuration for Release builds -->
 	<PropertyGroup Condition="$(TargetFramework.Contains('android')) and '$(Configuration)' == 'Release'">
 		<AndroidLinkMode>SdkOnly</AndroidLinkMode>
-		<PublishTrimmed>false</PublishTrimmed>
+		<PublishTrimmed>true</PublishTrimmed>
+		<TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
 	<!-- Windows Configuration -->
@@ -79,6 +86,11 @@
 		<TrimmerRootAssembly Include="QueryGalleryDemo" />
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android'">
+		<TrimmerRootAssembly Include="linq2db" RootMode="library" />
+		<TrimmerRootAssembly Include="QueryGalleryDemo" RootMode="library" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
@@ -94,6 +106,10 @@
 
 		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="bin\Release\net9.0-windows10.0.19041.0\win10-x64\AppPackages\QueryGalleryDemo_1.0.0.1_Test\INSTALL_INSTRUCTIONS.txt" />
 	</ItemGroup>
 
 	<ItemGroup>

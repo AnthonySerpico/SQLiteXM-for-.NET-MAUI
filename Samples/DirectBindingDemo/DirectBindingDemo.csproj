@@ -49,10 +49,43 @@
 		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-ios|AnyCPU'">
+	<!-- iOS AOT/Trimming Configuration for Release builds -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios' and '$(Configuration)' == 'Release'">
 	  <PublishTrimmed>True</PublishTrimmed>
 	  <PublishAot>True</PublishAot>
+	  <TrimMode>partial</TrimMode>
 	</PropertyGroup>
+
+	<!-- iOS Debug Configuration - Disable AOT/Trimming -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios' and '$(Configuration)' == 'Debug'">
+	  <PublishAot>False</PublishAot>
+	  <PublishTrimmed>False</PublishTrimmed>
+	</PropertyGroup>
+
+	<!-- Android Configuration - Disable trimming and AOT for Debug -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('android')) and '$(Configuration)' == 'Debug'">
+	  <PublishTrimmed>False</PublishTrimmed>
+	  <PublishAot>False</PublishAot>
+	</PropertyGroup>
+
+	<!-- Android Linker Configuration for Release builds -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('android')) and '$(Configuration)' == 'Release'">
+	  <AndroidLinkMode>SdkOnly</AndroidLinkMode>
+	  <PublishTrimmed>True</PublishTrimmed>
+	  <TrimMode>partial</TrimMode>
+	</PropertyGroup>
+
+	<!-- MacCatalyst Configuration - Disable AOT/Trimming -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-maccatalyst'">
+	  <PublishAot>False</PublishAot>
+	  <PublishTrimmed>False</PublishTrimmed>
+	</PropertyGroup>
+
+	<!-- Windows Configuration - Disable trimming -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('windows'))">
+	  <PublishTrimmed>False</PublishTrimmed>
+	</PropertyGroup>
+
 
 	<ItemGroup>
 		<!-- App Icon -->
@@ -90,6 +123,12 @@
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-ios'">
 		<TrimmerRootAssembly Include="linq2db" />
+		<TrimmerRootAssembly Include="DirectBindingDemo" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android'">
+		<TrimmerRootAssembly Include="linq2db" RootMode="library" />
+		<TrimmerRootAssembly Include="DirectBindingDemo" RootMode="library" />
 	</ItemGroup>
 
 </Project>

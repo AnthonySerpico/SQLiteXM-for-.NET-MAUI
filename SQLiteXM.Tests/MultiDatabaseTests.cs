@@ -75,8 +75,9 @@ public class MultiDatabaseTests : IDisposable
         // and database descriptors, so we must clear all caches.
         try
         {
+#if DEBUG
             SxmDatabase.ResetForTestingAsync().GetAwaiter().GetResult();
-
+#endif
             // Re-initialize with the standard test configuration from TestBase
             var initOptions = new SxmDatabaseOptions
             {
