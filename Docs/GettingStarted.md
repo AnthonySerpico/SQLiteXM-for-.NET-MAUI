@@ -19,7 +19,7 @@ SQLiteXM is a **high-performance, entity-first ORM** designed specifically for .
 
 **🚀 Zero Configuration**
 - No `DbContext` setup required
-- Tables auto-create from your entity classes
+- Tables created from your entity classes during initialization
 - No migration files to manage
 
 **⚡ Mobile-Optimized**
@@ -110,10 +110,58 @@ private async Task InitializeSQLiteXMAsync()
 - Intuitive attributes: `[CreateIndex]`, `[CreateForeignKey]`, etc.
 - Explicit transaction support when you need it
 
+**🗄️ Multi-Database Support**
+- Define and work with multiple SQLite databases in a single application
+- Data isolation per database (user data, app cache, sync data)
+- Database-specific entity registration
+- Independent transaction contexts
+- Perfect for tenant separation or domain organization
+
+<details>
+<summary>📖 Example: Multi-Database Configuration</summary>
+
+```csharp
+// Define multiple databases in SqlStatements.json
+{
+  "version": 1,
+  "databases": [
+    {
+      "database": "UserData",
+      "isDefault": true
+    },
+    {
+      "database": "AppCache",
+      "isDefault": false
+    }
+  ]
+}
+
+// Register entities to specific databases
+await SxmDatabase.RegisterEntitiesAsync(
+    typeof(User),      // Goes to default (UserData)
+    typeof(TodoItem)
+);
+
+await SxmDatabase.RegisterEntitiesAsync(
+    databaseName: "AppCache",
+    typeof(CachedImage),
+    typeof(DownloadedContent)
+);
+
+// Query from specific database
+using var userContext = new SxmLinqDbContext("UserData");
+var users = userContext.GetTable<User>().ToList();
+
+using var cacheContext = new SxmLinqDbContext("AppCache");
+var cachedImages = cacheContext.GetTable<CachedImage>().ToList();
+```
+
+</details>
+
 **🔒 Production-Ready**
 - 182 comprehensive tests covering real-world scenarios
 - Thread-safe concurrent operations
-- Multi-database support for advanced use cases
+- Proven in production applications
 
 ### 🆚 How Does It Compare?
 

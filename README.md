@@ -6,16 +6,21 @@ A high-performance, entity-first ORM for SQLite designed specifically for .NET M
 [![Tests](https://img.shields.io/badge/tests-181%2F182%20passing-brightgreen.svg)](./SQLiteXM.Tests)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-## ✨ Key Features
+## ✨ What Makes SQLiteXM Different
 
-- **🚀 Entity-First Design** - Tables auto-create from your entity classes on first use
-- **⚡ Zero Configuration** - No DbContext setup, no migrations folder
-- **🔄 Async-First** - Proper `async`/`await` throughout with `ConfigureAwait(false)`
-- **📱 Mobile-Optimized** - Static caching and connection pooling for best performance
-- **🔗 LINQ Support** - Full LINQ query capabilities via LinqToDB integration
-- **🔒 Transaction Support** - Explicit and ambient transaction patterns
-- **🎯 Attribute-Driven** - Schema definition through intuitive attributes
-- **🛡️ Type-Safe** - Strong CLR-to-SQLite type mapping with custom overrides
+- **🚀 Zero-Friction Setup** - Entity-first design with no DbContext, no migrations folder—just define your classes and go
+- **📝 Dual Query Power** - Full LINQ support AND raw SQL with organized statements catalog (`statements.json`)—use the best tool for each job
+- **📲 MAUI-Native** - Direct `INotifyPropertyChanged` binding, lifecycle integration (suspend/resume), and AOT/trimmer optimized for production iOS apps
+- **🗄️ Multi-Database Ready** - Define and work with multiple SQLite databases for data isolation, tenant separation, or organized data domains
+- **⚙️ SQLite Control** - First-class PRAGMA configuration (WAL mode, foreign keys, cache size) and advanced features (triggers, indexes, foreign keys)
+- **📱 Mobile-Optimized** - Static caching, connection pooling, offline-first patterns, and `ConfigureAwait(false)` throughout for smooth mobile performance
+
+### 🔧 Complete ORM Capabilities
+
+- **Type-Safe Mapping** - Strong CLR-to-SQLite type mapping with custom overrides
+- **Attribute-Driven Schema** - Intuitive attributes for tables, columns, indexes, foreign keys, and triggers
+- **Full Transaction Support** - Explicit and ambient transaction patterns with multi-database coordination
+- **Async-First API** - Modern async/await patterns throughout
 
 ## 📦 Installation
 
@@ -32,6 +37,8 @@ dotnet add package SQLiteXM
 
 ### 1. Define Your Entities
 
+ Create a new class that inherits from `SxmEntity`:
+
 ```csharp
 using SQLiteXM;
 
@@ -42,7 +49,7 @@ public class User : SxmEntity
     public int Age { get; set; }
     public DateTime CreatedAt { get; set; } // Stored as Unix milliseconds
 
-    [CreateIndex]
+    [Index]
     public string? Email { get; set; }
 }
 
@@ -52,22 +59,70 @@ public class Post : SxmEntity
     public string? Title { get; set; }
     public string? Content { get; set; }
 
-    [CreateForeignKey(ForeignTable: nameof(User))]
+    [ForeignKey(foreignTable: nameof(User))]
     public long UserId { get; set; }
 }
 ```
+**What just happened?**
+- `[Table(IsColumnAttributeRequired = false)]` means all properties are automatically persisted
+- `[Index]` on `Email` creates an index for fast queries
+- `[ForeignKey]` creates a foreign key on `User` table
+- The database tables for your entities will be created automatically during initialization
 
-### 2. Initialize Once
+
+### Step 2: Initialize SQLiteXM
+
+In your `App.xaml.cs`, add initialization:
 
 ```csharp
-// In your App.xaml.cs or startup
-await SxmInit.InitDbAsync("statements.json", new SxmInitOptions
+public partial class App : Application
 {
-    DatabaseFolderOverride = FileSystem.AppDataDirectory
-});
+    public App()
+    {
+        InitializeComponent();
+
+        // Initialize SQLiteXM once at app startup
+        InitializeSQLiteXMAsync().GetAwaiter().GetResult();
+
+        MainPage = new AppShell();
+    }
+
+    private async Task InitializeSQLiteXMAsync()
+    {
+        try
+        {
+            // Load the SqlStatements.json file from Resources/Raw
+            using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+
+            if (stream != null)
+            {
+                await SxmDatabase.InitializeAsync(stream);
+
+                // Register entity types for schema creation/migration
+                await SxmDatabase.RegisterEntitiesAsync(
+				            typeof(User),
+				            typeof(Post)
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error initializing SQLiteXM: {ex.Message}");
+        }
+    }
+}
 ```
 
-**statements.json** (minimal):
+
+**What's happening?**
+- `FileSystem.OpenAppPackageFileAsync()` loads the JSON from your app package (works on all platforms)
+- `SxmDatabase.InitializeAsync(stream)` initializes SQLiteXM
+- `RegisterEntitiesAsync()` registers your entity types for schema creation and migration
+- The database file is created automatically in the platform-specific app data folder
+- Tables are created by `RegisterEntitiesAsync()`
+
+
+**Create `SqlStatements.json`** in your project under **Resources/Raw/** folder (set **Build Action: MauiAsset**):
 ```json
 {
   "database": "MyApp",
@@ -79,14 +134,15 @@ await SxmInit.InitDbAsync("statements.json", new SxmInitOptions
 ### 3. Use Your Entities
 
 ```csharp
-// Create - table auto-created on first instantiation!
-var user = new User 
+// Create - tables already created during SxmInit.InitDbAsync
+var user = new User
 { 
     Name = "Alice", 
     Age = 30,
     Email = "alice@example.com",
     CreatedAt = DateTime.UtcNow
 };
+// Save it
 await user.SaveAsync();
 
 // Read
@@ -130,7 +186,7 @@ await transaction.CommitTransactionAsync();
 
 Unlike other SQLite ORMs, SQLiteXM comes with:
 
-- **[Interactive Query Gallery](Samples/QueryGalleryDemo/)** - 50+ runnable examples with syntax highlighting
+- **[Interactive Query Gallery](Samples/QueryGalleryDemo/)** - 90+ runnable examples with syntax highlighting
 - **[Comprehensive guides](docs/)** - Detailed documentation for every feature
 - **[3 sample apps](Samples/)** - From simple to advanced
 - **[182 tests](SQLiteXM.Tests/)** - Real-world patterns you can learn from
