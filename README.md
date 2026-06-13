@@ -4,8 +4,6 @@ SQLiteXM is a high-performance, entity-first ORM for SQLite designed specificall
 
 Define entities, initialize once, and start querying with LINQ—without DbContext setup, migration folders, or EF Core complexity.
 
-Built for mobile-first applications with AOT support, offline-first workflows, and direct MAUI data binding.
-
 ---
 
 ## Why SQLiteXM?
@@ -336,21 +334,31 @@ await transaction.CommitTransactionAsync();
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **182 tests** covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **182 tests** (181 passing, 1 intentionally skipped) covering real-world scenarios.
 
 ### Test Coverage
 
 | Category | Tests | Status |
 |----------|-------|--------|
 | Entity CRUD | 11 tests | ✅ 100% |
+| Entity Initialization | 13 tests | ✅ 100% |
+| Entity Migration | 18 tests | ✅ 100% |
+| Entity Mapping | 4 tests | ✅ 100% |
+| LINQ Queries | 7 tests | ✅ 100% |
+| Advanced LINQ | 12 tests | ✅ 100% |
+| LINQ Transactions | 6 tests | ✅ 100% |
+| Bulk LINQ Operations | 11 tests (1 skipped) | ✅ 100%* |
 | Transactions | 5 tests | ✅ 100% |
-| LINQ Queries | 18 tests | ✅ 100% |
 | Multi-Database | 11 tests | ✅ 100% |
-| Migrations | 15 tests | ✅ 100% |
-| Performance | 8 tests | ✅ 100% |
-| Bulk Operations | 9 tests | ✅ 99%* |
-| Concurrency | 8 tests | ✅ 100% |
-| **Total** | **182 tests** | **✅ 99.5%** |
+| Multi-Database LINQ | 18 tests | ✅ 100% |
+| Multi-Database Performance | 10 tests | ✅ 100% |
+| Drop Table | 22 tests | ✅ 100% |
+| Column Rename | 10 tests | ✅ 100% |
+| Shared Connections | 7 tests | ✅ 100% |
+| Connection Workers | 7 tests | ✅ 100% |
+| Submit Changes | 4 tests | ✅ 100% |
+| Fail-Fast Validation | 5 tests | ✅ 100% |
+| **Total** | **182 tests** | **✅ 100%** |
 
 **\*Note:** 1 test intentionally skipped due to a known LINQ limitation (documented in test comments).
 
@@ -374,49 +382,37 @@ For testing your own code with SQLiteXM, see the **[Testing Guide](docs/Advanced
 
 ---
 
-
-### 1. 📚 Extensive Documentation & Learning Tools
-
-SQLiteXM comes with:
-
-- **[Interactive Query Gallery](Samples/QueryGalleryDemo/)** - 90+ runnable LINQ and SQL examples with explanations
-- **[Comprehensive guides](docs/)** - Detailed documentation for every feature
-- **[3 sample apps](Samples/)** - From simple to advanced
-- **[182 tests](SQLiteXM.Tests/)** - Real-world patterns you can learn from
-
-**We believe good docs matter as much as good code.**
-
----
-
 ## 📚 Sample Applications
 
 SQLiteXM includes **three sample applications** to help you learn:
 
-### 1. RegistrationDemo (Simple)
+
+### 1. QueryGalleryDemo (Comprehensive) ⭐
+An **interactive query explorer** with 90+ examples. 
+**Features**: Syntax highlighting, runnable examples, execution timing, result visualization.
+<details>
+<summary>📖 Query Gallery Details</summary>
+
+- ✅ Basic Queries 10 - simple select, where, order by
+- 🔗 Relationships 8 - join queries, navigation
+- 📊 Aggregations 10 - count, sum, group by, avg
+- 📦 Advanced LINQ 11 - complex queries, paging
+- 🎯 Raw SQL 15 - direct SQL execution
+- 📈 Performance 9 - large data sets, benchmarks
+- 🔄 Many-to-Many 8 - junction tables, relationships
+- 💾 Transactions 6 - atomic operations, rollback
+- ⚡ Parameterized Queries 6 - prevent SQL injection
+- 💾 Data modification 8 - insert, update, delete examples
+</details>
+
+
+### 2. RegistrationDemo (Simple)
 Basic user registration showing entity definition, save/query, and data binding.
 
 📂 [View Sample](Samples/RegistrationDemo/)
 
-### 2. DirectBindingDemo (Simple)
+### 3. DirectBindingDemo (Simple)
 CollectionView binding with CRUD operations and UI updates.
-
-📂 [View Sample](Samples/DirectBindingDemo/)
-
-### 3. QueryGalleryDemo (Comprehensive) ⭐
-
-An **interactive query explorer** with 50+ examples:
-- ✅ Basic Queries
-- 🔗 Joins (Inner, Left, Cross)
-- 📊 Aggregations
-- 📦 Grouping
-- 🎯 Subqueries
-- 🔄 Many-to-Many
-- 💾 Transactions
-- ⚡ Bulk Operations
-
-**Features**: Syntax highlighting, runnable examples, execution timing, result visualization.
-
-📂 [View Sample](Samples/QueryGalleryDemo/) | 📖 [Read the docs](Samples/QueryGalleryDemo/README.md)
 
 ---
 

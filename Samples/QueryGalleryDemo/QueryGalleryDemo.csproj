@@ -109,10 +109,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Content Include="bin\Release\net9.0-windows10.0.19041.0\win10-x64\AppPackages\QueryGalleryDemo_1.0.0.1_Test\INSTALL_INSTRUCTIONS.txt" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
