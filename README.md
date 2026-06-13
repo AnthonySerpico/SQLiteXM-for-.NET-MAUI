@@ -1,26 +1,58 @@
 # SQLiteXM for .NET MAUI
 
-A high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI and mobile applications.
+SQLiteXM is a high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI and mobile applications.
 
-[![.NET 8](https://img.shields.io/badge/.NET-8-purple.svg)](https://dotnet.microsoft.com/download)
-[![Tests](https://img.shields.io/badge/tests-181%2F182%20passing-brightgreen.svg)](./SQLiteXM.Tests)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+Define entities, initialize once, and start querying with LINQ—without DbContext setup, migration folders, or EF Core complexity.
+
+Built for mobile-first applications with AOT support, offline-first workflows, and direct MAUI data binding.
+
+---
 
 ## ✨ What Makes SQLiteXM Different
 
-- **🚀 Zero-Friction Setup** - Entity-first design with no DbContext, no migrations folder—just define your classes and go
-- **📝 Dual Query Power** - Full LINQ support AND raw SQL with organized statements catalog (`statements.json`)—use the best tool for each job
-- **📲 MAUI-Native** - Direct `INotifyPropertyChanged` binding, lifecycle integration (suspend/resume), and AOT/trimmer optimized for production iOS apps
-- **🗄️ Multi-Database Ready** - Define and work with multiple SQLite databases for data isolation, tenant separation, or organized data domains
-- **⚙️ SQLite Control** - First-class PRAGMA configuration (WAL mode, foreign keys, cache size) and advanced features (triggers, indexes, foreign keys)
-- **📱 Mobile-Optimized** - Static caching, connection pooling, offline-first patterns, and `ConfigureAwait(false)` throughout for smooth mobile performance
+### 🚀 Zero-Friction Setup
+Entity-first design with no DbContext, no migrations, and no configuration ceremony. Define your models and start immediately.
 
-### 🔧 Complete ORM Capabilities
+### 📲 MAUI-Native Architecture
+Built specifically for .NET MAUI apps with direct data binding, lifecycle awareness, and compatibility with AOT compilation and IL trimming in Release builds.
 
-- **Type-Safe Mapping** - Strong CLR-to-SQLite type mapping with custom overrides
-- **Attribute-Driven Schema** - Intuitive attributes for tables, columns, indexes, foreign keys, triggers, and column rename
-- **Full Transaction Support** - Explicit and ambient transaction patterns with multi-database coordination
-- **Async-First API** - Modern async/await patterns throughout
+### 📝 Dual Query Power
+Use full LINQ or raw SQL with a structured `statements.json` catalog. Choose the right tool per query without framework friction.
+
+### 🗄️ Multi-Database Support
+First-class support for multiple SQLite databases in a single app for clean data separation, caching layers, or tenant isolation.
+
+### ⚙️ Full SQLite Control
+Fine-grained control over SQLite behavior including PRAGMA configuration, transactions, indexes, triggers, and performance tuning.
+
+### 📱 Mobile-First Performance Model
+Designed for offline-first apps with fast startup, low memory usage, connection reuse, and async-safe execution patterns.
+
+---
+
+## 🔧 Core ORM Capabilities
+
+Type-Safe Mapping — Strong CLR-to-SQLite type mapping with custom overrides
+
+Attribute-Driven Schema — Intuitive attributes for tables, columns, indexes, foreign keys, triggers, and column rename
+
+Full Transaction Support — Explicit and ambient transaction patterns with multi-database coordination
+
+Async-First API — Modern async/await patterns throughout
+
+---
+
+## ⚙️ AOT & Trimming Design
+
+SQLiteXM is designed for .NET MAUI applications targeting Release builds with AOT and trimming enabled.
+
+Entity types registered with SQLiteXM do not require manual linker configuration or per-model trimming annotations.
+
+Entity registration is explicitly annotated to preserve all required runtime reflection requirements:
+
+```csharp
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+```
 
 ## 📦 Installation
 
@@ -68,11 +100,12 @@ public class Post : SxmEntity
 - `[Table(IsColumnAttributeRequired = false)]` means all properties are automatically persisted
 - `[Index]` on `Email` creates an index for fast queries
 - `[ForeignKey]` creates a foreign key on `User` table
-- The database tables for your entities will be created automatically during initialization
+- The database tables for your entities will be created automatically during initialization, with full support for trimmed .NET MAUI Release builds
 
 &nbsp;
 ### 2. **Create `SqlStatements.json`** file
 In your project under **Resources/Raw/** folder create SqlStatements.json file (set **Build Action: MauiAsset**):
+
 ```json
 {
   "databases": [
@@ -181,9 +214,8 @@ await user.SaveAsync(transaction);
 var post = new Post { Title = "Hello", UserId = user.id };
 await post.SaveAsync(transaction);
 
-// The explicit CommitTransactionAsync() call is optional
-// but considered good practice. Without it, the transaction 
-// will AUTO-COMMIT on Dispose (If No Errors)
+// CommitTransactionAsync() call is optional. Without it
+// the transaction will AUTO-COMMIT on Dispose (If No Errors)
 await transaction.CommitTransactionAsync();
 ```
 
@@ -252,7 +284,7 @@ private async Task InitializeSQLiteXmAsync()
     using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 
     // Configure advanced SQLite options
-    SxmDatabaseOptions databaseOptions = new SxmDatabaseOptions()
+    var databaseOptions = new SxmDatabaseOptions()
     {
         // ✅ SQLite PRAGMA configuration
         ForeignKeys = true,
@@ -293,7 +325,7 @@ private async Task InitializeSQLiteXmAsync()
 
 **🎯 Clean API**
 - Inherit from `SxmEntity` and you're done
-- Intuitive attributes: `[CreateIndex]`, `[CreateForeignKey]`, etc.
+- Intuitive attributes: `[Index]`, `[ForeignKey]`, etc.
 - Explicit transaction support when you need it
 
 **🗄️ Multi-Database Support**
@@ -363,7 +395,7 @@ var completedItems = cacheContext.GetTable<CompletedItem>().ToList();
 | **SQLite optimization** | ✅ Extensive | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic |
 | **Auto-migration** | ✅ | ✅ | ❌ | ❌ |
 | **Async-first** | ✅ | ✅ | ⚠️ Partial | ✅ |
-| **AOT/Trimmer support** | ✅ | ⚠️ Limited | ✅ | ✅ |
+| **AOT/Trimmer support** | ✅ Designed for MAUI trimming| ⚠️ Limited | ✅ | ✅ |
 | **Documentation** | ✅ Excellent | ✅ Excellent | ⚠️ Basic | ⚠️ Minimal |
 | **Interactive examples** | ✅ Query Gallery | ❌ | ❌ | ❌ |
 | **Learning curve** | Easy | Steep | Easy | Medium |
@@ -373,76 +405,6 @@ var completedItems = cacheContext.GetTable<CompletedItem>().ToList();
 - Offline-first applications
 - Apps that need local data persistence
 - Developers who want EF-style LINQ without the complexity
-
----
-
-## 🎨 Advanced Features
-
-### Custom Type Mapping
-
-```csharp
-public class TimeEntity : SxmEntity
-{
-    // Default DateTime: INTEGER (Ticks)
-    public DateTime DefaultTime { get; set; }
-
-    // Override DateTime to TEXT (ISO 8601)
-    [Column(DataType = DataType.Text)]
-    public DateTime TextTime { get; set; }
-
-    // Default Guid: BLOB
-    public Guid BlobGuid { get; set; }
-
-    // Override Guid as TEXT
-    [Column(DataType = DataType.Text)]
-    public Guid TextGuid { get; set; }
-}
-```
-
-### Indexes and Constraints
-
-```csharp
-[Index([nameof(SKU), nameof(Category)])]  // Composite index
-public class Product : SxmEntity
-{
-    [UniqueIndex]
-    public string? SKU { get; set; }
-
-    [Index]
-    public string? Category { get; set; }
-
-    [RequiredNotNull(defaultValue: 0)]
-    public decimal Price { get; set; }
-
-    [NotColumn] // Exclude from database
-    public decimal TaxRate => 0.08m;
-}
-```
-
-### Triggers
-
-```csharp
-[CreateTrigger("CREATE TRIGGER IF NOT EXISTS UpdateTimestamp AFTER UPDATE ON AuditEntity " +
-               "BEGIN UPDATE AuditEntity SET UpdatedAt = (strftime('%s', 'now') * 1000) WHERE id = NEW.id; END;")]
-public class AuditEntity : SxmEntity
-{
-    public string? Action { get; set; }
-    public long UpdatedAt { get; set; }
-}
-```
-
-### Property Mapping
-
-```csharp
-// Map from DTO to entity
-var dto = new { Name = "Charlie", Age = 28 };
-var user = new User();
-user.MapProperties(dto);
-await user.SaveAsync();
-
-// Map and save in one call
-await user.MapAndSaveAsync(dto);
-```
 
 ---
 
