@@ -281,7 +281,7 @@ internal static class SxmSchemaRegistration
     private static void ValidateRenameAttributes(Type entityType, List<MemberInfoWithAlias> propertyInfoWithAliases)
     {
         var allPropertyNames = new HashSet<string>(
-            propertyInfoWithAliases.Select(p => p.memberInfo.Name),
+            propertyInfoWithAliases.Select(p => p.MemberInfo.Name),
             StringComparer.OrdinalIgnoreCase
         );
 
@@ -289,14 +289,14 @@ internal static class SxmSchemaRegistration
 
         foreach (MemberInfoWithAlias property in propertyInfoWithAliases)
         {
-            RenameAttribute? renameAttr = property.memberInfo.GetCustomAttribute<RenameAttribute>(inherit: false);
+            RenameAttribute? renameAttr = property.MemberInfo.GetCustomAttribute<RenameAttribute>(inherit: false);
             if (renameAttr == null)
                 continue;
 
-            string newPropertyName = property.memberInfo.Name;
+            string newPropertyName = property.MemberInfo.Name;
 
             // Rule 1: Cannot have both [Rename] and [NotColumn]
-            if (property.memberInfo.IsDefined(typeof(NotColumnAttribute), false))
+            if (property.MemberInfo.IsDefined(typeof(NotColumnAttribute), false))
             {
                 throw new InvalidOperationException(
                     $"SCHEMA ERROR in entity '{entityType.Name}': Property '{newPropertyName}' cannot have both [Rename] and [NotColumn] attributes.\n" +
@@ -358,7 +358,7 @@ internal static class SxmSchemaRegistration
 
         foreach (MemberInfoWithAlias propertyInfoWithAlias in propertyInfoWithAliases)
         {
-            MemberInfo memberInfo = propertyInfoWithAlias.memberInfo;
+            MemberInfo memberInfo = propertyInfoWithAlias.MemberInfo;
             string memberInfoName = memberInfo.Name;
 
             if (IsIgnored(memberInfoName))
@@ -382,12 +382,12 @@ internal static class SxmSchemaRegistration
             string notNull = string.Empty;
             if (requiredNotNull is not null)
             {
-                notNull = requiredNotNull.defaultValue is not null 
-                    ? $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.defaultValue)}" 
+                notNull = requiredNotNull.DefaultValue is not null 
+                    ? $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.DefaultValue)}" 
                     : " not null";
             }
 
-            string columnName = string.IsNullOrEmpty(propertyInfoWithAlias.alias) ? memberInfoName : propertyInfoWithAlias.alias;
+            string columnName = string.IsNullOrEmpty(propertyInfoWithAlias.Alias) ? memberInfoName : propertyInfoWithAlias.Alias;
 
             if (hasCreateIndex)
             {
@@ -407,11 +407,11 @@ internal static class SxmSchemaRegistration
                 foreignKeyAttributeList.Add(new ForeignKeyFields
                 {
                     fieldName = columnName,
-                    foreignTable = isForeignKey.foreignTable,
-                    onDelete = isForeignKey.OnDelete
+                    ForeignTable = isForeignKey.ForeignTable,
+                    OnDelete = isForeignKey.OnDelete
                 });
 
-                SxmHelpers.CreateAssociation(entityType, columnName, isForeignKey.foreignTable);
+                SxmHelpers.CreateAssociation(entityType, columnName, isForeignKey.ForeignTable);
             }
 
             Type clrType = Nullable.GetUnderlyingType(propertyInfo.PropertyType) ?? propertyInfo.PropertyType;
@@ -445,7 +445,7 @@ internal static class SxmSchemaRegistration
                 {
                     throw new InvalidOperationException(
                         $"Duplicate mapped column name '{columnName}' on type '{typeName}'. " +
-                        $"Members '{memberInfoName}' (alias '{propertyInfoWithAlias.alias ?? ""}') " +
+                        $"Members '{memberInfoName}' (alias '{propertyInfoWithAlias.Alias ?? ""}') " +
                         $"and another member resolved to the same mapped name.");
                 }
             }
@@ -551,8 +551,8 @@ internal static class SxmSchemaRegistration
             {
                 foreach (ForeignKeyFields attribute in foreignKeyList)
                 {
-                    string onDeleteClause = GetForeignKeyActionSql(attribute.onDelete);
-                    sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName!)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.foreignTable!)}({SxmHelpers.QuoteIdentifier("id")}){onDeleteClause}");
+                    string onDeleteClause = GetForeignKeyActionSql(attribute.OnDelete);
+                    sb.Append($", FOREIGN KEY({SxmHelpers.QuoteIdentifier(attribute.fieldName!)}) REFERENCES {SxmHelpers.QuoteIdentifier(attribute.ForeignTable!)}({SxmHelpers.QuoteIdentifier("id")}){onDeleteClause}");
                 }
                 _foreignKeyCache.TryRemove(tableName, out _);
             }
@@ -776,10 +776,10 @@ internal static class SxmSchemaRegistration
 
         foreach (var myAttribute in customAttributes)
         {
-            if (!existingIndexes.Contains(myAttribute.indexName))
+            if (!existingIndexes.Contains(myAttribute.IndexName))
             {
-                string indexFields = string.Join(", ", myAttribute.indexFields.Select(f => SxmHelpers.QuoteIdentifier(f)));
-                string createIndexSql = $"CREATE {index} {SxmHelpers.QuoteIdentifier(myAttribute.indexName)} ON {quotedTable} ({indexFields})";
+                string indexFields = string.Join(", ", myAttribute.IndexFields.Select(f => SxmHelpers.QuoteIdentifier(f)));
+                string createIndexSql = $"CREATE {index} {SxmHelpers.QuoteIdentifier(myAttribute.IndexName)} ON {quotedTable} ({indexFields})";
                 indexSqlStatements.Add(createIndexSql);
             }
         }
@@ -790,7 +790,7 @@ internal static class SxmSchemaRegistration
 
             foreach (IIndexProperties customAttribute in customAttributes)
             {
-                if (customAttribute.indexName.Equals(indexName))
+                if (customAttribute.IndexName.Equals(indexName))
                 {
                     found = true;
                     break;
@@ -825,11 +825,11 @@ internal static class SxmSchemaRegistration
     {
         foreach (IIndexProperties iiV in indexArray)
         {
-            iiV.indexName = "IDX_" + tableName;
+            iiV.IndexName = "IDX_" + tableName;
 
-            for (int i = 0; i < iiV.indexFields.Length; i++)
+            for (int i = 0; i < iiV.IndexFields.Length; i++)
             {
-                iiV.indexName += "_" + iiV.indexFields[i];
+                iiV.IndexName += "_" + iiV.IndexFields[i];
             }
         }
     }
@@ -850,9 +850,9 @@ internal static class SxmSchemaRegistration
         {
             foreach (TriggerAttribute myAttribute in customAttributes)
             {
-                if (!string.IsNullOrWhiteSpace(myAttribute.triggerSql))
+                if (!string.IsNullOrWhiteSpace(myAttribute.TriggerSql))
                 {
-                    triggerStatementsList.Add(new TriggerDefinition(tableName, myAttribute.triggerSql));
+                    triggerStatementsList.Add(new TriggerDefinition(tableName, myAttribute.TriggerSql));
                 }
             }
         }

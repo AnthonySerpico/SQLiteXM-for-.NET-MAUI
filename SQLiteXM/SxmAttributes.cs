@@ -240,12 +240,12 @@ namespace SQLiteXM
         /// <summary>
         /// The fields that participate in the index.
         /// </summary>
-        public string[] indexFields { get; set; }
+        public string[] IndexFields { get; set; }
 
         /// <summary>
         /// The name of the index.
         /// </summary>
-        public string indexName { get; set; }
+        public string IndexName { get; set; }
     }
 
     /// <summary>
@@ -255,10 +255,10 @@ namespace SQLiteXM
     public class IndexProperties : IIndexProperties
     {
         /// <inheritdoc/>
-        public string[] indexFields { get; set; }
+        public string[] IndexFields { get; set; }
 
         /// <inheritdoc/>
-        public string indexName { get; set; }
+        public string IndexName { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IndexProperties"/> class
@@ -268,12 +268,12 @@ namespace SQLiteXM
         /// <param name="tableName">The table name used to derive the index name.</param>
         public IndexProperties(string indexField, string tableName)
         {
-            this.indexFields = new string[] { indexField };
+            this.IndexFields = new string[] { indexField };
 
-            this.indexName = "IDX_" + tableName;
-            foreach (string field in this.indexFields)
+            this.IndexName = "IDX_" + tableName;
+            foreach (string field in this.IndexFields)
             {
-                this.indexName += "_" + field;
+                this.IndexName += "_" + field;
             }
         }
     }
@@ -286,10 +286,10 @@ namespace SQLiteXM
     public class IndexAttribute : Attribute, IIndexProperties
     {
         /// <inheritdoc/>
-        public string[] indexFields { get; set; } = Array.Empty<string>();
+        public string[] IndexFields { get; set; } = Array.Empty<string>();
 
         /// <inheritdoc/>
-        public string indexName { get; set; } = string.Empty;
+        public string IndexName { get; set; } = string.Empty;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IndexAttribute"/> attribute.
@@ -304,7 +304,7 @@ namespace SQLiteXM
         /// <param name="indexField">The single field to include in the index.</param>
         public IndexAttribute(string indexField)
         {
-            indexFields = new[] { indexField };
+            IndexFields = new[] { indexField };
         }
 
         /// <summary>
@@ -313,17 +313,7 @@ namespace SQLiteXM
         /// <param name="indexFields">The fields to include in the index.</param>
         public IndexAttribute(params string[] indexFields)
         {
-            this.indexFields = indexFields ?? Array.Empty<string>();
-        }
-
-        /// <summary>
-        /// Optional helper to set index name fluently via named argument:
-        /// Example: <c>[CreateIndex("col1", IndexName = "IX_Name")]</c>
-        /// </summary>
-        public string IndexName
-        {
-            get => indexName;
-            set => indexName = value ?? string.Empty;
+            this.IndexFields = indexFields ?? Array.Empty<string>();
         }
     }
 
@@ -335,10 +325,10 @@ namespace SQLiteXM
     public class UniqueIndexAttribute : Attribute, IIndexProperties
     {
         /// <inheritdoc/>
-        public string[] indexFields { get; set; } = Array.Empty<string>();
+        public string[] IndexFields { get; set; } = Array.Empty<string>();
 
         /// <inheritdoc/>
-        public string indexName { get; set; } = string.Empty;
+        public string IndexName { get; set; } = string.Empty;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UniqueIndexAttribute"/> attribute.
@@ -353,7 +343,7 @@ namespace SQLiteXM
         /// <param name="indexField">The single field to include in the unique index.</param>
         public UniqueIndexAttribute(string indexField)
         {
-            indexFields = new[] { indexField };
+            IndexFields = new[] { indexField };
         }
 
         /// <summary>
@@ -362,17 +352,7 @@ namespace SQLiteXM
         /// <param name="indexFields">The fields to include in the unique index.</param>
         public UniqueIndexAttribute(params string[] indexFields)
         {
-            this.indexFields = indexFields ?? Array.Empty<string>();
-        }
-
-        /// <summary>
-        /// Optional helper to set index name fluently via named argument:
-        /// Example: <c>[CreateUniqueIndex("col1", IndexName = "IX_Name")]</c>
-        /// </summary>
-        public string IndexName
-        {
-            get => indexName;
-            set => indexName = value ?? string.Empty;
+            this.IndexFields = indexFields ?? Array.Empty<string>();
         }
     }
 
@@ -386,7 +366,7 @@ namespace SQLiteXM
         /// <summary>
         /// The SQL text used to create the trigger.
         /// </summary>
-        public string triggerSql { get; set; }
+        public string TriggerSql { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TriggerAttribute"/> attribute.
@@ -394,7 +374,7 @@ namespace SQLiteXM
         /// <param name="triggerSql">The CREATE TRIGGER SQL script to associate with the class.</param>
         public TriggerAttribute(string triggerSql)
         {
-            this.triggerSql = triggerSql;
+            this.TriggerSql = triggerSql;
         }
     }
 
@@ -408,7 +388,7 @@ namespace SQLiteXM
         /// <summary>
         /// The default value to use when the member is required and cannot be null.
         /// </summary>
-        public object defaultValue { get; set; }
+        public object DefaultValue { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RequiredNotNullAttribute"/> attribute.
@@ -420,7 +400,7 @@ namespace SQLiteXM
             if (defaultValue == null)
                 throw new ArgumentNullException("RequiredNotNull", "For fields with the attribute 'RequiredNotNull', the default value for the field cannot be null.");
 
-            this.defaultValue = defaultValue;
+            this.DefaultValue = defaultValue;
         }
     }
 
@@ -473,12 +453,12 @@ namespace SQLiteXM
         /// <summary>
         /// The referenced foreign table name.
         /// </summary>
-        public string? foreignTable { get; set; }
+        public string? ForeignTable { get; set; }
 
         /// <summary>
         /// The action to take when the referenced row is deleted.
         /// </summary>
-        public ForeignKeyAction onDelete { get; set; } = ForeignKeyAction.None;
+        public ForeignKeyAction OnDelete { get; set; } = ForeignKeyAction.None;
     }
 
     /// <summary>
@@ -490,7 +470,7 @@ namespace SQLiteXM
         /// <summary>
         /// The referenced foreign table name.
         /// </summary>
-        public string foreignTable { get; set; }
+        public string ForeignTable { get; set; }
 
         /// <summary>
         /// The action to take when the referenced row is deleted.
@@ -503,7 +483,7 @@ namespace SQLiteXM
         /// <param name="foreignTable">The foreign table name to reference in the constraint.</param>
         public ForeignKeyAttribute(string foreignTable)
         {
-            this.foreignTable = foreignTable;
+            this.ForeignTable = foreignTable;
         }
     }
 
@@ -523,12 +503,12 @@ namespace SQLiteXM
         /// <summary>
         /// The reflected member info (property/field/method).
         /// </summary>
-        public MemberInfo memberInfo { get; set; }
+        public MemberInfo MemberInfo { get; set; }
 
         /// <summary>
         /// The alias associated with the member.
         /// </summary>
-        public string alias { get; set; }
+        public string Alias { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MemberInfoWithAlias"/> class.
@@ -537,8 +517,8 @@ namespace SQLiteXM
         /// <param name="alias">The alias to associate with the member.</param>
         internal MemberInfoWithAlias(MemberInfo propertyInfo, string alias)
         {
-            this.memberInfo = propertyInfo;
-            this.alias = alias;
+            this.MemberInfo = propertyInfo;
+            this.Alias = alias;
         }
     }
 }

@@ -18,7 +18,7 @@ A high-performance, entity-first ORM for SQLite designed specifically for .NET M
 ### 🔧 Complete ORM Capabilities
 
 - **Type-Safe Mapping** - Strong CLR-to-SQLite type mapping with custom overrides
-- **Attribute-Driven Schema** - Intuitive attributes for tables, columns, indexes, foreign keys, and triggers
+- **Attribute-Driven Schema** - Intuitive attributes for tables, columns, indexes, foreign keys, triggers, and column rename
 - **Full Transaction Support** - Explicit and ambient transaction patterns with multi-database coordination
 - **Async-First API** - Modern async/await patterns throughout
 
@@ -37,7 +37,7 @@ dotnet add package SQLiteXM
 
 ### 1. Define Your Entities
 
- Create a new class that inherits from `SxmEntity`:
+ Create classes that inherit from `SxmEntity`:
 
 ```csharp
 using SQLiteXM;
@@ -59,18 +59,38 @@ public class Post : SxmEntity
     public string? Title { get; set; }
     public string? Content { get; set; }
 
-    [ForeignKey(foreignTable: nameof(User))]
+    [ForeignKey(ForeignTable = nameof(User))]
     public long UserId { get; set; }
 }
 ```
-**What just happened?**
+**What's happening?**
+- Classes that inherit from `SxmEntity` are automatically mapped to SQLite tables.
 - `[Table(IsColumnAttributeRequired = false)]` means all properties are automatically persisted
 - `[Index]` on `Email` creates an index for fast queries
 - `[ForeignKey]` creates a foreign key on `User` table
 - The database tables for your entities will be created automatically during initialization
 
+&nbsp;
+### 2. **Create `SqlStatements.json`** file
+In your project under **Resources/Raw/** folder create SqlStatements.json file (set **Build Action: MauiAsset**):
+```json
+{
+  "databases": [
+    {
+      "database": "MyApp",
+      "isDefault": true
+    }
+  ]
+}
+```
+**What's happening?**
+- This configuration file tells SQLiteXM which database(s) your app uses
+- `database`: Sets the SQLite database filename (creates `MyApp`)
+- `isDefault`: Marks this as the primary database for entities that do not have an explicit database assignment
+- SQLiteXM reads this at startup to configure connections and schema management
 
-### Step 2: Initialize SQLiteXM
+&nbsp;
+### 3. Initialize SQLiteXM
 
 In your `App.xaml.cs`, add initialization:
 
@@ -82,12 +102,12 @@ public partial class App : Application
         InitializeComponent();
 
         // Initialize SQLiteXM once at app startup
-        InitializeSQLiteXMAsync().GetAwaiter().GetResult();
+        InitializeSQLiteXmAsync().GetAwaiter().GetResult();
 
         MainPage = new AppShell();
     }
 
-    private async Task InitializeSQLiteXMAsync()
+    private async Task InitializeSQLiteXmAsync()
     {
         try
         {
@@ -96,13 +116,12 @@ public partial class App : Application
 
             if (stream != null)
             {
+                // Initialize SQLiteXM 
                 await SxmDatabase.InitializeAsync(stream);
 
-                // Register entity types for schema creation/migration
-                await SxmDatabase.RegisterEntitiesAsync(
-				            typeof(User),
-				            typeof(Post)
-                );
+                // Register Entities - automatically create / migrate schema
+                await SxmDatabase.RegisterEntitiesAsync(typeof(User), 
+                                                        typeof(Post));
             }
         }
         catch (Exception ex)
@@ -115,26 +134,15 @@ public partial class App : Application
 
 
 **What's happening?**
-- `FileSystem.OpenAppPackageFileAsync()` loads the JSON from your app package (works on all platforms)
-- `SxmDatabase.InitializeAsync(stream)` initializes SQLiteXM
-- `RegisterEntitiesAsync()` registers your entity types for schema creation and migration
-- The database file is created automatically in the platform-specific app data folder
-- Tables are created by `RegisterEntitiesAsync()`
+- `FileSystem.OpenAppPackageFileAsync()` loads SqlStatements.json from your app package (works on all platforms)
+- `InitializeAsync(stream)` initializes SQLiteXM, the database file is created in the platform-specific app data folder
+- `RegisterEntitiesAsync()` registers your entity types, tables are automatically created / migrated
 
-
-**Create `SqlStatements.json`** in your project under **Resources/Raw/** folder (set **Build Action: MauiAsset**):
-```json
-{
-  "database": "MyApp",
-  "isDefault": true,
-  "version": 1
-}
-```
-
-### 3. Use Your Entities
+&nbsp;
+### 4. Use Your Entities
 
 ```csharp
-// Create - tables already created during SxmInit.InitDbAsync
+// Create User - table for User created during initialization
 var user = new User
 { 
     Name = "Alice", 
@@ -146,7 +154,7 @@ var user = new User
 await user.SaveAsync();
 
 // Read
-using var context = new SxmLinqContext("MyApp");
+using var context = new SxmLinqDbContext("MyApp");
 var users = context.GetTable<User>()
     .Where(u => u.Age > 25)
     .OrderBy(u => u.Name)
@@ -160,12 +168,12 @@ await user.SaveAsync();
 await user.DeleteAsync();
 ```
 
-### 4. Transactions
+&nbsp;
+### 5. Transactions
 
 ```csharp
 // Explicit transaction
-var connection = new SxmConnection("MyApp", shared: false);
-await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
+await using (var transaction = SxmSqlTransaction.Create("MyApp"))
 
 var user = new User { Name = "Bob" };
 await user.SaveAsync(transaction);
@@ -173,6 +181,9 @@ await user.SaveAsync(transaction);
 var post = new Post { Title = "Hello", UserId = user.id };
 await post.SaveAsync(transaction);
 
+// The explicit CommitTransactionAsync() call is optional
+// but considered good practice. Without it, the transaction 
+// will AUTO-COMMIT on Dispose (If No Errors)
 await transaction.CommitTransactionAsync();
 ```
 
@@ -180,48 +191,188 @@ await transaction.CommitTransactionAsync();
 
 ---
 
+&nbsp;
 ## 🎨 What Makes SQLiteXM Special?
 
-### 1. 📚 Best-in-Class Documentation & Learning Tools
+### 1. 📚 Extensive Documentation & Learning Tools
 
-Unlike other SQLite ORMs, SQLiteXM comes with:
+SQLiteXM comes with:
 
-- **[Interactive Query Gallery](Samples/QueryGalleryDemo/)** - 90+ runnable examples with syntax highlighting
+- **[Interactive Query Gallery](Samples/QueryGalleryDemo/)** - 90+ runnable LINQ and SQL examples with explanations
 - **[Comprehensive guides](docs/)** - Detailed documentation for every feature
 - **[3 sample apps](Samples/)** - From simple to advanced
 - **[182 tests](SQLiteXM.Tests/)** - Real-world patterns you can learn from
 
 **We believe good docs matter as much as good code.**
 
-### 2. ⚡ Mobile-First Performance
+**🚀 Zero Configuration**
+- No `DbContext` setup required
+- Tables created from your entity classes during initialization
+- No migration files to manage
 
-Optimized specifically for .NET MAUI apps:
-- Static schema caching (fast startup)
-- Connection pooling (low latency)
-- Async-first with `ConfigureAwait(false)`
-- Benchmarked: **10,000 inserts in 0.45s** with transactions
+**⚡ Mobile-Optimized**
+- Static caching for fast startup
+- Connection pooling for best performance
+- Async-first design with proper `ConfigureAwait(false)`
+- **AOT/Trimmer optimized** for iOS deployment
+- **Mobile lifecycle management** (handles app suspend/resume)
+- **Direct binding support** (entities are MAUI binding-ready)
+- **Offline-first architecture** for mobile scenarios
+- Low memory footprint with static caching
 
-### 3. 🔗 Full LINQ + Zero Config
+**🔗 Full LINQ Support**
+- Write queries like `context.GetTable<User>().Where(u => u.Age > 25)`
+- No need to drop down to raw SQL
+- Powered by LinqToDB
+- Full query capabilities (joins, aggregations, subqueries)
+
+**🎯 Full SQL Support**
+- **Full DML support** (INSERT, UPDATE, DELETE, SELECT)
+- **SQL statements catalog** (`statements.json` for organized SQL management)
+- **Embedded SQL in code** (when you need full control)
+- **Named & positional parameters** (prevents SQL injection)
+- **Mix raw SQL + LINQ** (use the best tool for each query)
+- **Trigger support** via `[CreateTrigger]` attribute
+
+**🔧 SQLite Optimized**
+- **Fine-grained SQLite PRAGMA control** (WAL mode, foreign keys, synchronous mode)
+- **Connection pooling configuration** (timeouts, pool size)
+- **WAL checkpoint management** (automatic or manual control)
+- **Performance tuning** (cache size, busy timeout, temp store)
+- **Logging control** for debugging and diagnostics
+- **Path customization** for database location
+
+<details>
+<summary>📖 Example: Advanced SQLite Configuration</summary>
 
 ```csharp
-// Write queries like this
-var results = context.GetTable<User>()
-    .Where(u => u.Age > 25)
-    .OrderBy(u => u.Name)
-    .ToList();
+private async Task InitializeSQLiteXmAsync()
+{
+    // Load the SqlStatements.json file from Resources/Raw
+    using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 
-// Not this
-var results = connection.Query<User>("SELECT * FROM User WHERE Age > @age ORDER BY Name", new { age = 25 });
+    // Configure advanced SQLite options
+    SxmDatabaseOptions databaseOptions = new SxmDatabaseOptions()
+    {
+        // ✅ SQLite PRAGMA configuration
+        ForeignKeys = true,
+        JournalModeOption = SxmJournalMode.Wal,
+        SynchronousModeOption = SxmSynchronousMode.Normal,
+        BusyTimeout = 500,
+        CacheSize = 57,
+        WalAutoCheckpoint = 250,
+        TempStore = SxmTempStore.Memory,
+
+        // ✅ WAL checkpoint control
+        CheckPointConnection = CheckPointConnection.MaxSize,
+        CheckPointWalMaxSize = 32,
+
+        // ✅ Connection pooling
+        DefaultTimeout = 5,
+        EnableConnectionPooling = true,
+
+        // ✅ Logging control
+        EnableLogging = true,
+
+        // ✅ Database path customization
+        DatabaseFolderOverride = FileSystem.AppDataDirectory
+    };
+
+    if (stream != null)
+    {
+        await SxmDatabase.InitializeAsync(stream, databaseOptions);
+
+        // Register entity types
+        await SxmDatabase.RegisterEntitiesAsync(typeof(TodoItem),
+                                                typeof(User));
+    }
+}
 ```
 
-No `DbContext` setup. No migration files. Just inherit `SxmEntity` and go.
+</details>
 
-### 4. 🎯 Production-Ready
+**🎯 Clean API**
+- Inherit from `SxmEntity` and you're done
+- Intuitive attributes: `[CreateIndex]`, `[CreateForeignKey]`, etc.
+- Explicit transaction support when you need it
 
-- ✅ Thread-safe concurrent operations
-- ✅ Multi-database support
-- ✅ Explicit transaction control
-- ✅ 182 comprehensive tests (99.5% pass rate)
+**🗄️ Multi-Database Support**
+- Define and work with multiple SQLite databases in a single application
+- Data isolation per database (user data, app cache, sync data)
+- Database-specific entity registration
+- Independent transaction contexts
+- Perfect for tenant separation or domain organization
+
+<details>
+<summary>📖 Example: Multi-Database Configuration</summary>
+
+```csharp
+// Define multiple databases in SqlStatements.json
+{
+  "databases": [
+    {
+      "database": "UserData",
+      "isDefault": true
+    },
+    {
+      "database": "AppCache",
+      "isDefault": false
+    }
+  ]
+}
+
+// Create entities  - use 'Database' property to specify which database
+[Table(IsColumnAttributeRequired = false, Database = "UserData")]
+public class UserRecord : SxmEntity
+{
+    public string Name { get; set; }
+    public string Email { get; set; }
+}
+
+[Table(IsColumnAttributeRequired = false, Database = "AppCache")]
+public class CompletedItem : SxmEntity
+{
+    public string Task { get; set; }
+    public DateTime CompletedAt { get; set; }
+}
+
+// Register entities
+    await RegisterEntitiesAsync(
+              typeof(UserRecord),    // Table created in UserData
+              typeof(CompletedItem)  // Table created in AppCache
+);
+
+// Query from specific database
+using var userContext = new SxmLinqDbContext("UserData");
+var users = userContext.GetTable<UserRecord>().ToList();
+
+using var cacheContext = new SxmLinqDbContext("AppCache");
+var completedItems = cacheContext.GetTable<CompletedItem>().ToList();
+```
+
+</details>
+
+### 🆚 How Does It Compare?
+
+| Feature | SQLiteXM | EF Core | SQLite-net | Dapper |
+|---------|----------|---------|------------|--------|
+| **MAUI-optimized** | ✅ | ⚠️ General-purpose | ✅ | ⚠️ General-purpose |
+| **Zero config** | ✅ | ❌ DbContext required | ✅ | ❌ Manual SQL |
+| **Full LINQ** | ✅ | ✅ | ⚠️ Basic | ❌ |
+| **Raw SQL + LINQ** | ✅ Both | ✅ Both | ⚠️ LINQ only | ⚠️ SQL only |
+| **SQLite optimization** | ✅ Extensive | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic |
+| **Auto-migration** | ✅ | ✅ | ❌ | ❌ |
+| **Async-first** | ✅ | ✅ | ⚠️ Partial | ✅ |
+| **AOT/Trimmer support** | ✅ | ⚠️ Limited | ✅ | ✅ |
+| **Documentation** | ✅ Excellent | ✅ Excellent | ⚠️ Basic | ⚠️ Minimal |
+| **Interactive examples** | ✅ Query Gallery | ❌ | ❌ | ❌ |
+| **Learning curve** | Easy | Steep | Easy | Medium |
+
+**Perfect for:**
+- .NET MAUI mobile apps (iOS, Android, macOS, Windows)
+- Offline-first applications
+- Apps that need local data persistence
+- Developers who want EF-style LINQ without the complexity
 
 ---
 
@@ -232,17 +383,17 @@ No `DbContext` setup. No migration files. Just inherit `SxmEntity` and go.
 ```csharp
 public class TimeEntity : SxmEntity
 {
-    // Default: INTEGER (Unix milliseconds)
+    // Default DateTime: INTEGER (Ticks)
     public DateTime DefaultTime { get; set; }
 
-    // Override to TEXT (ISO 8601)
+    // Override DateTime to TEXT (ISO 8601)
     [Column(DataType = DataType.Text)]
     public DateTime TextTime { get; set; }
 
-    // Guid as BLOB (default)
+    // Default Guid: BLOB
     public Guid BlobGuid { get; set; }
 
-    // Guid as TEXT
+    // Override Guid as TEXT
     [Column(DataType = DataType.Text)]
     public Guid TextGuid { get; set; }
 }
@@ -251,12 +402,13 @@ public class TimeEntity : SxmEntity
 ### Indexes and Constraints
 
 ```csharp
+[Index([nameof(SKU), nameof(Category)])]  // Composite index
 public class Product : SxmEntity
 {
-    [CreateUniqueIndex]
+    [UniqueIndex]
     public string? SKU { get; set; }
 
-    [CreateIndex]
+    [Index]
     public string? Category { get; set; }
 
     [RequiredNotNull(defaultValue: 0)]

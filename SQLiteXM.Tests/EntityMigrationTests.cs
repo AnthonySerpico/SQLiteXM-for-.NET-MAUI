@@ -65,7 +65,7 @@ public class EntityMigrationTests : TestBase
         var statusProp = typeof(AddColumnRequired).GetProperty("Status");
         var reqNotNullAttr = statusProp?.GetCustomAttributes(typeof(RequiredNotNullAttribute), false).FirstOrDefault() as RequiredNotNullAttribute;
         reqNotNullAttr.Should().NotBeNull("Status property should have RequiredNotNull attribute");
-        reqNotNullAttr!.defaultValue.Should().Be(55, "default value should be 55 as defined in the entity");
+        reqNotNullAttr!.DefaultValue.Should().Be(55, "default value should be 55 as defined in the entity");
 
         // Create another entity to verify independent persistence
         var entity2 = new AddColumnRequired { Name = "Test2", Status = 200 };

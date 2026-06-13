@@ -217,7 +217,7 @@ namespace SQLiteXM
 
             // Attempt to wire an association if a navigation property exists.
             // Conditions:
-            // 1. Navigation property must have PropertyType.Name == fk.foreignTable
+            // 1. Navigation property must have PropertyType.Name == fk.ForeignTable
             // 2. It must be excluded from column mapping (NotColumn) so schema builder ignores it.
             // 3. Avoid duplicate registration per (SourceType.PropertyName)
             try
