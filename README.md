@@ -386,10 +386,12 @@ For testing your own code with SQLiteXM, see the **[Testing Guide](docs/Advanced
 
 SQLiteXM includes **three sample applications** to help you learn:
 
-
 ### 1. QueryGalleryDemo (Comprehensive) ⭐
 An **interactive query explorer** with 90+ examples. 
-**Features**: Syntax highlighting, runnable examples, execution timing, result visualization.
+**Features**: Syntax highlighting, runnable examples, execution timing, result visualization. 
+
+📂 **[View Query Gallery Demo](Samples/QueryGalleryDemo/)**
+
 <details>
 <summary>📖 Query Gallery Details</summary>
 
@@ -409,7 +411,7 @@ An **interactive query explorer** with 90+ examples.
 ### 2. RegistrationDemo (Simple)
 Basic user registration showing entity definition, save/query, and data binding.
 
-📂 [View Sample](Samples/RegistrationDemo/)
+📂 [View Registration Demo](Samples/RegistrationDemo/)
 
 ### 3. DirectBindingDemo (Simple)
 CollectionView binding with CRUD operations and UI updates.
