@@ -139,4 +139,58 @@ public class TransactionTests : TestBase
         retrieved2.Should().NotBeNull("second entity should exist in database");
         retrieved2!.Name.Should().Be("Ambient 2");
     }
+
+    [Fact]
+    public async Task AmbientTransaction_NestedCreate_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        await InitializeSqliteXMAsync();
+        var connection = new SxmConnection(TestDatabaseName, shared: false);
+
+        // Act & Assert - Attempting to create a nested ambient transaction should fail fast
+        await using var outerTransaction = await SxmSqlTransaction.CreateAsync(connection);
+
+        // Verify outer transaction is ambient
+        var currentTx = SxmAmbientTransaction.Current;
+        currentTx.Should().NotBeNull("outer transaction should be ambient");
+        currentTx.Should().BeSameAs(outerTransaction, "outer transaction should be the current ambient transaction");
+
+        // Attempt to create nested transaction - should throw
+        InvalidOperationException? caughtException = null;
+        try
+        {
+            var innerConnection = new SxmConnection(TestDatabaseName, shared: false);
+            await using var innerTransaction = await SxmSqlTransaction.CreateAsync(innerConnection);
+        }
+        catch (InvalidOperationException ex)
+        {
+            caughtException = ex;
+        }
+
+        // Assert
+        caughtException.Should().NotBeNull("nested ambient transaction should throw InvalidOperationException");
+        caughtException!.Message.Should().Contain("nested ambient transaction");
+        caughtException.Message.Should().Contain("already active");
+    }
+
+    [Fact]
+    public void AmbientTransaction_NestedCreateSync_ShouldThrowInvalidOperationException()
+    {
+        // Act & Assert - Attempting to create a nested ambient transaction should fail fast
+        using var outerTransaction = SxmSqlTransaction.Create(TestDatabaseName);
+
+        // Verify outer transaction is ambient
+        var currentTx = SxmAmbientTransaction.Current;
+        currentTx.Should().NotBeNull("outer transaction should be ambient");
+        currentTx.Should().BeSameAs(outerTransaction, "outer transaction should be the current ambient transaction");
+
+        var act = () =>
+        {
+            using var innerTransaction = SxmSqlTransaction.Create(TestDatabaseName);
+        };
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*nested ambient transaction*")
+            .WithMessage("*already active*");
+    }
 }

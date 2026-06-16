@@ -354,7 +354,7 @@ namespace SQLiteXM
                     string fkDdl = $"PRAGMA defer_foreign_keys = ON";
                     await SxmDdlHelpers.PerformTableStatementAsync(fkDdl, dbName, sxmTransaction).ConfigureFalse();
                 }
-                
+
                 string dtDdl = $"DROP TABLE IF EXISTS {quotedTable}";
                 await SxmDdlHelpers.PerformTableStatementAsync(dtDdl, dbName, sxmTransaction).ConfigureFalse();
 
@@ -381,7 +381,7 @@ namespace SQLiteXM
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
-                //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
+            //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
             Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
@@ -420,7 +420,7 @@ namespace SQLiteXM
         {
             SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
-                //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
+            //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
 
             Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
@@ -471,47 +471,44 @@ namespace SQLiteXM
             SqlStatementType sqlStatementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
             try
             {
-                //await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName).ConfigureFalse())
+                switch (sqlStatementType)
                 {
-                    switch (sqlStatementType)
-                    {
-                        case SqlStatementType.Select:
-                            recordData = await SxmSelectHelpers.PerformSelectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
-                            break;
+                    case SqlStatementType.Select:
+                        recordData = await SxmSelectHelpers.PerformSelectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
+                        break;
 
-                        case SqlStatementType.Update:
-                            await SxmUpdateHelpers.PerformUpdateAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
-                            break;
+                    case SqlStatementType.Update:
+                        await SxmUpdateHelpers.PerformUpdateAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
+                        break;
 
-                        case SqlStatementType.Delete:
-                            await SxmDeleteHelpers.PerformDeleteAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
-                            break;
+                    case SqlStatementType.Delete:
+                        await SxmDeleteHelpers.PerformDeleteAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
+                        break;
 
-                        case SqlStatementType.Insert:
-                            recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.PerformInsertAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse());
-                            break;
+                    case SqlStatementType.Insert:
+                        recordData = new List<Dictionary<string, object?>>(1);
+                        recordData.Add(await SxmInsertHelpers.PerformInsertAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse());
+                        break;
 
 
-                        // Direct SQL statement queries. These are statements where the SQL is embedded in the code, not inside the SqlStatemenst file.
-                        case SqlStatementType.SelectDirect:
-                            recordData = await SxmSelectHelpers.PerformSelectDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
-                            break;
+                    // Direct SQL statement queries. These are statements where the SQL is embedded in the code, not inside the SqlStatemenst file.
+                    case SqlStatementType.SelectDirect:
+                        recordData = await SxmSelectHelpers.PerformSelectDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
+                        break;
 
-                        case SqlStatementType.UpdateDirect:
-                            await SxmUpdateHelpers.PerformUpdateDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
-                            break;
+                    case SqlStatementType.UpdateDirect:
+                        await SxmUpdateHelpers.PerformUpdateDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
+                        break;
 
-                        case SqlStatementType.DeleteDirect:
-                            await SxmDeleteHelpers.PerformDeleteDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
-                            break;
+                    case SqlStatementType.DeleteDirect:
+                        await SxmDeleteHelpers.PerformDeleteDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
+                        break;
 
-                        case SqlStatementType.InsertDirect:
-                            recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.PerformInsertDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse());
-                            break;
-                        default: break;
-                    }
+                    case SqlStatementType.InsertDirect:
+                        recordData = new List<Dictionary<string, object?>>(1);
+                        recordData.Add(await SxmInsertHelpers.PerformInsertDirectAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse());
+                        break;
+                    default: break;
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))

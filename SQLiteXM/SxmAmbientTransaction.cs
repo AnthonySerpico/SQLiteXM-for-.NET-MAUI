@@ -20,7 +20,7 @@ namespace SQLiteXM
         /// only from code that observes logical execution context flow. Concurrent mutations from
         /// multiple threads that intentionally share the same logical context are not protected.
         /// </remarks>
-        static readonly AsyncLocal<Stack<SxmSqlTransaction>?> _slot = new();
+        static private readonly AsyncLocal<Stack<SxmSqlTransaction>?> _slot = new();
 
         /// <summary>
         /// Gets the current (top-most) ambient <see cref="SxmSqlTransaction"/> or null when none exists.
@@ -36,24 +36,33 @@ namespace SQLiteXM
         /// <summary>
         /// Pushes the supplied transaction onto the ambient transaction stack.
         /// </summary>
-        /// <param name="tx">The transaction to push onto the ambient stack. Must not be null.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="tx"/> is null.</exception>
+        /// <param name="transaction">The transaction to push onto the ambient stack. Must not be null.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="transaction"/> is null.</exception>
         /// <remarks>
         /// If there is no ambient stack for the current logical execution context, a new stack
         /// is created and assigned to the underlying <see cref="_slot"/>. This method preserves
         /// strict LIFO semantics — callers should ensure they call <see cref="Pop(SxmSqlTransaction)"/>
         /// or <see cref="TryRemove(SxmSqlTransaction)"/> to remove the pushed transaction when finished.
         /// </remarks>
-        internal static void Push(SxmSqlTransaction tx)
+        internal static void Push(SxmSqlTransaction transaction)
         {
-            if (tx == null) throw new ArgumentNullException(nameof(tx));
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
             var stack = _slot.Value;
+
+            // Fail-fast: disallow nested ambient transactions
+            if (stack != null && stack.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "Cannot create a nested ambient transaction. An ambient transaction is already active on this execution context. " +
+                    "Complete or dispose the outer transaction first, or use explicit transaction parameters instead of ambient transactions.");
+            }
+
             if (stack == null)
             {
                 stack = new Stack<SxmSqlTransaction>();
                 _slot.Value = stack;
             }
-            stack.Push(tx);
+            stack.Push(transaction);
         }
 
         /// <summary>

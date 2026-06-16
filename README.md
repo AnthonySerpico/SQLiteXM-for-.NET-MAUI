@@ -19,9 +19,9 @@ Define entities, initialize once, and start querying with LINQ—without DbConte
 | Handles mobile lifecycle events - app suspend/resume | ✅ |
 | Fine-grained SQLite PRAGMA control | ✅ |
 | Direct binding support - entities are MAUI binding-ready | ✅ |
-| UI thread safe - modern async/await patterns throughout | ✅ |
+| Async-first design - supports non-blocking UI patterns | ✅ |
 | Zero configuration - no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 182 tests |
+| Automated Test Coverage | 184 tests |
 
 ---
 
@@ -334,7 +334,7 @@ await transaction.CommitTransactionAsync();
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **182 tests** (181 passing, 1 intentionally skipped) covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **184 tests** (183 passing, 1 intentionally skipped) covering real-world scenarios.
 
 ### Test Coverage
 
@@ -348,7 +348,7 @@ SQLiteXM includes a comprehensive test suite with **182 tests** (181 passing, 1 
 | Advanced LINQ | 12 tests | ✅ 100% |
 | LINQ Transactions | 6 tests | ✅ 100% |
 | Bulk LINQ Operations | 11 tests (1 skipped) | ✅ 100%* |
-| Transactions | 5 tests | ✅ 100% |
+| Transactions | 7 tests | ✅ 100% |
 | Multi-Database | 11 tests | ✅ 100% |
 | Multi-Database LINQ | 18 tests | ✅ 100% |
 | Multi-Database Performance | 10 tests | ✅ 100% |
@@ -358,7 +358,7 @@ SQLiteXM includes a comprehensive test suite with **182 tests** (181 passing, 1 
 | Connection Workers | 7 tests | ✅ 100% |
 | Submit Changes | 4 tests | ✅ 100% |
 | Fail-Fast Validation | 5 tests | ✅ 100% |
-| **Total** | **182 tests** | **✅ 100%** |
+| **Total** | **184 tests** | **✅ 100%** |
 
 **\*Note:** 1 test intentionally skipped due to a known LINQ limitation (documented in test comments).
 
@@ -390,8 +390,6 @@ SQLiteXM includes **three sample applications** to help you learn:
 An **interactive query explorer** with 90+ examples. 
 **Features**: Syntax highlighting, runnable examples, execution timing, result visualization. 
 
-📂 **[View Query Gallery Demo](Samples/QueryGalleryDemo/)**
-
 <details>
 <summary>📖 Query Gallery Details</summary>
 
@@ -407,14 +405,20 @@ An **interactive query explorer** with 90+ examples.
 - 💾 Data modification 8 - insert, update, delete examples
 </details>
 
+📂 **[View Query Gallery Demo](Samples/QueryGalleryDemo/)**
+
+
 
 ### 2. RegistrationDemo (Simple)
 Basic user registration showing entity definition, save/query, and data binding.
 
-📂 [View Registration Demo](Samples/RegistrationDemo/)
+📂 **[View Registration Demo](Samples/RegistrationDemo/)**
 
 ### 3. DirectBindingDemo (Simple)
 CollectionView binding with CRUD operations and UI updates.
+
+📂 **[View Direct Binding Demo](Samples/DirectBindingDemo/)**
+
 
 ---
 
@@ -430,33 +434,6 @@ SQLiteXM uses a **static-first** design optimized for mobile:
 - **SxmLinqDbContext** - LinqToDB integration for LINQ queries
 
 **Learn more** in the **[Architecture Guide](docs/Advanced.md)** (coming soon).
-
----
-
-## 🆚 Comparison to Other ORMs
-
-### vs. Entity Framework Core
-- ✅ **Lighter weight** - No provider abstraction overhead
-- ✅ **Faster startup** - No DbContext compilation
-- ✅ **Mobile-optimized** - Static caching for entity metadata
-- ✅ **Simpler setup** - No migrations folder or DbContext configuration
-- ❌ **SQLite-only** - Not a general-purpose ORM
-
-### vs. SQLite-net
-- ✅ **Better async** - Proper `async`/`await` throughout
-- ✅ **Full LINQ** - Complete query capabilities via LinqToDB
-- ✅ **Explicit transactions** - Better control over transaction boundaries
-- ✅ **More features** - Triggers, foreign keys, complex types
-- ✅ **Better docs** - Interactive Query Gallery + comprehensive guides
-
-### vs. Dapper
-- ✅ **No manual SQL** - Entity-driven schema
-- ✅ **Auto-migration** - Schema changes handled automatically
-- ✅ **Type-safe** - Compile-time checking
-- ✅ **LINQ queries** - No string concatenation
-- ❌ **Less control** - Dapper gives you raw SQL access
-
-**Learn more** in the **[Migration Guide](docs/Advanced.md#migration-from-other-orms)** (coming soon).
 
 ---
 
