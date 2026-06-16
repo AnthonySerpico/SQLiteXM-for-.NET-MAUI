@@ -1,5 +1,4 @@
-﻿using SQLiteXM.Internal.Threading;
-using System.Data;
+﻿using System.Data;
 using static SQLiteXM.SxmDefines;
 
 /*

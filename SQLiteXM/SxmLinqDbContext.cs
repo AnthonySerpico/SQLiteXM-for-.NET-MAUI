@@ -1,7 +1,6 @@
 using LinqToDB;
 using LinqToDB.Data;
 using Microsoft.Data.Sqlite;
-using SQLiteXM.Internal.Threading;
 using System;
 using System.Collections.Concurrent;
 

@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace SQLiteXM.Internal.Threading
+namespace SQLiteXM
 {
     /// <summary>
     /// Provides small extension helpers for quickly calling <see cref="Task.ConfigureAwait(bool)"/> and <see cref="ValueTask.ConfigureAwait(bool)"/>.

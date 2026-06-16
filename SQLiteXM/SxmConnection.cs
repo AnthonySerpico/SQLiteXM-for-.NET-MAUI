@@ -1,5 +1,4 @@
 ﻿using Microsoft.Data.Sqlite;
-using SQLiteXM.Internal.Threading;
 using System.Collections;
 using System.Data.Common;
 

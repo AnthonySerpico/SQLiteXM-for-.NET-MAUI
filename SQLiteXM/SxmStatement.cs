@@ -1,5 +1,4 @@
 ﻿using LinqToDB.SqlQuery;
-using SQLiteXM.Internal.Threading;
 using System.Data;
 using System.Reflection;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;

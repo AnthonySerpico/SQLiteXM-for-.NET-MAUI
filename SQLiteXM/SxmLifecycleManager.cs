@@ -1,4 +1,3 @@
-using SQLiteXM.Internal.Threading;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

@@ -1,6 +1,6 @@
 using LinqToDB;
 using LinqToDB.Linq;
-using SQLiteXM.Internal.Threading;
+using SQLiteXM;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;

@@ -1,5 +1,4 @@
-﻿using SQLiteXM.Internal.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace SQLiteXM
 {

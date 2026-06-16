@@ -1,5 +1,4 @@
 ﻿using LinqToDB.Common;
-using SQLiteXM.Internal.Threading;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
