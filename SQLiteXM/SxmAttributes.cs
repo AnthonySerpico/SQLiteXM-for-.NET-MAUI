@@ -407,7 +407,7 @@ namespace SQLiteXM
     /// <summary>
     /// Defines the action to take when a referenced row in the parent table is deleted.
     /// </summary>
-    public enum ForeignKeyAction
+    public enum ForeignKeyDeleteAction
     {
         /// <summary>
         /// No explicit action specified. SQLite will use RESTRICT behavior.
@@ -458,7 +458,7 @@ namespace SQLiteXM
         /// <summary>
         /// The action to take when the referenced row is deleted.
         /// </summary>
-        public ForeignKeyAction OnDelete { get; set; } = ForeignKeyAction.None;
+        public ForeignKeyDeleteAction OnDelete { get; set; } = ForeignKeyDeleteAction.None;
     }
 
     /// <summary>
@@ -475,7 +475,7 @@ namespace SQLiteXM
         /// <summary>
         /// The action to take when the referenced row is deleted.
         /// </summary>
-        public ForeignKeyAction OnDelete { get; set; } = ForeignKeyAction.None;
+        public ForeignKeyDeleteAction OnDelete { get; set; } = ForeignKeyDeleteAction.None;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ForeignKeyAttribute"/> attribute.

@@ -4,6 +4,19 @@
 
 `SxmDatabaseOptions` provides a high-level, type-safe configuration surface for SQLite database initialization in SQLiteXM. This class allows you to configure SQLite PRAGMA settings, connection pooling, lifecycle hooks, and other database behaviors without writing raw SQL commands.
 
+## How to Use This Guide
+
+This document is a reference for configuring and tuning SQLiteXM in production environments.
+
+If you are new to SQLiteXM, you typically only need to enable:
+
+- WAL mode (`JournalModeOption = SxmJournalMode.Wal`)
+- Foreign key enforcement (`ForeignKeys = true`)
+
+See [Basic Usage](#basic-usage) below. Everything else in this guide is optional and intended for performance tuning, concurrency control, storage optimization, or platform-specific behavior.
+
+Most applications do not need to modify these advanced settings, and the defaults are designed to be safe and performant for typical .NET MAUI workloads.
+
 ## Table of Contents
 
 - [Basic Usage](#basic-usage)
@@ -28,7 +41,6 @@ var options = new SxmDatabaseOptions
 {
 	ForeignKeys = true,
 	JournalModeOption = SxmJournalMode.Wal,
-	EnableConnectionPooling = true
 };
 
 // Initialize database with options (MAUI)

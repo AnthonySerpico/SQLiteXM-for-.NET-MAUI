@@ -496,20 +496,20 @@ internal static class SxmSchemaRegistration
                }
 
                /// <summary>
-               /// Converts a ForeignKeyAction enum value to its SQL representation.
+               /// Converts a ForeignKeyDeleteAction enum value to its SQL representation.
                /// </summary>
                /// <param name="action">The foreign key action to convert.</param>
                /// <returns>The SQL clause for the action (e.g., " ON DELETE CASCADE"), or empty string if None.</returns>
-               private static string GetForeignKeyActionSql(ForeignKeyAction action)
+               private static string GetForeignKeyActionSql(ForeignKeyDeleteAction action)
                {
                    return action switch
                    {
-                       ForeignKeyAction.Cascade => " ON DELETE CASCADE",
-                       ForeignKeyAction.SetNull => " ON DELETE SET NULL",
-                       ForeignKeyAction.SetDefault => " ON DELETE SET DEFAULT",
-                       ForeignKeyAction.Restrict => " ON DELETE RESTRICT",
-                       ForeignKeyAction.NoAction => " ON DELETE NO ACTION",
-                       ForeignKeyAction.None => string.Empty,
+                       ForeignKeyDeleteAction.Cascade => " ON DELETE CASCADE",
+                       ForeignKeyDeleteAction.SetNull => " ON DELETE SET NULL",
+                       ForeignKeyDeleteAction.SetDefault => " ON DELETE SET DEFAULT",
+                       ForeignKeyDeleteAction.Restrict => " ON DELETE RESTRICT",
+                       ForeignKeyDeleteAction.NoAction => " ON DELETE NO ACTION",
+                       ForeignKeyDeleteAction.None => string.Empty,
                        _ => string.Empty
                    };
                }
