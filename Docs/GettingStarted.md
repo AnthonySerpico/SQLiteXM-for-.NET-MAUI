@@ -21,7 +21,7 @@ This guide focuses on the most common workflow used by SQLiteXM applications. Ad
 
 # Understanding the SQLiteXM Lifecycle
 
-Most SQLiteXM applications follow the same overall lifecycle.
+Most SQLiteXM applications follow the same general lifecycle.
 
 ## Startup (One-Time Initialization)
 
@@ -79,12 +79,12 @@ By inheriting from `SxmEntity`, your class automatically gains:
 - `SaveAsync()` - Saves the current entity to the database by either inserting it if it is new, or updating it if it already exists.
 - `DeleteAsync()`
 - `INotifyPropertyChanged` support
-- Schema is materialized when entities are registered via RegisterEntitiesAsync
+- The database schema is materialized when entities are registered via RegisterEntitiesAsync
 
 
 ## Entity Attributes
 
-SQLiteXM provides several entity attributes that influence database behavior.
+SQLiteXM provides a variety entity attributes that influence database behavior.
 
 | Attribute | Targets | Supported options | Purpose |
 |---|---|---|---|
@@ -156,14 +156,8 @@ This file defines the database(s) used by your application.
 }
 ```
 
-## Why Is This File Needed?
-
-SQLiteXM separates database configuration from the application code. This allows for:
-
-- Centralized configuration
-- Cleaner startup code
-
-## Multiple Databases
+<details>
+<summary>Multiple Databases</summary>
 
 Most applications only need a single default database. However, you can define multiple databases in the configuration file.
 ```json
@@ -173,20 +167,28 @@ Most applications only need a single default database. However, you can define m
       "database": "MyApp",
       "isDefault": true
     },
-
-    "databases": [
     {
       "database": "Logging",
       "isDefault": false
     }
-]
+  ]
 }
 ```
 
-All entities automatically use the default database unless configured otherwise using the `[Table]` attribute. For example; 
+Entities automatically use the default database unless configured otherwise using the `[Table]` attribute. For example; 
 ```csharp
 [Table(Database = "Logging")]
 ```
+</details>
+
+
+## Why Is This File Needed?
+
+SQLiteXM separates database configuration from the application code. This allows for:
+
+- Centralized configuration
+- Cleaner startup code
+
 
 ## Database definition rules
 - There must be at least one database defined
@@ -221,47 +223,13 @@ Initialization performs several important tasks:
 - Registers entity types
 - Creates or updates database tables
 
-After initialization completes, SQLiteXM is ready to perform database operations.
-
 ## Database Options
 
-The second parameter of `InitializeAsync()` allows you to provide an `SxmDatabaseOptions` instance to customize SQLiteXM and SQLite behavior.
+The second parameter of `InitializeAsync()` is an optional `SxmDatabaseOptions` instance used to customize the operation of SQLiteXM and the SQLite database.
 
-```csharp
-await SxmDatabase.InitializeAsync(
-    stream,
-    databaseOptions);
-```
+This is covered fully in the :
 
-SQLiteXM provides many options for controlling database behavior. Some of the more commonly used settings include:
-
-| Option | Purpose |
-|----------|----------|
-| ForeignKeys | Enables SQLite foreign key enforcement |
-| JournalModeOption | Controls journaling mode (WAL is recommended for most apps) |
-| SynchronousModeOption | Balances performance versus durability |
-| BusyTimeout | Specifies how long SQLite waits for locked resources |
-| EnableConnectionPooling | Enables connection reuse for improved performance |
-| EnableLogging | Enables SQLiteXM logging and diagnostics |
-| DatabaseFolderOverride | Overrides the default database storage location |
-
-### Example
-
-```csharp
-var options = new SxmDatabaseOptions
-{
-    ForeignKeys = true,
-    JournalModeOption = SxmJournalMode.Wal
-};
-
-await SxmDatabase.InitializeAsync(stream, options);
-```
-
-> **Tip:** For most applications, we recommend setting the `JournalModeOption` to WAL; as shown in the example above. Other tuning options can be set as needed.
-
-For a complete reference of all available options and recommended configurations, see:
-
-➡️ **DATABASE_CONFIGURATION_AND_INITIALIZATION.md**
+➡️ [DATABASE_CONFIGURATION_AND_INITIALIZATION.md](./DATABASE_CONFIGURATION_AND_INITIALIZATION.md)
 
 ---
 
@@ -350,7 +318,7 @@ var users = context.GetTable<User>()
 
 ## How Queries Work
 
-LINQ queries are not executed until results are requested using methods such as `ToList()`, `FirstOrDefault()`, `Count()`, etc. LINQ expressions are translated into SQLite queries. This means filtering occurs in the database, so only matching rows are returned.
+LINQ queries are not executed until they are materialized using methods such as `ToList()`, `FirstOrDefault()`, `Count()`, etc. LINQ expressions are translated into SQLite queries. This means filtering occurs in the database, so only matching rows are returned.
 
 ### Good
 
