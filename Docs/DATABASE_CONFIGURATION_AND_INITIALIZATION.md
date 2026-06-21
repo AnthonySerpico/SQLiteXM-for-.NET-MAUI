@@ -150,7 +150,7 @@ var options = new SxmDatabaseOptions
 
 **When to use:**
 - ✅ Enable when you need referential integrity and are using foreign keys in your schema.
-- ❌ Disable when you manage integrity manually or dont use foreign keys.
+- ❌ Disable when you manage integrity manually or don't use foreign keys.
 
 ---
 

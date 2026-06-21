@@ -50,7 +50,7 @@ namespace SQLiteXM
         /// and specifies the column name.
         /// </summary>
         /// <param name="name">The name of the column in the database.</param>
-        public ColumnAttribute(string name) : base(name) { }
+        private ColumnAttribute(string name) : base(name) { }
 
         /// <summary>
         /// Consumer-facing DataType that maps to <c>LinqToDB.DataType</c> by name.
