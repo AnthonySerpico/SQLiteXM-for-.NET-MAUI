@@ -44,7 +44,7 @@ public class User : SxmEntity
 * `User` becomes a database table
 * The class inherits persistence and notification behavior from `SxmEntity`
 * Properties become database columns
-* SQLiteXM can create or update the table during entity registration
+* SQLiteXM will create or update the table during entity registration
 
 Every entity automatically inherits an `id` property from `SxmEntity`. SQLiteXM uses this value as the table's primary key and automatically populates it when a new entity is saved.
 
@@ -74,14 +74,14 @@ SQLiteXM provides attributes that control how a class or member maps to the data
 | Attribute | Targets | Purpose |
 |---|---|---|
 | `[Table]` | Class | Maps an entity to a table and can assign it to a database |
-| `[Column]` | Property, Field | Maps a member to a column and controls data type mapping |
-| `[NotColumn]` | Property, Field | Excludes a member from schema mapping |
+| `[Column]` | Property | Maps a member to a column and controls data type mapping |
+| `[NotColumn]` | Property | Excludes a member from schema mapping |
 | `[Rename]` | Property | Preserves data when a property name changes |
-| `[Index]` | Class, Property, Field | Creates a non-unique index |
-| `[UniqueIndex]` | Class, Property, Field | Creates a unique index |
+| `[Index]` | Class, Property | Creates a non-unique index |
+| `[UniqueIndex]` | Class, Property | Creates a unique index |
 | `[Trigger]` | Class | Adds trigger SQL during schema creation |
-| `[RequiredNotNull]` | Property, Field | Requires a non-null value and supplies a default |
-| `[ForeignKey]` | Property, Field | Creates a foreign key reference |
+| `[RequiredNotNull]` | Property | Requires a non-null value and supplies a default |
+| `[ForeignKey]` | Property | Creates a foreign key reference |
 
 ---
 
@@ -101,7 +101,7 @@ public class Product : SxmEntity
 
 #### Database
 
-SQLiteXM supports the `Database` property for multi-database applications.
+The `Database` property tells SQLiteXM the database where the entity's corresponding table should be created.
 
 ```csharp
 [Table(Database = "Logging")]
@@ -118,7 +118,7 @@ public class ApplicationLog : SxmEntity
 * Entities are registered with `SxmDatabase.RegisterEntitiesAsync(...)`
 
 
-#### IsColumnAttributeRequired 
+#### IsColumnAttributeRequired
 
 Use `IsColumnAttributeRequired` when you want to explicitly control which properties are mapped to database columns.
 
@@ -169,7 +169,7 @@ For complete details on data type mapping and supported types, see the [SQLiteXM
 
 ---
 
-# 3. NotColumnAttribute
+# 3. NotColumn Attribute
 
 Use `[NotColumn]` for properties that should not be stored in the database.
 
@@ -199,8 +199,8 @@ When present, `[NotColumn]` prevents the property from being mapped to a databas
 
 Use `[Rename]` when a property name changes but you want SQLiteXM to preserve existing data during schema migration.
 
-In the example below, for existing users the schema is updated by renaming the `FirstName` column to `GivenName` while 
-preserving existing data. For new users, `FirstName` does not exist so no rename action is required and the column 
+In the example below, for an existing `Customer` table, the schema is updated by renaming the `FirstName` column to `GivenName` while 
+preserving existing data. For new `Customer` registrations where `FirstName` does not exist, no rename action is required and the column 
 `GivenName` is simply created.
 
 ```csharp
@@ -227,6 +227,7 @@ public string ProductName { get; set; } = string.Empty;
 * SQLiteXM searches rename history from newest to oldest
 * If no old column exists, the new column is created normally
 
+
 ---
 
 # 5. Index Attribute
@@ -242,7 +243,7 @@ public class Order : SxmEntity
 }
 ```
 
-## Class-Level Indexes
+## Composite Indexes
 
 You can apply `[Index]` at the class level to define a composite index.
 
@@ -270,14 +271,16 @@ Use `[UniqueIndex]` to create a unique index.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
-[UniqueIndex("Email")]
 public class User : SxmEntity
 {
+	[UniqueIndex]
 	public string Email { get; set; } = string.Empty;
 }
 ```
 
 ## Composite Unique Index
+
+You can apply `[UniqueIndex]` at the class level to define a composite index.
 
 ```csharp
 [UniqueIndex("PlaylistId", "TrackId")]
@@ -321,6 +324,21 @@ public class User : SxmEntity
 
 Triggers are created as part of schema initialization and registration.
 
+## Trigger Lifecycle Management
+
+SQLiteXM manages trigger definitions as part of schema synchronization.
+
+During entity registration:
+
+* New triggers defined with `[Trigger]` are created automatically
+* Existing triggers are updated when the trigger SQL changes
+* Triggers that are no longer defined on the entity are removed
+
+This allows trigger definitions to evolve alongside your entity classes without requiring manual database migration scripts.
+
+SQLiteXM treats trigger definitions as part of the entity schema and keeps the database synchronized with the trigger configuration defined in code.
+
+
 ---
 
 # 8. RequiredNotNull Attribute
@@ -357,6 +375,12 @@ public class Order : SxmEntity
 }
 ```
 
+### Understanding ForeignKeyDeleteAction
+
+ForeignKeyDeleteAction determines what SQLite should do when a row in the parent table is deleted while related rows still exist in a child table.
+
+For example, consider an Order table that references a Customer table through a foreign key. If a customer is deleted, SQLite must decide what happens to the related orders. The selected ForeignKeyDeleteAction controls that behavior.
+
 ## ForeignKeyDeleteAction Values
 
 | Value | Meaning |
@@ -366,7 +390,7 @@ public class Order : SxmEntity
 | `SetNull` | Set the foreign key column to `NULL` |
 | `SetDefault` | Set the foreign key column to its default value |
 | `Restrict` | Prevent deletion when related rows exist |
-| `NoAction` | Defer the constraint check |
+| `NoAction` | Take no automatic action; the delete succeeds only if referential integrity is preserved |
 
 ## When to Use It
 
@@ -424,44 +448,48 @@ The following example shows a small related model with multiple attributes.
 using SQLiteXM;
 
 [Table(IsColumnAttributeRequired = false)]
-[UniqueIndex("Email")]
 public class Customer : SxmEntity
 {
-	[Column]
+	[UniqueIndex]
 	public string Email { get; set; } = string.Empty;
 
-	[Column]
 	public string? FirstName { get; set; }
 
-	[Column]
 	public string? LastName { get; set; }
 
 	[NotColumn]
 	public string DisplayName => $"{FirstName} {LastName}".Trim();
 }
 
-[Table(IsColumnAttributeRequired = false)]
+[Table(IsColumnAttributeRequired = true)]
 [Index("CustomerId", "OrderDate")]
 public class Order : SxmEntity
 {
+	[Column]
 	[ForeignKey(ForeignTable = nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
 	public long CustomerId { get; set; }
 
 	[Column]
 	public DateTime OrderDate { get; set; }
 
+	[Column]
 	[RequiredNotNull(0m)]
 	public decimal Total { get; set; }
 }
 
 [Table(IsColumnAttributeRequired = false)]
 [UniqueIndex("OrderId", "LineNumber")]
+[Trigger(@"CREATE TRIGGER IF NOT EXISTS trg_OrderLine_Insert
+AFTER INSERT ON OrderLine
+BEGIN
+	INSERT INTO AuditLog(Message, CreatedOn)
+	VALUES ('OrderLine inserted', CURRENT_TIMESTAMP);
+END;")]
 public class OrderLine : SxmEntity
 {
 	[ForeignKey(ForeignTable = nameof(Order), OnDelete = ForeignKeyDeleteAction.Cascade)]
 	public long OrderId { get; set; }
 
-	[Column]
 	public int LineNumber { get; set; }
 
 	[Column(DataType = SQLiteXM.DataType.Text)]
@@ -472,12 +500,6 @@ public class OrderLine : SxmEntity
 }
 
 [Table(Database = "Logging", IsColumnAttributeRequired = false)]
-[Trigger(@"CREATE TRIGGER IF NOT EXISTS trg_OrderLine_Insert
-AFTER INSERT ON OrderLine
-BEGIN
-	INSERT INTO AuditLog(Message, CreatedOn)
-	VALUES ('OrderLine inserted', CURRENT_TIMESTAMP);
-END;")]
 public class AuditLog : SxmEntity
 {
 	public string Message { get; set; } = string.Empty;

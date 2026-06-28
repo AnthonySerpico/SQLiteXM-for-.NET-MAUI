@@ -214,7 +214,7 @@ namespace SQLiteXM
         /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<TResult> InsertAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters).ConfigureFalse();
@@ -233,7 +233,7 @@ namespace SQLiteXM
         /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<Dictionary<string, object?>> InsertAsync<T>(string sqlStatementName, T userObjectParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
@@ -252,7 +252,7 @@ namespace SQLiteXM
         /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<TResult> InsertAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -270,7 +270,7 @@ namespace SQLiteXM
         /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, new List<object>(1) { sqlStatementParameters }).ConfigureFalse();
@@ -289,7 +289,7 @@ namespace SQLiteXM
         /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<TResult> InsertAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -307,7 +307,7 @@ namespace SQLiteXM
         /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
         public async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, List<object> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Insert)
                 throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -322,7 +322,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task UpdateAsync<T>(string sqlStatementName, T userObjectParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Update && statementType != SqlStatementType.UpdateDirect)
                 throw new ArgumentException(string.Format("You cannot perform an update using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
@@ -333,7 +333,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task UpdateAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Update && statementType != SqlStatementType.UpdateDirect)
                 throw new ArgumentException(string.Format("You cannot perform an update using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -344,7 +344,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task UpdateAsync(string sqlStatementName, List<object> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Update && statementType != SqlStatementType.UpdateDirect)
                 throw new ArgumentException(string.Format("You cannot perform an update using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -357,7 +357,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task<List<Dictionary<string, object?>>> SelectAsync<T>(string sqlStatementName, T userObjectParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             return await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
@@ -368,7 +368,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task<List<TResult>> SelectAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             return await RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters).ConfigureFalse();
@@ -379,7 +379,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task<List<Dictionary<string, object?>>> SelectAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             return await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -390,7 +390,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task<List<TResult>> SelectAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             return await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -401,7 +401,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task<List<TResult>> SelectAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             return await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -412,7 +412,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task<List<Dictionary<string, object?>>> SelectAsync(string sqlStatementName, List<object> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
                 throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             return await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -426,7 +426,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task DeleteAsync<T>(string sqlStatementName, T userObjectParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Delete && statementType != SqlStatementType.DeleteDirect)
                 throw new ArgumentException(string.Format("You cannot perform a delete using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
@@ -437,7 +437,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task DeleteAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Delete && statementType != SqlStatementType.DeleteDirect)
                 throw new ArgumentException(string.Format("You cannot perform a delete using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -448,7 +448,7 @@ namespace SQLiteXM
         /// </summary>
         public async Task DeleteAsync(string sqlStatementName, List<object> sqlStatementParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
             if (statementType != SqlStatementType.Delete && statementType != SqlStatementType.DeleteDirect)
                 throw new ArgumentException(string.Format("You cannot perform a delete using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
             await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
@@ -462,9 +462,7 @@ namespace SQLiteXM
         /// </summary>
         private async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
-            //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
-                //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
 
             Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
@@ -489,9 +487,7 @@ namespace SQLiteXM
         /// </summary>
         private async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
-            //if (statementType == SqlStatementType.insertDirect || statementType == SqlStatementType.selectDirect || statementType == SqlStatementType.updateDirect || statementType == SqlStatementType.deleteDirect)
-                //throw new ArgumentException("Parameter values for a direct sql statement must be provided using a dictionary or a list. A user object is not supported.");
+            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
 
             Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
@@ -529,7 +525,7 @@ namespace SQLiteXM
 
             if (!_encounteredError)
             {
-                SqlStatementType sqlStatementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName);
+                SqlStatementType sqlStatementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
 
                 try
                 {

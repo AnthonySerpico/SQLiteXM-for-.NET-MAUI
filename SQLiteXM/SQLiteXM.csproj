@@ -49,5 +49,7 @@
 		<None Include="SqlStatements\ExampleSqlStatements.txt" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.txt" />
 
 		<None Include="SqlStatements\ExampleSqlStatements.xml" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.xml" />
+
+		<None Include="SxmSqliteMetadataExtractor.cs" />
 	</ItemGroup>
 </Project>

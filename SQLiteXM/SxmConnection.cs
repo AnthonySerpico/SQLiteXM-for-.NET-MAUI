@@ -691,16 +691,6 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Synchronous wrapper for <see cref="ExecuteQueryAsync(string, List{object}?, CancellationToken)"/>.
-        /// </summary>
-        /// <param name="command">SQL text to execute.</param>
-        /// <param name="parameterValues">Optional parameter values.</param>
-        internal void ExecuteQuery(string command, List<object>? parameterValues)
-        {
-            ExecuteQueryAsync(command, parameterValues).GetAwaiter().GetResult();
-        }
-
-        /// <summary>
         /// Execute a command that does not return rows (INSERT/UPDATE/DELETE) asynchronously.
         /// </summary>
         /// <param name="command">SQL text to execute.</param>
@@ -749,16 +739,6 @@ namespace SQLiteXM
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
-        }
-
-        /// <summary>
-        /// Synchronous wrapper for <see cref="ExecuteNonQueryAsync(string, List{object}?, CancellationToken)"/>.
-        /// </summary>
-        /// <param name="command">SQL text to execute.</param>
-        /// <param name="parameterValues">Optional parameter values.</param>
-        internal void ExecuteNonQuery(string command, List<object>? parameterValues)
-        {
-            ExecuteNonQueryAsync(command, parameterValues).GetAwaiter().GetResult();
         }
 
         private void AddCommandParameters(List<object>? parameterValues)

@@ -8,6 +8,21 @@ and influence the operation of the SQLite database.
 
 ---
 
+## Table of Contents
+
+Below is a complete reference of all available options and recommended configurations.
+<br>
+
+- [Recommended Starting Configuration](#recommended-starting-configuration)
+- [SQLite PRAGMA Configuration](#sqlite-pragma-configuration)
+- [Connection Management](#connection-management)
+- [Lifecycle Hooks](#lifecycle-hooks)
+- [Database Path Customization](#database-path-customization)
+- [Complete Configuration Example](#complete-configuration-example)
+- [Best Practices](#best-practices)
+
+---
+
 # 1. Initializing SQLiteXM
 
 As we learned in the [`Getting Started Guide`](./GettingStarted.md), initialization is performed once, typically during application startup.
@@ -48,6 +63,21 @@ SQLiteXM provides many options for controlling database behavior. Some of the mo
 | EnableConnectionPooling | Enables connection reuse for improved performance |
 | EnableLogging | Enables SQLiteXM logging and diagnostics |
 | DatabaseFolderOverride | Overrides the default database storage location |
+
+---
+
+## Recommended Starting Configuration
+
+These three settings provide a good balance of safety and performance for most applications.
+```csharp
+var options = new SxmDatabaseOptions
+{
+    ForeignKeys = true,
+    JournalModeOption = SxmJournalMode.Wal,
+    SynchronousModeOption = SxmSynchronousMode.Normal
+};
+```
+
 
 <br>
 Below is an example that includes every available option:
@@ -100,33 +130,6 @@ Below is an example that includes every available option:
     });
 
     await SxmDatabase.InitializeAsync(stream, databaseOptions);
-```
-
-## Table of Contents
-
-Below is a complete reference of all available options and recommended configurations.
-<br>
-
-- [Recommended Starting Configuration](#recommended-starting-configuration)
-- [SQLite PRAGMA Configuration](#sqlite-pragma-configuration)
-- [Connection Management](#connection-management)
-- [Lifecycle Hooks](#lifecycle-hooks)
-- [Database Path Customization](#database-path-customization)
-- [Complete Configuration Example](#complete-configuration-example)
-- [Best Practices](#best-practices)
-
----
-
-## Recommended Starting Configuration
-
-These settings provide a good balance of safety and performance for most applications.
-```csharp
-var options = new SxmDatabaseOptions
-{
-    ForeignKeys = true,
-    JournalModeOption = SxmJournalMode.Wal,
-    SynchronousModeOption = SxmSynchronousMode.Normal
-};
 ```
 
 ---
@@ -425,6 +428,8 @@ var options = new SxmDatabaseOptions
 ## Lifecycle Hooks
 
 SQLiteXM allows you to hook into connection lifecycle events for custom logic.
+
+Most applications will never need lifecycle hooks. They are intended for advanced scenarios where custom logic should run whenever a SQLite connection is opened or closed.
 
 ### OnConnectionOpened
 

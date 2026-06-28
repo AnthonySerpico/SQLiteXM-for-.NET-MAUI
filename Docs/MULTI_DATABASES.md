@@ -1,4 +1,4 @@
-# SQLiteXM Multiple Database Configuration
+# SQLiteXM Multi-Database Configuration
 
 ## Introduction
 
@@ -27,7 +27,7 @@ The configuration file determines which databases are available to the applicati
 
 ---
 
-# Single Database Configuration
+# Single-Database Configuration
 
 Most applications only require a single database.
 
@@ -48,11 +48,9 @@ In this configuration:
 * The database name is `MyApp`
 * It is marked as the default database
 
-All entities automatically use the default database unless configured otherwise.
-
 ---
 
-# Multiple Database Configuration
+# Multi-Database Configuration
 
 To use multiple databases, simply define additional database entries.
 
@@ -84,7 +82,7 @@ The default database remains `MyApp`.
 
 # Default Database Behavior
 
-Entities automatically use the default database unless another database is explicitly specified in the `Table` attribute.
+Entities automatically use the default database unless another database is explicitly specified using the `Database` property of the `[Table]` attribute.
 
 For example:
 
@@ -140,11 +138,9 @@ SQLiteXM automatically creates or updates tables in the correct database based o
 When using `SxmLinqDbContext`, specify the database you want to query.
 
 ```csharp
-using var appContext =
-    new SxmLinqDbContext("MyApp");
+using var appContext = new SxmLinqDbContext("MyApp");
 
-using var logContext =
-    new SxmLinqDbContext("Logging");
+using var logContext = new SxmLinqDbContext("Logging");
 ```
 
 Each context operates against the specified database.
@@ -204,10 +200,6 @@ You may define as many non-default databases as needed.
 
 ---
 
-## Best Practices
-
-### Keep Related Data Together
-
 SQLiteXM does not support:
 
 - Cross-database joins
@@ -262,7 +254,6 @@ This allows application data and logging data to remain isolated while still bei
 ### Use a Single Database Unless You Need More
 
 Most applications work well with a single database.
-
 Multiple databases should be introduced only when there is a clear organizational or operational benefit.
 
 ### Keep Related Entities Together

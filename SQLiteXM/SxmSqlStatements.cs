@@ -48,7 +48,7 @@ namespace SQLiteXM
                 throw new ArgumentException("A sql statement name cannot be null.");
 
             sqlStatementName = sqlStatementName.Trim();
-            switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName))
+            switch (SxmHelpers.GetDatabaseStatementType(sqlStatementName, databaseName: null))
             {
                 case SqlStatementType.Select:
                     return SelectStatements[sqlStatementName].SelectSQL;

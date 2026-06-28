@@ -79,12 +79,17 @@ By inheriting from `SxmEntity`, your class automatically gains:
 - `SaveAsync()` - Saves the current entity to the database by either inserting it if it is new, or updating it if it already exists.
 - `DeleteAsync()`
 - `INotifyPropertyChanged` support
-- The database schema is materialized when entities are registered via RegisterEntitiesAsync
+- The database schema is created when entities are registered via `RegisterEntitiesAsync`
 
 
 ## Entity Attributes
 
-SQLiteXM provides a variety entity attributes that influence database behavior.
+SQLiteXM supports a variety of entity attributes that control schema creation and database behavior. 
+Below is an entity with a number of applied attributes.
+
+See  ➡️ **[Defining Entities](./DEFINING_ENTITIES.md)** for a complete attribute reference.
+
+<!-- ```csharp
 
 | Attribute | Targets | Supported options | Purpose |
 |---|---|---|---|
@@ -109,7 +114,7 @@ SQLiteXM provides a variety entity attributes that influence database behavior.
 | `Restrict` | Prevent parent deletion when child rows exist |
 | `NoAction` | Defer the constraint check without taking action |
 
-### Example
+### Example -->
 
 ```csharp
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
@@ -125,13 +130,11 @@ public class PlaylistTrack : SxmEntity
     [ForeignKey(ForeignTable = nameof(Track), OnDelete = ForeignKeyDeleteAction.Cascade)]
     public long TrackId { get; set; }
 
-    // Overrides default DateTime data type long (ticks) to ISO 8601 string
+    // Overrides the default data type for DateTime from long to ISO 8601 string
     [Column(DataType = SQLiteXM.DataType.Text)] 
     public DateTime Added { get; set; }
 }
 ```
-
-See **ENTITY_MODELING.md** for a complete attribute reference.
 
 ---
 
@@ -156,7 +159,7 @@ This file defines the database(s) used by your application.
 }
 ```
 
-<details>
+<!-- <details>
 <summary>Multiple Databases</summary>
 
 Most applications only need a single default database. However, you can define multiple databases in the configuration file.
@@ -179,15 +182,11 @@ Entities automatically use the default database unless configured otherwise usin
 ```csharp
 [Table(Database = "Logging")]
 ```
-</details>
+</details> -->
 
+Most SQLiteXM applications use a single database. However, SQLiteXM also supports applications that need to organize data across multiple databases.
 
-## Why Is This File Needed?
-
-SQLiteXM separates database configuration from the application code. This allows for:
-
-- Centralized configuration
-- Cleaner startup code
+For details, see  ➡️ [Multi-Database Configuration](./MULTI_DATABASES.md)
 
 
 ## Database definition rules
@@ -195,7 +194,7 @@ SQLiteXM separates database configuration from the application code. This allows
 - There can only be one default database
 - You can define as many non-default databases as needed
 
-See **MULTI_DATABASES.md** for advanced database configurations.
+
 
 ---
 
@@ -215,7 +214,7 @@ public static async Task InitializeDatabaseAsync()
 
 ## What's Happening?
 
-Initialization performs several important tasks:
+Initialization and registration together perform several important tasks::
 
 - Loads the database configuration from `SqlStatements.json`
 - Creates the databases, if they don't already exist
@@ -229,7 +228,7 @@ The second parameter of `InitializeAsync()` is an optional `SxmDatabaseOptions` 
 
 This is covered fully in the :
 
-➡️ [DATABASE_CONFIGURATION_AND_INITIALIZATION.md](./DATABASE_CONFIGURATION_AND_INITIALIZATION.md)
+➡️ **[Database Configuration and Initialization](./DATABASE_CONFIGURATION_AND_INITIALIZATION.md)**
 
 ---
 
@@ -267,7 +266,7 @@ SQLiteXM automatically determines whether:
 - The entity is new (INSERT)
 - The entity already exists (UPDATE)
 
-You don't need separate insert and update methods.
+This behavior is based on the entity's primary key value. You don't need separate insert and update methods.
 
 ## Generated IDs
 
@@ -361,6 +360,12 @@ var user = context.GetTable<User>()
 
 ```csharp
 .Count()
+```
+
+### Checking for Existence 
+
+```csharp
+.Any()
 ```
 
 ## Related Data
@@ -553,8 +558,6 @@ SQLiteXM's transaction model allows you to write normal save and delete code whi
 For advanced transaction scenarios and best practices, see:
 
 ➡️ **TRANSACTIONS.md**
-
-See **TRANSACTIONS.md** for advanced transaction patterns.
 
 ---
 

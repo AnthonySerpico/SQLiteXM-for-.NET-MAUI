@@ -673,7 +673,7 @@ namespace SQLiteXM
         /// <returns>Dictionary mapping column name to column type.</returns>
         internal static async Task<Dictionary<string, string>> GetTableColumnNamesAsync(string? dbName, string queryName, SxmDefines.SqlStatementType sqlStatementType)
         {
-            string? tableName = default(string);
+            string tableName = string.Empty;
 
             if (sqlStatementType == SxmDefines.SqlStatementType.Select)
                 tableName = SxmSqlStatements.SelectStatements[queryName].TableName;
@@ -685,13 +685,13 @@ namespace SQLiteXM
                 tableName = SxmSqlStatements.DeleteStatements[queryName].TableName;
 
             if (sqlStatementType == SxmDefines.SqlStatementType.SelectDirect)
-                tableName = SxmHelpers.ExtractTableNameFromSelect(queryName);
+                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
             if (sqlStatementType == SxmDefines.SqlStatementType.InsertDirect)
-                tableName = SxmHelpers.ExtractTableNameFromInsert(queryName);
+                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
             if (sqlStatementType == SxmDefines.SqlStatementType.UpdateDirect)
-                tableName = SxmHelpers.ExtractTableNameFromUpdate(queryName);
+                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
             if (sqlStatementType == SxmDefines.SqlStatementType.DeleteDirect)
-                tableName = SxmHelpers.ExtractTableNameFromDelete(queryName);
+                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
 
             if (sqlStatementType == SxmDefines.SqlStatementType.Unknown || string.IsNullOrEmpty(tableName))
                 throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, queryName));
