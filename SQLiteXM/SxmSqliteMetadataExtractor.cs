@@ -51,13 +51,13 @@ public class SqliteMetadataExtractor : IDisposable
             case SQLITE_INSERT:
             case SQLITE_UPDATE:
             case SQLITE_DELETE:
-                // Rule 1: The first root event locks down the statement context
-                if (DetectedStatementType == SqlStatementType.Unknown   )
-                {
-                    DetectedStatementType = (actionCode == SQLITE_INSERT) ? SqlStatementType.InsertDirect :
-                                            (actionCode == SQLITE_UPDATE) ? SqlStatementType.UpdateDirect : SqlStatementType.DeleteDirect   ;
-                    PrimaryTargetTable = detail1.utf8_to_string() ?? string.Empty; // Firmly lock the primary table being modified
-                }
+                // ALWAYS override statement type for modifying operations
+                DetectedStatementType = (actionCode == SQLITE_INSERT) ? SqlStatementType.InsertDirect :
+                                        (actionCode == SQLITE_UPDATE) ? SqlStatementType.UpdateDirect :
+                                        SqlStatementType.DeleteDirect;
+
+                // ALWAYS set PrimaryTargetTable from modifying operations - this is the authoritative source
+                PrimaryTargetTable = detail1.utf8_to_string() ?? string.Empty;
                 break;
 
             case SQLITE_SELECT:
@@ -101,5 +101,198 @@ public class SqliteMetadataExtractor : IDisposable
 
         if (_gcAnchor.IsAllocated) _gcAnchor.Free();
         GC.SuppressFinalize(this);
+    }
+
+    public static bool SqlHasReturningClause(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+            return false;
+
+        bool inSingleQuote = false;
+        bool inDoubleQuote = false;
+        bool inBacktick = false;
+        bool inBracketIdentifier = false;
+        bool inLineComment = false;
+        bool inBlockComment = false;
+
+        static bool IsIdentifierChar(char c) =>
+            char.IsLetterOrDigit(c) || c == '_';
+
+        const string token = "RETURNING";
+
+        for (int i = 0; i < sql.Length; i++)
+        {
+            char c = sql[i];
+            char next = (i + 1 < sql.Length) ? sql[i + 1] : '\0';
+
+            // Handle exiting line comments
+            if (inLineComment)
+            {
+                if (c == '\n')
+                    inLineComment = false;
+                continue;
+            }
+
+            // Handle exiting block comments
+            if (inBlockComment)
+            {
+                if (c == '*' && next == '/')
+                {
+                    inBlockComment = false;
+                    i++;
+                }
+                continue;
+            }
+
+            // Handle entering comments
+            if (!inSingleQuote && !inDoubleQuote && !inBacktick && !inBracketIdentifier)
+            {
+                if (c == '-' && next == '-')
+                {
+                    inLineComment = true;
+                    i++;
+                    continue;
+                }
+
+                if (c == '/' && next == '*')
+                {
+                    inBlockComment = true;
+                    i++;
+                    continue;
+                }
+            }
+
+            // Handle single-quoted strings
+            if (!inDoubleQuote && !inBacktick && !inBracketIdentifier)
+            {
+                if (!inSingleQuote)
+                {
+                    if (c == '\'')
+                    {
+                        inSingleQuote = true;
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (c == '\'')
+                    {
+                        // Escaped quote ('')
+                        if (next == '\'')
+                        {
+                            i++;
+                            continue;
+                        }
+
+                        inSingleQuote = false;
+                    }
+
+                    continue;
+                }
+            }
+
+            // Handle double-quoted identifiers
+            if (!inSingleQuote && !inBacktick && !inBracketIdentifier)
+            {
+                if (!inDoubleQuote)
+                {
+                    if (c == '"')
+                    {
+                        inDoubleQuote = true;
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (c == '"')
+                        inDoubleQuote = false;
+
+                    continue;
+                }
+            }
+
+            // Handle backtick identifiers
+            if (!inSingleQuote && !inDoubleQuote && !inBracketIdentifier)
+            {
+                if (!inBacktick)
+                {
+                    if (c == '`')
+                    {
+                        inBacktick = true;
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (c == '`')
+                        inBacktick = false;
+
+                    continue;
+                }
+            }
+
+            // Handle bracketed identifiers
+            if (!inSingleQuote && !inDoubleQuote && !inBacktick)
+            {
+                if (!inBracketIdentifier)
+                {
+                    if (c == '[')
+                    {
+                        inBracketIdentifier = true;
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (c == ']')
+                        inBracketIdentifier = false;
+
+                    continue;
+                }
+            }
+
+            // Only search when not inside any quoted/comment region
+            if (!inSingleQuote &&
+                !inDoubleQuote &&
+                !inBacktick &&
+                !inBracketIdentifier &&
+                !inLineComment &&
+                !inBlockComment)
+            {
+                if (char.ToUpperInvariant(c) != 'R')
+                    continue;
+
+                if (sql.Length - i < token.Length)
+                    continue;
+
+                bool match = true;
+
+                for (int j = 0; j < token.Length; j++)
+                {
+                    if (char.ToUpperInvariant(sql[i + j]) != token[j])
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (!match)
+                    continue;
+
+                int start = i;
+                int end = i + token.Length;
+
+                bool leftBoundary =
+                    start == 0 || !IsIdentifierChar(sql[start - 1]);
+
+                bool rightBoundary =
+                    end >= sql.Length || !IsIdentifierChar(sql[end]);
+
+                if (leftBoundary && rightBoundary)
+                    return true;
+            }
+        }
+
+        return false;
     }
 }

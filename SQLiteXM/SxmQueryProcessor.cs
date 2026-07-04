@@ -5,9 +5,10 @@ using static SQLiteXM.SxmDefines;
 
 public class SxmQueryProcessor
 {
-    internal static void AnalyzeUserQuery(string userSuppliedSql, ref SqlStatementType sqlStatementType, ref string  targetTableName, string? databaseName = null)
+    internal static SqlStatementDetails AnalyzeUserQuery(string userSuppliedSql, string? databaseName = null)
     {
         Microsoft.Data.Sqlite.SqliteConnection? connection = null;
+        SqlStatementDetails embeddedSqlStatementDetails = new();
         try
         {
             string? connectionString = SxmConnection.GetConnectionString(ref databaseName);
@@ -22,12 +23,13 @@ public class SxmQueryProcessor
                 {
                     try
                     {
+                        Console.WriteLine($"AnalyzeUserQuery: Preparing SQL statement: {userSuppliedSql}");
                         // 3. CRITICAL: This compiles the statement and triggers the authorizer hooks!
                         command.Prepare();
 
                         // 4. Access the safely extracted metadata straight from the object properties
-                        sqlStatementType = extractor.DetectedStatementType;
-                        targetTableName = extractor.PrimaryTargetTable;
+                        embeddedSqlStatementDetails.SqlStatementType = extractor.DetectedStatementType;
+                        embeddedSqlStatementDetails.TargetTableName = extractor.PrimaryTargetTable;
                     }
                     catch (SqliteException ex)
                     {
@@ -50,5 +52,13 @@ public class SxmQueryProcessor
                 connection.Dispose();
             }
         }
+
+        return embeddedSqlStatementDetails;
+    }
+
+    public class SqlStatementDetails
+    {
+        internal string TargetTableName { get; set; } = string.Empty;
+        internal SqlStatementType SqlStatementType { get; set; } = SqlStatementType.Unknown;
     }
 }

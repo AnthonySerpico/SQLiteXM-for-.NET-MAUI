@@ -480,7 +480,9 @@ namespace SQLiteXM
                     try
                     {
                         if (_dbConnTransaction != null)
-                            // ensure rollback is completed; block here to preserve previous behavior.
+                            // This appears to always rollback when the connection is released. But a successful transaction will have been committed before reaching
+                            // this method, so, if the transaction was a success, the transaction will have already been committed and this rollback will have no affect.
+                            // If the transaction was a failure, the commit will not have been executed and this rollback will, in fact, rollback the transaction.
                             await DoCommitAsync(SQLiteXM.SxmDefines.RollbackTransaction).ConfigureFalse();
                     }
                     catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))

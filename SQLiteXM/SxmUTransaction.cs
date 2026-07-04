@@ -1,7 +1,9 @@
 ﻿using System.Collections;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
+using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM
 {
@@ -250,12 +252,12 @@ namespace SQLiteXM
         /// <param name="command">Logical command key mapped to an insert statement.</param>
         /// <param name="parameterValues">Parameter values for the insert statement.</param>
         /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
-        /// <returns>A dictionary containing keys "id" (long) and "synchId" (string).</returns>
+        /// <returns>A dictionary containing keys "id" (long) and "synchId" (byte[]).</returns>
         /// <exception cref="SxmException">If the command key is unknown or an underlying DB error occurs.</exception>
         internal async Task<Dictionary<string, object?>> ExecuteInsertAsync(string command, List<object> parameterValues, CancellationToken cancellationToken = default)
         {
             long recordID = -1;
-            string? synchID = default(string);
+            byte[]? synchID = null;
 
             if (!SxmSqlStatements.InsertStatements.TryGetValue(command, out InsertDefinition? insertDefinition) || insertDefinition == null)
             {
@@ -268,31 +270,16 @@ namespace SQLiteXM
             {
                 if (insertDefinition.TableName.Length != 0)
                 {
-                    if (_connection is null)
-                    {
-                        throw new ArgumentNullException($"ExecuteInsertAsync failure. SxmConnection '_connection' is null.");
-                    }
+                    recordID = await GetLastInsertRowIdAsync();
+                    synchID = await GetSynchIdAsync(insertDefinition.TableName, recordID).ConfigureFalse();
 
-                    await ExecuteQueryDirectAsync("select last_insert_rowid() as rowID", null, cancellationToken).ConfigureFalse();
-                    Dictionary<string, object?>? nextRow = _connection.GetNextRow<Dictionary<string, object?>>();
-
-                    if (nextRow != default && nextRow.Count > 0)
-                        if (nextRow.ContainsKey("rowID") == true)
-                        {
-                            recordID = (long)nextRow["rowID"]!;
-                            synchID = await GetSynchIdAsync(insertDefinition.TableName, recordID).ConfigureFalse();
-                        }
-
-                    if (synchID == null || synchID.Length == 0)
-                        synchID = Guid.NewGuid().ToString();
-
+                    // If GetSynchIdAsync generated a new GUID (for tables without synchId column or null values),
+                    // we need to write it back to the database
                     List<object> synchIdParams = new List<object>();
-                    synchIdParams.Add(synchID);
+                    synchIdParams.Add(synchID!);
                     synchIdParams.Add(recordID);
-                    await ExecuteNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", SxmHelpers.QuoteIdentifier(insertDefinition.TableName)), synchIdParams, cancellationToken).ConfigureFalse();
-                    synchIdParams.RemoveAt(1);
 
-                    await ExecuteNonQueryAsync(String.Format("UPDATE _systemCloudSynch SET action='insert' WHERE synchId = @p0 "), synchIdParams, cancellationToken).ConfigureFalse();
+                    await ExecuteNonQueryAsync(String.Format("UPDATE {0} SET synchId = @p0 WHERE id = @p1", SxmHelpers.QuoteIdentifier(insertDefinition.TableName)), synchIdParams, cancellationToken).ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -314,16 +301,38 @@ namespace SQLiteXM
             return ir;
         }
 
+        internal async Task<long> GetLastInsertRowIdAsync()
+        {
+            long rowId = -1;
+
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"GetLastInsertRowId failure. SxmConnection '_connection' is null.");
+            }
+
+            await ExecuteQueryDirectAsync("select last_insert_rowid() as rowID", null).ConfigureFalse();
+            Dictionary<string, object?>? nextRow = _connection.GetNextRow<Dictionary<string, object?>>();
+            if (nextRow != default && nextRow.Count > 0)
+            {
+                if (nextRow.ContainsKey("rowID") == true)
+                {
+                    rowId = (long)nextRow["rowID"]!;
+                }
+            }
+
+            return rowId;
+        }   
+
         /// <summary>
         /// Attempt to read the synchId for a record in <paramref name="tableName"/> with <paramref name="recordID"/>.
         /// Returns null if the record has no synchId or the read fails.
         /// </summary>
         /// <param name="tableName">Table name to query.</param>
         /// <param name="recordID">Record id to look up.</param>
-        /// <returns>The synchId string if present; otherwise null.</returns>
-        private async Task<string?> GetSynchIdAsync(string tableName, long recordID)
+        /// <returns>The synchId byte array if present; otherwise a newly generated 16-byte GUID.</returns>
+        internal async Task<byte[]?> GetSynchIdAsync(string tableName, long recordID)
         {
-            string? synchId = default(string);
+            byte[]? synchId = null;
 
             if (_connection is null)
             {
@@ -343,9 +352,13 @@ namespace SQLiteXM
 
                 if (row != null && row.Count > 0)
                     if (row.ContainsKey("synchId") == true)
-                        synchId = (string?)row["synchId"];
+                        synchId = row["synchId"] as byte[];
             }
             catch (Exception) { /* If an error occurs reading the record, then do nothing. Assume synch ID does not exist. */ }
+
+
+            if (synchId == null || synchId.Length == 0)
+                synchId = Guid.NewGuid().ToByteArray();
 
             return synchId;
         }
@@ -356,20 +369,56 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="command">Logical command key mapped to a select statement.</param>
         /// <param name="parameterValues">Parameter values for the query, or null.</param>
+        /// <param name="sqlStatementType">Type of the SQL statement.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        internal async Task ExecuteQueryAsync(string command, List<object>? parameterValues, CancellationToken cancellationToken = default)
+        internal async Task ExecuteQueryAsync(string command, List<object>? parameterValues, SqlStatementType sqlStatementType, CancellationToken cancellationToken = default)
         {
             if (_connection is null)
             {
                 throw new ArgumentNullException($"ExecuteQueryAsync failure. SxmConnection '_connection' is null.");
             }
 
-            if (!SxmSqlStatements.SelectStatements.TryGetValue(command, out SelectDefinition? selectDefinition) || selectDefinition == null)
-            {
-                throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
-            }
+            string sql = GetSqlStatementTypeString(command, sqlStatementType);
 
-            await _connection.ExecuteQueryAsync(selectDefinition.SelectSQL, parameterValues, cancellationToken).ConfigureFalse();
+            _connection.BeginTransaction();
+            await _connection.ExecuteQueryAsync(sql, parameterValues, cancellationToken).ConfigureFalse();
+        }
+
+        private string GetSqlStatementTypeString(string command, SqlStatementType sqlStatementType)
+        {
+            switch (sqlStatementType)
+            {
+                case SqlStatementType.Select:
+                    if (!SxmSqlStatements.SelectStatements.TryGetValue(command, out SelectDefinition? selectDefinition) || selectDefinition == null)
+                    {
+                        throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+                    }
+                    return selectDefinition.SelectSQL;
+
+                case SqlStatementType.Insert:
+                    if (!SxmSqlStatements.InsertStatements.TryGetValue(command, out InsertDefinition? insertDefinition) || insertDefinition == null)
+                    {
+                        throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+                    }
+                    return insertDefinition.InsertSQL;
+
+                case SqlStatementType.Update:
+                    if (!SxmSqlStatements.UpdateStatements.TryGetValue(command, out UpdateDefinition? updateDefinition) || updateDefinition == null)
+                    {
+                        throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+                    }
+                    return updateDefinition.UpdateSQL;
+
+                case SqlStatementType.Delete:
+                    if (!SxmSqlStatements.DeleteStatements.TryGetValue(command, out DeleteDefinition? deleteDefinition) || deleteDefinition == null)
+                    {
+                        throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+                    }
+                    return deleteDefinition.DeleteSQL;
+
+                default:
+                    return "UNKNOWN";
+            }
         }
 
         /// <summary>
@@ -416,6 +465,8 @@ namespace SQLiteXM
             {
                 throw new ArgumentNullException($"ExecuteQueryDirectAsync failure. SxmConnection '_connection' is null.");
             }
+
+            _connection.BeginTransaction();
             await _connection.ExecuteQueryAsync(sqlStatement, parameterValues, cancellationToken).ConfigureFalse();
         }
 
@@ -518,6 +569,7 @@ namespace SQLiteXM
             {
                 throw new ArgumentNullException($"ExecuteNonQueryTransAsync failure. SxmConnection '_connection' is null.");
             }
+
             _connection.BeginTransaction();
             await _connection.ExecuteNonQueryAsync(sqlStatement, parameterValues, cancellationToken).ConfigureFalse();
         }

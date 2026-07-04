@@ -363,9 +363,15 @@ public class DatabaseSeeder
 
         var tracks = new List<Track>();
 
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
         // Use a single transaction for all inserts
         await using (var transaction = SxmSqlTransaction.Create("Chinook"))
         {
+            // Batch size: insert every N records to reduce SaveAsync overhead
+            const int batchSize = 100;
+            var batch = new List<Track>();
+
             for (int i = 0; i < 3500; i++)
             {
                 var album = albums[_random.Next(albums.Count)];
@@ -384,17 +390,35 @@ public class DatabaseSeeder
                     UnitPrice = (decimal)(_random.Next(69, 199) / 100.0), // $0.69 - $1.99
                     TrackNumber = _random.Next(1, 20)
                 };
-                await track.SaveAsync(transaction);
+
+                batch.Add(track);
                 tracks.Add(track);
 
-                if (i % 500 == 0 && i > 0)
+                // Insert batch when it reaches batch size or at the end
+                if (batch.Count >= batchSize || i == 3499)
                 {
-                    progress?.Report($"Seeded {i}/3,500 tracks...");
+                    // Save all tracks in batch with minimal awaits
+                    foreach (var t in batch)
+                    {
+                        await t.SaveAsync(transaction);
+                    }
+                    batch.Clear();
+
+                    if (i % 500 == 0 && i > 0)
+                    {
+                        var elapsed = stopwatch.Elapsed.TotalSeconds;
+                        var rate = i / elapsed;
+                        System.Diagnostics.Debug.WriteLine($"DIAGNOSTIC: Seeded {i}/3,500 tracks in {elapsed:F1}s ({rate:F1} tracks/sec)");
+                        progress?.Report($"Seeded {i}/3,500 tracks...");
+                    }
                 }
             }
 
             await transaction.CommitTransactionAsync();
         }
+
+        stopwatch.Stop();
+        System.Diagnostics.Debug.WriteLine($"DIAGNOSTIC: Total time to seed 3,500 tracks: {stopwatch.Elapsed.TotalSeconds:F1}s ({3500 / stopwatch.Elapsed.TotalSeconds:F1} tracks/sec)");
 
         return tracks;
     }

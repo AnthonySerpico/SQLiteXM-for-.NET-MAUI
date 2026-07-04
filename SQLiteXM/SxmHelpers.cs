@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 //using static CoreFoundation.DispatchSource;
 using static SQLiteXM.SxmDefines;
+using static SxmQueryProcessor;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SQLiteXM
@@ -278,9 +279,21 @@ namespace SQLiteXM
         /// Resolves a SQL statement name (or inline SQL) to a <see cref="SqlStatementType"/>.
         /// </summary>
         /// <param name="sqlStatementName">Named statement key or an inline SQL string (e.g., "SELECT ...").</param>
-        /// <returns>Corresponding <see cref="SqlStatementType"/>.</returns>
+        /// <returns>Corresponding <see cref="SqlStatementDetails"/>.</returns>
         /// <exception cref="ArgumentException">If <paramref name="sqlStatementName"/> is null/empty or cannot be resolved.</exception>
-        internal static SqlStatementType GetDatabaseStatementType(string? sqlStatementName, string? databaseName)
+        internal static SqlStatementDetails GetDatabaseStatementTypeFromSql(string? sqlStatementName, string? databaseName)
+        {
+            // Not a SQL statement in the SQL statements file? Perhaps this is a Direct SQL statement embedded in the code.
+            string targetTableName = string.Empty;
+            SqlStatementDetails sqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(sqlStatementName!, databaseName);
+
+            if (sqlStatementDetails.SqlStatementType == SqlStatementType.Unknown)
+                throw new ArgumentException(string.Format("The sql statement '{0}' could not be found or identified.", sqlStatementName!.Length > 30 ? (sqlStatementName.Substring(0, 29) + "...") : sqlStatementName));
+
+            return sqlStatementDetails;
+        }
+
+        internal static SqlStatementType GetDatabaseStatementTypeFromName(string? sqlStatementName)
         {
             if (string.IsNullOrEmpty(sqlStatementName))
                 throw new ArgumentException("A sql statement name cannot be null or empty.");
@@ -297,16 +310,9 @@ namespace SQLiteXM
             if (SxmSqlStatements.InsertStatements.ContainsKey(sqlStatementName))
                 return SqlStatementType.Insert;
 
-            // Not a SQL statement in the SQL statements file? Direct SQL statements are processed here.
-            SqlStatementType sqlStatementType = SqlStatementType.Unknown;
-            string targetTableName = string.Empty;
-            SxmQueryProcessor.AnalyzeUserQuery(sqlStatementName, ref sqlStatementType, ref targetTableName, databaseName);
-
-            if (sqlStatementType == SqlStatementType.Unknown)
-                throw new ArgumentException(string.Format("The sql statement '{0}' could not be found or identified.", sqlStatementName.Length > 30 ? (sqlStatementName.Substring(0, 29) + "...") : sqlStatementName));
-
-            return sqlStatementType;
+            return SqlStatementType.Unknown;
         }
+
 
         /// <summary>
         /// Creates a list of user objects of type <typeparamref name="TResult"/> from database row dictionaries.

@@ -7,6 +7,7 @@ using System.Xml.Linq;
 using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 using static SQLiteXM.SxmSerialization;
+using static SxmQueryProcessor;
 //using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
@@ -449,36 +450,9 @@ namespace SQLiteXM
                 if (!await DoesTableExistAsync("_systemCloudSynchDescriptor", sxmConnection).ConfigureFalse())
                     await CreateCloudSyncDescriptorAsync(sxmTransaction).ConfigureFalse();
 
-                if (!await DoesTableExistAsync("_systemCloudSynch", sxmConnection).ConfigureFalse())
-                    await CreateCloudSynchTableAsync(sxmTransaction).ConfigureFalse();
-
                 await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
             }
         }
-
-        /*        public static void interruptSynchronize (string databaseName)
-                {
-                    Synchronize synchronize = null;
-                    if (synchronized.TryGetValue (databaseName, out synchronize) == true)
-                        synchronize.interruptSynchThread ();
-                }
-
-                public static bool getSynchMonitor(string databaseName, int millisecondsTimeout)
-                {
-                    Synchronize synchronize = null;
-                    if (synchronized.TryGetValue (databaseName, out synchronize) == true)
-                        return synchronize.getSynchMonitor (millisecondsTimeout);
-                    else
-                        return true;
-                }
-
-                public static void releaseSynchMonitor(string databaseName)
-                {
-                    Synchronize synchronize = null;
-                    if (synchronized.TryGetValue (databaseName, out synchronize) == true)
-                        synchronize.releaseSynchMonitor ();
-                }
-        */
 
         /// <summary>
         /// Retrieves the numeric database schema version stored in PRAGMA user_version.
@@ -613,8 +587,6 @@ namespace SQLiteXM
 
                         await SxmDatabase.InsertIntoSystemCloudSyncDescriptorAsync(key, databaseName, parts[1], sxmTransaction).ConfigureFalse();
 
-                        //await SxmDatabase.createCloudSynchTriggers(key, tableNamesMap, sxmTransaction).ConfigureFalse();
-
                         await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                     }
                 }
@@ -673,7 +645,7 @@ namespace SQLiteXM
         /// <returns>Dictionary mapping column name to column type.</returns>
         internal static async Task<Dictionary<string, string>> GetTableColumnNamesAsync(string? dbName, string queryName, SxmDefines.SqlStatementType sqlStatementType)
         {
-            string tableName = string.Empty;
+            string? tableName = null;
 
             if (sqlStatementType == SxmDefines.SqlStatementType.Select)
                 tableName = SxmSqlStatements.SelectStatements[queryName].TableName;
@@ -684,14 +656,21 @@ namespace SQLiteXM
             if (sqlStatementType == SxmDefines.SqlStatementType.Delete)
                 tableName = SxmSqlStatements.DeleteStatements[queryName].TableName;
 
-            if (sqlStatementType == SxmDefines.SqlStatementType.SelectDirect)
-                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
-            if (sqlStatementType == SxmDefines.SqlStatementType.InsertDirect)
-                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
-            if (sqlStatementType == SxmDefines.SqlStatementType.UpdateDirect)
-                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
-            if (sqlStatementType == SxmDefines.SqlStatementType.DeleteDirect)
-                SxmQueryProcessor.AnalyzeUserQuery(queryName, ref sqlStatementType, ref tableName, dbName);
+            if (tableName == null)
+            {
+                SqlStatementDetails? embeddedSqlStatementDetails = null;
+                if (sqlStatementType == SxmDefines.SqlStatementType.SelectDirect)
+                    embeddedSqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(queryName, dbName);
+                if (sqlStatementType == SxmDefines.SqlStatementType.InsertDirect)
+                    embeddedSqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(queryName, dbName);
+                if (sqlStatementType == SxmDefines.SqlStatementType.UpdateDirect)
+                    embeddedSqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(queryName, dbName);
+                if (sqlStatementType == SxmDefines.SqlStatementType.DeleteDirect)
+                    embeddedSqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(queryName, dbName);
+
+                if (embeddedSqlStatementDetails != null)
+                    tableName = embeddedSqlStatementDetails.TargetTableName;
+            }
 
             if (sqlStatementType == SxmDefines.SqlStatementType.Unknown || string.IsNullOrEmpty(tableName))
                 throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, queryName));
@@ -880,7 +859,7 @@ namespace SQLiteXM
         /// <param name="sxmTransaction">Active transaction used to execute the ALTER statement.</param>
         private static async Task AddSynchIdAsync(string[] parts, SxmUTransaction sxmTransaction)
         {
-            string alterSQL = $"ALTER TABLE {SxmHelpers.QuoteIdentifier(parts[1])} ADD COLUMN {SxmHelpers.QuoteIdentifier("synchId")} BLOB NOT NULL DEFAULT ''";
+            string alterSQL = $"ALTER TABLE {SxmHelpers.QuoteIdentifier(parts[1])} ADD COLUMN {SxmHelpers.QuoteIdentifier("synchId")} BLOB DEFAULT (randomblob(16))";
             await sxmTransaction.ExecuteTableStatementAsync(alterSQL).ConfigureFalse();
         }
 
@@ -915,64 +894,6 @@ namespace SQLiteXM
             parameterValues.Add(tableName);
             parameterValues.Add(tableDefinition.CloudSynch);
             await sxmTransaction.ExecuteSystemUpdateDirectAsync("INSERT INTO _systemCloudSynchDescriptor (dbName, tableName, cloudSynchFlag) VALUES(@p0, @p1, @p2)", parameterValues).ConfigureFalse();
-        }
-
-
-        /// <summary>
-        /// Create the _systemCloudSynch table used to queue cloud synchronization actions.
-        /// </summary>
-        /// <param name="key">Qualified key "database.table".</param>
-        /// <param name="tableNamesMap">Map used to track created table names per database.</param>
-        /// <param name="sxmTransaction">Active transaction used to execute the DDL.</param>
-        private static async Task CreateCloudSynchTableAsync(SxmUTransaction sxmTransaction)
-        {
-            string databaseTable = "_systemCloudSynch";
-
-            string tableSQL = $"CREATE TABLE {SxmHelpers.QuoteIdentifier(databaseTable)} (id INTEGER PRIMARY KEY AUTOINCREMENT, dbName TEXT, tableName TEXT, action TEXT, synchId BLOB)";
-            await sxmTransaction.ExecuteTableStatementAsync(tableSQL).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Create triggers that populate the _systemCloudSynch queue for insert/update/delete operations on a table.
-        /// </summary>
-        /// <param name="key">Qualified key "database.table".</param>
-        /// <param name="tableNamesMap">Map used to track created table names per database (unused in current implementation).</param>
-        /// <param name="sxmTransaction">Active transaction used to create the triggers.</param>
-        private static async Task CreateCloudSynchTriggersAsync(string key, SxmUTransaction sxmTransaction)
-        {
-            string[] parts = key.Split('.');
-            string databaseName = parts[0];
-            string databaseTable = parts[1];
-
-            TableDefinition? tableDefinition = SxmSqlStatements.TableCreateStatements?[key] as TableDefinition;
-
-            if (tableDefinition?.CloudSynch == SxmDefines.CloudSync || tableDefinition?.CloudSynch == SxmDefines.CloudMove)
-            {
-                // Escape values for SQL string literals (used inside VALUES(...)).
-                string safeDbName = databaseName.Replace("'", "''");
-                string safeTableNameLiteral = databaseTable.Replace("'", "''");
-
-                // Quote SQL identifiers (trigger name, table name, system table).
-                string quotedTriggerUpdate = SxmHelpers.QuoteIdentifier("update" + databaseTable);
-                string quotedSystemTable = SxmHelpers.QuoteIdentifier("_systemCloudSynch");
-                string quotedTable = SxmHelpers.QuoteIdentifier(databaseTable);
-
-                string triggerUpdateSql =
-                    $"CREATE TRIGGER IF NOT EXISTS {quotedTriggerUpdate} UPDATE ON {quotedTable} " +
-                    $"BEGIN INSERT INTO {quotedSystemTable} (dbName, tableName, action, synchId) " +
-                    $"VALUES ('{safeDbName}', '{safeTableNameLiteral}', 'update', new.synchId); END;";
-                await sxmTransaction.ExecuteCreateTriggerAsync(triggerUpdateSql).ConfigureFalse();
-
-                if (tableDefinition?.CloudSynch == SxmDefines.CloudSync) // This is weird, needs fixing. How does it make sense for this to be inside this code block?
-                {
-                    string quotedTriggerDelete = SxmHelpers.QuoteIdentifier("delete" + databaseTable);
-                    string triggerDeleteSql =
-                        $"CREATE TRIGGER IF NOT EXISTS {quotedTriggerDelete} DELETE ON {quotedTable} " +
-                        $"BEGIN INSERT INTO {quotedSystemTable} (dbName, tableName, action, synchId) " +
-                        $"VALUES ('{safeDbName}', '{safeTableNameLiteral}', 'delete', old.synchId); END;";
-                    await sxmTransaction.ExecuteCreateTriggerAsync(triggerDeleteSql).ConfigureFalse();
-                }
-            }
         }
 
         /// <summary>

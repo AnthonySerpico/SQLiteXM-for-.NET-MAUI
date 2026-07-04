@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using static SQLiteXM.SxmDefines;
+using static SxmQueryProcessor;
 
 /*
 csharp
@@ -200,296 +201,51 @@ namespace SQLiteXM
             }
         }
 
-        /************************************************************************* INSERT ********************************************************************/
-        /// <summary>
-        /// Perform an insert statement and map the returning row to <typeparamref name="TResult"/>.
-        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
-        /// </summary>
-        /// <typeparam name="T">Type of the input parameter object.</typeparam>
-        /// <typeparam name="TResult">Type of the result record to return.</typeparam>
-        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
-        /// <param name="userObjectParameters">User object with parameter values.</param>
-        /// <returns>The first result row mapped to <typeparamref name="TResult"/>.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
-        public async Task<TResult> InsertAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Insert)
-                throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<TResult> select = await RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters).ConfigureFalse();
-            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
-        }
-
-        /// <summary>
-        /// Perform an insert and return the first result row as a dictionary.
-        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
-        /// </summary>
-        /// <typeparam name="T">Type of the input parameter object.</typeparam>
-        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
-        /// <param name="userObjectParameters">User object with parameter values.</param>
-        /// <returns>Dictionary of inserted columns for the first returned row.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
-        public async Task<Dictionary<string, object?>> InsertAsync<T>(string sqlStatementName, T userObjectParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Insert)
-                throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<Dictionary<string, object?>> select = await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
-            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
-        }
-
-        /// <summary>
-        /// Perform an insert using dictionary parameters and map the result to <typeparamref name="TResult"/>.
-        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
-        /// </summary>
-        /// <typeparam name="TResult">Type of the result record to return.</typeparam>
-        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
-        /// <param name="sqlStatementParameters">Dictionary of named parameter values.</param>
-        /// <returns>The first result row mapped to <typeparamref name="TResult"/>.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
-        public async Task<TResult> InsertAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Insert)
-                throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
-        }
-
-        /// <summary>
-        /// Perform an insert using dictionary parameters and return the first result row as dictionary.
-        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
-        /// </summary>
-        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
-        /// <param name="sqlStatementParameters">Dictionary of named parameter values.</param>
-        /// <returns>Dictionary of inserted columns for the first returned row.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
-        public async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Insert)
-                throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, new List<object>(1) { sqlStatementParameters }).ConfigureFalse();
-            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
-        }
-
-        /// <summary>
-        /// Perform an insert using a list of parameter objects and map the first result to <typeparamref name="TResult"/>.
-        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
-        /// </summary>
-        /// <typeparam name="TResult">Type of the result record to return.</typeparam>
-        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
-        /// <param name="sqlStatementParameters">Ordered list of parameter values.</param>
-        /// <returns>The first result row mapped to <typeparamref name="TResult"/>.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
-        public async Task<TResult> InsertAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Insert)
-                throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<TResult> select = await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
-        }
-
-        /// <summary>
-        /// Perform an insert using a list of parameter objects and return the first result row as dictionary.
-        /// Throws <see cref="InvalidOperationException"/> when the insert did not produce a result row.
-        /// </summary>
-        /// <param name="sqlStatementName">Named SQL statement to execute.</param>
-        /// <param name="sqlStatementParameters">Ordered list of parameter values.</param>
-        /// <returns>Dictionary of inserted columns for the first returned row.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is not an insert statement.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the insert statement did not return any rows.</exception>
-        public async Task<Dictionary<string, object?>> InsertAsync(string sqlStatementName, List<object> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Insert)
-                throw new ArgumentException(string.Format("You cannot perform an insert using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-            return SxmHelpers.GetFirstOrThrow(select, sqlStatementName);
-        }
-
-
-        /************************************************************************* UPDATE ********************************************************************/
-
-        /// <summary>
-        /// Perform an update statement using a user object for parameters. Supports entity mapping.
-        /// </summary>
-        public async Task UpdateAsync<T>(string sqlStatementName, T userObjectParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Update && statementType != SqlStatementType.UpdateDirect)
-                throw new ArgumentException(string.Format("You cannot perform an update using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform an update using dictionary parameters. Supports dictionary of named parameters.
-        /// </summary>
-        public async Task UpdateAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Update && statementType != SqlStatementType.UpdateDirect)
-                throw new ArgumentException(string.Format("You cannot perform an update using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform an update using a list of parameter objects. Supports list of positional parameters.
-        /// </summary>
-        public async Task UpdateAsync(string sqlStatementName, List<object> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Update && statementType != SqlStatementType.UpdateDirect)
-                throw new ArgumentException(string.Format("You cannot perform an update using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-
-        /************************************************************************* SELECT ********************************************************************/
-        /// <summary>
-        /// Perform a select statement and return a list of dictionary rows. Supports entity mapping. Return list of dictionary rows.
-        /// </summary>
-        public async Task<List<Dictionary<string, object?>>> SelectAsync<T>(string sqlStatementName, T userObjectParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
-                throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform a select statement and map results to <typeparamref name="TResult"/>. Supports entity mapping. Return a List of entity objects.
-        /// </summary>
-        public async Task<List<TResult>> SelectAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
-                throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform a select using dictionary parameters and return list of dictionary rows. Supports dictionary of named parameters. Return list of dictionary rows.
-        /// </summary>
-        public async Task<List<Dictionary<string, object?>>> SelectAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
-                throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform a select using dictionary parameters and map to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return a List of entity objects.
-        /// </summary>
-        public async Task<List<TResult>> SelectAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
-                throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform a select using a list of parameter objects and map to <typeparamref name="TResult"/>. Supports List of positional parameters. Return a List of entity objects.
-        /// </summary>
-        public async Task<List<TResult>> SelectAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
-                throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform a select using a list of parameter objects and return list of dictionary rows. Supports List of positional parameters. Return list of dictionary rows.
-        /// </summary>
-        public async Task<List<Dictionary<string, object?>>> SelectAsync(string sqlStatementName, List<object> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Select && statementType != SqlStatementType.SelectDirect)
-                throw new ArgumentException(string.Format("You cannot perform a select using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            return await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-
-        /************************************************************************* DELETE ********************************************************************/
-
-        /// <summary>
-        /// Perform a delete statement using a user object for parameters. Supports entity mapping.
-        /// </summary>
-        public async Task DeleteAsync<T>(string sqlStatementName, T userObjectParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Delete && statementType != SqlStatementType.DeleteDirect)
-                throw new ArgumentException(string.Format("You cannot perform a delete using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            await RunStatementAsync<T>(sqlStatementName, userObjectParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform a delete using dictionary parameters. Supports dictionary of named parameters.
-        /// </summary>
-        public async Task DeleteAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Delete && statementType != SqlStatementType.DeleteDirect)
-                throw new ArgumentException(string.Format("You cannot perform a delete using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Perform a delete using a list of parameter objects. Supports List of positional parameters.
-        /// </summary>
-        public async Task DeleteAsync(string sqlStatementName, List<object> sqlStatementParameters)
-        {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
-            if (statementType != SqlStatementType.Delete && statementType != SqlStatementType.DeleteDirect)
-                throw new ArgumentException(string.Format("You cannot perform a delete using a {0} statement.", SxmHelpers.GetDatabaseStatementTypeName(statementType)));
-            await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-        }
-
-
         /************************************************************************* GENERIC ********************************************************************/
 
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and map results to <typeparamref name="TResult"/>. Supports entity mapping. Return a List of entity objects.
         /// </summary>
-        private async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
+        public async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
+            SqlStatementDetails statementDetails = new();
 
-            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
+            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlStatementName);
+            if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+            {
+                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlStatementName, this._databaseName);
+            }
+
+            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementDetails.SqlStatementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
             List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, selectParameterValues).ConfigureFalse();
-            List<TResult> userRecordList = SxmHelpers.PopulateUserRecord<TResult>(select);
 
-            return userRecordList;
+            return SxmHelpers.PopulateUserRecord<TResult>(select);
         }
 
         /// <summary>
         /// Generic runner: execute with dictionary parameters and map results to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return a List of entity objects.
         /// </summary>
-        private async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
+        public async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
         }
 
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and return list of dictionary rows. Supports entity mapping. Return list of dictionary rows.
         /// </summary>
-        private async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
+        public async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
         {
-            SqlStatementType statementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
+            SqlStatementDetails statementDetails = new();
 
-            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementType).ConfigureFalse();
+            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlStatementName);
+            if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+            {
+                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlStatementName, this._databaseName);
+            }
+
+            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementDetails.SqlStatementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
 
             return await RunStatementAsync(sqlStatementName, selectParameterValues).ConfigureFalse();
@@ -498,7 +254,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: wrapper for dictionary-to-list overload. Execute with dictionary parameters and return list of dictionary rows. Supports dictionary of named parameters. Return list of dictionary rows.
         /// </summary>
-        private async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
+        public async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
             return await RunStatementAsync(sqlStatementName, new List<object>(1) { sqlStatementParameters }).ConfigureFalse();
         }
@@ -506,10 +262,9 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: execute with a list of parameter objects and map results to <typeparamref name="TResult"/>. Supports List of positional parameters. Return a List of entity objects.
         /// </summary>
-        private async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
+        public async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
-
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
         }
 
@@ -519,52 +274,38 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Named SQL statement.</param>
         /// <param name="sqlStatementParameters">Parameters supplied as a list of dictionaries or other objects as expected by the helper.</param>
         /// <returns>List of result rows as dictionaries. Empty list when no rows are returned.</returns>
-        private async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters)
+        public async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters)
         {
             List<Dictionary<string, object?>> recordData = default(List<Dictionary<string, object?>>)!;
 
             if (!_encounteredError)
             {
-                SqlStatementType sqlStatementType = SxmHelpers.GetDatabaseStatementType(sqlStatementName, this._databaseName);
+                SqlStatementDetails statementDetails = new();
+
+                statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlStatementName);
+                if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+                {
+                    statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlStatementName, this._databaseName);
+                }
 
                 try
                 {
-                    switch (sqlStatementType)
+                    switch (statementDetails.SqlStatementType)
                     {
                         case SqlStatementType.Select:
-                            recordData = await SxmSelectHelpers.PerformSelectTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse();
-                            break;
-
                         case SqlStatementType.Update:
-                            await SxmUpdateHelpers.PerformUpdateTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse();
-                            break;
-
                         case SqlStatementType.Delete:
-                            await SxmDeleteHelpers.PerformDeleteTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse();
-                            break;
-
                         case SqlStatementType.Insert:
-                            recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.PerformInsertTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse());
+                            recordData = await SxmSelectHelpers.PerformSelectTransAsync(sqlStatementName, sqlStatementParameters, statementDetails, this).ConfigureFalse();
                             break;
 
 
                         // Direct SQL statement queries. These are statements where the SQL is embedded in the code, not inside the SqlStatemenst file.
                         case SqlStatementType.SelectDirect:
-                            recordData = await SxmSelectHelpers.PerformSelectDirectTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse();
-                            break;
-
                         case SqlStatementType.UpdateDirect:
-                            await SxmUpdateHelpers.PerformUpdateDirectTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse();
-                            break;
-
                         case SqlStatementType.DeleteDirect:
-                            await SxmDeleteHelpers.PerformDeleteDirectTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse();
-                            break;
-
                         case SqlStatementType.InsertDirect:
-                            recordData = new List<Dictionary<string, object?>>(1);
-                            recordData.Add(await SxmInsertHelpers.PerformInsertDirectTransAsync(sqlStatementName, sqlStatementParameters, this).ConfigureFalse()); 
+                            recordData = await SxmSelectHelpers.PerformSelectDirectTransAsync(sqlStatementName, sqlStatementParameters, statementDetails, this).ConfigureFalse();
                             break;
 
                         default: break;
@@ -575,12 +316,12 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, sqlStatementType );
+                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, statementDetails.SqlStatementType);
                     string statementName = string.Empty;
-                    if (sqlStatementType != SqlStatementType.SelectDirect &&
-                        sqlStatementType != SqlStatementType.UpdateDirect &&
-                        sqlStatementType != SqlStatementType.DeleteDirect &&
-                        sqlStatementType != SqlStatementType.InsertDirect)
+                    if (statementDetails.SqlStatementType != SqlStatementType.SelectDirect &&
+                        statementDetails.SqlStatementType != SqlStatementType.UpdateDirect &&
+                        statementDetails.SqlStatementType != SqlStatementType.DeleteDirect &&
+                        statementDetails.SqlStatementType != SqlStatementType.InsertDirect)
 
                     {
                         statementName = $"SQL statement: '{sqlStatementName}'.";
@@ -595,12 +336,12 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, sqlStatementType );
+                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, statementDetails.SqlStatementType);
                     string statementName = string.Empty;
-                    if (sqlStatementType != SqlStatementType.SelectDirect &&
-                        sqlStatementType != SqlStatementType.UpdateDirect &&
-                        sqlStatementType != SqlStatementType.DeleteDirect &&
-                        sqlStatementType != SqlStatementType.InsertDirect)
+                    if (statementDetails.SqlStatementType != SqlStatementType.SelectDirect &&
+                        statementDetails.SqlStatementType != SqlStatementType.UpdateDirect &&
+                        statementDetails.SqlStatementType != SqlStatementType.DeleteDirect &&
+                        statementDetails.SqlStatementType != SqlStatementType.InsertDirect)
 
                     {
                         statementName = $"SQL statement: '{sqlStatementName}'.";

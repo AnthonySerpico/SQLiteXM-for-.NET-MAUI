@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SQLiteXM.SxmDefines;
+using static SxmQueryProcessor;
 
 namespace SQLiteXM
 {
@@ -29,7 +32,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while creating the transaction or executing the query.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectAsync(string sqlStatementName, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectAsync(string sqlStatementName, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
             string? databaseName = default;
@@ -39,8 +42,15 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     databaseName = sxmTransaction.Connection?.DatabaseName;
-                    await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+
+                    await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters, statementDetails.SqlStatementType).ConfigureFalse();
                     selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
+
+                    // Only do this if this is an INSERT
+                    if (statementDetails.SqlStatementType == SqlStatementType.Insert || statementDetails.SqlStatementType == SqlStatementType.InsertDirect)
+                        await SxmSelectHelpers.FinalizeInsertProcessing(sqlStatementName, selectedRows, sxmTransaction, statementDetails);
+
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -75,14 +85,18 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while executing the query on the provided transaction.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 
             try
             {
-                await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+                await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters, statementDetails.SqlStatementType).ConfigureFalse();
                 selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
+
+                // Only do this if this is an INSERT
+                if (statementDetails.SqlStatementType == SqlStatementType.Insert || statementDetails.SqlStatementType == SqlStatementType.InsertDirect)
+                    await SxmSelectHelpers.FinalizeInsertProcessing(sqlStatementName, selectedRows, sxmTransaction, statementDetails);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -116,7 +130,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while creating the transaction or executing the query.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectAsync(string sqlStatement, List<object> sqlStatementParameters, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectAsync(string sqlStatement, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
             string? databaseName = default;
@@ -126,8 +140,15 @@ namespace SQLiteXM
                 await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(dbName))
                 {
                     databaseName = sxmTransaction.Connection?.DatabaseName;
+
                     await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
                     selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
+
+                    // Only do this if this is an INSERT
+                    if (statementDetails.SqlStatementType == SqlStatementType.Insert || statementDetails.SqlStatementType == SqlStatementType.InsertDirect)
+                        await SxmSelectHelpers.FinalizeInsertProcessing(sqlStatement, selectedRows, sxmTransaction, statementDetails);
+
+                    await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
@@ -160,7 +181,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while executing the query on the provided transaction.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectTransAsync(string sqlStatement, List<object> sqlStatementParameters, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectDirectTransAsync(string sqlStatement, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 
@@ -168,6 +189,10 @@ namespace SQLiteXM
             {
                 await sxmTransaction.ExecuteQueryDirectAsync(sqlStatement, sqlStatementParameters).ConfigureFalse();
                 selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
+
+                // Only do this if this is an INSERT
+                if (statementDetails.SqlStatementType == SqlStatementType.Insert || statementDetails.SqlStatementType == SqlStatementType.InsertDirect)
+                    await SxmSelectHelpers.FinalizeInsertProcessing(sqlStatement, selectedRows, sxmTransaction, statementDetails);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
@@ -183,6 +208,47 @@ namespace SQLiteXM
             }
 
             return await Task.FromResult(selectedRows).ConfigureFalse();
+        }
+
+        private static async Task FinalizeInsertProcessing(string command, List<Dictionary<string, object?>> selectedRows, SxmUTransaction sxmTransaction, SqlStatementDetails statementDetails)
+        {
+            long recordId = await sxmTransaction.GetLastInsertRowIdAsync().ConfigureFalse();
+
+            // The 'id' is not already in the first selected return row, so we need to add it manually.
+            if (selectedRows.Count > 0 && !selectedRows[0].ContainsKey("id"))
+            {
+                selectedRows[0]["id"] = recordId;
+            }
+            else if (selectedRows.Count == 0)
+            {
+                selectedRows.Add(new Dictionary<string, object?> { ["id"] = recordId });
+            }
+
+            string tableName = string.Empty;
+            if (statementDetails.SqlStatementType == SqlStatementType.Insert)
+            {
+                if (!SxmSqlStatements.InsertStatements.TryGetValue(command, out InsertDefinition? insertDefinition) || insertDefinition == null)
+                {
+                    throw new SxmException(new ErrorMessage(SxmDefines.SxmErrorCode.UnknownSqlStatement, command));
+                }
+                tableName = insertDefinition.TableName;
+            }
+            else if (statementDetails.SqlStatementType == SqlStatementType.InsertDirect)
+            {
+                tableName = statementDetails.TargetTableName;
+            }
+
+            if (!string.IsNullOrEmpty(tableName))
+            {
+                byte[]? synchId = await sxmTransaction.GetSynchIdAsync(tableName, recordId).ConfigureFalse();
+
+                // If the 'synchId' is not already in the first selected return row, we need to add it manually. At this point, 
+                // we should have at least one row in the selectedRows list, so we can safely add the 'synchId' to the first row.
+                if (!selectedRows[0].ContainsKey("synchId"))
+                {
+                    selectedRows[0]["synchId"] = synchId;
+                }
+            }
         }
     }
 }
