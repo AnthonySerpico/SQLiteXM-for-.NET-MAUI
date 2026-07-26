@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using System.Xml.Serialization;
-using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM

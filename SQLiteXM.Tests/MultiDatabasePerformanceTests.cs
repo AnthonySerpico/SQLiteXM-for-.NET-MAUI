@@ -180,23 +180,37 @@ public class MultiDatabasePerformanceTests : IDisposable
 
         var stopwatch = Stopwatch.StartNew();
 
-        // Act - Insert 5,000 entities into each of 3 databases (15,000 total) using transactions
+        // Act - Insert 5,000 entities into each of 3 databases (15,000 total) using sequential transactions
+        // Products database
         var productConnection = new SxmConnection("products", shared: false);
-        var orderConnection = new SxmConnection("orders", shared: false);
-        var auditConnection = new SxmConnection("audit", shared: false);
-
         await using (var productTransaction = await SxmSqlTransaction.CreateAsync(productConnection))
-        await using (var orderTransaction = await SxmSqlTransaction.CreateAsync(orderConnection))
-        await using (var auditTransaction = await SxmSqlTransaction.CreateAsync(auditConnection))
         {
             for (int i = 0; i < 5_000; i++)
             {
                 await new Product { Name = $"Product {i}", Price = i, InStock = true }.SaveAsync(productTransaction);
-                await new Order { CustomerName = $"Customer {i}", Total = i * 10, IsPaid = true }.SaveAsync(orderTransaction);
-                await new AuditLog { Action = $"Action {i}", Timestamp = DateTime.Now }.SaveAsync(auditTransaction);
             }
             await productTransaction.CommitTransactionAsync();
+        }
+
+        // Orders database
+        var orderConnection = new SxmConnection("orders", shared: false);
+        await using (var orderTransaction = await SxmSqlTransaction.CreateAsync(orderConnection))
+        {
+            for (int i = 0; i < 5_000; i++)
+            {
+                await new Order { CustomerName = $"Customer {i}", Total = i * 10, IsPaid = true }.SaveAsync(orderTransaction);
+            }
             await orderTransaction.CommitTransactionAsync();
+        }
+
+        // Audit database
+        var auditConnection = new SxmConnection("audit", shared: false);
+        await using (var auditTransaction = await SxmSqlTransaction.CreateAsync(auditConnection))
+        {
+            for (int i = 0; i < 5_000; i++)
+            {
+                await new AuditLog { Action = $"Action {i}", Timestamp = DateTime.Now }.SaveAsync(auditTransaction);
+            }
             await auditTransaction.CommitTransactionAsync();
         }
 

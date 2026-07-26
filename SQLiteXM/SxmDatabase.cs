@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Xml.Linq;
-using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 using static SQLiteXM.SxmSerialization;
 using static SxmQueryProcessor;

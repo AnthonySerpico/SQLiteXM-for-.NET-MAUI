@@ -2,7 +2,6 @@
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
-using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 
 namespace SQLiteXM

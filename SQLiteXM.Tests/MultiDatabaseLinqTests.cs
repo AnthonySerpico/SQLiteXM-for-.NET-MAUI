@@ -199,21 +199,23 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.InitializeAsync(stream3, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order));
 
+        // Products database transaction
         var prodConnection = new SxmConnection("products", shared: false);
-        await using var prodTransaction = await SxmSqlTransaction.CreateAsync(prodConnection);
+        await using (var prodTransaction = await SxmSqlTransaction.CreateAsync(prodConnection))
+        {
+            await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync(prodTransaction);
+            await new Product { Name = "Banana", Price = 0.99m, InStock = false }.SaveAsync(prodTransaction);
+            await prodTransaction.CommitTransactionAsync();
+        }
 
-        await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync(prodTransaction);
-        await new Product { Name = "Banana", Price = 0.99m, InStock = false }.SaveAsync(prodTransaction);
-
-        await prodTransaction.CommitTransactionAsync();
-
+        // Orders database transaction
         var ordConnection = new SxmConnection("orders", shared: false);
-        await using var ordTransaction = await SxmSqlTransaction.CreateAsync(ordConnection);
-
-        await new Order { CustomerName = "John", Total = 100.00m, IsPaid = true }.SaveAsync(ordTransaction);
-        await new Order { CustomerName = "Jane", Total = 50.00m, IsPaid = false }.SaveAsync(ordTransaction);
-
-        await ordTransaction.CommitTransactionAsync();
+        await using (var ordTransaction = await SxmSqlTransaction.CreateAsync(ordConnection))
+        {
+            await new Order { CustomerName = "John", Total = 100.00m, IsPaid = true }.SaveAsync(ordTransaction);
+            await new Order { CustomerName = "Jane", Total = 50.00m, IsPaid = false }.SaveAsync(ordTransaction);
+            await ordTransaction.CommitTransactionAsync();
+        }
 
         // Act & Assert - Products database
         using (var context = new SxmLinqDbContext("products"))

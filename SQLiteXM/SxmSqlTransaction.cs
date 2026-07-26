@@ -70,43 +70,79 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Async factory overload that uses an existing <see cref="SxmConnection"/>.
-        /// If the connection is shared, this method will attempt to acquire the connection lock asynchronously.
+        /// Factory method that creates an ambient <see cref="SxmSqlTransaction"/> using an existing <see cref="SxmConnection"/>.
+        /// If the connection is shared, this method acquires the connection lock asynchronously.
+        /// If the connection is non-shared, the transaction is created synchronously without async state machine overhead.
         /// </summary>
         /// <param name="conn">An existing <see cref="SxmConnection"/> instance.</param>
-        /// <param name="waitMilliseconds">Maximum time to wait for a shared connection lock when required.</param>
-        /// <param name="cancellationToken">Cancellation token to abort waiting for the lock.</param>
-        /// <returns>An ambient <see cref="SxmSqlTransaction"/> with the connection lock acquired when appropriate.</returns>
+        /// <param name="waitMilliseconds">Maximum time to wait for a shared connection lock when required (only used for shared connections).</param>
+        /// <param name="cancellationToken">Cancellation token to abort waiting for the lock (only used for shared connections).</param>
+        /// <returns>
+        /// A <see cref="Task{T}"/> that represents the asynchronous operation.
+        /// The task result contains an ambient <see cref="SxmSqlTransaction"/> with the connection lock acquired when appropriate.
+        /// </returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="conn"/> is null.</exception>
         /// <exception cref="SxmException">Thrown when a shared connection lock cannot be acquired.</exception>
-        public new static async Task<SxmSqlTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
+        /// <exception cref="InvalidOperationException">Thrown when attempting to create a nested ambient transaction.</exception>
+        /// <remarks>
+        /// <para>
+        /// This method optimizes execution based on connection sharing:
+        /// </para>
+        /// <list type="bullet">
+        /// <item><description><b>Non-shared connections</b>: Completes synchronously using <see cref="Task.FromResult{TResult}"/>, 
+        /// avoiding async state machine overhead while preserving <see cref="System.Threading.AsyncLocal{T}"/> ambient transaction context.</description></item>
+        /// <item><description><b>Shared connections</b>: Executes asynchronously to acquire the connection lock without blocking.</description></item>
+        /// </list>
+        /// <para>
+        /// The created transaction is automatically registered as the ambient transaction via <see cref="SxmAmbientTransaction"/>.
+        /// Nested ambient transactions are not allowed and will throw <see cref="InvalidOperationException"/>.
+        /// </para>
+        /// </remarks>
+        public new static Task<SxmSqlTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
         {
             if (conn == null) throw new ArgumentNullException(nameof(conn));
 
-            bool ownsLock = false;
-            Guid? ownerId = null;
-            ISxmConnectionLease? lease = null;
-
-            // Only attempt lock when the supplied connection is shared.
-            if (conn.Shared)
+            // Non-shared connections: execute synchronously without async machinery
+            if (!conn.Shared)
             {
-                // Acquire lease (this internally calls LockAsync and will throw on timeout)
-                lease = await conn.AcquireLeaseAsync(waitMilliseconds, cancellationToken).ConfigureFalse();
-
-                // record ownerId for metadata/logging
-                ownerId = lease.OwnerId;
-                ownsLock = true;
+                var tx = new SxmSqlTransaction(conn, ownsLock: false, ownerId: null);
+                tx._connectionLease = null;
+                SxmAmbientTransaction.Push(tx);
+                return Task.FromResult(tx);
             }
 
-            var tx = new SxmSqlTransaction(conn, ownsLock: ownsLock, ownerId: ownerId);
+            // Shared connections: use actual async execution
+            return CreateAsyncSharedCore(conn, waitMilliseconds, cancellationToken);
+        }
 
-            // Store lease so DisposeAsync can deterministically release it.
+        /// <summary>
+        /// Core async implementation for creating transactions with shared connections.
+        /// This method handles the asynchronous lock acquisition for shared connections.
+        /// </summary>
+        /// <param name="conn">The shared <see cref="SxmConnection"/> instance.</param>
+        /// <param name="waitMilliseconds">Maximum time to wait for the shared connection lock.</param>
+        /// <param name="cancellationToken">Cancellation token to abort waiting for the lock.</param>
+        /// <returns>
+        /// A <see cref="Task{T}"/> representing the asynchronous operation.
+        /// The task result contains an ambient <see cref="SxmSqlTransaction"/> with the connection lock acquired.
+        /// </returns>
+        /// <exception cref="SxmException">Thrown when the shared connection lock cannot be acquired within the timeout period.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when attempting to create a nested ambient transaction.</exception>
+        /// <remarks>
+        /// This method is called by <see cref="CreateAsync"/> when the connection is shared and requires asynchronous lock acquisition.
+        /// The lease is acquired before creating the transaction, and the transaction owns the lock until disposed.
+        /// </remarks>
+        private static async Task<SxmSqlTransaction> CreateAsyncSharedCore(SxmConnection conn, int waitMilliseconds, CancellationToken cancellationToken)
+        {
+            // Acquire lease (this internally calls LockAsync and will throw on timeout)
+            var lease = await conn.AcquireLeaseAsync(waitMilliseconds, cancellationToken).ConfigureFalse();
+
+            var tx = new SxmSqlTransaction(conn, ownsLock: true, ownerId: lease.OwnerId);
             tx._connectionLease = lease;
 
             SxmAmbientTransaction.Push(tx);
             return tx;
         }
-
 
         /// <summary>
         /// Asynchronous dispose which will attempt to commit the transaction if this instance is the ambient/top transaction and no error was encountered.

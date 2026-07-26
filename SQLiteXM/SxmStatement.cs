@@ -1,7 +1,6 @@
 ﻿using LinqToDB.SqlQuery;
 using System.Data;
 using System.Reflection;
-using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 using static SQLiteXM.SxmDefines;
 using static SxmQueryProcessor;
 

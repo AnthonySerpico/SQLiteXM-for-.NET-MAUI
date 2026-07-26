@@ -171,7 +171,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.ToListAsync(cancellationToken);
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.ToArrayAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.ToArrayAsync(cancellationToken);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.FirstAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.FirstAsync(cancellationToken);
         }
 
         /// <summary>
@@ -204,7 +204,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.FirstOrDefaultAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.FirstOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SingleAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.SingleAsync(cancellationToken);
         }
 
         /// <summary>
@@ -226,7 +226,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.SingleOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -237,7 +237,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.CountAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.CountAsync(cancellationToken);
         }
 
         /// <summary>
@@ -248,7 +248,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AnyAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.AnyAsync(cancellationToken);
         }
 
         /// <summary>
@@ -260,7 +260,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AllAsync((IQueryable<T>)itable, predicate, cancellationToken);
+            return itable.AllAsync(predicate, cancellationToken);
         }
 
         /// <summary>
@@ -272,7 +272,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.MaxAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.MaxAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -284,7 +284,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.MinAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.MinAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -295,7 +295,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.LongCountAsync((IQueryable<T>)itable, cancellationToken);
+            return itable.LongCountAsync(cancellationToken);
         }
 
         /// <summary>
@@ -306,7 +306,7 @@ namespace SQLiteXM
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.ContainsAsync((IQueryable<T>)itable, item, cancellationToken);
+            return itable.ContainsAsync(item, cancellationToken);
         }
 
         /// <summary>
@@ -391,7 +391,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken);
+            return query.ToListAsync(cancellationToken);
         }
 
         /// <summary>
@@ -401,7 +401,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.ToArrayAsync(query, cancellationToken);
+            return query.ToArrayAsync(cancellationToken);
         }
 
         /// <summary>
@@ -411,7 +411,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.FirstAsync(query, cancellationToken);
+            return query.FirstAsync(cancellationToken);
         }
 
         /// <summary>
@@ -421,7 +421,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.FirstOrDefaultAsync(query, cancellationToken);
+            return query.FirstOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -431,7 +431,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.SingleAsync(query, cancellationToken);
+            return query.SingleAsync(cancellationToken);
         }
 
         /// <summary>
@@ -441,7 +441,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync(query, cancellationToken);
+            return query.SingleOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -451,7 +451,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.CountAsync(query, cancellationToken);
+            return query.CountAsync(cancellationToken);
         }
 
         /// <summary>
@@ -461,7 +461,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.AnyAsync(query, cancellationToken);
+            return query.AnyAsync(cancellationToken);
         }
 
         /// <summary>
@@ -472,7 +472,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-            return LinqToDB.AsyncExtensions.AllAsync(query, predicate, cancellationToken);
+            return query.AllAsync(predicate, cancellationToken);
         }
 
         /// <summary>
@@ -483,7 +483,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.MaxAsync(query, selector, cancellationToken);
+            return query.MaxAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -494,7 +494,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.MinAsync(query, selector, cancellationToken);
+            return query.MinAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -504,7 +504,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.LongCountAsync(query, cancellationToken);
+            return query.LongCountAsync(cancellationToken);
         }
 
         /// <summary>
@@ -514,7 +514,7 @@ namespace SQLiteXM
             where T : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return LinqToDB.AsyncExtensions.ContainsAsync(query, item, cancellationToken);
+            return query.ContainsAsync(item, cancellationToken);
         }
 
         /// <summary>
@@ -549,7 +549,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.AverageAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -561,7 +561,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.AverageAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -573,7 +573,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.AverageAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -585,7 +585,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.AverageAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -597,7 +597,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.AverageAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -609,7 +609,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AverageAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.AverageAsync(selector, cancellationToken);
         }
 
         // ---------- forwarding IQueryable overloads ----------
@@ -619,7 +619,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+            return query.AverageAsync(selector, cancellationToken);
         }
 
         public static Task<double?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default)
@@ -627,7 +627,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+            return query.AverageAsync(selector, cancellationToken);
         }
 
         public static Task<float> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, float>> selector, CancellationToken cancellationToken = default)
@@ -635,7 +635,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+            return query.AverageAsync(selector, cancellationToken);
         }
 
         public static Task<float?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, float?>> selector, CancellationToken cancellationToken = default)
@@ -643,7 +643,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+            return query.AverageAsync(selector, cancellationToken);
         }
 
         public static Task<decimal> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal>> selector, CancellationToken cancellationToken = default)
@@ -651,7 +651,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+            return query.AverageAsync(selector, cancellationToken);
         }
 
         public static Task<decimal?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal?>> selector, CancellationToken cancellationToken = default)
@@ -659,7 +659,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
+            return query.AverageAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -676,7 +676,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -688,7 +688,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -700,7 +700,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -712,7 +712,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -724,7 +724,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -736,7 +736,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -748,7 +748,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -760,7 +760,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -772,7 +772,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -784,7 +784,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SumAsync((IQueryable<T>)itable, selector, cancellationToken);
+            return itable.SumAsync(selector, cancellationToken);
         }
 
         // ---------- forwarding IQueryable overloads ----------
@@ -797,7 +797,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -808,7 +808,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -819,7 +819,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -830,7 +830,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -841,7 +841,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -852,7 +852,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -863,7 +863,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -874,7 +874,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -885,7 +885,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -896,7 +896,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (selector == null) throw new ArgumentNullException(nameof(selector));
-            return LinqToDB.AsyncExtensions.SumAsync(query, selector, cancellationToken);
+            return query.SumAsync(selector, cancellationToken);
         }
 
         /// <summary>
@@ -918,7 +918,7 @@ namespace SQLiteXM
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
 
             // Materialize rows asynchronously then build dictionary client-side to avoid provider overload mismatches.
-            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).ConfigureFalse();
+            var list = await itable.ToListAsync(cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
 
             var dict = new Dictionary<TKey, T>();
@@ -953,7 +953,7 @@ namespace SQLiteXM
 
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
 
-            var list = await LinqToDB.AsyncExtensions.ToListAsync((IQueryable<T>)itable, cancellationToken).ConfigureFalse();
+            var list = await itable.ToListAsync(cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
             var elemFunc = elementSelector.Compile();
 
@@ -978,7 +978,7 @@ namespace SQLiteXM
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
 
-            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).ConfigureFalse();
+            var list = await query.ToListAsync(cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
 
             var dict = new Dictionary<TKey, T>();
@@ -1003,7 +1003,7 @@ namespace SQLiteXM
             if (keySelector == null) throw new ArgumentNullException(nameof(keySelector));
             if (elementSelector == null) throw new ArgumentNullException(nameof(elementSelector));
 
-            var list = await LinqToDB.AsyncExtensions.ToListAsync(query, cancellationToken).ConfigureFalse();
+            var list = await query.ToListAsync(cancellationToken).ConfigureFalse();
             var keyFunc = keySelector.Compile();
             var elemFunc = elementSelector.Compile();
 
@@ -1029,7 +1029,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.FirstAsync((IQueryable<T>)itable, predicate, cancellationToken);
+            return itable.FirstAsync(predicate, cancellationToken);
         }
 
         /// <summary>
@@ -1041,7 +1041,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.FirstOrDefaultAsync((IQueryable<T>)itable, predicate, cancellationToken);
+            return itable.FirstOrDefaultAsync(predicate, cancellationToken);
         }
 
         /// <summary>
@@ -1053,7 +1053,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SingleAsync((IQueryable<T>)itable, predicate, cancellationToken);
+            return itable.SingleAsync(predicate, cancellationToken);
         }
 
         /// <summary>
@@ -1065,7 +1065,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync((IQueryable<T>)itable, predicate, cancellationToken);
+            return itable.SingleOrDefaultAsync(predicate, cancellationToken);
         }
 
         /// <summary>
@@ -1077,7 +1077,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.AnyAsync((IQueryable<T>)itable, predicate, cancellationToken);
+            return itable.AnyAsync(predicate, cancellationToken);
         }
 
         /// <summary>
@@ -1089,7 +1089,7 @@ namespace SQLiteXM
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
             var itable = table.AsITable() ?? throw new InvalidOperationException("Operation requires LinqToDB ITable<T>.");
-            return LinqToDB.AsyncExtensions.CountAsync((IQueryable<T>)itable, predicate, cancellationToken);
+            return itable.CountAsync(predicate, cancellationToken);
         }
 
         // ---------- forwarding IQueryable overloads with predicate ----------
@@ -1099,7 +1099,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-            return LinqToDB.AsyncExtensions.FirstAsync(query, predicate, cancellationToken);
+            return query.FirstAsync(predicate, cancellationToken);
         }
 
         public static Task<T?> FirstOrDefaultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
@@ -1107,7 +1107,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-            return LinqToDB.AsyncExtensions.FirstOrDefaultAsync(query, predicate, cancellationToken);
+            return query.FirstOrDefaultAsync(predicate, cancellationToken);
         }
 
         public static Task<T> SingleAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
@@ -1115,7 +1115,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-            return LinqToDB.AsyncExtensions.SingleAsync(query, predicate, cancellationToken);
+            return query.SingleAsync(predicate, cancellationToken);
         }
 
         public static Task<T?> SingleOrDefaultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
@@ -1123,7 +1123,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-            return LinqToDB.AsyncExtensions.SingleOrDefaultAsync(query, predicate, cancellationToken);
+            return query.SingleOrDefaultAsync(predicate, cancellationToken);
         }
 
         public static Task<bool> AnyAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
@@ -1131,7 +1131,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-            return LinqToDB.AsyncExtensions.AnyAsync(query, predicate, cancellationToken);
+            return query.AnyAsync(predicate, cancellationToken);
         }
 
         public static Task<int> CountAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
@@ -1139,7 +1139,7 @@ namespace SQLiteXM
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (predicate == null) throw new ArgumentNullException(nameof(predicate));
-            return LinqToDB.AsyncExtensions.CountAsync(query, predicate, cancellationToken);
+            return query.CountAsync(predicate, cancellationToken);
         }
     }
 }

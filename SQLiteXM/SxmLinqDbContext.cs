@@ -1,5 +1,6 @@
 using LinqToDB;
 using LinqToDB.Data;
+using LinqToDB.DataProvider.SQLite;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Concurrent;
@@ -30,8 +31,10 @@ namespace SQLiteXM
                 if (_sqliteConnection == null)
                     throw new InvalidOperationException("Failed to create SQLite connection.");
 
-                _linqToDbDataConnection = new LinqToDB.Data.DataConnection(LinqToDB.DataProvider.SQLite.SQLiteTools.GetDataProvider("Microsoft.Data.Sqlite"), _sqliteConnection);
-                _linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
+                _linqToDbDataConnection = new DataConnection( new DataOptions()
+                                            .UseMappingSchema(SxmMapping.Schema)
+                                            .UseConnection(SQLiteTools.GetDataProvider(SQLiteProvider.Microsoft), _sqliteConnection));
+                //_linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
 
                 // Register this context with its DataConnection for context recovery
                 _contextRegistry[_linqToDbDataConnection] = new WeakReference<SxmLinqDbContext>(this);
