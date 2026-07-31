@@ -62,7 +62,7 @@ namespace SQLiteXM
         /// <param name="waitMilliseconds">Timeout to wait for any required lock.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The created <see cref="SxmUTransaction"/>.</returns>
-        public static async Task<SxmUTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
+        internal static async Task<SxmUTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
         {
             if (conn == null) throw new ArgumentNullException(nameof(conn));
 

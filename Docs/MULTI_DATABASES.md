@@ -94,7 +94,7 @@ public class User : SxmEntity
 }
 ```
 
-Because no database was specified, `User` is stored in the default database.
+Because no database is specified, the `User` table is created in the default database.
 
 ---
 
@@ -113,7 +113,7 @@ public class ApplicationLog : SxmEntity
 
 In this example:
 
-* `ApplicationLog` records are stored in the `Logging` database
+* The `ApplicationLog` table is created in the `Logging` database
 * Other entities continue to use the default database unless configured differently
 
 ---

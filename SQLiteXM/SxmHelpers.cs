@@ -285,7 +285,7 @@ namespace SQLiteXM
         {
             // Not a SQL statement in the SQL statements file? Perhaps this is a Direct SQL statement embedded in the code.
             string targetTableName = string.Empty;
-            SqlStatementDetails sqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(sqlStatementName!, databaseName);
+            SqlStatementDetails sqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(sqlStatementName!);
 
             if (sqlStatementDetails.SqlStatementType == SqlStatementType.Unknown)
                 throw new ArgumentException(string.Format("The sql statement '{0}' could not be found or identified.", sqlStatementName!.Length > 30 ? (sqlStatementName.Substring(0, 29) + "...") : sqlStatementName));

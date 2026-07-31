@@ -4,7 +4,11 @@
     {
       "database": "sqlitexmtest",
       "isDefault": true
-    }
+    },
+    {
+      "database": "logDb",
+      "isDefault": false
+    } 
   ],
 
   "_comment": "Do not include any comments in your SQL. For example, INSERT INTO user (name) /*comment */ VALUES('Bob');, or SELECT * FROM user WHERE name = 'Bob'; -- comment",

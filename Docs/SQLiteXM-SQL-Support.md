@@ -1,51 +1,143 @@
-# Direct SQL Query Support in SQLiteXM
+﻿# Embedded SQL Query Support in SQLiteXM
 
-SQLiteXM provides comprehensive support for executing raw SQL queries directly in your code. This guide explains how to use direct SQL queries, from simple examples to complex transaction scenarios.
+SQLiteXM provides comprehensive support for executing SQL statements that are embedded directly in your code. This guide explains how to use direct SQL queries, from simple examples to complex transaction scenarios.
 
 ---
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
-- [Basic SELECT Queries](#basic-select-queries)
-- [INSERT Statements](#insert-statements)
-- [UPDATE Statements](#update-statements)
-- [DELETE Statements](#delete-statements)
+- [Concepts & Conventions](#concepts--conventions)
+- [Overview](#overview)
+- [The Two Execution Contexts](#the-two-execution-contexts)
+- [One Method for All DML Statements](#one-method-for-all-dml-statements)
+- [Overload Matrix](#overload-matrix)
+- [Standalone Execution — `SxmStatement.RunStatementAsync`](#standalone-execution--sxmstatementrunstatementasync)
+- [Transactional Execution — `SxmSqlTransaction.RunStatementAsync`](#transactional-execution--sxmsqltransactionrunstatementasync)
 - [Working with Parameters](#working-with-parameters)
-- [Transactions](#transactions)
+- [Result Type Handling](#result-type-handling)
 - [Best Practices](#best-practices)
 
 ---
 
-## Quick Start
+## Concepts & Conventions
 
-SQLiteXM allows you to execute SQL queries in two ways:
+> 💡 **SQLiteXM supports all SQLite DML statements.** SQLiteXM passes the SQL you provide directly to SQLite as-is, so any DML statement (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) can use the full expressive power of SQLite. This includes joins, subqueries, common table expressions (CTEs), aggregate functions, window functions, views, `UNION` queries, `INSERT … ON CONFLICT`, `RETURNING`, and any other SQLite-supported SQL feature that appears **inside** a DML statement.
 
-1. **Named Statements** - SQL queries defined in `SqlStatements.json` and referenced by name
-2. **Direct SQL** - SQL queries written directly in your code
+> 💡 **About DTOs.** Throughout this guide, we use the term **DTO (Data Transfer Object)** to refer to simple classes that hold data. These are plain C# classes with properties, used to pass parameters into queries or to receive query results. You can also use your entity classes (classes that inherit from `SxmEntity`) in the same way. Neither the parameter DTO nor the result DTO needs to inherit from `SxmEntity`.
 
-This guide focuses on **Direct SQL** queries.
+> 💡 **Property-to-parameter mapping.** DTO parameter properties map to SQL parameter names **without the leading `@`**, and the match is **case-sensitive**. DTO result properties map to returned column names by name (also case-sensitive). Result columns without a matching property are ignored; properties without a matching column keep their default value.
+
+---
+
+## Overview
+
+`RunStatementAsync` is the single entry point for executing embedded **DML** SQL statements in SQLiteXM. The same method executes:
+
+- `SELECT` — returns the selected rows.
+- `INSERT` — returns nothing by default; returns the inserted row(s) when the SQL includes a `RETURNING` clause.
+- `UPDATE` — returns nothing by default; returns the updated row(s) when the SQL includes a `RETURNING` clause.
+- `DELETE` — returns nothing by default; returns the deleted row(s) when the SQL includes a `RETURNING` clause.
+
+> 💡 The RETURNING clause is part of standard SQL. It causes an INSERT, UPDATE, or DELETE statement to return the affected rows, producing a result set similar to a SELECT.
+
+`RunStatementAsync` is available in two execution contexts, and the one you use depends on what you're trying to do:
+
+- **`SxmStatement.RunStatementAsync`** — a static method for running a single statement on its own.
+- **`SxmSqlTransaction.RunStatementAsync`** — an instance method for running several statements together as one atomic unit of work.
+
+If you're not sure which one fits your situation, this table maps common scenarios to the right choice:
+
+| Situation | Use | Why |
+|---|---|---|
+| A single statement, for example, a read or a single write. | `SxmStatement.RunStatementAsync` | No coordination needed; the statement commits on its own. |
+| Two or more statements that must all succeed together. | `SxmSqlTransaction.RunStatementAsync` | The transaction commits as a whole or rolls back as a whole. |
+| Read some rows, decide, then write — all on the same connection. | `SxmSqlTransaction.RunStatementAsync` | Keeps the read and the write inside one atomic scope, preventing anyone else from changing the data in between. |
+| Batch insert / update where any failure should undo the rest. | `SxmSqlTransaction.RunStatementAsync` | The first exception short-circuits the remaining calls and suppresses commit; you get all-or-nothing without try/catch around each statement. |
+| Ad-hoc query against a non-default database. | `SxmStatement.RunStatementAsync` with the `databaseName` argument | Only the standalone form accepts `databaseName`; the transaction fixes its database at creation time. |
+
+Aside from **when** you use each form, they behave the same way:
+
+- `SxmStatement.RunStatementAsync` takes an optional `databaseName` argument. `SxmSqlTransaction.RunStatementAsync` does not — the transaction is already tied to a specific database.
+- `SxmSqlTransaction.RunStatementAsync` participates in the enclosing transaction: it commits on successful dispose, rolls back on exception, and silently skips subsequent statements once any statement has thrown.
+
+---
+
+## The Two Execution Contexts
+
+### Standalone
+
+Each call is an independent unit of work. If the statement succeeds, its effects are persisted immediately. If it throws, only that statement is undone.
+
+```csharp
+string sql = "SELECT id, Name, Age FROM Users WHERE Age > @minAge";
+
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
+{
+    { "minAge", 18 }
+};
+
+List<UserDto> users = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters, databaseName: null);
+```
+
+> 💡 Every static `SxmStatement.RunStatementAsync` overload accepts an optional third parameter `databaseName` (type `string?`). If provided, the statement executes on that named database; if omitted, it runs on the default database defined in your `SqlStatements.json` configuration.
+
+### Transactional
+
+Multiple statements are grouped into a single atomic unit. All succeed together, or all are rolled back together.
+
+```csharp
+string insertSql = "INSERT INTO Users (Name, Age) VALUES (@name, @age)";
+Dictionary<string, object?> insertParams = new Dictionary<string, object?>
+{
+    { "name", "Alice" },
+    { "age",  28 }
+};
+
+string updateSql = "UPDATE Settings SET LastUserName = @name WHERE id = 1";
+Dictionary<string, object?> updateParams = new Dictionary<string, object?>
+{
+    { "name", "Alice" }
+};
+
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create(databaseName: "AppData");
+
+await tx.RunStatementAsync(insertSql, insertParams);
+await tx.RunStatementAsync(updateSql, updateParams);
+
+// Auto-commit on dispose (no exceptions were thrown).
+```
+
+> 💡 The transactional overloads do not take a database name — the transaction runs on the database of the connection it was created with.
 
 
-### Note:
+**Key behavior of the transactional form:**
 
-> 💡SQLiteXM executes the SQL statement exactly as provided and supports the full SQL capabilities of the underlying SQLite engine. The examples in this guide demonstrate common parameter and result-mapping patterns, but any valid SQLite SQL statement may be used. This includes joins, subqueries, common table expressions (CTEs), aggregate functions, window functions, views, UNION queries, and other SQLite-supported SQL features.
+- Created by calling `SxmSqlTransaction.Create(databaseName)` (sync, private connection) or `await SxmSqlTransaction.CreateAsync(conn)` (async, works with shared connections).
+- Registers itself as the **ambient** transaction. Nesting is not permitted — SQLite itself allows only one active transaction per connection, and `SxmSqlTransaction` reflects that by refusing to create a new ambient transaction while one is already active.
+- On `DisposeAsync`, commits automatically if no error was encountered; otherwise the transaction is not committed and SQLite rolls back.
+- Once any `RunStatementAsync` call throws, subsequent `RunStatementAsync` calls on the same transaction are **skipped silently** (they return an empty list) and auto-commit is suppressed. This lets you write straight-line code without a try/catch around every call.
+- Always use `await using` so `DisposeAsync` runs.
+
+
+> 💡 The first argument to `RunStatementAsync` can also be the **`Statement Name`** of a query declared in `SqlStatements.json`. Everything in this guide — overloads, parameter styles, result mapping, and transactions — applies identically to both forms. See [Named SQL Statements via `SqlStatements.json`](SQLiteXM-Named-Statements.md) for the JSON-driven workflow.
 
 
 ---
 
-## Basic SELECT Queries
+## One Method, for All DML Statements
 
-> **💡 About DTOs:** Throughout this guide, we use the term **DTO (Data Transfer Object)** to refer to simple classes that hold data. These are plain C# classes with properties, used to pass parameters to queries or receive query results. You can also use your entity classes (classes that inherit from `SxmEntity`) in the same way.
+This section shows the same method — `RunStatementAsync` — being used against each of the four DML verbs.
 
-> **💡 Database Selection:** All `SelectAsync` methods accept an optional third parameter `dbName` (type `string?`). If provided, the query executes on the specified database; if omitted, it runs on the default database defined in your `SqlStatements.json` configuration.
+All examples share this schema and DTO:
 
-
-### SELECT with Dictionary of Named Parameters Returning a List of DTOs
-
-For ad-hoc or dynamic queries, you can use a dictionary for the select parameters while still getting strongly-typed results. This is very common when building search filters dynamically:
-
-DTO result types do not need to inherit from SxmEntity. Any public class with writable properties that match the selected column names can be used.
+```sql
+CREATE TABLE Users (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name    TEXT,
+    Age     INTEGER,
+    Country TEXT
+);
+```
 
 ```csharp
 public class UserDto
@@ -55,187 +147,508 @@ public class UserDto
     public int Age { get; set; }
     public string? Country { get; set; }
 }
+```
 
-string sql = "SELECT id, Name, Age, Country FROM Users WHERE Age > @minAge AND Country = @country";
+### SELECT
+
+A `SELECT` naturally returns rows. Use a typed overload to get a `List<UserDto>` or the untyped overload to get raw dictionaries.
+
+```csharp
+string sql = "SELECT id, Name, Age, Country FROM Users WHERE Age > @minAge";
+Dictionary<string, object?> parameters = new Dictionary<string, object?> { { "minAge", 18 } };
+
+// Typed:
+List<UserDto> users = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
+
+// Untyped:
+List<Dictionary<string, object?>> rows = await SxmStatement.RunStatementAsync(sql, parameters);
+```
+
+### INSERT
+
+Without a `RETURNING` clause, an `INSERT` returns an empty list. You can ignore the return value.
+
+```csharp
+string sql = "INSERT INTO Users (Name, Age, Country) VALUES (@name, @age, @country)";
+
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
+{
+    { "name",    "Alice" },
+    { "age",     28 },
+    { "country", "USA" }
+};
+
+await SxmStatement.RunStatementAsync(sql, parameters);
+```
+
+With a `RETURNING` clause, an `INSERT` returns the inserted row(s) — including any auto-generated columns like `id`. Because a single `INSERT` can insert multiple rows (for example via `INSERT … SELECT …` or a multi-row `VALUES` list), the result is always a `List`, even when only one row is inserted.
+
+```csharp
+string sql = "INSERT INTO Users (Name, Age, Country) " +
+             "VALUES (@name, @age, @country) RETURNING *";
+
+// Typed:
+Dictionary<string, object?> aliceParams = new Dictionary<string, object?>
+{
+    { "name",    "Alice" },
+    { "age",     28 },
+    { "country", "USA" }
+};
+
+List<UserDto> inserted = await SxmStatement.RunStatementAsync<UserDto>(sql, aliceParams);
+UserDto newUser = inserted[0];
+Console.WriteLine($"Created user id={newUser.id}, Name={newUser.Name}");
+
+// Untyped:
+Dictionary<string, object?> bobParams = new Dictionary<string, object?>
+{
+    { "name",    "Bob" },
+    { "age",     35 },
+    { "country", "CA" }
+};
+
+List<Dictionary<string, object?>> insertedRows = await SxmStatement.RunStatementAsync(sql, bobParams);
+int newId = (int)(long)insertedRows[0]["id"]!;
+```
+
+Multi-row `INSERT` also returns every inserted row:
+
+```csharp
+string sql = "INSERT INTO Users (Name, Age, Country) " +
+             "VALUES (@n1, @a1, @c1), (@n2, @a2, @c2) RETURNING *";
+
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
+{
+    { "n1", "Carol" }, { "a1", 40 }, { "c1", "UK" },
+    { "n2", "Dan"   }, { "a2", 22 }, { "c2", "US" }
+};
+
+List<UserDto> inserted = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
+
+Console.WriteLine($"Inserted {inserted.Count} users.");
+```
+
+### UPDATE
+
+Without a `RETURNING` clause, an `UPDATE` returns an empty list.
+
+```csharp
+string sql = "UPDATE Users SET Age = @age WHERE id = @id";
+
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
+{
+    { "age", 29 },
+    { "id",  1 }
+};
+
+await SxmStatement.RunStatementAsync(sql, parameters);
+```
+
+With a `RETURNING` clause, an `UPDATE` returns every row it modified. This is useful for auditing, for showing the caller what actually changed, and for cases where the `WHERE` clause may match zero, one, or many rows.
+
+```csharp
+string sql = "UPDATE Users SET Country = @country WHERE Country = @oldCountry RETURNING *";
+
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
+{
+    { "country",    "United States" },
+    { "oldCountry", "USA" }
+};
+
+List<UserDto> updated = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
+
+Console.WriteLine($"Updated {updated.Count} rows.");
+foreach (UserDto u in updated)
+{
+    Console.WriteLine($"  id={u.id} Name={u.Name} Country={u.Country}");
+}
+```
+
+Because the result is a `List`, an `UPDATE` that matches nothing simply returns an empty list — no null checks required.
+
+### DELETE
+
+Without a `RETURNING` clause, a `DELETE` returns an empty list.
+
+```csharp
+string sql = "DELETE FROM Users WHERE id = @id";
+
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
+{
+    { "id", 42 }
+};
+
+await SxmStatement.RunStatementAsync(sql, parameters);
+```
+
+With a `RETURNING` clause, a `DELETE` returns every row it removed. This is often the cleanest way to capture "what did I just delete?" without a preceding `SELECT`.
+
+```csharp
+string sql = "DELETE FROM Users WHERE Age < @minAge RETURNING *";
+
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
+{
+    { "minAge", 18 }
+};
+
+List<UserDto> deleted = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
+
+Console.WriteLine($"Deleted {deleted.Count} underage users.");
+foreach (UserDto u in deleted)
+{
+    Console.WriteLine($"  Removed id={u.id} Name={u.Name}");
+}
+```
+
+### Summary of return-value semantics
+
+| Statement | Without `RETURNING` | With `RETURNING` Clause |
+|---|---|---|
+| `SELECT` | Rows selected (always) | n/a |
+| `INSERT` | Empty list | Inserted row(s) |
+| `UPDATE` | Empty list | Updated row(s) — one entry per matched row |
+| `DELETE` | Empty list | Deleted row(s) — one entry per matched row |
+
+Because the return type is always a `List`, you never need `null` checks. An empty list simply means "no rows were produced by this statement" — for a `SELECT` that's a legitimate empty result set; for an `INSERT`/`UPDATE`/`DELETE` without `RETURNING` it's the norm; for an `UPDATE`/`DELETE` *with* `RETURNING` it means the `WHERE` clause matched nothing.
+
+---
+
+## Overload Matrix
+
+Both `SxmStatement` (static) and `SxmSqlTransaction` (instance) expose the same six overload shapes. Pick a row by how you want to pass parameters and a column by how you want to consume results.
+
+| Parameter shape | Typed result (`List<TResult>`) | Raw result (`List<Dictionary<string, object?>>`) |
+|---|---|---|
+| **DTO** (`T userObjectParameters`) | `RunStatementAsync<T, TResult>(sql, dto[, databaseName])` | `RunStatementAsync<T>(sql, dto[, databaseName])` |
+| **Dictionary** (`Dictionary<string, object?>`) | `RunStatementAsync<TResult>(sql, dict[, databaseName])` | `RunStatementAsync(sql, dict[, databaseName])` |
+| **Positional** (`List<object>` with `@p0`, `@p1`, …) | `RunStatementAsync<TResult>(sql, list[, databaseName])` | `RunStatementAsync(sql, list[, databaseName])` |
+
+The `[, databaseName]` argument exists only on the static `SxmStatement` overloads.
+
+---
+
+## Standalone Execution — `SxmStatement.RunStatementAsync`
+
+The examples below use the same `User` table for consistency:
+
+```sql
+CREATE TABLE Users (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name    TEXT,
+    Age     INTEGER,
+    Country TEXT
+);
+```
+
+And the same DTOs:
+
+```csharp
+public class UserSearchParams
+{
+    public int minAge { get; set; }
+    public string? country { get; set; }
+}
+
+public class UserDto
+{
+    public int id { get; set; }
+    public string? Name { get; set; }
+    public int Age { get; set; }
+    public string? Country { get; set; }
+}
+```
+
+### DTO parameters → typed results
+
+The most type-safe form. Both the parameter object and the result rows are strongly typed.
+
+```csharp
+string sql = "SELECT id, Name, Age, Country FROM Users " +
+             "WHERE Age > @minAge AND Country = @country";
+
+UserSearchParams parameters = new UserSearchParams { minAge = 18, country = "USA" };
+
+List<UserDto> users = await SxmStatement.RunStatementAsync<UserSearchParams, UserDto>(sql, parameters);
+
+foreach (UserDto user in users)
+{
+    Console.WriteLine($"{user.Name} (Age {user.Age}) from {user.Country}");
+}
+
+// Target a specific database:
+List<UserDto> archived =
+    await SxmStatement.RunStatementAsync<UserSearchParams, UserDto>(sql, parameters, "ArchiveDB");
+```
+
+**Ideal when** you have a stable parameter shape and a stable result shape you can express as classes.
+
+### DTO parameters → dictionary results
+
+Typed parameters, flexible result handling. A common use is `INSERT … RETURNING *` where the input has a fixed shape but you want to consume the returned row generically.
+
+```csharp
+public class NewUserParams
+{
+    public string? name { get; set; }
+    public int age { get; set; }
+    public string? country { get; set; }
+}
+
+string sql = "INSERT INTO Users (Name, Age, Country) " +
+             "VALUES (@name, @age, @country) RETURNING *";
+
+NewUserParams parameters = new NewUserParams { name = "Alice", age = 28, country = "USA" };
+
+List<Dictionary<string, object?>> inserted =
+    await SxmStatement.RunStatementAsync<NewUserParams>(sql, parameters);
+
+int newId = (int)(long)inserted[0]["id"]!;
+Console.WriteLine($"Created user id={newId}");
+```
+
+### Dictionary parameters → typed results
+
+Best for dynamic parameter construction (e.g., building a search filter at runtime) while still consuming typed results.
+
+```csharp
+string sql = "SELECT id, Name, Age, Country FROM Users " +
+             "WHERE Age > @minAge AND Country = @country";
+
 Dictionary<string, object?> parameters = new Dictionary<string, object?>
 {
     { "minAge", 18 },
     { "country", "USA" }
 };
 
-// Get strongly-typed results (recommended - best of both worlds)
-List<UserDto> users = await SxmStatement.SelectAsync<UserDto>(sql, parameters);
+List<UserDto> users = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
 
-foreach (UserDto user in users)
-{
-    Console.WriteLine($"{user.Name} is {user.Age} years old");
-}
-
-// To query a specific database (not the default), pass the database name:
-List<UserDto> usersFromArchive = await SxmStatement.SelectAsync<UserDto>(sql, parameters, "ArchiveDB");
+// Target a specific database:
+List<UserDto> archived =
+    await SxmStatement.RunStatementAsync<UserDto>(sql, parameters, "ArchiveDB");
 ```
-Result columns are matched to DTO properties by name.
-Columns that do not have a matching property are ignored.
-Properties without a matching column retain their default value.
 
-**This pattern is ideal when:**
-- Building search filters dynamically based on user input
-- Parameters come from a configuration file or external source
-- You want flexibility in parameters but type safety in results
-- Working with variable/optional query conditions
+### Dictionary parameters → dictionary results
 
-**Alternative 1 - Select with Dictionary of Named Parameters Returning a list of Dictionary results:**
+The most flexible form. Neither side is compile-time typed.
+
 ```csharp
-// If you need dictionary results instead
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, parameters);
+string sql = "SELECT id, Name, Age FROM Users WHERE Age > @minAge";
+Dictionary<string, object?> parameters = new Dictionary<string, object?> { { "minAge", 18 } };
 
-foreach (Dictionary<string, object?> row in results)
+List<Dictionary<string, object?>> rows = await SxmStatement.RunStatementAsync(sql, parameters);
+
+foreach (Dictionary<string, object?> row in rows)
 {
-    string name = (string)row["Name"]!;
-    int age = (int)(long)row["Age"]!;
-
-    Console.WriteLine($"{name} is {age} years old");
+    Console.WriteLine($"{row["Name"]} is {(long)row["Age"]!} years old");
 }
 ```
 
+### Positional parameters → typed results
 
-**Alternative 2 - SELECT with DTO Parameter returning a List of DTOs**
-
-The most natural way to query in SQLiteXM is using DTOs for both parameters and results. This provides full type safety:
-
-The DTO input type does not need to inherit from SxmEntity. Any public class with readable properties that match the parameter names can be used.
+For short queries where naming parameters is overkill. Use `@p0`, `@p1`, `@p2`, … in the SQL and pass values in order via `List<object>`.
 
 ```csharp
-public class UserSearchParams
-{
-    public int minAge { get; set; }
-    public string? country { get; set; }
-}
+string sql = "SELECT id, Name, Age FROM Users WHERE Age > @p0 AND Country = @p1";
+List<object> parameters = new List<object> { 18, "USA" };
 
-public class UserDto
-{
-    public int id { get; set; }
-    public string? Name { get; set; }
-    public int Age { get; set; }
-    public string? Country { get; set; }
-}
-
-string sql = "SELECT id, Name, Age, Country FROM Users WHERE Age > @minAge AND Country = @country";
-UserSearchParams parameters = new UserSearchParams 
-{ 
-    minAge = 18, 
-    country = "USA" 
-};
-
-List<UserDto> users = await SxmStatement.SelectAsync<UserSearchParams, UserDto>(sql, parameters);
-
-foreach (UserDto user in users)
-{
-    Console.WriteLine($"{user.Name} (Age {user.Age}) from {user.Country}");
-}
+List<UserDto> users = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
 ```
 
-**Key Points:**
-- Parameter class properties map to SQL parameter names (without `@`)
-- Result class properties map to SQL column names
-- Property names are case-sensitive
-- Fully type-safe with IntelliSense support
-- Natural pattern for entity-based ORMs like SQLiteXM
+### Positional parameters → dictionary results
 
-
-**Alternative 3 - SELECT with DTO Parameter returning a list of Dictionary results**
-
-You can also combine a strongly-typed DTO parameter with dictionary results. This is useful when you have a known parameter structure but need flexible result handling:
+Same overload works for a mutation with `RETURNING`, a bare `DELETE`, or any other statement that doesn't need typed results.
 
 ```csharp
-public class UserSearchParams
-{
-    public int minAge { get; set; }
-    public string? country { get; set; }
-}
+// UPDATE ... RETURNING captures the row that changed:
+string updateSql = "UPDATE Users SET Age = @p0 WHERE id = @p1 RETURNING *";
+List<Dictionary<string, object?>> updated =
+    await SxmStatement.RunStatementAsync(updateSql, new List<object> { 29, 1 });
 
-string sql = "SELECT id, Name, Age, Country FROM Users WHERE Age > @minAge AND Country = @country";
-UserSearchParams parameters = new UserSearchParams 
-{ 
-    minAge = 18, 
-    country = "USA" 
-};
-
-List<Dictionary<string, object?>> users = await SxmStatement.SelectAsync<UserSearchParams>(sql, parameters);
-
-foreach (Dictionary<string, object?> user in users)
-{
-    string name = (string)user["Name"]!;
-    int age = (int)user["Age"]!;
-    Console.WriteLine($"{name} is {age} years old");
-}
+// DELETE with no RETURNING returns an empty list — just ignore it:
+string deleteSql = "DELETE FROM Users WHERE id = @p0";
+await SxmStatement.RunStatementAsync(deleteSql, new List<object> { 42 });
 ```
 
-**This pattern is ideal when:**
-- You have a well-defined parameter structure (DTO)
-- Result columns vary or are determined at runtime
-- You need to dynamically access different columns
-- Working with generic data processing logic
-
-### SELECT with Positional Parameters
-
-For simple queries with few parameters, you can use positional parameters:
+**Queries with no parameters** still require a parameter argument — pass an empty collection:
 
 ```csharp
-string sql = "SELECT id, Name, Age FROM Users WHERE Age > @p0";
-List<object> parameters = new List<object> { 18 };
-
-// Get typed results (recommended)
-List<UserDto> users = await SxmStatement.SelectAsync<UserDto>(sql, parameters);
-
-foreach (UserDto user in users)
-{
-    Console.WriteLine($"{user.Name} is {user.Age} years old");
-}
-
-// Or get dictionary results
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, parameters);
-
-foreach (Dictionary<string, object?> row in results)
-{
-    int id = (int)(long)row["id"];
-    string name = (string)row["Name"]!;
-    int age = (int)(long)row["Age"];
-
-    Console.WriteLine($"{name} is {age} years old");
-}
-```
-
-**Important Notes:**
-- When using dictionary results, SQLite integer values are typically returned as long. Cast accordingly when reading values from the dictionary.
-- Use `@p0`, `@p1`, `@p2`, etc. for positional parameters
-- Easy to mix up parameter order with many parameters
-
-### Query with No Parameters
-
-If your query doesn't need parameters, pass an empty list:
-
-```csharp
-string sql = "SELECT id, Name, Age FROM Users";
-
-// Get typed results
-List<UserDto> users = await SxmStatement.SelectAsync<UserDto>(sql, new List<object>());
-
-// Or get dictionary results
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, new List<object>());
+List<UserDto> all = await SxmStatement.RunStatementAsync<UserDto>(
+    "SELECT id, Name, Age FROM Users",
+    new List<object>());
 ```
 
 ---
 
-## INSERT Statements
+## Transactional Execution — `SxmSqlTransaction.RunStatementAsync`
 
-> **💡 Database Selection:** All `InsertAsync` methods accept an optional third parameter `dbName` (type `string?`). If provided, the insert executes on the specified database; if omitted, it runs on the default database defined in your `SqlStatements.json` configuration.
+Use a transaction whenever two or more embedded SQL statements must succeed or fail as a group.
 
-### INSERT with DTO Parameter Returning a Typed Result
+### Creating a transaction
 
-The most natural way to insert records in SQLiteXM is using a DTO for both parameters and results. This provides full type safety and makes it easy to work with the inserted record:
+Two factories are available:
 
-DTO parameter types do not need to inherit from SxmEntity. Any public class with readable properties that match the parameter names can be used.
+```csharp
+// Synchronous: creates a private (non-shared) connection to the named database.
+SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
+
+// Asynchronous: attaches to an existing SxmConnection.
+// Required when the connection is shared (a lock is acquired asynchronously).
+SxmConnection conn = new SxmConnection("AppData", shared: true);
+await using SxmSqlTransaction tx = await SxmSqlTransaction.CreateAsync(conn);
+```
+
+Always dispose with `await using` so the transaction can commit (or clean up) properly.
+
+### Auto-commit and auto-rollback
+
+The transactional pattern is designed for straight-line code:
+
+```csharp
+string insertSql = "INSERT INTO Accounts (Name, Balance) VALUES (@name, @balance)";
+Dictionary<string, object?> insertParams = new Dictionary<string, object?>
+{
+    { "name",    "Savings" },
+    { "balance", 1000 }
+};
+
+string updateSql = "UPDATE Accounts SET Balance = Balance - @amount WHERE Name = @name";
+Dictionary<string, object?> updateParams = new Dictionary<string, object?>
+{
+    { "amount", 100 },
+    { "name",   "Checking" }
+};
+
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
+
+await tx.RunStatementAsync(insertSql, insertParams);
+await tx.RunStatementAsync(updateSql, updateParams);
+
+// Reaching the end of the using block with no exceptions → commits.
+// Throwing anywhere in between → the transaction is not committed; SQLite rolls back.
+```
+
+If one statement throws, subsequent `RunStatementAsync` calls on the **same** transaction return an empty list without executing. This makes error handling optional at each step:
+
+```csharp
+try
+{
+    await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
+    await tx.RunStatementAsync(sql1, params1);
+    await tx.RunStatementAsync(sql2, params2); // skipped if sql1 threw
+    // Auto-commit only reached if both succeeded.
+}
+catch (Exception ex)
+{
+    // Rolled back automatically; log or surface as needed.
+    Console.WriteLine($"Transaction failed: {ex.Message}");
+}
+```
+
+### Multiple statements in one transaction
+
+Any mix of `SELECT`, `INSERT`, `UPDATE`, and `DELETE` (DML) works — they all flow through the same `RunStatementAsync`.
+
+```csharp
+public class OrderDto
+{
+    public int id { get; set; }
+    public int UserId { get; set; }
+    public decimal Total { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
+
+// 1. Insert an order and get the generated row back.
+string orderSql = "INSERT INTO Orders (UserId, Total, CreatedAt) " +
+                  "VALUES (@userId, @total, @createdAt) RETURNING *";
+
+Dictionary<string, object?> orderParams = new Dictionary<string, object?>
+{
+    { "userId",    1 },
+    { "total",     149.99m },
+    { "createdAt", DateTime.UtcNow }
+};
+
+List<OrderDto> inserted = await tx.RunStatementAsync<OrderDto>(orderSql, orderParams);
+OrderDto order = inserted[0];
+
+// 2. Insert two order items using the generated order id.
+string itemSql = "INSERT INTO OrderItems (OrderId, ProductId, Quantity) " +
+                 "VALUES (@orderId, @productId, @qty)";
+
+Dictionary<string, object?> item1 = new Dictionary<string, object?>
+{
+    { "orderId",   order.id },
+    { "productId", 101 },
+    { "qty",       2 }
+};
+await tx.RunStatementAsync(itemSql, item1);
+
+Dictionary<string, object?> item2 = new Dictionary<string, object?>
+{
+    { "orderId",   order.id },
+    { "productId", 102 },
+    { "qty",       1 }
+};
+await tx.RunStatementAsync(itemSql, item2);
+
+// 3. Decrement inventory.
+string invSql = "UPDATE Products SET Stock = Stock - @qty WHERE id = @productId";
+
+Dictionary<string, object?> inv1 = new Dictionary<string, object?>
+{
+    { "qty",       2 },
+    { "productId", 101 }
+};
+await tx.RunStatementAsync(invSql, inv1);
+
+Dictionary<string, object?> inv2 = new Dictionary<string, object?>
+{
+    { "qty",       1 },
+    { "productId", 102 }
+};
+await tx.RunStatementAsync(invSql, inv2);
+
+// End of using: everything commits atomically.
+```
+
+### Reading, deciding, then writing
+
+Because `RunStatementAsync` returns results, you can read inside the transaction, make a decision, and then write — all under the same lock and atomicity guarantee.
+
+```csharp
+public class BalanceRow { public decimal Balance { get; set; } }
+
+string readSql  = "SELECT Balance FROM Accounts WHERE id = @id";
+string writeSql = "UPDATE Accounts SET Balance = Balance - @amount WHERE id = @id";
+
+Dictionary<string, object?> readParams = new Dictionary<string, object?>
+{
+    { "id", 1 }
+};
+
+Dictionary<string, object?> writeParams = new Dictionary<string, object?>
+{
+    { "amount", 100m },
+    { "id",     1 }
+};
+
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
+
+List<BalanceRow> rows = await tx.RunStatementAsync<BalanceRow>(readSql, readParams);
+
+if (rows.Count == 0 || rows[0].Balance < 100m)
+{
+    throw new InvalidOperationException("Insufficient funds");
+}
+
+await tx.RunStatementAsync(writeSql, writeParams);
+```
+
+### Batch insert with typed results
+
+Insert many records under one transaction and collect the returned rows.
 
 ```csharp
 public class NewUserParams
@@ -245,533 +658,63 @@ public class NewUserParams
     public string? email { get; set; }
 }
 
-public class User : SxmEntity
+List<NewUserParams> incoming = new List<NewUserParams>
 {
-    public string? Name { get; set; }
-    public int Age { get; set; }
-    public string? Email { get; set; }
+    new NewUserParams { name = "John Doe",  age = 30, email = "john@example.com" },
+    new NewUserParams { name = "Jane Smith", age = 25, email = "jane@example.com" },
+    new NewUserParams { name = "Bob Wilson", age = 35, email = "bob@example.com"  }
+};
+
+string sql = "INSERT INTO Users (Name, Age, Email) " +
+             "VALUES (@name, @age, @email) RETURNING *";
+
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
+
+List<UserDto> inserted = new List<UserDto>();
+foreach (NewUserParams p in incoming)
+{
+    List<UserDto> rows = await tx.RunStatementAsync<NewUserParams, UserDto>(sql, p);
+    inserted.AddRange(rows);
 }
 
-string sql = "INSERT INTO Users (Name, Age, Email) VALUES (@name, @age, @email) RETURNING *";
-NewUserParams parameters = new NewUserParams 
-{ 
-    name = "Alice Johnson", 
-    age = 28, 
-    email = "alice@example.com" 
-};
-
-User newUser = await SxmStatement.InsertAsync<NewUserParams, User>(sql, parameters);
-Console.WriteLine($"Created user with ID: {newUser.id}, Name: {newUser.Name}");
-
-// To insert into a specific database (not the default), pass the database name:
-User archivedUser = await SxmStatement.InsertAsync<NewUserParams, User>(sql, parameters, "ArchiveDB");
+Console.WriteLine($"Inserted {inserted.Count} users atomically.");
 ```
 
-The inserted record is automatically mapped to your result class.
-Use `RETURNING *` to get the complete inserted record including auto-generated columns like `id`.
+**Why do this inside a transaction:**
+- **Atomicity** — all inserts commit together or none do.
+- **Performance** — dramatically fewer fsyncs than the same inserts run standalone.
 
-**This pattern is ideal when:**
-- You want type safety for both input parameters and returned results
-- You need to work with the inserted record immediately after insertion
-- You're building reusable data access methods
-- You prefer IntelliSense and compile-time checking
+### Explicit commit
 
-**Key Points:**
-- Parameter class properties map to SQL parameter names (without `@`)
-- Result class properties map to returned column names
-- Property names are case-sensitive
-- Fully type-safe with IntelliSense support
-- Natural pattern for entity-based ORMs like SQLiteXM
-
-**Alternative 1 - INSERT with DTO Parameter Returning a Dictionary**
-
-If you need flexible result handling but still want typed parameters:
+Auto-commit-on-dispose is the recommended pattern, but you can commit explicitly if you need to end the SQL transaction earlier while continuing to hold the connection:
 
 ```csharp
-public class NewUserParams
-{
-    public string? name { get; set; }
-    public int age { get; set; }
-    public string? email { get; set; }
-}
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
 
-string sql = "INSERT INTO Users (Name, Age, Email) VALUES (@name, @age, @email) RETURNING *";
-NewUserParams parameters = new NewUserParams 
-{ 
-    name = "Bob Wilson", 
-    age = 35, 
-    email = "bob@example.com" 
-};
+await tx.RunStatementAsync(sql1, params1);
+await tx.RunStatementAsync(sql2, params2);
 
-Dictionary<string, object?> insertedRow = await SxmStatement.InsertAsync<NewUserParams>(sql, parameters);
-int newId = (int)(long)insertedRow["id"];
-string name = (string)insertedRow["Name"]!;
-Console.WriteLine($"Inserted user {name} with ID: {newId}");
-```
+await tx.CommitTransactionAsync();
 
-**This pattern is ideal when:**
-- You have a well-defined parameter structure (DTO)
-- Result columns vary or are determined at runtime
-- You need to dynamically access different columns
-- Working with generic data processing logic
-
-
-### INSERT with Dictionary Parameters
-
-For ad-hoc or dynamic insertion scenarios, you can use a dictionary for the parameters:
-
-```csharp
-string sql = "INSERT INTO Users (Name, Age, Email) VALUES (@name, @age, @email) RETURNING *";
-Dictionary<string, object?> parameters = new Dictionary<string, object?>
-{
-    { "name", "Charlie Brown" },
-    { "age", 42 },
-    { "email", "charlie@example.com" }
-};
-
-// Get strongly-typed result (recommended - best of both worlds)
-User newUser = await SxmStatement.InsertAsync<User>(sql, parameters);
-Console.WriteLine($"Inserted: {newUser.Name}, ID: {newUser.id}");
-```
-
-**This pattern is ideal when:**
-- Building dynamic insert operations based on user input
-- Parameters come from a configuration file or external source
-- You want flexibility in parameters but type safety in results
-- Working with variable/optional insertion fields
-
-**Alternative - Dictionary parameters with dictionary result:**
-```csharp
-// If you need dictionary results instead
-Dictionary<string, object?> insertedRow = await SxmStatement.InsertAsync(sql, parameters);
-int newId = (int)(long)insertedRow["id"];
-string email = (string)insertedRow["Email"]!;
-```
-
-
-### INSERT with Positional Parameters
-
-For simple inserts with few parameters, you can use positional parameters:
-
-```csharp
-string sql = "INSERT INTO Users (Name, Age, Email) VALUES (@p0, @p1, @p2) RETURNING *";
-List<object> parameters = new List<object> { "John Doe", 30, "john@example.com" };
-
-// Get typed result (recommended)
-User newUser = await SxmStatement.InsertAsync<User>(sql, parameters);
-Console.WriteLine($"Inserted: {newUser.Name}, ID: {newUser.id}");
-
-// Or get dictionary result
-Dictionary<string, object?> insertedRow = await SxmStatement.InsertAsync(sql, parameters);
-int newId = (int)(long)insertedRow["id"];
-string name = (string)insertedRow["Name"]!;
-```
-
-**Important Notes:**
-- When using dictionary results, SQLite integer values are typically returned as long. Cast accordingly when reading values from the dictionary.
-- Use `@p0`, `@p1`, `@p2`, etc. for positional parameters
-- Easy to mix up parameter order with many parameters
-
-**When to use positional parameters:**
-- Very simple inserts with 1-3 parameters
-- Quick prototyping or testing
-- When parameter names don't add clarity
-
-**Disadvantages:**
-- Easy to mix up parameter order
-- Less readable with many parameters
-- No compile-time checking
-
-### INSERT with No RETURNING Clause
-
-If your SQL doesn't include `RETURNING *`, you can still insert but won't get the generated ID or inserted values back. This is rarely recommended:
-
-```csharp
-string sql = "INSERT INTO Users (Name, Age) VALUES (@p0, @p1)";
-Dictionary<string, object?> result = await SxmStatement.InsertAsync(sql, new List<object> { "Jane", 25 });
-// result will be empty - you won't know the generated ID
-```
-
-**Best Practice:** Always use `RETURNING *` to get the inserted record with its auto-generated ID.
-
-> **💡 Inserting Multiple Records:** If you need to insert multiple records efficiently and safely, see the [Transactions](#transactions) section for examples of bulk inserts with proper atomicity guarantees.
-
----
-
-## UPDATE Statements
-
-> **💡 Database Selection:** All `UpdateAsync` methods accept an optional third parameter `dbName` (type `string?`). If provided, the update executes on the specified database; if omitted, it runs on the default database defined in your `SqlStatements.json` configuration.
-
-> **💡 Return Value:** `UpdateAsync` returns `Task` (no return value). Unlike `SelectAsync` or `InsertAsync`, UPDATE operations don't return data. Use a separate SELECT query if you need to retrieve the updated records.
-
-### UPDATE with DTO Parameters
-
-The most natural way to update records in SQLiteXM is using a DTO. Your class properties map directly to SQL parameters, providing type safety and maintainability:
-
-DTO parameter types do not need to inherit from SxmEntity. Any public class with readable properties that match the parameter names can be used.
-
-```csharp
-public class UpdateUserParams
-{
-    public string? name { get; set; }
-    public int age { get; set; }
-    public string? email { get; set; }
-    public int id { get; set; }
-}
-
-string sql = "UPDATE Users SET Name = @name, Age = @age, Email = @email WHERE id = @id";
-UpdateUserParams parameters = new UpdateUserParams 
-{ 
-    name = "Alice Updated", 
-    age = 29, 
-    email = "alice.new@example.com",
-    id = 1
-};
-
-await SxmStatement.UpdateAsync<UpdateUserParams>(sql, parameters);
-Console.WriteLine("User updated successfully");
-
-// To update in a specific database (not the default), pass the database name:
-await SxmStatement.UpdateAsync<UpdateUserParams>(sql, parameters, "ArchiveDB");
-```
-
-**This pattern is ideal when:**
-- You want type safety for input parameters
-- You're building reusable data access methods
-- You have multiple updates that share the same parameter structure
-- You prefer IntelliSense and compile-time checking
-- Working with well-defined update operations
-
-**Key Points:**
-- Parameter class properties map to SQL parameter names (without `@`)
-- Property names are case-sensitive
-- Fully type-safe with IntelliSense support
-- Natural pattern for entity-based ORMs like SQLiteXM
-- Returns `Task` - no return value
-
-
-### UPDATE with Dictionary Parameters
-
-For ad-hoc or dynamic update scenarios, you can use a dictionary for the parameters:
-
-```csharp
-string sql = "UPDATE Users SET Name = @name, Age = @age, Email = @email WHERE id = @id";
-Dictionary<string, object?> parameters = new Dictionary<string, object?>
-{
-    { "name", "Bob Updated" },
-    { "age", 36 },
-    { "email", "bob.new@example.com" },
-    { "id", 2 }
-};
-
-await SxmStatement.UpdateAsync(sql, parameters);
-Console.WriteLine("User updated successfully");
-```
-
-**This pattern is ideal when:**
-- Building dynamic update operations based on user input
-- Parameters come from a configuration file or external source
-- You need flexibility in which fields to update
-- Working with variable/optional update fields
-- Update structure isn't known at compile time
-
-**Example - Conditional Updates:**
-```csharp
-string sql = "UPDATE Users SET Name = @name, Age = @age WHERE id = @id";
-Dictionary<string, object?> parameters = new Dictionary<string, object?>
-{
-    { "name", updatedName },
-    { "age", updatedAge },
-    { "id", userId }
-};
-
-await SxmStatement.UpdateAsync(sql, parameters);
-```
-
-
-### UPDATE with Positional Parameters
-
-For simple updates with few parameters, you can use positional parameters:
-
-```csharp
-string sql = "UPDATE Users SET Age = @p0, Email = @p1 WHERE id = @p2";
-List<object> parameters = new List<object> { 31, "john.updated@example.com", 1 };
-
-await SxmStatement.UpdateAsync(sql, parameters);
-Console.WriteLine("User updated successfully");
-```
-
-**Important Notes:**
-- Use `@p0`, `@p1`, `@p2`, etc. for positional parameters
-- Easy to mix up parameter order with many parameters
-- Returns `Task` (void) - no confirmation of rows affected
-
-**When to use positional parameters:**
-- Very simple updates with 1-3 parameters
-- Quick prototyping or testing
-- When parameter names don't add clarity
-
-**Disadvantages:**
-- Easy to mix up parameter order
-- Less readable with many parameters
-- No compile-time checking
-
-### UPDATE Multiple Rows
-
-Update operations can affect multiple rows at once. The same parameter patterns apply:
-
-**With DTO:**
-```csharp
-public class BulkUpdateParams
-{
-    public bool isActive { get; set; }
-    public DateTime lastUpdated { get; set; }
-    public int minAge { get; set; }
-}
-
-string sql = "UPDATE Users SET IsActive = @isActive, LastUpdated = @lastUpdated WHERE Age < @minAge";
-BulkUpdateParams parameters = new BulkUpdateParams
-{
-    isActive = false,
-    lastUpdated = DateTime.UtcNow,
-    minAge = 18
-};
-
-await SxmStatement.UpdateAsync<BulkUpdateParams>(sql, parameters);
-// All users with Age < 18 are now updated
-```
-
-**With Dictionary:**
-```csharp
-string sql = "UPDATE Users SET IsActive = @active WHERE LastLoginAt < @cutoffDate";
-Dictionary<string, object?> parameters = new Dictionary<string, object?>
-{
-    { "active", false },
-    { "cutoffDate", DateTime.UtcNow.AddDays(-30) }
-};
-
-await SxmStatement.UpdateAsync(sql, parameters);
-```
-
-**With Positional Parameters:**
-```csharp
-string sql = "UPDATE Products SET Stock = Stock + @p0 WHERE Category = @p1";
-await SxmStatement.UpdateAsync(sql, new List<object> { 100, "Electronics" });
-```
-
-### UPDATE with No Parameters
-
-If your update doesn't need parameters (rare), pass an empty list:
-
-```csharp
-string sql = "UPDATE Settings SET LastResetDate = datetime('now')";
-await SxmStatement.UpdateAsync(sql, new List<object>());
-```
-
----
-
-## DELETE Statements
-
-> **💡 Database Selection:** All `DeleteAsync` methods accept an optional third parameter `dbName` (type `string?`). If provided, the delete executes on the specified database; if omitted, it runs on the default database defined in your `SqlStatements.json` configuration.
-
-> **💡 Return Value:** `DeleteAsync` returns `Task` (no return value). Unlike `SelectAsync` or `InsertAsync`, DELETE operations don't return data. Use a separate SELECT query before deleting if you need to retrieve the records first.
-
-### DELETE with DTO Parameters
-
-The most natural way to delete records in SQLiteXM is using a DTO. Your class properties map directly to SQL parameters, providing type safety and clarity:
-
-DTO parameter types do not need to inherit from SxmEntity. Any public class with readable properties that match the parameter names can be used.
-
-```csharp
-public class DeleteUserParams
-{
-    public int id { get; set; }
-    public bool confirmDelete { get; set; }
-}
-
-string sql = "DELETE FROM Users WHERE id = @id AND @confirmDelete = 1";
-DeleteUserParams parameters = new DeleteUserParams 
-{ 
-    id = 5,
-    confirmDelete = true
-};
-
-await SxmStatement.DeleteAsync<DeleteUserParams>(sql, parameters);
-Console.WriteLine("User deleted successfully");
-
-// To delete from a specific database (not the default), pass the database name:
-await SxmStatement.DeleteAsync<DeleteUserParams>(sql, parameters, "ArchiveDB");
-```
-
-**This pattern is ideal when:**
-- You want type safety for input parameters
-- You're building reusable data access methods
-- You have multiple deletes that share the same parameter structure
-- You prefer IntelliSense and compile-time checking
-- Working with well-defined delete operations
-
-**Key Points:**
-- Parameter class properties map to SQL parameter names (without `@`)
-- Property names are case-sensitive
-- Fully type-safe with IntelliSense support
-- Natural pattern for entity-based ORMs like SQLiteXM
-- Returns `Task` - no return value
-
-
-### DELETE with Dictionary Parameters
-
-For ad-hoc or dynamic delete scenarios, you can use a dictionary for the parameters:
-
-```csharp
-string sql = "DELETE FROM Users WHERE Age < @minAge AND IsActive = @active";
-Dictionary<string, object?> parameters = new Dictionary<string, object?>
-{
-    { "minAge", 18 },
-    { "active", false }
-};
-
-await SxmStatement.DeleteAsync(sql, parameters);
-Console.WriteLine("Inactive underage users deleted");
-```
-
-**This pattern is ideal when:**
-- Building dynamic delete operations based on user input
-- Parameters come from a configuration file or external source
-- You need flexibility in delete criteria
-- Working with variable/optional conditions
-- Delete criteria isn't known at compile time
-
-**Example - Conditional Deletes:**
-```csharp
-string sql = "DELETE FROM Orders WHERE UserId = @userId AND Status = @status";
-Dictionary<string, object?> parameters = new Dictionary<string, object?>
-{
-    { "userId", targetUserId },
-    { "status", "cancelled" }
-};
-
-await SxmStatement.DeleteAsync(sql, parameters);
-```
-
-
-### DELETE with Positional Parameters
-
-For simple deletes with few parameters, you can use positional parameters:
-
-```csharp
-string sql = "DELETE FROM Users WHERE id = @p0";
-List<object> parameters = new List<object> { 5 };
-
-await SxmStatement.DeleteAsync(sql, parameters);
-Console.WriteLine("User deleted successfully");
-```
-
-**Important Notes:**
-- Use `@p0`, `@p1`, `@p2`, etc. for positional parameters
-- Easy to mix up parameter order with many parameters
-- Returns `Task` (void) - no confirmation of rows affected
-- Always use parameters to prevent SQL injection
-
-**When to use positional parameters:**
-- Very simple deletes with 1-2 parameters
-- Quick prototyping or testing
-- When parameter names don't add clarity
-
-**Disadvantages:**
-- Easy to mix up parameter order
-- Less readable with many parameters
-- No compile-time checking
-
-### DELETE Multiple Rows
-
-Delete operations can affect multiple rows at once. The same parameter patterns apply:
-
-**With DTO:**
-```csharp
-public class BulkDeleteParams
-{
-    public DateTime cutoffDate { get; set; }
-    public string status { get; set; }
-}
-
-string sql = "DELETE FROM Logs WHERE CreatedAt < @cutoffDate AND Status = @status";
-BulkDeleteParams parameters = new BulkDeleteParams
-{
-    cutoffDate = DateTime.UtcNow.AddDays(-90),
-    status = "processed"
-};
-
-await SxmStatement.DeleteAsync<BulkDeleteParams>(sql, parameters);
-// All processed logs older than 90 days are now deleted
-```
-
-**With Dictionary:**
-```csharp
-string sql = "DELETE FROM TempData WHERE ExpiresAt < @now";
-Dictionary<string, object?> parameters = new Dictionary<string, object?>
-{
-    { "now", DateTime.UtcNow }
-};
-
-await SxmStatement.DeleteAsync(sql, parameters);
-```
-
-**With Positional Parameters:**
-```csharp
-string sql = "DELETE FROM Sessions WHERE LastAccessedAt < @p0";
-await SxmStatement.DeleteAsync(sql, new List<object> { DateTime.UtcNow.AddHours(-24) });
-```
-
-### DELETE All Rows (Use with Caution)
-
-To delete all rows from a table, pass an empty parameter list. **Use with extreme caution:**
-
-```csharp
-string sql = "DELETE FROM TempCache";
-await SxmStatement.DeleteAsync(sql, new List<object>());
-Console.WriteLine("All temp cache cleared");
-```
-
-**Warning:** This operation cannot be undone unless you're in a transaction. Always double-check your SQL and consider using a WHERE clause.
-
-**Safer Alternative with Confirmation:**
-```csharp
-public class ClearTableParams
-{
-    public bool confirmClear { get; set; }
-}
-
-string sql = "DELETE FROM TempCache WHERE @confirmClear = 1 OR 1=0";
-await SxmStatement.DeleteAsync<ClearTableParams>(sql, new ClearTableParams { confirmClear = true });
+// The connection lock is still held by the transaction wrapper until DisposeAsync.
+// Additional RunStatementAsync calls after an explicit commit start a new SQLite transaction.
 ```
 
 ---
 
 ## Working with Parameters
 
-### Positional Parameters
-
-Use `@p0`, `@p1`, `@p2`, etc. with a `List<object>`:
+### Positional (`@p0`, `@p1`, …)
 
 ```csharp
 string sql = "SELECT * FROM Users WHERE Age > @p0 AND Country = @p1";
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(
-    sql, 
-    new List<object> { 18, "USA" }
-);
+List<object> parameters = new List<object> { 18, "USA" };
 ```
 
-**Advantages:**
-- Simple for queries with few parameters
-- Parameters are matched by position in the list
+- ✅ Concise for short queries.
+- ❌ Easy to get the order wrong with many parameters.
 
-**Disadvantages:**
-- Less readable with many parameters
-- Easy to mix up parameter order
-
-### Named Parameters
-
-Use descriptive names with a `Dictionary<string, object?>`:
+### Named (`@minAge`, `@country`, …) via `Dictionary`
 
 ```csharp
 string sql = "SELECT * FROM Users WHERE Age > @minAge AND Country = @country";
@@ -780,523 +723,171 @@ Dictionary<string, object?> parameters = new Dictionary<string, object?>
     { "minAge", 18 },
     { "country", "USA" }
 };
-
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, parameters);
 ```
 
-**Advantages:**
-- More readable
-- Self-documenting
-- Harder to make mistakes
+- ✅ Self-documenting; order-independent.
+- ✅ Case-sensitive keys — must match the `@name` used in the SQL, without the `@`.
 
-**Disadvantages:**
-- Slightly more verbose
-
-### Object/DTO Parameters
-
-Instead of dictionaries, you can use a class or DTO to provide parameters. This is especially useful when you have multiple queries that share the same parameter structure:
+### Named via DTO
 
 ```csharp
-// Define a parameter class
 public class UserSearchParams
 {
     public int minAge { get; set; }
     public string? country { get; set; }
 }
-
-// Use it in your query
-string sql = "SELECT * FROM Users WHERE Age > @minAge AND Country = @country";
-UserSearchParams parameters = new UserSearchParams 
-{ 
-    minAge = 18, 
-    country = "USA" 
-};
-
-// Option 1: Get results as dictionaries
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, parameters);
-
-// Option 2: Get typed results directly
-List<User> users = await SxmStatement.SelectAsync<UserSearchParams, User>(sql, parameters);
 ```
 
-**Advantages:**
-- Type-safe parameter definitions
-- Reusable across multiple queries
-- Better IntelliSense support
-- Easier to refactor
-- Self-documenting code
+- ✅ Reusable across queries with the same shape.
+- ✅ Compile-time checked; refactor-friendly.
+- ✅ Property names must match `@name` in the SQL, without the `@` (case-sensitive).
 
-**Important Notes:**
-- Property names must match SQL parameter names (without the `@` prefix)
-- Property names are **case-sensitive**
-- Works with SELECT, INSERT, UPDATE, and DELETE
-- Also works inside transactions with `SxmSqlTransaction`
+### Supported parameter types
 
-**Example with INSERT:**
-
-```csharp
-public class NewUserParams
-{
-    public string? name { get; set; }
-    public int age { get; set; }
-    public string? email { get; set; }
-}
-
-string sql = "INSERT INTO Users (Name, Age, Email) VALUES (@name, @age, @email) RETURNING *";
-NewUserParams parameters = new NewUserParams 
-{ 
-    name = "Alice Johnson", 
-    age = 28, 
-    email = "alice@example.com" 
-};
-
-// Insert and get the new user back
-User newUser = await SxmStatement.InsertAsync<NewUserParams, User>(sql, parameters);
-Console.WriteLine($"Created user with ID: {newUser.id}");
-```
-
-**Example with Transactions:**
-
-```csharp
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-
-string sql = "UPDATE Users SET Age = @age, Email = @email WHERE id = @id";
-NewUserParams updateParams = new NewUserParams 
-{ 
-    age = 29, 
-    email = "alice.updated@example.com",
-    id = 1 
-};
-
-await transaction.UpdateAsync(sql, updateParams);
-// Transaction commits automatically
-```
-
-### Parameter Types
-
-SQLiteXM automatically handles type conversion for common types:
+SQLiteXM binds the common CLR types to SQLite parameters automatically. The comments below name the SQLite **storage class** each value ends up in — those storage classes (TEXT, INTEGER, REAL, BLOB, NULL) are SQLite's, not SQLiteXM's. `bool` and `DateTime` don't have native SQLite types, so SQLiteXM follows SQLite's own convention: booleans stored as `0`/`1` INTEGER, dates stored as ISO 8601 TEXT.
 
 ```csharp
 List<object> parameters = new List<object>
 {
-    "string value",          // TEXT
-    42,                      // INTEGER
-    3.14,                    // REAL
-    true,                    // INTEGER (1)
-    DateTime.UtcNow,         // TEXT (ISO8601)
-    new byte[] { 1, 2, 3 }   // BLOB
+    "string value",         // TEXT
+    42,                     // INTEGER
+    3.14,                   // REAL
+    true,                   // INTEGER (1 / 0)
+    DateTime.UtcNow,        // TEXT (ISO 8601)
+    new byte[] { 1, 2, 3 }, // BLOB
 };
 ```
 
-### Null Parameters
+### NULL values
 
-Pass `null` or `DBNull.Value` for NULL values:
+Pass `null` (in a `Dictionary<string, object?>` or DTO property) or `DBNull.Value` (in a `List<object>`) for SQL `NULL`:
 
 ```csharp
-string sql = "INSERT INTO Users (Name, Email, Phone) VALUES (@p0, @p1, @p2) RETURNING *";
-await SxmStatement.InsertAsync(sql, new List<object> 
-{ 
-    "John", 
-    "john@example.com", 
-    DBNull.Value  // Phone is NULL
-});
+await SxmStatement.RunStatementAsync(
+    "INSERT INTO Users (Name, Email, Phone) VALUES (@p0, @p1, @p2)",
+    new List<object> { "John", "john@example.com", DBNull.Value });
 ```
 
 ---
 
-## Transactions
+## Result Type Handling
 
-For operations that must succeed or fail together, use transactions.
-
-### Basic Transaction
+SQLite has a small set of storage classes (INTEGER, REAL, TEXT, BLOB, NULL). When you consume rows as `Dictionary<string, object?>`, you are seeing those raw values:
 
 ```csharp
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
+Dictionary<string, object?> row = rows[0];
 
-// Perform multiple operations
-string insertSql = "INSERT INTO Users (Name, Age) VALUES (@p0, @p1) RETURNING *";
-Dictionary<string, object?> user = await transaction.InsertAsync(insertSql, new List<object> { "Alice", 28 });
-
-string updateSql = "UPDATE Settings SET LastUserId = @p0 WHERE id = @p1";
-await transaction.UpdateAsync(updateSql, new List<object> { user["id"], 1 });
-
-// Transaction commits automatically when disposed (if no errors occurred)
+int id = (int)(long)row["id"]!;                          // INTEGER → long
+bool isActive = ((long)row["IsActive"]!) != 0;           // stored as 0/1
+DateTime created = DateTime.Parse((string)row["CreatedAt"]!); // TEXT (ISO 8601)
+byte[] data = (byte[])row["Payload"]!;                   // BLOB
 ```
 
-**Key Points:**
-- Use `SxmSqlTransaction.Create()` to create a transaction
-- The transaction commits automatically on `DisposeAsync()` if no errors occurred
-- If an exception is thrown, the transaction rolls back automatically
-- Always use `await using` to ensure proper disposal
-
-### Explicit Commit
-
-You can also commit explicitly:
-
-```csharp
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-
-string sql1 = "INSERT INTO Orders (UserId, Total) VALUES (@p0, @p1) RETURNING *";
-Dictionary<string, object?> order = await transaction.InsertAsync(sql1, new List<object> { 1, 99.99 });
-
-string sql2 = "UPDATE Users SET OrderCount = OrderCount + 1 WHERE id = @p0";
-await transaction.UpdateAsync(sql2, new List<object> { 1 });
-
-// Explicitly commit (optional - happens automatically on dispose)
-await transaction.CommitTransactionAsync();
-```
-
-### Transaction with Error Handling
-
-```csharp
-try
-{
-    await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-
-    // Operation 1
-    string sql1 = "INSERT INTO Accounts (Name, Balance) VALUES (@p0, @p1) RETURNING *";
-    await transaction.InsertAsync(sql1, new List<object> { "Savings", 1000 });
-
-    // Operation 2
-    string sql2 = "UPDATE Accounts SET Balance = Balance - @p0 WHERE Name = @p1";
-    await transaction.UpdateAsync(sql2, new List<object> { 100, "Checking" });
-
-    // Auto-commits on successful disposal
-}
-catch (Exception ex)
-{
-    // Transaction automatically rolls back on exception
-    Console.WriteLine($"Transaction failed: {ex.Message}");
-}
-```
-
-### Inserting Multiple Records with Transaction
-
-When you need to insert multiple records, use a transaction for atomicity and performance. This example uses DTOs for clean, type-safe parameter handling:
-
-```csharp
-public class NewUserParams
-{
-    public string? name { get; set; }
-    public int age { get; set; }
-    public string? email { get; set; }
-}
-
-// Prepare multiple records to insert
-List<NewUserParams> users = new List<NewUserParams> 
-{ 
-    new NewUserParams { name = "John Doe", age = 30, email = "john@example.com" },
-    new NewUserParams { name = "Jane Smith", age = 25, email = "jane@example.com" },
-    new NewUserParams { name = "Bob Wilson", age = 35, email = "bob@example.com" }
-};
-
-string sql = "INSERT INTO Users (Name, Age, Email) VALUES (@name, @age, @email) RETURNING *";
-
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-
-List<User> insertedUsers = new List<User>();
-
-foreach (NewUserParams userParams in users)
-{
-    User newUser = await transaction.InsertAsync<NewUserParams, User>(sql, userParams);
-    insertedUsers.Add(newUser);
-}
-
-// All inserts committed together - either all succeed or all fail
-Console.WriteLine($"Successfully inserted {insertedUsers.Count} users");
-```
-
-**Benefits:**
-- **Atomicity**: All inserts succeed or fail together
-- **Performance**: Much faster than separate non-transactional inserts
-- **Type Safety**: DTOs provide compile-time checking
-- **Get IDs Back**: Collect all inserted records with their generated IDs
-
-**Alternative with Dictionary Parameters:**
-
-```csharp
-List<Dictionary<string, object?>> userDicts = new List<Dictionary<string, object?>>
-{
-    new Dictionary<string, object?> { { "name", "John" }, { "age", 30 }, { "email", "john@example.com" } },
-    new Dictionary<string, object?> { { "name", "Jane" }, { "age", 25 }, { "email", "jane@example.com" } }
-};
-
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-
-foreach (Dictionary<string, object?> userDict in userDicts)
-{
-    await transaction.InsertAsync(sql, userDict);
-}
-```
-
-### Complex Transaction with Typed Results
-
-```csharp
-public class Order : SxmEntity
-{
-    public int UserId { get; set; }
-    public decimal Total { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-
-// Insert order
-string orderSql = "INSERT INTO Orders (UserId, Total, CreatedAt) VALUES (@p0, @p1, @p2) RETURNING *";
-Order order = await transaction.InsertAsync<Order>(
-    orderSql, 
-    new List<object> { 1, 149.99, DateTime.UtcNow }
-);
-
-// Insert order items
-string itemSql = "INSERT INTO OrderItems (OrderId, ProductId, Quantity) VALUES (@p0, @p1, @p2)";
-await transaction.InsertAsync(itemSql, new List<object> { order.id, 101, 2 });
-await transaction.InsertAsync(itemSql, new List<object> { order.id, 102, 1 });
-
-// Update inventory
-string inventorySql = "UPDATE Products SET Stock = Stock - @p0 WHERE id = @p1";
-await transaction.UpdateAsync(inventorySql, new List<object> { 2, 101 });
-await transaction.UpdateAsync(inventorySql, new List<object> { 1, 102 });
-
-// Transaction commits automatically
-```
-
-### Transaction with SELECT
-
-You can also query within transactions:
-
-```csharp
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-
-// Check current balance
-string checkSql = "SELECT Balance FROM Accounts WHERE id = @p0";
-List<Dictionary<string, object?>> results = await transaction.SelectAsync(checkSql, new List<object> { 1 });
-decimal currentBalance = (decimal)results[0]["Balance"];
-
-if (currentBalance >= 100)
-{
-    // Perform withdrawal
-    string updateSql = "UPDATE Accounts SET Balance = Balance - @p0 WHERE id = @p1";
-    await transaction.UpdateAsync(updateSql, new List<object> { 100, 1 });
-}
-else
-{
-    throw new InvalidOperationException("Insufficient funds");
-}
-
-// Commits automatically if no exception
-```
+When you use the typed overloads (`RunStatementAsync<TResult>` / `RunStatementAsync<T, TResult>`), SQLiteXM performs the conversion for you based on the target property type, so this boilerplate goes away.
 
 ---
 
 ## Best Practices
 
-### 1. Always Use Parameters
+### 1. Always parameterize
 
-**❌ Don't do this (SQL injection risk):**
+**❌ Never concatenate user input into SQL:**
 ```csharp
-string name = userInput;
-string sql = $"SELECT * FROM Users WHERE Name = '{name}'";  // DANGEROUS!
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, new List<object>());
+string sql = $"SELECT * FROM Users WHERE Name = '{userInput}'"; // SQL injection risk
 ```
 
-**✅ Do this instead:**
+**✅ Use parameters:**
 ```csharp
-string sql = "SELECT * FROM Users WHERE Name = @p0";
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, new List<object> { userInput });
+await SxmStatement.RunStatementAsync(
+    "SELECT * FROM Users WHERE Name = @p0",
+    new List<object> { userInput });
 ```
 
-### 2. Use Typed Results When Possible
+### 2. Prefer typed results
 
-Typed results are safer and more maintainable:
+Typed results catch mistakes at compile time and eliminate manual casts:
 
 ```csharp
-// Good: Type-safe
-List<User> users = await SxmStatement.SelectAsync<User>(sql, parameters);
-foreach (User user in users)
-{
-    Console.WriteLine(user.Name);  // Compile-time safety
-}
-
-// Less ideal: Runtime casting required
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(sql, parameters);
-foreach (Dictionary<string, object?> row in results)
-{
-    Console.WriteLine((string)row["Name"]!);  // Runtime error if column missing
-}
+List<UserDto> users = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
 ```
 
-### 3. Use Transactions for Related Operations
+Reach for dictionary results only when the shape truly is dynamic.
 
-If multiple operations must succeed together, use a transaction:
+### 3. Group related writes in a transaction
+
+If two or more statements must succeed or fail together, use `SxmSqlTransaction` rather than sequential standalone calls:
 
 ```csharp
-// Good: Transactional
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-await transaction.InsertAsync(sql1, params1);
-await transaction.UpdateAsync(sql2, params2);
-// Auto-commits
-
-// Not ideal: No atomicity guarantee
-await SxmStatement.InsertAsync(sql1, params1, "AppData");  
-await SxmStatement.UpdateAsync(sql2, params2, "AppData");  // If this fails, first INSERT remains
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
+await tx.RunStatementAsync(sql1, params1);
+await tx.RunStatementAsync(sql2, params2);
+// Atomic.
 ```
 
-### 4. Use Named Parameters or DTOs for Complex Queries
+Sequential standalone calls give up atomicity — a failure between them leaves the database half-updated.
 
-For queries with many parameters, named parameters or DTOs improve readability:
+### 4. Use `RETURNING *` on inserts when you need the generated row
 
-**With Dictionary (good):**
+SQLite supports `RETURNING` on `INSERT`, `UPDATE`, and `DELETE`. Combined with a typed overload, you get the persisted record back — including auto-generated columns like `id` — without a second round-trip.
+
 ```csharp
-string sql = @"
-    UPDATE Users 
-    SET Name = @name, 
-        Age = @age, 
-        Email = @email, 
-        Phone = @phone 
-    WHERE id = @id";
+string sql = "INSERT INTO Users (Name, Age) VALUES (@name, @age) RETURNING *";
 
 Dictionary<string, object?> parameters = new Dictionary<string, object?>
 {
-    { "name", "John" },
-    { "age", 30 },
-    { "email", "john@example.com" },
-    { "phone", "555-1234" },
-    { "id", 1 }
+    { "name", "Alice" },
+    { "age",  28 }
 };
 
-await SxmStatement.UpdateAsync(sql, parameters);
+List<UserDto> inserted = await SxmStatement.RunStatementAsync<UserDto>(sql, parameters);
+
+int newId = inserted[0].id;
 ```
 
-**With DTO (better for reusability):**
-```csharp
-public class UpdateUserParams
-{
-    public string? name { get; set; }
-    public int age { get; set; }
-    public string? email { get; set; }
-    public string? phone { get; set; }
-    public int id { get; set; }
-}
-
-string sql = @"
-    UPDATE Users 
-    SET Name = @name, 
-        Age = @age, 
-        Email = @email, 
-        Phone = @phone 
-    WHERE id = @id";
-
-UpdateUserParams parameters = new UpdateUserParams
-{
-    name = "John",
-    age = 30,
-    email = "john@example.com",
-    phone = "555-1234",
-    id = 1
-};
-
-await SxmStatement.UpdateAsync(sql, parameters);
-```
-
-### 5. Handle SQLite Type Conversions
-
-Remember that SQLite has limited types. Handle conversions carefully:
+### 5. Always `await using` a transaction
 
 ```csharp
-// SQLite stores integers as long
-Dictionary<string, object?> row = results[0];
-int id = (int)(long)row["id"];  // ✅ Correct
+// ✅
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
 
-// Booleans are stored as 0/1
-bool isActive = ((long)row["IsActive"]) != 0;  // ✅ Correct
-
-// DateTimes are stored as TEXT
-DateTime created = DateTime.Parse((string)row["CreatedAt"]!);  // ✅ Works
+// ❌ Easy to forget disposal, and a missed dispose means no commit and a held connection lock.
+SxmSqlTransaction tx = SxmSqlTransaction.Create("AppData");
 ```
 
-### 6. Use RETURNING for INSERTs
+### 6. Name the database when you use more than one
 
-Always use `RETURNING *` to get inserted data, especially the auto-generated ID:
+Standalone calls default to the database configured in `SqlStatements.json`. When you have multiple databases, pass `databaseName` explicitly to avoid accidental cross-database queries:
 
 ```csharp
-// Good: Get the generated ID back
-string sql = "INSERT INTO Users (Name) VALUES (@p0) RETURNING *";
-Dictionary<string, object?> newUser = await SxmStatement.InsertAsync(sql, new List<object> { "John" });
-int newId = (int)(long)newUser["id"];
-
-// Not ideal: You don't know the generated ID
-string sql = "INSERT INTO Users (Name) VALUES (@p0)";
-await SxmStatement.InsertAsync(sql, new List<object> { "John" });
-// Now what? How do you get the ID?
+List<UserDto> live    = await SxmStatement.RunStatementAsync<UserDto>(sql, p);
+List<UserDto> archive = await SxmStatement.RunStatementAsync<UserDto>(sql, p, "ArchiveDB");
 ```
 
-### 7. Specify Database Name When Using Multiple Databases
-
-If you have multiple databases, specify which one:
+For transactions, choose the database when you create the transaction:
 
 ```csharp
-// Query the default database
-List<Dictionary<string, object?>> results1 = await SxmStatement.SelectAsync(sql, parameters);
-
-// Query a specific database
-List<Dictionary<string, object?>> results2 = await SxmStatement.SelectAsync(sql, parameters, "SecondaryDB");
+await using SxmSqlTransaction tx = SxmSqlTransaction.Create("ArchiveDB");
 ```
 
-### 8. Dispose Transactions Properly
+### 7. Don't nest transactions
 
-Always use `await using` with transactions:
+SQLite itself does not support nested transactions — a single connection can have only one transaction active at a time. `SxmSqlTransaction` reflects that by registering itself as the ambient transaction and refusing to create another while one is already active. This is not a SQLiteXM restriction; it is a property of the underlying engine.
 
-```csharp
-// ✅ Correct: Auto-disposal
-await using SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-// ...operations...
-
-// ❌ Incorrect: Manual disposal (error-prone)
-SxmSqlTransaction transaction = SxmSqlTransaction.Create("AppData");
-try 
-{
-    // ...operations...
-    await transaction.CommitTransactionAsync();
-}
-finally 
-{
-    await transaction.DisposeAsync();  // Easy to forget!
-}
-```
-
-### 9. Use LINQ for Complex Queries
-
-For complex queries, consider using SQLiteXM's LINQ support instead:
-
-```csharp
-// Direct SQL (fine for simple queries)
-string sql = "SELECT * FROM Users WHERE Age > @p0 ORDER BY Name";
-List<User> results = await SxmStatement.SelectAsync<User>(sql, new List<object> { 18 });
-
-// LINQ (better for complex queries)
-using SxmLinqDbContext context = new SxmLinqDbContext("AppData");
-List<User> results = context.GetTable<User>()
-    .Where(u => u.Age > 18)
-    .OrderBy(u => u.Name)
-    .ToList();
-```
+If you find yourself wanting to nest, restructure the calling code so a single transaction spans the whole unit of work, or complete and dispose the outer transaction before starting a new one. (SQLite's `SAVEPOINT` feature offers partial-rollback semantics within a single transaction, but it is not a true nested transaction and is outside the scope of this guide.)
 
 ---
 
 ## Summary
 
-SQLiteXM's direct SQL support provides:
+- All embedded SQL in SQLiteXM flows through a single method name: **`RunStatementAsync`**.
+- Use the **static** `SxmStatement.RunStatementAsync` for one-off statements.
+- Use the **instance** `SxmSqlTransaction.RunStatementAsync` when multiple statements must be atomic.
+- Pick an overload by combining a parameter shape (**DTO**, **Dictionary**, **positional list**) with a result shape (**typed** or **dictionary**) — see the [Overload Matrix](#overload-matrix).
+- Always parameterize, prefer typed results, and always `await using` transactions.
 
-- ✅ **Flexible querying** - Write any valid SQLite SQL
-- ✅ **Type safety** - Map results to typed objects
-- ✅ **Parameter safety** - Protected against SQL injection
-- ✅ **Transaction support** - ACID guarantees for related operations
-- ✅ **Simple API** - Consistent methods for all operations
+For entity-oriented data access and LINQ, see the companion guides:
 
-Start with simple queries using `SxmStatement`, then use `SxmSqlTransaction` when you need atomicity.
+- [Getting Started](GettingStarted.md)
+- [LINQ Support](QUERYING_DATA.md)
+- [Relationships](RELATIONSHIPS.md)
 
-For more information, see:
-- [Entity Framework](GettingStarted.md) - Using SQLiteXM entities
-- [LINQ Support](QUERYING_DATA.md) - Query using LINQ
-- [Relationships](RELATIONSHIPS.md) - Working with related data

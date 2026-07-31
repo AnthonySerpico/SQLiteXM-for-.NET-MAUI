@@ -19,22 +19,22 @@ namespace SQLiteXM
         /// <summary>
         /// Insert statements keyed by statement name.
         /// </summary>
-        internal static ConcurrentDictionary<string, InsertDefinition> InsertStatements = new ConcurrentDictionary<string, InsertDefinition>();
+		internal static ConcurrentDictionary<string, InsertDefinition> InsertStatements = new ConcurrentDictionary<string, InsertDefinition>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Select statements keyed by statement name.
 		/// </summary>
-		internal static ConcurrentDictionary<string, SelectDefinition> SelectStatements = new ConcurrentDictionary<string, SelectDefinition>();
+		internal static ConcurrentDictionary<string, SelectDefinition> SelectStatements = new ConcurrentDictionary<string, SelectDefinition>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Update statements keyed by statement name.
 		/// </summary>
-		internal static ConcurrentDictionary<string, UpdateDefinition> UpdateStatements = new ConcurrentDictionary<string, UpdateDefinition>();
+		internal static ConcurrentDictionary<string, UpdateDefinition> UpdateStatements = new ConcurrentDictionary<string, UpdateDefinition>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Delete statements keyed by statement name.
 		/// </summary>
-		internal static ConcurrentDictionary<string, DeleteDefinition> DeleteStatements = new ConcurrentDictionary<string, DeleteDefinition>();
+		internal static ConcurrentDictionary<string, DeleteDefinition> DeleteStatements = new ConcurrentDictionary<string, DeleteDefinition>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Returns the SQL text for a named statement.
@@ -224,10 +224,10 @@ namespace SQLiteXM
 
             TableCreateStatements = new ConcurrentDictionary<string, TableDefinition>();
             TriggerStatements = new ConcurrentDictionary<string, List<TriggerDefinition>>(StringComparer.Ordinal);
-            InsertStatements = new ConcurrentDictionary<string, InsertDefinition>();
-            SelectStatements = new ConcurrentDictionary<string, SelectDefinition>();
-            UpdateStatements = new ConcurrentDictionary<string, UpdateDefinition>();
-            DeleteStatements = new ConcurrentDictionary<string, DeleteDefinition>();
+            InsertStatements = new ConcurrentDictionary<string, InsertDefinition>(StringComparer.OrdinalIgnoreCase);
+            SelectStatements = new ConcurrentDictionary<string, SelectDefinition>(StringComparer.OrdinalIgnoreCase);
+            UpdateStatements = new ConcurrentDictionary<string, UpdateDefinition>(StringComparer.OrdinalIgnoreCase);
+            DeleteStatements = new ConcurrentDictionary<string, DeleteDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 #endif
 

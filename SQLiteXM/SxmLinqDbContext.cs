@@ -34,7 +34,6 @@ namespace SQLiteXM
                 _linqToDbDataConnection = new DataConnection( new DataOptions()
                                             .UseMappingSchema(SxmMapping.Schema)
                                             .UseConnection(SQLiteTools.GetDataProvider(SQLiteProvider.Microsoft), _sqliteConnection));
-                //_linqToDbDataConnection.AddMappingSchema(SxmMapping.Schema);
 
                 // Register this context with its DataConnection for context recovery
                 _contextRegistry[_linqToDbDataConnection] = new WeakReference<SxmLinqDbContext>(this);

@@ -31,7 +31,6 @@ The SQL Statements file uses a consistent structure with a `databases` array, wh
 
 ```json
 {
-  "version": 1,
   "databases": [
 	{
 	  "database": "your_database_name",
@@ -48,7 +47,6 @@ The SQL Statements file uses a consistent structure with a `databases` array, wh
 ```
 
 **Properties:**
-- `version` (number, required): File format version (currently `1`)
 - `databases` (array, required): Array of database definitions
   - Each database object has:
 	- `database` (string, required): Database name (without `.db` extension)
@@ -62,7 +60,6 @@ Even with one database, use the `databases` array:
 
 ```json
 {
-  "version": 1,
   "databases": [
 	{
 	  "database": "myapp_database",
@@ -81,7 +78,6 @@ For multiple databases, add more entries to the `databases` array:
 
 ```json
 {
-  "version": 1,
   "databases": [
 	{
 	  "database": "main_database",
@@ -483,7 +479,6 @@ When using one database, triggers **do not require** a `Database` field:
 
 ```json
 {
-  "version": 1,
   "databases": [
 	{
 	  "database": "myapp_database",
@@ -510,7 +505,6 @@ When using multiple databases, each trigger **must specify** a `Database` field:
 
 ```json
 {
-  "version": 1,
   "databases": [
 	{
 	  "database": "myapp_database",
@@ -614,7 +608,6 @@ Here's a complete SQL Statements file for a simple e-commerce application using 
 
 ```json
 {
-  "version": 1,
   "databases": [
     {
       "database": "ecommerce_db",
@@ -859,7 +852,6 @@ This example separates transactional data from analytics data for better perform
 
 ```json
 {
-  "version": 1,
   "databases": [
     {
       "database": "ecommerce",
@@ -999,7 +991,6 @@ This example uses separate databases for different tenants:
 
 ```json
 {
-  "version": 1,
   "databases": [
     {
       "database": "system",
@@ -1227,60 +1218,8 @@ The SQL Statements file is configuration, so:
 - ✅ Document breaking changes
 - ✅ Version it alongside your code
 
-### 8. **Multi-Database Organization**
 
-**Option 1: Single File (Recommended for most apps)**
-
-Use one SqlStatements file with a `databases` array:
-
-```json
-{
-  "version": 1,
-  "databases": [
-    { "database": "main", "isDefault": true },
-    { "database": "analytics", "isDefault": false },
-    { "database": "cache", "isDefault": false }
-  ],
-  "insert": [ /* all statements */ ],
-  "select": [ /* all statements */ ]
-}
-```
-
-**Benefits:**
-- ✅ Single source of truth
-- ✅ Easier to maintain
-- ✅ All databases initialized together
-- ✅ Simpler deployment
-
-**Option 2: Separate Files (For complex scenarios)**
-
-Use separate files if databases are truly independent:
-
-```
-/Resources/Raw/
-  ├── MainDatabase.json      (isDefault: true)
-  ├── AnalyticsDatabase.json (isDefault: false)
-  └── CacheDatabase.json     (isDefault: false)
-```
-
-**When to use separate files:**
-- Different lifecycle/versioning needs
-- Different teams own different databases
-- Database files loaded dynamically at runtime
-
-### 9. **Always Specify `version: 1`**
-
-Include the version property for forward compatibility:
-
-```json
-{
-  "version": 1,
-  "database": "myapp_db",
-  "isDefault": true
-}
-```
-
-### 10. **Use Database Attribute for Non-Default Tables**
+### 8. **Use Database Attribute for Non-Default Tables**
 
 For multi-database scenarios, use the `[Table(Database = "...")]` attribute on entities:
 

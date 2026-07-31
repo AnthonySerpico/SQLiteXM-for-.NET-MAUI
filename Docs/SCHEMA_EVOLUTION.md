@@ -17,7 +17,7 @@ model against the existing database schema and applies the changes. SQLiteXM onl
 
 ## What Changes Are Safe?
 
-Safe changes are those that are expressible via SQLite-supported Data Definition Language (DDL) without table rebuilds.
+Safe changes are those that are expressible via SQLite's supported Data Definition Language (DDL) without table rebuilds.
 Changes that would require a manual DDL workaround such as creating a new table, copying data, dropping the old table, and renaming 
 the new table are not supported by SQLiteXM as these are not considered safe.
 
@@ -88,7 +88,7 @@ If an index is removed from an existing entity, SQLiteXM will drop the index dur
 * Unique multi-column indexes
 
 
-## Can SQLiteXM Support Changes to Indexes?
+## Can SQLiteXM Modify Indexes?
 
 Yes.
 
@@ -119,7 +119,7 @@ Yes.
 
 If a trigger is removed from an existing entity, SQLiteXM will drop the trigger during registration.
 
-## Can SQLiteXM Support Changes to Triggers?
+## Can SQLiteXM Modify Triggers?
 
 Yes.
 
