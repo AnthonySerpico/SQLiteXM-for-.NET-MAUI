@@ -48,7 +48,7 @@ public partial class ReviewViewModel : BaseViewModel
     {
         try
         {
-            await using (var context = new SxmLinqDbContext("AppData"))
+            await using (var context = new SxmDbContext("AppData"))
             {
                 var user = context.GetTable<User>()
                     .FirstOrDefault(u => u.id == UserId);
@@ -96,16 +96,15 @@ public partial class ReviewViewModel : BaseViewModel
 
             // Save User and UserPreferences in a transaction
             // This ensures both are saved atomically or both fail
-            SxmConnection connection = new SxmConnection("AppData", shared: false);
-            await using SxmSqlTransaction transaction = await SxmSqlTransaction.CreateAsync(connection);
+            await using (SxmDbContext transaction = new SxmDbContext())
             {
                 try
-                {
+                { 
                     // Save the user (update with final data)
-                    await CurrentUser.SaveAsync(transaction);
+                    await CurrentUser.SaveAsync();
 
                     // Save the preferences
-                    await CurrentPreferences.SaveAsync(transaction);
+                    await CurrentPreferences.SaveAsync();
 
                     // Commit the transaction
                     await transaction.CommitTransactionAsync();

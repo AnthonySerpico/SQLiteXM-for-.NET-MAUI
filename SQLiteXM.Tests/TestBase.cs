@@ -450,7 +450,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<T?> VerifyEntityExistsInDbAsync<T>(long id) where T : SxmEntity
     {
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
             return entity;
@@ -462,7 +462,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task VerifyEntityNotInDbAsync<T>(long id) where T : SxmEntity
     {
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
             if (entity != null)
@@ -478,7 +478,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<List<T>> GetAllEntitiesFromDb<T>() where T : SxmEntity
     {
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             return context.GetTable<T>().ToList();
         }
@@ -491,7 +491,7 @@ public abstract class TestBase : IDisposable
     {
         int rc = 0;
 
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             rc = context.GetTable<T>().Count();
         }
@@ -507,7 +507,7 @@ public abstract class TestBase : IDisposable
     {
         try
         {
-            await using (var context = new SxmLinqDbContext(TestDatabaseName))
+            await using (var context = new SxmDbContext(TestDatabaseName))
             {
                 _ = context.GetTable<T>().Count();
                 return true;

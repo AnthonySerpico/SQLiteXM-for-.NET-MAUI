@@ -40,7 +40,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Internal fault-state accessor so other library layers sharing this transaction
-        /// (e.g. <see cref="SxmLinqDbContext"/>) can observe and propagate failure state,
+        /// (e.g. <see cref="SxmDbContext"/>) can observe and propagate failure state,
         /// ensuring a failure in any layer prevents auto-commit for all layers.
         /// </summary>
         internal bool EncounteredError
@@ -72,7 +72,7 @@ namespace SQLiteXM
         /// The synchronous factory does not attempt to acquire a shared connection lock because it creates a private connection.
         /// Prefer the async factory for shared connections.
         /// </remarks>
-        public new static SxmSqlTransaction Create(string? databaseName = null)
+        internal new static SxmSqlTransaction Create(string? databaseName = null)
         {
             SxmConnection conn = new SxmConnection(databaseName, shared: false);
             SxmSqlTransaction sxmTransaction = new SxmSqlTransaction(conn, ownsLock: false, ownerId: null);
@@ -109,7 +109,7 @@ namespace SQLiteXM
         /// Nested ambient transactions are not allowed and will throw <see cref="InvalidOperationException"/>.
         /// </para>
         /// </remarks>
-        public new static Task<SxmSqlTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
+        internal new static Task<SxmSqlTransaction> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
         {
             if (conn == null) throw new ArgumentNullException(nameof(conn));
 

@@ -232,7 +232,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
         // This is a simplified execution - in reality, we'd need to dynamically compile
         // For the demo, we'll execute predefined queries based on the query ID
 
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
 
         return QueryExample?.Id switch
         {
@@ -327,7 +327,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteBasic3()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
             if (rockGenre != null)
@@ -341,7 +341,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteRel1()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         return (from track in context.GetTable<Track>()
                 join album in context.GetTable<Album>() on track.AlbumId equals album.id
                 orderby track.Name
@@ -352,7 +352,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteRel2()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from album in context.GetTable<Album>()
                     join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -364,7 +364,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteRel3()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -387,7 +387,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg1()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
@@ -406,7 +406,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg2()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from album in context.GetTable<Album>()
                     join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -424,7 +424,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg3()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
@@ -442,7 +442,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv2()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -456,7 +456,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecutePerf2()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from invoiceLine in context.GetTable<InvoiceLine>()
                     join invoice in context.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
@@ -479,7 +479,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteM2M1()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.Name.Contains("Music"));
             if (playlist != null)
@@ -498,7 +498,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteM2M2()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var track = context.GetTable<Track>().FirstOrDefault(t => t.Name.Contains("Track"));
             if (track != null)
@@ -515,7 +515,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteM2M3()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from playlist in context.GetTable<Playlist>()
                     join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
@@ -537,7 +537,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Relationship queries
     private async Task<object> ExecuteRel4()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from customer in context.GetTable<Customer>()
                     join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
@@ -557,7 +557,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteRel5()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from emp in context.GetTable<Employee>()
                     join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
@@ -576,7 +576,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteRel6()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from invoice in context.GetTable<Invoice>()
                     join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -596,7 +596,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteRel7()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -623,7 +623,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteRel8()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     select new 
@@ -639,7 +639,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Aggregation queries
     private async Task<object> ExecuteAgg4()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from invoice in context.GetTable<Invoice>()
                     join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -659,7 +659,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg5()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from invoiceLine in context.GetTable<InvoiceLine>()
                     join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
@@ -678,7 +678,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg6()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from invoice in context.GetTable<Invoice>()
                     join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -697,7 +697,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg7()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var tracks = context.GetTable<Track>().ToList();
             return new List<object>
@@ -715,7 +715,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg8()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var dbTimer = Stopwatch.StartNew();
             // Optimized: Pre-aggregate invoice data first, then join with customers
@@ -752,7 +752,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg9()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -774,7 +774,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAgg10()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from invoiceLine in context.GetTable<InvoiceLine>()
                     join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
@@ -796,7 +796,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Advanced LINQ queries
     private async Task<object> ExecuteAdv3()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return context.GetTable<Track>()
                 .Where(t => (t.UnitPrice >= 1.0m && t.Milliseconds >= 180000) ||
@@ -809,7 +809,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv4()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var artistIds = context.GetTable<Artist>()
                 .OrderBy(a => a.Name)
@@ -829,7 +829,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv5()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from customer in context.GetTable<Customer>()
                     let invoiceCount = (from invoice in context.GetTable<Invoice>()
@@ -849,7 +849,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv6()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from album in context.GetTable<Album>()
                     join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -867,7 +867,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv7()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var tracks = context.GetTable<Track>().ToList();
             return new List<object>
@@ -887,7 +887,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv8()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
 
             var dbTimer = Stopwatch.StartNew();
@@ -922,7 +922,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv9()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from invoice in context.GetTable<Invoice>()
                     join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -941,7 +941,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv10()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return context.GetTable<Artist>()
                 .Select(a => new
@@ -960,7 +960,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteAdv11()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var artistNames = context.GetTable<Artist>()
                 .Select(a => new { Name = a.Name, Type = "Artist" })
@@ -980,7 +980,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Performance queries
     private async Task<object> ExecutePerf5()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var expensiveAlbums = context.GetTable<Album>()
                 .Where(a => a.Title.StartsWith("A"))
@@ -995,7 +995,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecutePerf6()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var hasExpensiveTracks = context.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
             var expensiveCount = context.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
@@ -1009,7 +1009,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecutePerf7()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from track in context.GetTable<Track>()
                     join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -1025,7 +1025,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecutePerf8()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return context.GetTable<Customer>()
                 .Select(c => c.Country)
@@ -1037,7 +1037,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecutePerf9()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -1067,7 +1067,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Many-to-Many queries
     private async Task<object> ExecuteM2M4()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var dbTimer = Stopwatch.StartNew();
             // Materialize the grouped data first - SQLite can't translate Distinct().Count() in projection
@@ -1099,7 +1099,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteM2M5()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var dbTimer = Stopwatch.StartNew();
             // Materialize the joins first - avoid hanging on Distinct().Count() in projection
@@ -1134,7 +1134,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteM2M6()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var dbTimer = Stopwatch.StartNew();
             // Materialize playlist track counts (10k playlist tracks / 50 playlists = ~200 avg)
@@ -1167,7 +1167,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteM2M7()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return new List<object>
             {
@@ -1178,7 +1178,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteM2M8()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             return (from pt1 in context.GetTable<PlaylistTrack>()
                     join pt2 in context.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
@@ -1350,7 +1350,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Transaction examples
     private async Task<object> ExecuteTrans1Async()
     {
-        await using (var transaction = new SxmLinqDbContext("Chinook"))
+        await using (var transaction = new SxmDbContext("Chinook"))
         try
         {
             var invoice = new Invoice
@@ -1385,7 +1385,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans2Async()
     {
-        await using (var transaction = new SxmLinqDbContext("Chinook"))
+        await using (var transaction = new SxmDbContext("Chinook"))
         try
         {
             var artist = new Artist { Name = "Transaction Test Artist" };
@@ -1412,7 +1412,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans3Async()
     {
-        await using (var transaction = new SxmLinqDbContext("Chinook"))
+        await using (var transaction = new SxmDbContext("Chinook"))
             try
             {
             var insertedCount = 0;
@@ -1450,7 +1450,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans4Async()
     {
-        await using (var transaction = new SxmLinqDbContext("Chinook"))
+        await using (var transaction = new SxmDbContext("Chinook"))
             try
             {
             var artist = transaction.GetTable<Artist>().First();
@@ -1481,7 +1481,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans5Async()
     {
-        await using (var transaction = new SxmLinqDbContext("Chinook"))
+        await using (var transaction = new SxmDbContext("Chinook"))
             try
             {
             var playlist = new Playlist { Name = $"Transaction Demo Playlist {DateTime.Now:HHmmss}" };
@@ -1523,7 +1523,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
         var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
 
         var start2 = DateTime.Now;
-        await using (var transaction = new SxmLinqDbContext("Chinook"))
+        await using (var transaction = new SxmDbContext("Chinook"))
         {
             for (int i = 1; i <= 20; i++)
             {
@@ -1546,7 +1546,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Parameterized query examples
     private async Task<object> ExecuteParam1()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             string searchTerm = "Love";
             return context.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList();
@@ -1555,7 +1555,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteParam2()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             decimal minPrice = 0.99m;
             decimal maxPrice = 1.49m;
@@ -1569,7 +1569,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteParam3()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var startDate = DateTime.Now.AddYears(-3);
             var endDate = DateTime.Now;
@@ -1597,7 +1597,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteParam4()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             string artistSearchTerm = "Led";
             int genreId = 1;
@@ -1615,7 +1615,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteParam5()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             string? artistFilter = "Led";  // Search for "Led" (Led Zeppelin)
             decimal? minDuration = 180000;
@@ -1637,7 +1637,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteParam6()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             string pattern = "Track";  // Searches for "Track" in track names
             return context.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
@@ -1679,7 +1679,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteMod3Async()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var track = context.GetTable<Track>().First();
             var originalPrice = track.UnitPrice;
@@ -1691,7 +1691,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteMod4Async()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var cheapTracks = context.GetTable<Track>().Where(t => t.UnitPrice < 1.00m).Take(10).ToList();
             var updateCount = 0;
@@ -1707,7 +1707,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteMod5Async()
     {
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         {
             var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name.Contains("Rock"));
             if (rockGenre != null)
@@ -1740,7 +1740,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
         var savedId = tempPlaylist.id;
 
         // Now find and delete the playlist we just created using the ID
-        await using (var context = new SxmLinqDbContext("Chinook"))
+        await using (var context = new SxmDbContext("Chinook"))
         { 
         var playlist = context.GetTable<Playlist>()
             .FirstOrDefault(p => p.id == savedId);
@@ -1788,7 +1788,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
         try
         {
             // Now find and delete playlists using the saved IDs
-            await using (var context = new SxmLinqDbContext("Chinook"))
+            await using (var context = new SxmDbContext("Chinook"))
             {
                 var playlistsToDelete = context.GetTable<Playlist>()
                     .Where(p => savedIds.Contains(p.id))
@@ -1847,7 +1847,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
         try
         {
             // Now demonstrate deletion with related records
-            await using (var context = new SxmLinqDbContext("Chinook"))
+            await using (var context = new SxmDbContext("Chinook"))
             {
                 // Load the playlist we just created
                 var playlist = context.GetTable<Playlist>()

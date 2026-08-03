@@ -540,7 +540,7 @@ public class MultiDatabaseTests : IDisposable
         await entityB2.SaveAsync();
 
         // Assert - Query each database and verify isolation
-        using (var contextA = new SxmLinqDbContext(dbA))
+        using (var contextA = new SxmDbContext(dbA))
         {
             var entitiesInA = contextA.GetTable<DatabaseAEntity>().ToList();
             Assert.Equal(2, entitiesInA.Count);
@@ -548,7 +548,7 @@ public class MultiDatabaseTests : IDisposable
             Assert.Contains(entitiesInA, e => e.Name == "A2");
         }
 
-        using (var contextB = new SxmLinqDbContext(dbB))
+        using (var contextB = new SxmDbContext(dbB))
         {
             var entitiesInB = contextB.GetTable<DatabaseBEntity>().ToList();
             Assert.Equal(2, entitiesInB.Count);
@@ -557,7 +557,7 @@ public class MultiDatabaseTests : IDisposable
         }
 
         // Verify Database A doesn't contain Database B entities
-        using (var contextA = new SxmLinqDbContext(dbA))
+        using (var contextA = new SxmDbContext(dbA))
         {
             // DatabaseBEntity table shouldn't exist in Database A
             var tables = contextA.GetTable<DatabaseBEntity>();
@@ -616,7 +616,7 @@ public class MultiDatabaseTests : IDisposable
         await entityB.SaveAsync();  // SaveAsync handles both insert and update
 
         // Assert - Verify updates persisted in each database
-        using (var contextA = new SxmLinqDbContext(dbA))
+        using (var contextA = new SxmDbContext(dbA))
         {
             var updated = contextA.GetTable<DatabaseAEntity>().First(e => e.id == entityAId);
             Assert.Equal("Updated A", updated.Name);
@@ -624,7 +624,7 @@ public class MultiDatabaseTests : IDisposable
             Assert.Equal(20, updated.Count);
         }
 
-        using (var contextB = new SxmLinqDbContext(dbB))
+        using (var contextB = new SxmDbContext(dbB))
         {
             var updated = contextB.GetTable<DatabaseBEntity>().First(e => e.id == entityBId);
             Assert.Equal("Updated B", updated.Title);
@@ -680,7 +680,7 @@ public class MultiDatabaseTests : IDisposable
         await entityB1.DeleteAsync();
 
         // Assert - Verify deletions in each database
-        using (var contextA = new SxmLinqDbContext(dbA))
+        using (var contextA = new SxmDbContext(dbA))
         {
             var remaining = contextA.GetTable<DatabaseAEntity>().ToList();
             Assert.Single(remaining);
@@ -688,7 +688,7 @@ public class MultiDatabaseTests : IDisposable
             Assert.DoesNotContain(remaining, e => e.id == entityA1Id);
         }
 
-        using (var contextB = new SxmLinqDbContext(dbB))
+        using (var contextB = new SxmDbContext(dbB))
         {
             var remaining = contextB.GetTable<DatabaseBEntity>().ToList();
             Assert.Single(remaining);

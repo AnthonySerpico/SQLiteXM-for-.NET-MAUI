@@ -47,7 +47,7 @@ public partial class ReviewViewModel : BaseViewModel
     {
         try
         {
-            await using (var context = new SxmLinqDbContext("Session"))
+            await using (var context = new SxmDbContext("Session"))
             {
                 var draft = context.GetTable<RegistrationDraft>()
                     .FirstOrDefault(d => d.id == DraftId);
@@ -80,7 +80,7 @@ public partial class ReviewViewModel : BaseViewModel
             User? user = default;
 
             // Load draft
-            await using (var sessionContext = new SxmLinqDbContext("Session"))
+            await using (var sessionContext = new SxmDbContext("Session"))
             {
                 draft = sessionContext.GetTable<RegistrationDraft>().FirstOrDefault(d => d.id == DraftId);
 
@@ -94,8 +94,7 @@ public partial class ReviewViewModel : BaseViewModel
             // ==================================================================================
             // TRANSACTION SCOPE: User and UserPreferences saved atomically to UserData database
             // ==================================================================================
-            SxmConnection connection = new SxmConnection("UserData", shared: false);
-            await using (SxmSqlTransaction transaction = await SxmSqlTransaction.CreateAsync(connection))
+            await using (SxmDbContext transaction = new SxmDbContext())
             {
                 try
                 {
@@ -111,7 +110,7 @@ public partial class ReviewViewModel : BaseViewModel
                         LastLoginAt = DateTime.UtcNow
                     };
 
-                    await user.SaveAsync(transaction);
+                    await user.SaveAsync();
 
                     // Create preferences
                     var preferences = new UserPreferences
@@ -122,7 +121,7 @@ public partial class ReviewViewModel : BaseViewModel
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    await preferences.SaveAsync(transaction);
+                    await preferences.SaveAsync();
 
                     // Commit transaction. The explicit CommitTransactionAsync() call is optional
                     // but considered good practice. Without it, the transaction will AUTO-COMMIT

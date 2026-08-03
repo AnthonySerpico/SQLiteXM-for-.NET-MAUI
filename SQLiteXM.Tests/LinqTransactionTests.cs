@@ -20,7 +20,7 @@ public class LinqTransactionTests : TestBase
         int beforeCount;
 
         // Capture count before transaction
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             beforeCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
         }
@@ -39,7 +39,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify no new rows were persisted via LINQ
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             int afterCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
             afterCount.Should().Be(beforeCount, "rollback should prevent any records from being persisted");
@@ -56,7 +56,7 @@ public class LinqTransactionTests : TestBase
         int beforeCount;
 
         // Capture count before transaction
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             beforeCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
         }
@@ -73,7 +73,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify record is visible via LINQ
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             int afterCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
             afterCount.Should().Be(beforeCount + 1, "commit should persist the record");
@@ -98,7 +98,7 @@ public class LinqTransactionTests : TestBase
         int beforeParentCount, beforeChildCount;
 
         // Capture counts before transaction
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             beforeParentCount = ctx.GetTable<ParentEntity>().Count(p => p.ParentName == parentName);
             beforeChildCount = ctx.GetTable<ChildEntity>().Count(c => c.ChildName == childName);
@@ -123,7 +123,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify no records were persisted via LINQ
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             int afterParentCount = ctx.GetTable<ParentEntity>().Count(p => p.ParentName == parentName);
             int afterChildCount = ctx.GetTable<ChildEntity>().Count(c => c.ChildName == childName);
@@ -161,7 +161,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify changes were not persisted via LINQ
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             var retrieved = ctx.GetTable<SimpleEntity>()
                 .FirstOrDefault(e => e.id == entityId);
@@ -185,7 +185,7 @@ public class LinqTransactionTests : TestBase
         long entityId = entity.id;
 
         // Verify it exists before transaction
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             ctx.GetTable<SimpleEntity>()
                 .Any(e => e.id == entityId)
@@ -203,7 +203,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify record still exists via LINQ
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             var retrieved = ctx.GetTable<SimpleEntity>()
                 .FirstOrDefault(e => e.id == entityId);
@@ -246,7 +246,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify all operations were rolled back via LINQ
-        using (var ctx = new SxmLinqDbContext(TestDatabaseName))
+        using (var ctx = new SxmDbContext(TestDatabaseName))
         {
             // New entity should not exist
             ctx.GetTable<SimpleEntity>()

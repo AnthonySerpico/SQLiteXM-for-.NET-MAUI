@@ -135,12 +135,12 @@ SQLiteXM automatically creates or updates tables in the correct database based o
 
 # Querying Multiple Databases
 
-When using `SxmLinqDbContext`, specify the database you want to query.
+When using `SxmDbContext`, specify the database you want to query.
 
 ```csharp
-using var appContext = new SxmLinqDbContext("MyApp");
+using var appContext = new SxmDbContext("MyApp");
 
-using var logContext = new SxmLinqDbContext("Logging");
+using var logContext = new SxmDbContext("Logging");
 ```
 
 Each context operates against the specified database.
@@ -289,7 +289,7 @@ Key concepts:
 * One database is designated as the default database
 * Entities automatically use the default database
 * The `[Table(Database = "...")]` attribute assigns an entity to a specific database
-* `SxmLinqDbContext` can target any configured database
+* `SxmDbContext` can target any configured database
 * Multiple databases are useful for separating data by responsibility or function
 
 For most applications, a single default database is sufficient. Multiple databases are available when additional separation or organization is required.

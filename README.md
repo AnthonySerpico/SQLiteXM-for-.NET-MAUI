@@ -36,7 +36,7 @@ var user = new User
 
 await user.SaveAsync();
 
-using var context = new SxmLinqDbContext("MyApp");
+using var context = new SxmDbContext("MyApp");
 
 var users = context.GetTable<User>()
     .Where(u => u.Name.StartsWith("A"))
@@ -271,7 +271,7 @@ var user = new User
 
 await user.SaveAsync();
 
-using var context = new SxmLinqDbContext("MyApp");
+using var context = new SxmDbContext("MyApp");
 
 var users = context.GetTable<User>()
     .Where(u => u.Age > 25)
@@ -288,7 +288,7 @@ await user.DeleteAsync();
 #### What's happening?
 
 * `SaveAsync()` inserts or updates entities as needed
-* `SxmLinqDbContext` provides LINQ access to registered entities
+* `SxmDbContext` provides LINQ access to registered entities
 * LINQ queries are translated into SQLite queries through LinqToDB
 * Entity instances can be modified and persisted using the same API
 
@@ -431,7 +431,7 @@ SQLiteXM uses a **static-first** design optimized for mobile:
 - **SxmInit** - One-time initialization coordinator
 - **SxmConnection** - Lease-based connection manager with reentrancy
 - **SxmSqlTransaction** - Transaction abstraction with explicit control
-- **SxmLinqDbContext** - LinqToDB integration for LINQ queries
+- **SxmDbContext** - LinqToDB integration for LINQ queries
 
 **Learn more** in the **[Architecture Guide](docs/Advanced.md)** (coming soon).
 

@@ -303,11 +303,11 @@ See **ERROR_HANDLING.md** for additional patterns.
 
 # 5. Querying Data
 
-SQLiteXM provides LINQ-based querying through `SxmLinqDbContext`.
+SQLiteXM provides LINQ-based querying through `SxmDbContext`.
 
 ```csharp
 // Create a DB context on the 'MyApp' database
-using var context = new SxmLinqDbContext("MyApp");
+using var context = new SxmDbContext("MyApp");
 
 var users = context.GetTable<User>()
                .Where(u => u.Age >= 18)

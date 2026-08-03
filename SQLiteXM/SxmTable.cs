@@ -14,24 +14,24 @@ namespace SQLiteXM;
 public sealed class SxmTable<T> : IQueryable<T> where T : class
 {
     private readonly IQueryable<T> _inner;
-    private readonly SxmLinqDbContext? _context;
+    private readonly SxmDbContext? _context;
 
     /// <summary>
     /// Create a new <see cref="SxmTable{T}"/> that wraps the provided queryable.
     /// </summary>
     /// <param name="inner">The underlying queryable to wrap. Must not be <c>null</c>.</param>
-    /// <param name="context">Optional SxmLinqDbContext for deferred bulk operations.</param>
+    /// <param name="context">Optional SxmDbContext for deferred bulk operations.</param>
     /// <exception cref="ArgumentNullException"><paramref name="inner"/> is <c>null</c>.</exception>
-    public SxmTable(IQueryable<T> inner, SxmLinqDbContext? context = null)
+    public SxmTable(IQueryable<T> inner, SxmDbContext? context = null)
     {
         this._inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this._context = context;
     }
 
     /// <summary>
-    /// Gets the SxmLinqDbContext associated with this table, if any.
+    /// Gets the SxmDbContext associated with this table, if any.
     /// </summary>
-    internal SxmLinqDbContext? DataContext => _context;
+    internal SxmDbContext? DataContext => _context;
 
     /// <summary>
     /// Return a new <see cref="SxmTable{T}"/> that will eagerly load the specified navigation

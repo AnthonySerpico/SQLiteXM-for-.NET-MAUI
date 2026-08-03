@@ -21,14 +21,14 @@ namespace SQLiteXM
     /// <item><description><see cref="RollbackTransactionAsync"/> may optionally be called to discard the current
     /// transaction's work explicitly.</description></item>
     /// </list>
-    /// Prefer <c>await using var ctx = new SxmLinqDbContext();</c> so disposal can commit/rollback asynchronously.
+    /// Prefer <c>await using var ctx = new SxmDbContext();</c> so disposal can commit/rollback asynchronously.
     /// </summary>
-    public class SxmLinqDbContext : IDisposable, IAsyncDisposable
+    public class SxmDbContext : IDisposable, IAsyncDisposable
     {
-        // Static registry to track DataConnection -> SxmLinqDbContext mappings
+        // Static registry to track DataConnection -> SxmDbContext mappings
         // This enables context recovery from IQueryable chains after LINQ operators like Where()
-        private static readonly ConcurrentDictionary<DataConnection, WeakReference<SxmLinqDbContext>> _contextRegistry
-            = new ConcurrentDictionary<DataConnection, WeakReference<SxmLinqDbContext>>();
+        private static readonly ConcurrentDictionary<DataConnection, WeakReference<SxmDbContext>> _contextRegistry
+            = new ConcurrentDictionary<DataConnection, WeakReference<SxmDbContext>>();
 
         private bool _isDisposed = false;
         private readonly SxmConnection _sxmConnection;
@@ -38,7 +38,7 @@ namespace SQLiteXM
         private Microsoft.Data.Sqlite.SqliteTransaction? _enlistedTransaction;
         private string? _databaseName;
 
-        public SxmLinqDbContext(string? databaseName = null)
+        public SxmDbContext(string? databaseName = null)
         {
             SxmSqlTransaction? ownedTransaction = null;
             try
@@ -53,7 +53,7 @@ namespace SQLiteXM
                     if (databaseName != null && !string.Equals(databaseName, ambient.Connection.DatabaseName, StringComparison.Ordinal))
                         throw new InvalidOperationException(
                             $"An ambient transaction is active for database '{ambient.Connection.DatabaseName}'; " +
-                            $"cannot create an SxmLinqDbContext for database '{databaseName}'.");
+                            $"cannot create an SxmDbContext for database '{databaseName}'.");
 
                     _sqlTransaction = ambient;
                     _sxmConnection = ambient.Connection;
@@ -82,14 +82,14 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 if (ownedTransaction != null) { try { ownedTransaction.Dispose(); } catch { /* best effort */ } }
-                SxmLogging.Log(ex, $"SxmLinqDbContext ctor failure. Database: '{databaseName}'.");
+                SxmLogging.Log(ex, $"SxmDbContext ctor failure. Database: '{databaseName}'.");
                 // Cancellation/fatal - rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
                 if (ownedTransaction != null) { try { ownedTransaction.Dispose(); } catch { /* best effort */ } }
-                string errStr = $"SxmLinqDbContext ctor failure. Database: '{databaseName}'.";
+                string errStr = $"SxmDbContext ctor failure. Database: '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -109,7 +109,7 @@ namespace SQLiteXM
                         .UseTransaction(SQLiteTools.GetDataProvider(SQLiteProvider.Microsoft), tx));
 
             _enlistedTransaction = tx;
-            _contextRegistry[dc] = new WeakReference<SxmLinqDbContext>(this);
+            _contextRegistry[dc] = new WeakReference<SxmDbContext>(this);
             return dc;
         }
 
@@ -144,12 +144,12 @@ namespace SQLiteXM
         public bool HasActiveTransaction => !_isDisposed && _sxmConnection.CurrentTransaction != null;
 
         /// <summary>
-        /// Attempts to recover the SxmLinqDbContext from a LinqToDB query provider.
+        /// Attempts to recover the SxmDbContext from a LinqToDB query provider.
         /// This enables context preservation through LINQ chains (Where, Select, etc.).
         /// </summary>
         /// <param name="query">The IQueryable to extract context from.</param>
-        /// <returns>The associated SxmLinqDbContext if found; otherwise null.</returns>
-        internal static SxmLinqDbContext? TryGetContextFromQuery<T>(IQueryable<T> query) where T : class
+        /// <returns>The associated SxmDbContext if found; otherwise null.</returns>
+        internal static SxmDbContext? TryGetContextFromQuery<T>(IQueryable<T> query) where T : class
         {
             if (query == null) return null;
 
@@ -201,7 +201,7 @@ namespace SQLiteXM
         }
 
         // Make raw provider escape hatches internal to prevent consumers from calling LinqToDB APIs directly.
-        // Keeps the safe public SxmLinqDbContext surface (GetTable, bulk Update/Delete, Commit/Rollback).
+        // Keeps the safe public SxmDbContext surface (GetTable, bulk Update/Delete, Commit/Rollback).
         // Advanced users inside the library (or friend assemblies) can still use these helpers.
 
         // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
@@ -298,7 +298,7 @@ namespace SQLiteXM
             catch (System.Exception ex)
             {
                 _sqlTransaction.EncounteredError = true;
-                SxmLogging.Log(ex, $"SxmLinqDbContext write operation failure. Database: '{_databaseName}'.");
+                SxmLogging.Log(ex, $"SxmDbContext write operation failure. Database: '{_databaseName}'.");
                 throw;
             }
         }
@@ -353,7 +353,7 @@ namespace SQLiteXM
 
         private void ThrowIfDisposed()
         {
-            if (_isDisposed) throw new ObjectDisposedException(nameof(SxmLinqDbContext));
+            if (_isDisposed) throw new ObjectDisposedException(nameof(SxmDbContext));
         }
 
         // ---------- Raw SQL query ------------------
@@ -434,7 +434,7 @@ namespace SQLiteXM
                         if (errorCode != SQLiteErrorCode.Ok)
                         {
                             var commitEx = new InvalidOperationException($"Auto-commit failed with SQLite error code '{errorCode}'. Database: '{_databaseName}'.");
-                            SxmLogging.Log(commitEx, $"SxmLinqDbContext auto-commit failure on dispose. Database: '{_databaseName}'.");
+                            SxmLogging.Log(commitEx, $"SxmDbContext auto-commit failure on dispose. Database: '{_databaseName}'.");
                             try { await _sxmConnection.FinishTransactionAsync(SxmDefines.RollbackTransaction).ConfigureFalse(); } catch { /* best effort */ }
                             throw commitEx;
                         }
@@ -448,7 +448,7 @@ namespace SQLiteXM
                         catch (System.Exception ex)
                         {
                             // Log and continue cleanup; do not throw during rollback of a faulted context.
-                            SxmLogging.Log(ex, $"SxmLinqDbContext rollback failure on dispose. Database: '{_databaseName}'.");
+                            SxmLogging.Log(ex, $"SxmDbContext rollback failure on dispose. Database: '{_databaseName}'.");
                         }
                     }
                 }
@@ -463,7 +463,7 @@ namespace SQLiteXM
                     // releases/destroys the private connection. The SQLite transaction has already
                     // been finished above, so its auto-commit is a no-op.
                     try { await _sqlTransaction.DisposeAsync().ConfigureFalse(); }
-                    catch (System.Exception ex) { SxmLogging.Log(ex, $"SxmLinqDbContext transaction dispose failure. Database: '{_databaseName}'."); }
+                    catch (System.Exception ex) { SxmLogging.Log(ex, $"SxmDbContext transaction dispose failure. Database: '{_databaseName}'."); }
                 }
 
                 _isDisposed = true;

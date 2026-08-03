@@ -17,7 +17,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         // Act - Insert executes immediately within the context transaction
         var parent1 = new ParentEntity { ParentName = "ImmediateParent1" };
@@ -41,7 +41,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         // Create parent entities with unique names
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
@@ -93,7 +93,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         // Create test data
         var entities = new[]
@@ -135,7 +135,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         // Create entities with duplicate ages
         var entities = new[]
@@ -177,7 +177,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -220,7 +220,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
@@ -268,7 +268,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         var entities = new[]
         {
@@ -310,7 +310,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         var entities = new[]
         {
@@ -342,7 +342,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
@@ -383,7 +383,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         var entities = new[]
         {
@@ -417,7 +417,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         var entity1 = new SimpleEntity { Name = "Deferred1", Age = 10 };
         await ctx.InsertAsync(entity1);
@@ -451,7 +451,7 @@ public class AdvancedLinqTests : TestBase
         // Arrange
         await InitializeSqliteXMAsync();
 
-        using var ctx = new SxmLinqDbContext(TestDatabaseName);
+        using var ctx = new SxmDbContext(TestDatabaseName);
 
         // Act - Bulk operations
         var entities = new[]

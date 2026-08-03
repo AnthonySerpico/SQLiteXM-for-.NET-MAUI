@@ -258,7 +258,7 @@ public class Track : SxmBaseEntity
 SQLiteXM translates LINQ expressions to optimized SQLite queries:
 
 ```csharp
-await using (var context = new SxmLinqDbContext("Chinook"))
+await using (var context = new SxmDbContext("Chinook"))
 
 var results = (from track in context.GetTable<Track>()
 			   join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -275,7 +275,7 @@ var results = (from track in context.GetTable<Track>()
 SQLiteXM supports efficient bulk updates using the deferred execution pattern:
 
 ```csharp
-await using (var context = new SxmLinqDbContext("Chinook"))
+await using (var context = new SxmDbContext("Chinook"))
 
 // Queue bulk update (not executed yet)
 await context.GetTable<Track>()
@@ -292,7 +292,7 @@ await context.SubmitChangesAsync();
 Atomic operations with commit/rollback patterns:
 
 ```csharp
-await using (var context = new SxmLinqDbContext("Chinook"))
+await using (var context = new SxmDbContext("Chinook"))
 
 try
 {
@@ -329,7 +329,7 @@ var dynamic = await SxmStatement.RunStatementAsync("GetTopSellingTracks", new Di
 Safe parameter binding prevents SQL injection:
 
 ```csharp
-await using (var context = new SxmLinqDbContext("Chinook"))
+await using (var context = new SxmDbContext("Chinook"))
 
 string searchTerm = userInput; // User-provided input
 var results = context.GetTable<Artist>()
@@ -431,7 +431,7 @@ new QueryExample
     Description = "Description of what this query does",
     Category = QueryCategory.Basic,
     Type = QueryType.Linq,
-    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = context.GetTable<Artist>()
     .Where(a => a.Name.StartsWith(""A""))

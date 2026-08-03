@@ -55,7 +55,7 @@ public static class QueryExampleProvider
                 Description = "Simple SELECT query to retrieve all artists",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var artists = context.GetTable<Artist>()
     .OrderBy(a => a.Name)
@@ -82,7 +82,7 @@ return artists;",
                 Description = "Retrieve all music genres ordered by name",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var genres = context.GetTable<Genre>()
     .OrderBy(g => g.Name)
@@ -109,7 +109,7 @@ return genres;",
                 Description = "Get all Rock tracks using WHERE clause with JOIN",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Single-query approach using JOIN
 var rockTracks = (from track in context.GetTable<Track>()
@@ -143,7 +143,7 @@ return rockTracks;",
                 Description = "Search for a specific artist using LIKE",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var artists = context.GetTable<Artist>()
     .Where(a => a.Name.Contains(""Zeppelin""))
@@ -171,7 +171,7 @@ return artists;",
                 Description = "Filter tracks between $0.99 and $1.49",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var tracks = context.GetTable<Track>()
     .Where(t => t.UnitPrice >= 0.99m && t.UnitPrice <= 1.49m)
@@ -203,7 +203,7 @@ return tracks;",
                 Description = "Get the highest priced tracks using OrderByDescending",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var expensiveTracks = context.GetTable<Track>()
     .OrderByDescending(t => t.UnitPrice)
@@ -233,7 +233,7 @@ return expensiveTracks;",
                 Description = "Find tracks between 3-5 minutes long",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var minMs = 3 * 60 * 1000; // 3 minutes
 var maxMs = 5 * 60 * 1000; // 5 minutes
@@ -266,7 +266,7 @@ return tracks;",
                 Description = "Search for artists regardless of case",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 string searchTerm = ""led""; // Will match ""Led Zeppelin""
 var artists = context.GetTable<Artist>()
@@ -297,7 +297,7 @@ return artists;",
                 Description = "Filter tracks that have a composer (NOT NULL)",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var tracksWithComposer = context.GetTable<Track>()
     .Where(t => t.Composer != null && t.Composer != """")
@@ -329,7 +329,7 @@ return tracksWithComposer;",
                 Description = "Get unique media types using Distinct",
                 Category = QueryCategory.Basic,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var mediaTypes = context.GetTable<MediaType>()
     .OrderBy(m => m.Name)
@@ -363,7 +363,7 @@ return mediaTypes;",
                 Description = "JOIN tracks with their album information",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from track in context.GetTable<Track>()
                join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -395,7 +395,7 @@ return results;",
                 Description = "JOIN albums with their artist information",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from album in context.GetTable<Album>()
                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -426,7 +426,7 @@ return results;",
                 Description = "JOIN tracks with album, artist, and genre",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from track in context.GetTable<Track>()
                join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -469,7 +469,7 @@ return results;",
                 Description = "JOIN customers with their assigned employee",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from customer in context.GetTable<Customer>()
                join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
@@ -508,7 +508,7 @@ return results;",
                 Description = "Self-join to show employee reporting structure",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from emp in context.GetTable<Employee>()
                join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
@@ -546,7 +546,7 @@ return results;",
                 Description = "JOIN invoices with customer information",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from invoice in context.GetTable<Invoice>()
                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -585,7 +585,7 @@ return results;",
                 Description = "JOIN track with genre, media type, album, and artist",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from track in context.GetTable<Track>()
                join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -633,7 +633,7 @@ return results;",
                 Description = "Compare LEFT JOIN (includes nulls) vs INNER JOIN",
                 Category = QueryCategory.Relationships,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 // LEFT JOIN - includes tracks even without composer
 var leftJoinResults = (from track in context.GetTable<Track>()
                        select new 
@@ -673,7 +673,7 @@ return leftJoinResults;",
                 Description = "GROUP BY with COUNT aggregate",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from track in context.GetTable<Track>()
                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
@@ -711,7 +711,7 @@ return results;",
                 Description = "Count how many albums each artist has",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from album in context.GetTable<Album>()
                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -748,7 +748,7 @@ return results;",
                 Description = "Calculate average track length per genre",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from track in context.GetTable<Track>()
                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
@@ -786,7 +786,7 @@ return results;",
                 Description = "Calculate total spending per customer",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from invoice in context.GetTable<Invoice>()
                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -826,7 +826,7 @@ return results;",
                 Description = "Calculate total revenue for each music genre",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from invoiceLine in context.GetTable<InvoiceLine>()
                join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
@@ -865,7 +865,7 @@ return results;",
                 Description = "Calculate average invoice amount overall and by country",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 var results = (from invoice in context.GetTable<Invoice>()
                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
                group invoice by customer.Country into g
@@ -903,7 +903,7 @@ return results;",
                 Description = "Find cheapest and most expensive tracks",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var tracks = context.GetTable<Track>().ToList();
 var summary = new
@@ -936,7 +936,7 @@ return new[] { summary };",
                 Description = "Detailed customer purchasing patterns (optimized)",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Optimized: Pre-aggregate invoice data first
 var customerStats = (from invoice in context.GetTable<Invoice>()
@@ -989,7 +989,7 @@ return results;",
                 Description = "Analyze album sizes (track count distribution)",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from track in context.GetTable<Track>()
                join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -1031,7 +1031,7 @@ return results;",
                 Description = "Calculate total sales for each artist",
                 Category = QueryCategory.Aggregations,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from invoiceLine in context.GetTable<InvoiceLine>()
                join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
@@ -1079,7 +1079,7 @@ return results;",
                 Description = "Implement pagination for large result sets",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 int pageSize = 20;
 int pageNumber = 1; // Change to test different pages
@@ -1112,7 +1112,7 @@ return tracks;",
                 Description = "Sort by multiple columns with different directions",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from track in context.GetTable<Track>()
                join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -1146,7 +1146,7 @@ return results;",
                 Description = "Combine multiple filter conditions with AND/OR",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Show AND and OR combinations
 var tracks = context.GetTable<Track>()
@@ -1180,7 +1180,7 @@ return tracks;",
                 Description = "Use subquery results to filter another query",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Get first 50 artists
 var artistIds = context.GetTable<Artist>()
@@ -1222,7 +1222,7 @@ return tracks;",
                 Description = "Count related records for each customer",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Show customers with their invoice counts
 var customerInvoiceCounts = (from customer in context.GetTable<Customer>()
@@ -1263,7 +1263,7 @@ return customerInvoiceCounts;",
                 Description = "Group by artist and show album counts",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from album in context.GetTable<Album>()
                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -1300,7 +1300,7 @@ return results;",
                 Description = "Count tracks with different price ranges",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var tracks = context.GetTable<Track>().ToList();
 var priceAnalysis = new
@@ -1337,7 +1337,7 @@ return new[] { priceAnalysis };",
                 Description = "Get top 3 longest tracks per genre (SQLite-compatible)",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // SQLite doesn't support CROSS/OUTER APPLY, so materialize first
 var tracksWithGenre = (from track in context.GetTable<Track>()
@@ -1388,7 +1388,7 @@ return results;",
                 Description = "Query invoices with date filtering",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Show most recent invoices
 var recentInvoices = (from invoice in context.GetTable<Invoice>()
@@ -1427,7 +1427,7 @@ return recentInvoices;",
                 Description = "Use string functions - UPPER, LOWER, TRIM, SUBSTRING",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var artists = context.GetTable<Artist>()
     .Select(a => new
@@ -1468,7 +1468,7 @@ return artists;",
                 Description = "Combine artists and album titles into one list",
                 Category = QueryCategory.AdvancedLinq,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var artistNames = context.GetTable<Artist>()
     .Select(a => new { Name = a.Name, Type = ""Artist"" })
@@ -1917,7 +1917,7 @@ return results;",
                 Description = "Performance test with large result set",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var tracks = context.GetTable<Track>()
     .OrderBy(t => t.Name)
@@ -1945,7 +1945,7 @@ return tracks;",
                 Description = "JOIN 5 tables with filtering",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from invoiceLine in context.GetTable<InvoiceLine>()
                join invoice in context.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
@@ -1986,7 +1986,7 @@ return results;",
                 Description = "Efficiently paginate through large result sets",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 int pageNumber = 2;
 int pageSize = 20;
@@ -2019,7 +2019,7 @@ return page;",
                 Description = "Reduce data transfer by projecting only needed fields",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Faster: select only what you need
 var lightweightTracks = context.GetTable<Track>()
@@ -2049,7 +2049,7 @@ return lightweightTracks;",
                 Description = "Filter before joining for better performance",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Good: filter albums first, then join
 var expensiveAlbums = context.GetTable<Album>()
@@ -2083,7 +2083,7 @@ return results;",
                 Description = "Compare Count() vs Any() for existence checks",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Faster: use Any() instead of Count() > 0 for existence
 var hasExpensiveTracks = context.GetTable<Track>()
@@ -2114,7 +2114,7 @@ return new[] { new { HasExpensiveTracks = hasExpensiveTracks, Count = expensiveC
                 Description = "Use joins instead of multiple queries",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Good: single query with join
 var tracksWithAlbums = (from track in context.GetTable<Track>()
@@ -2149,7 +2149,7 @@ return tracksWithAlbums;",
                 Description = "Get unique values efficiently",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var uniqueCountries = context.GetTable<Customer>()
     .Select(c => c.Country)
@@ -2178,7 +2178,7 @@ return uniqueCountries;",
                 Description = "Demonstrates why indexes on foreign keys matter",
                 Category = QueryCategory.Performance,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -2245,7 +2245,7 @@ return new[] { new {
                 Description = "Query many-to-many relationship through junction table with single query",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Single-query approach: JOIN Playlist, PlaylistTrack, and Track
 var tracks = (from playlist in context.GetTable<Playlist>()
@@ -2280,7 +2280,7 @@ return tracks;",
                 Description = "Reverse query: find all playlists with a specific track using single query",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Single-query approach: JOIN Track, PlaylistTrack, and Playlist
 var playlists = (from track in context.GetTable<Track>()
@@ -2312,7 +2312,7 @@ return playlists;",
                 Description = "Aggregate data across many-to-many relationship",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var results = (from playlist in context.GetTable<Playlist>()
                join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
@@ -2352,7 +2352,7 @@ return results;",
                 Description = "Find tracks that appear in multiple playlists (SQLite-compatible)",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Materialize first - SQLite can't translate Distinct().Count() in projection
 var trackPlaylistGroups = (from pt in context.GetTable<PlaylistTrack>()
@@ -2401,7 +2401,7 @@ return sharedTracks;",
                 Description = "Count how many playlists each track appears in (optimized)",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Materialize joins first - avoid hanging on Distinct().Count()
 var trackData = (from pt in context.GetTable<PlaylistTrack>()
@@ -2452,7 +2452,7 @@ return popularTracks;",
                 Description = "Find playlists with fewer than 250 tracks (optimized)",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Materialize playlist track counts first
 var playlistCounts = (from pt in context.GetTable<PlaylistTrack>()
@@ -2502,7 +2502,7 @@ return smallPlaylists;",
                 Description = "Insert into junction table (many-to-many relationship)",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Note: This is a read-only demo, but this shows the pattern
 var playlist = context.GetTable<Playlist>().FirstOrDefault();
@@ -2536,7 +2536,7 @@ return new[] { new { Message = ""No data to demo with"" } };",
                 Description = "Find which playlists share the most tracks",
                 Category = QueryCategory.ManyToMany,
                 Type = QueryType.Linq,
-                Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var playlistPairs = (from pt1 in context.GetTable<PlaylistTrack>()
                      join pt2 in context.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
@@ -2585,7 +2585,7 @@ return playlistPairs;",
                                                     Description = "Insert invoice + invoice lines atomically",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
 try 
 {
     // Create invoice
@@ -2638,7 +2638,7 @@ try
             return new[] { new { Success = false, Error = ex.Message } };
         }",
                                                     Explanation = @"**How It Works:**
-1. Create SxmLinqDbContext (await using for auto-dispose)
+1. Create SxmDbContext (await using for auto-dispose)
 2. Insert invoice record
 3. Get generated invoice.id
 4. Insert invoice lines referencing invoice.id
@@ -2659,7 +2659,7 @@ try
                                                     Description = "Demonstrate automatic rollback when error occurs",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
 try 
 {
     // Insert a valid artist
@@ -2717,7 +2717,7 @@ catch (Exception ex)
                                                     Description = "Efficiently insert multiple tracks in one transaction",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
 try 
 {
     var insertedCount = 0;
@@ -2780,8 +2780,8 @@ catch (Exception ex)
                                                     Description = "Update artist and all their albums atomically",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
-using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
+using var context = new SxmDbContext(""Chinook"");
 try 
 {
     // Find an artist and their albums
@@ -2843,8 +2843,8 @@ catch (Exception ex)
                                                     Description = "Create playlist, add tracks, update statistics",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
-using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
+using var context = new SxmDbContext(""Chinook"");
 try 
 {
     // 1. Create new playlist
@@ -2934,7 +2934,7 @@ var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
 
 // Method 2: With transaction (faster)
 var start2 = DateTime.Now;
-await using (var transaction = new SxmLinqDbContext(""Chinook""))
+await using (var transaction = new SxmDbContext(""Chinook""))
 {
     for (int i = 1; i <= 20; i++)
     {
@@ -3000,7 +3000,7 @@ return results;",
                                                     Description = "Find tracks matching a search term (safe from SQL injection)",
                                                     Category = QueryCategory.ParameterizedQueries,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Parameter: user input (simulated)
 string searchTerm = ""Love"";
@@ -3034,7 +3034,7 @@ return results;",
                                                     Description = "Find tracks within a price range using parameters",
                                                     Category = QueryCategory.ParameterizedQueries,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Parameters: user-defined price range
 decimal minPrice = 0.99m;
@@ -3076,7 +3076,7 @@ return results;",
                                                     Description = "Find invoices within a date range (demonstrates safe parameterization)",
                                                     Category = QueryCategory.ParameterizedQueries,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 var startDate = DateTime.Now.AddYears(-3);
 var endDate = DateTime.Now;
@@ -3121,7 +3121,7 @@ return results;",
                                                     Description = "Search with artist, genre, and price filters",
                                                     Category = QueryCategory.ParameterizedQueries,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Multiple parameters
 string artistSearchTerm = ""Led"";
@@ -3168,7 +3168,7 @@ return results;",
                                                     Description = "Handle nullable/optional search parameters",
                                                     Category = QueryCategory.ParameterizedQueries,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Optional parameters - null means 'don't filter'
 string? artistFilter = ""Led""; // Search for Led Zeppelin (exists in seeded data)
@@ -3224,7 +3224,7 @@ return results;",
                                                     Description = "Wildcard search using parameters",
                                                     Category = QueryCategory.ParameterizedQueries,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Pattern parameter - user defines the search pattern
 string pattern = ""Track""; // Searches for tracks containing 'Track'
@@ -3319,7 +3319,7 @@ return new[] { new
                                                     Category = QueryCategory.DataModification,
                                                     Type = QueryType.Linq,
                                                     Code = @"// Use transaction to ensure both inserts succeed or both fail
-await using var transaction = new SxmLinqDbContext(""Chinook"");
+await using var transaction = new SxmDbContext(""Chinook"");
 try
 {
     // Create new artist
@@ -3379,7 +3379,7 @@ catch (Exception ex)
                                                     Description = "Modify a single field on existing record",
                                                     Category = QueryCategory.DataModification,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Find a track to update
 var track = context.GetTable<Track>().First();
@@ -3418,7 +3418,7 @@ return new[] { new
                                                     Description = "Update records matching specific criteria using transaction",
                                                     Category = QueryCategory.DataModification,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Find all tracks under $1.00
 var cheapTracks = context.GetTable<Track>()
@@ -3427,7 +3427,7 @@ var cheapTracks = context.GetTable<Track>()
     .ToList();
 
 // Use transaction for better performance - commit all updates together
-await using var transaction = new SxmLinqDbContext(""Chinook"");
+await using var transaction = new SxmDbContext(""Chinook"");
 try
 {
     var updateCount = 0;
@@ -3475,7 +3475,7 @@ catch (Exception ex)
                                                     Description = "Update all tracks in a specific genre using single query and transaction",
                                                     Category = QueryCategory.DataModification,
                                                     Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmLinqDbContext(""Chinook"");
+                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
 
 // Single-query approach: JOIN Track and Genre directly
 // Note: The query does maximum filtering/joining in the database.
@@ -3492,7 +3492,7 @@ var updateCount = 0;
 var genreName = results.FirstOrDefault()?.GenreName ?? ""Rock"";
 
 // Use transaction for better performance - commit all updates together
-await using var transaction = new SxmLinqDbContext(""Chinook"");
+await using var transaction = new SxmDbContext(""Chinook"");
 try
 {
     foreach (var item in results)
@@ -3557,7 +3557,7 @@ catch (Exception ex)
                                     var savedId = tempPlaylist.id;
 
                                     // Now find and delete the playlist we just created using the ID
-                                    using var context = new SxmLinqDbContext(""Chinook"");
+                                    using var context = new SxmDbContext(""Chinook"");
                                     var playlist = context.GetTable<Playlist>()
                                         .FirstOrDefault(p => p.id == savedId);
 
@@ -3618,13 +3618,13 @@ catch (Exception ex)
                                     }
 
                                     // Now find and delete playlists using the saved IDs
-                                    using var context = new SxmLinqDbContext(""Chinook"");
+                                    using var context = new SxmDbContext(""Chinook"");
                                     var playlistsToDelete = context.GetTable<Playlist>()
                                         .Where(p => savedIds.Contains(p.id))
                                         .ToList();
 
                                     // Use transaction for better performance and atomicity - all deletes succeed or all fail
-                                    await using var transaction = new SxmLinqDbContext(""Chinook"");
+                                    await using var transaction = new SxmDbContext(""Chinook"");
                                     try
                                     {
                                         var deleteCount = 0;
@@ -3693,8 +3693,8 @@ foreach (var trackId in trackIds)
 }
 
 // Now demonstrate deletion with related records
-using var context = new SxmLinqDbContext(""Chinook"");
-await using var transaction = new SxmLinqDbContext(""Chinook"");
+using var context = new SxmDbContext(""Chinook"");
+await using var transaction = new SxmDbContext(""Chinook"");
 
 try
 {

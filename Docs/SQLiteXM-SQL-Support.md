@@ -21,7 +21,7 @@ SQLiteXM provides comprehensive support for executing SQL statements that are em
 
 ## Concepts & Conventions
 
-> 💡 **SQLiteXM supports all SQLite DML statements.** SQLiteXM passes the SQL you provide directly to SQLite as-is, so any DML statement (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) can use the full expressive power of SQLite. This includes joins, subqueries, common table expressions (CTEs), aggregate functions, window functions, views, `UNION` queries, `INSERT … ON CONFLICT`, `RETURNING`, and any other SQLite-supported SQL feature that appears **inside** a DML statement.
+> 💡 **SQLiteXM supports all SQLite DML statements.** SQLiteXM passes the SQL you provide directly to SQLite as-is, so any DML statement (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) can use the full expressive power of SQLite. This includes joins, subqueries, common table expressions (CTEs), aggregate functions, window functions, `UNION` queries, `INSERT … ON CONFLICT`, `RETURNING`, and any other SQLite-supported SQL feature that appears **inside** a DML statement.
 
 > 💡 **About DTOs.** Throughout this guide, we use the term **DTO (Data Transfer Object)** to refer to simple classes that hold data. These are plain C# classes with properties, used to pass parameters into queries or to receive query results. You can also use your entity classes (classes that inherit from `SxmEntity`) in the same way. Neither the parameter DTO nor the result DTO needs to inherit from `SxmEntity`.
 

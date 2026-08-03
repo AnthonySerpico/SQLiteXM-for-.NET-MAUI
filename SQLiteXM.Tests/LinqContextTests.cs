@@ -4,7 +4,7 @@ using SQLiteXM;
 namespace SQLiteXM.Tests;
 
 /// <summary>
-/// Tests for LINQ query support via SxmLinqDbContext.
+/// Tests for LINQ query support via SxmDbContext.
 /// These tests clean data before each test for isolation.
 /// </summary>
 [Collection("Sequential")]
@@ -31,7 +31,7 @@ public class LinqContextTests : TestBase
         await entity3.SaveAsync();
 
         // Act
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var table = context.GetTable<SimpleEntity>();
 
@@ -52,7 +52,7 @@ public class LinqContextTests : TestBase
         await entity2.SaveAsync();
 
         // Act
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var results = context.GetTable<SimpleEntity>()
             .Where(e => e.Age > 50)
@@ -78,7 +78,7 @@ public class LinqContextTests : TestBase
         await entity3.SaveAsync();
 
         // Act
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var results = context.GetTable<SimpleEntity>()
                 .OrderBy(e => e.Age)
@@ -101,7 +101,7 @@ public class LinqContextTests : TestBase
         await entity.SaveAsync();
 
         // Act
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var names = context.GetTable<SimpleEntity>()
                 .Select(e => e.Name)
@@ -121,7 +121,7 @@ public class LinqContextTests : TestBase
         await entity.SaveAsync();
 
         // Act
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var result = context.GetTable<SimpleEntity>()
                 .FirstOrDefault(e => e.Age == 42);
@@ -149,7 +149,7 @@ public class LinqContextTests : TestBase
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var count = context.GetTable<SimpleEntity>().Count();
 
@@ -182,7 +182,7 @@ public class LinqContextTests : TestBase
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        await using (var context = new SxmDbContext(TestDatabaseName))
         {
             var results = context.GetTable<SimpleEntity>()
                 .Where(e => e.IsActive && e.Age > 30)

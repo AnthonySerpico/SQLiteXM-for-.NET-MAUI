@@ -48,7 +48,7 @@ public partial class PersonalInfoViewModel : BaseViewModel
         try
         {
             // Create LINQ context for Session database (using statement ensures proper disposal)
-            await using (var context = new SxmLinqDbContext("Session"))
+            await using (var context = new SxmDbContext("Session"))
             {
                 // Query for the specific draft by ID using LINQ
                 var draft = context.GetTable<RegistrationDraft>()
@@ -82,7 +82,7 @@ public partial class PersonalInfoViewModel : BaseViewModel
             IsBusy = true;
 
             // Create LINQ context for Session database to load the registration draft
-            await using (var context = new SxmLinqDbContext("Session"))
+            await using (var context = new SxmDbContext("Session"))
             {
                 var draft = context.GetTable<RegistrationDraft>()
                     .FirstOrDefault(d => d.id == DraftId);

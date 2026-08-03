@@ -154,7 +154,7 @@ var product = new Product { Name = "Widget", Price = 9.99m };
 await product.SaveAsync();  // Saves to default database (where Product table was created)
 
 // LINQ queries
-using var db = new SxmLinqDbContext();  // Uses default database
+using var db = new SxmDbContext();  // Uses default database
 var activeProducts = db.GetTable<Product>()
 	.Where(p => p.InStock)
 	.ToList();
@@ -210,7 +210,7 @@ await product.SaveAsync();  // Automatically saves to default database (where Pr
 // For LINQ queries and named statements, you can explicitly specify a database
 
 // LINQ with specific database
-using var db = new SxmLinqDbContext("analytics_database");
+using var db = new SxmDbContext("analytics_database");
 var events = db.GetTable<AnalyticsEvent>().ToList();
 
 // Named statements with database parameter
@@ -969,7 +969,7 @@ var pageView = new PageView
 await pageView.SaveAsync();  // Automatically goes to analytics.db (via Database attribute)
 
 // Query default database
-using (var db = new SxmLinqDbContext())
+using (var db = new SxmDbContext())
 {
     var inStockProducts = db.GetTable<Product>()
         .Where(p => p.Stock > 0)
@@ -977,7 +977,7 @@ using (var db = new SxmLinqDbContext())
 }
 
 // Query analytics database explicitly
-using (var db = new SxmLinqDbContext("analytics"))
+using (var db = new SxmDbContext("analytics"))
 {
     var recentViews = db.GetTable<PageView>()
         .Where(pv => pv.Timestamp > DateTime.UtcNow.AddHours(-1))
@@ -1112,12 +1112,12 @@ var contosoUser = new ContosoUser
 await contosoUser.SaveAsync();  // Goes to tenant_contoso.db
 
 // Query across databases
-using (var systemDb = new SxmLinqDbContext("system"))
+using (var systemDb = new SxmDbContext("system"))
 {
     var allTenants = systemDb.GetTable<Tenant>().ToList();
 }
 
-using (var acmeDb = new SxmLinqDbContext("tenant_acme"))
+using (var acmeDb = new SxmDbContext("tenant_acme"))
 {
     var acmeUsers = acmeDb.GetTable<AcmeUser>().ToList();
 }

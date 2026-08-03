@@ -61,7 +61,7 @@ public partial class EmailPasswordViewModel : BaseViewModel
             IsBusy = true;
 
             // Check if email already exists in the database
-            await using (var context = new SxmLinqDbContext("AppData"))
+            await using (var context = new SxmDbContext("AppData"))
             {
                 bool emailExists = context.GetTable<User>()
                     .Any(u => u.Email == CurrentUser.Email!.Trim().ToLower());

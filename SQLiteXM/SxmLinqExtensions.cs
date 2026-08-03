@@ -16,14 +16,14 @@ namespace SQLiteXM
     public sealed class SxmUpdateSet<T> where T : class
     {
         private readonly IUpdatable<T> _inner;
-        private readonly SxmLinqDbContext? _context;
+        private readonly SxmDbContext? _context;
 
         /// <summary>
         /// Creates a new wrapper around the LinqToDB update builder instance.
         /// </summary>
         /// <param name="inner">The LinqToDB update builder instance.</param>
-        /// <param name="context">The SxmLinqDbContext whose transaction the operation executes in (null for immediate LinqToDB execution).</param>
-        internal SxmUpdateSet(IUpdatable<T> inner, SxmLinqDbContext? context = null)
+        /// <param name="context">The SxmDbContext whose transaction the operation executes in (null for immediate LinqToDB execution).</param>
+        internal SxmUpdateSet(IUpdatable<T> inner, SxmDbContext? context = null)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
             _context = context;
@@ -60,16 +60,16 @@ namespace SQLiteXM
         /// <summary>
         /// Executes the bulk update immediately inside the context transaction (started lazily on the
         /// first write). The transaction auto-commits when the context is disposed without errors, or
-        /// can be committed early via <see cref="SxmLinqDbContext.CommitTransactionAsync"/>.
+        /// can be committed early via <see cref="SxmDbContext.CommitTransactionAsync"/>.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The number of rows updated (0 when the context is faulted and the operation was skipped).</returns>
-        /// <exception cref="InvalidOperationException">Thrown when no SxmLinqDbContext is available.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when no SxmDbContext is available.</exception>
         public Task<int> UpdateAsync(CancellationToken cancellationToken = default)
         {
             if (_context == null)
                 throw new InvalidOperationException(
-                    "Bulk update operations require a SxmLinqDbContext. " +
+                    "Bulk update operations require a SxmDbContext. " +
                     "Use ctx.GetTable<T>() to obtain a context-aware table, then call Set().UpdateAsync(). " +
                     "Bulk updates execute within the context transaction.");
 
@@ -126,7 +126,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="IQueryable{T}"/>.
-        /// Automatically recovers SxmLinqDbContext from LINQ chains for transactional bulk updates.
+        /// Automatically recovers SxmDbContext from LINQ chains for transactional bulk updates.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this IQueryable<T> query, Expression<Func<T, TProp>> setter, TProp value)
             where T : class
@@ -135,7 +135,7 @@ namespace SQLiteXM
             if (setter == null) throw new ArgumentNullException(nameof(setter));
 
             // Try to recover context from the query (works for SxmTable and LinqToDB query chains)
-            var context = SxmLinqDbContext.TryGetContextFromQuery(query);
+            var context = SxmDbContext.TryGetContextFromQuery(query);
 
             // Call LinqToDB helper directly using the IQueryable overload.
             var updatable = LinqToDB.LinqExtensions.Set<T, TProp>(query, setter, value);
@@ -144,7 +144,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="IQueryable{T}"/> using expression value provider.
-        /// Automatically recovers SxmLinqDbContext from LINQ chains for transactional bulk updates.
+        /// Automatically recovers SxmDbContext from LINQ chains for transactional bulk updates.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this IQueryable<T> query, Expression<Func<T, TProp>> setter, Expression<Func<T, TProp>> expression)
             where T : class
@@ -154,7 +154,7 @@ namespace SQLiteXM
             if (expression == null) throw new ArgumentNullException(nameof(expression));
 
             // Try to recover context from the query (works for SxmTable and LinqToDB query chains)
-            var context = SxmLinqDbContext.TryGetContextFromQuery(query);
+            var context = SxmDbContext.TryGetContextFromQuery(query);
 
             var updatable = LinqToDB.LinqExtensions.Set<T, TProp>(query, setter, expression);
             return new SxmUpdateSet<T>((IUpdatable<T>)updatable!, context);
@@ -311,10 +311,10 @@ namespace SQLiteXM
         /// <summary>
         /// Executes a bulk delete immediately inside the context transaction (started lazily on the
         /// first write). The transaction auto-commits when the context is disposed without errors, or
-        /// can be committed early via <see cref="SxmLinqDbContext.CommitTransactionAsync"/>.
+        /// can be committed early via <see cref="SxmDbContext.CommitTransactionAsync"/>.
         /// </summary>
         /// <returns>The number of rows deleted (0 when the context is faulted and the operation was skipped).</returns>
-        /// <exception cref="InvalidOperationException">Thrown when no SxmLinqDbContext is available.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when no SxmDbContext is available.</exception>
         public static Task<int> DeleteAsync<T>(this SxmTable<T> table, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -323,7 +323,7 @@ namespace SQLiteXM
 
             if (table.DataContext == null)
                 throw new InvalidOperationException(
-                    "Bulk delete operations require a SxmLinqDbContext. " +
+                    "Bulk delete operations require a SxmDbContext. " +
                     "Use ctx.GetTable<T>() to obtain a context-aware table, then call DeleteAsync(). " +
                     "Bulk deletes execute within the context transaction.");
 
@@ -518,7 +518,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Asynchronously deletes matching rows for the provided query.
-        /// Automatically recovers SxmLinqDbContext from LINQ chains so the delete executes
+        /// Automatically recovers SxmDbContext from LINQ chains so the delete executes
         /// immediately inside the context transaction and returns the real row count.
         /// </summary>
         public static Task<int> DeleteAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
@@ -527,7 +527,7 @@ namespace SQLiteXM
             if (query == null) throw new ArgumentNullException(nameof(query));
 
             // Try to recover context from the query (works for SxmTable and LinqToDB query chains)
-            var context = SxmLinqDbContext.TryGetContextFromQuery(query);
+            var context = SxmDbContext.TryGetContextFromQuery(query);
 
             if (context != null)
             {
