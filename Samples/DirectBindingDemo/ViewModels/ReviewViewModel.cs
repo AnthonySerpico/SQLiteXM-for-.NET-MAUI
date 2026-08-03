@@ -48,23 +48,25 @@ public partial class ReviewViewModel : BaseViewModel
     {
         try
         {
-            using var context = new SxmLinqDbContext("AppData");
-            var user = context.GetTable<User>()
-                .FirstOrDefault(u => u.id == UserId);
-
-            if (user != null)
+            await using (var context = new SxmLinqDbContext("AppData"))
             {
-                CurrentUser = user;
+                var user = context.GetTable<User>()
+                    .FirstOrDefault(u => u.id == UserId);
 
-                // Initialize preferences (not saved yet)
-                CurrentPreferences = new UserPreferences
+                if (user != null)
                 {
-                    UserId = user.id,
-                    EnableNotifications = false, // Will be set from UI binding
-                    CreatedAt = DateTime.UtcNow
-                };
+                    CurrentUser = user;
 
-                UpdateNotificationsStatus();
+                    // Initialize preferences (not saved yet)
+                    CurrentPreferences = new UserPreferences
+                    {
+                        UserId = user.id,
+                        EnableNotifications = false, // Will be set from UI binding
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    UpdateNotificationsStatus();
+                }
             }
         }
         catch (Exception ex)

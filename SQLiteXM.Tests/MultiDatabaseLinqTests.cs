@@ -137,7 +137,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var inStockProducts = context.GetTable<Product>()
                 .Where(p => p.InStock)
@@ -169,7 +169,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await new Product { Name = "Date", Price = 3.99m, InStock = true }.SaveAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var affordableInStock = context.GetTable<Product>()
                 .Where(p => p.InStock && p.Price < 2.00m)
@@ -218,7 +218,7 @@ public class MultiDatabaseLinqTests : IDisposable
         }
 
         // Act & Assert - Products database
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var inStockProducts = context.GetTable<Product>().Where(p => p.InStock).ToList();
             Assert.Single(inStockProducts);
@@ -226,7 +226,7 @@ public class MultiDatabaseLinqTests : IDisposable
         }
 
         // Act & Assert - Orders database
-        using (var context = new SxmLinqDbContext("orders"))
+        await using (var context = new SxmLinqDbContext("orders"))
         {
             var paidOrders = context.GetTable<Order>().Where(o => o.IsPaid).ToList();
             Assert.Single(paidOrders);
@@ -261,7 +261,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var productSummaries = context.GetTable<Product>()
                 .Select(p => new { p.Name, p.Price })
@@ -298,7 +298,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var productNames = context.GetTable<Product>()
                 .Select(p => p.Name)
@@ -340,7 +340,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var sortedProducts = context.GetTable<Product>()
                 .OrderBy(p => p.Price)
@@ -378,7 +378,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var sortedProducts = context.GetTable<Product>()
                 .OrderByDescending(p => p.Price)
@@ -416,7 +416,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var sortedProducts = context.GetTable<Product>()
                 .OrderBy(p => p.Price)
@@ -454,7 +454,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await new Product { Name = "Cherry", Price = 2.99m, InStock = false }.SaveAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var totalCount = context.GetTable<Product>().Count();
             var inStockCount = context.GetTable<Product>().Count(p => p.InStock);
@@ -488,7 +488,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var hasInStock = context.GetTable<Product>().Any(p => p.InStock);
             var hasExpensive = context.GetTable<Product>().Any(p => p.Price > 10.00m);
@@ -523,7 +523,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("orders"))
+        await using (var context = new SxmLinqDbContext("orders"))
         {
             var totalRevenue = context.GetTable<Order>().Sum(o => o.Total);
             var paidRevenue = context.GetTable<Order>().Where(o => o.IsPaid).Sum(o => o.Total);
@@ -558,7 +558,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var avgPrice = context.GetTable<Product>().Average(p => p.Price);
 
@@ -591,7 +591,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var minPrice = context.GetTable<Product>().Min(p => p.Price);
             var maxPrice = context.GetTable<Product>().Max(p => p.Price);
@@ -631,7 +631,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var page1 = context.GetTable<Product>()
                 .OrderBy(p => p.Name)
@@ -687,7 +687,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act - Complex query: Filter, Sort, Project, Paginate
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var results = context.GetTable<Product>()
                 .Where(p => p.Price < 3.00m)
@@ -727,7 +727,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var found = context.GetTable<Product>().FirstOrDefault(p => p.Name == "Apple");
             var notFound = context.GetTable<Product>().FirstOrDefault(p => p.Name == "Zebra");
@@ -762,7 +762,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var unique = context.GetTable<Product>().SingleOrDefault(p => p.Name == "UniqueProduct");
             var notFound = context.GetTable<Product>().SingleOrDefault(p => p.Name == "Zebra");
@@ -802,7 +802,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        using (var context = new SxmLinqDbContext("products"))
+        await using (var context = new SxmLinqDbContext("products"))
         {
             var withNames = context.GetTable<Product>().Where(p => p.Name != null).ToList();
             var withoutNames = context.GetTable<Product>().Where(p => p.Name == null).ToList();

@@ -41,19 +41,21 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-            using var context = new SxmLinqDbContext("AppData");
-            var user = context.GetTable<User>()
-                .FirstOrDefault(u => u.id == UserId);
-
-            if (user != null)
+            await using (var context = new SxmLinqDbContext("AppData"))
             {
-                CurrentUser = user;
+                var user = context.GetTable<User>()
+                    .FirstOrDefault(u => u.id == UserId);
 
-                // Demonstrate computed property usage
-                WelcomeMessage = $"Welcome, {CurrentUser.FullName}!";
+                if (user != null)
+                {
+                    CurrentUser = user;
 
-                DatabaseInfo = $"✅ User stored in: AppData database\n" +
-                              $"✅ Database location: {FileSystem.AppDataDirectory}";
+                    // Demonstrate computed property usage
+                    WelcomeMessage = $"Welcome, {CurrentUser.FullName}!";
+
+                    DatabaseInfo = $"✅ User stored in: AppData database\n" +
+                                  $"✅ Database location: {FileSystem.AppDataDirectory}";
+                }
             }
         }
         catch (Exception ex)

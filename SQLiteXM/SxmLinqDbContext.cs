@@ -7,52 +7,141 @@ using System.Collections.Concurrent;
 
 namespace SQLiteXM
 {
-    public class SxmLinqDbContext : IDisposable
+    /// <summary>
+    /// LINQ unit-of-work context with immediate execution and transactional semantics that mirror
+    /// <see cref="SxmSqlTransaction"/>:
+    /// <list type="bullet">
+    /// <item><description>Write operations (bulk Update/Delete via LINQ) execute immediately inside a
+    /// transaction that is started lazily on the first write ("least work" principle - read-only
+    /// contexts never open a transaction).</description></item>
+    /// <item><description>On <see cref="DisposeAsync"/> the transaction auto-commits when no operation
+    /// has failed; if any operation threw, the transaction is rolled back.</description></item>
+    /// <item><description><see cref="CommitTransactionAsync"/> may optionally be called to end the transaction early.
+    /// Subsequent write operations start a new transaction.</description></item>
+    /// <item><description><see cref="RollbackTransactionAsync"/> may optionally be called to discard the current
+    /// transaction's work explicitly.</description></item>
+    /// </list>
+    /// Prefer <c>await using var ctx = new SxmLinqDbContext();</c> so disposal can commit/rollback asynchronously.
+    /// </summary>
+    public class SxmLinqDbContext : IDisposable, IAsyncDisposable
     {
         // Static registry to track DataConnection -> SxmLinqDbContext mappings
         // This enables context recovery from IQueryable chains after LINQ operators like Where()
-        private static readonly ConcurrentDictionary<DataConnection, WeakReference<SxmLinqDbContext>> _contextRegistry 
+        private static readonly ConcurrentDictionary<DataConnection, WeakReference<SxmLinqDbContext>> _contextRegistry
             = new ConcurrentDictionary<DataConnection, WeakReference<SxmLinqDbContext>>();
 
         private bool _isDisposed = false;
-        private readonly Microsoft.Data.Sqlite.SqliteConnection? _sqliteConnection;
-        private readonly SxmChangeSet _changeSet = new SxmChangeSet();
-        private readonly LinqToDB.Data.DataConnection _linqToDbDataConnection;
+        private readonly SxmConnection _sxmConnection;
+        private readonly SxmSqlTransaction _sqlTransaction;
+        private readonly bool _ownsTransaction;
+        private LinqToDB.Data.DataConnection _linqToDbDataConnection;
+        private Microsoft.Data.Sqlite.SqliteTransaction? _enlistedTransaction;
         private string? _databaseName;
 
         public SxmLinqDbContext(string? databaseName = null)
         {
+            SxmSqlTransaction? ownedTransaction = null;
             try
             {
                 SxmDatabase.EnsureInitialized();
-                SxmConnection.CreateNewConnection(ref databaseName, ref _sqliteConnection);
-                _databaseName = databaseName;
 
-                if (_sqliteConnection == null)
-                    throw new InvalidOperationException("Failed to create SQLite connection.");
+                SxmSqlTransaction? ambient = SxmAmbientTransaction.Current;
+                if (ambient != null && ambient.Connection != null)
+                {
+                    // Join the existing ambient transaction so LINQ, entity writes and named SQL
+                    // all execute on the same connection inside the same transaction.
+                    if (databaseName != null && !string.Equals(databaseName, ambient.Connection.DatabaseName, StringComparison.Ordinal))
+                        throw new InvalidOperationException(
+                            $"An ambient transaction is active for database '{ambient.Connection.DatabaseName}'; " +
+                            $"cannot create an SxmLinqDbContext for database '{databaseName}'.");
 
-                _linqToDbDataConnection = new DataConnection( new DataOptions()
-                                            .UseMappingSchema(SxmMapping.Schema)
-                                            .UseConnection(SQLiteTools.GetDataProvider(SQLiteProvider.Microsoft), _sqliteConnection));
+                    _sqlTransaction = ambient;
+                    _sxmConnection = ambient.Connection;
+                    _ownsTransaction = false;
+                }
+                else
+                {
+                    // Create a private connection and register an ambient SxmSqlTransaction over it
+                    // so SxmEntity.SaveAsync()/DeleteAsync() and named/embedded SQL enlist automatically.
+                    ownedTransaction = SxmSqlTransaction.Create(databaseName);
+                    _sqlTransaction = ownedTransaction;
+                    _sxmConnection = ownedTransaction.Connection
+                        ?? throw new InvalidOperationException("Failed to create SQLite connection.");
+                    _ownsTransaction = true;
+                }
 
-                // Register this context with its DataConnection for context recovery
-                _contextRegistry[_linqToDbDataConnection] = new WeakReference<SxmLinqDbContext>(this);
+                _databaseName = _sxmConnection.DatabaseName;
+
+                // Only begin a transaction when we own the connection.
+                // When joining an ambient transaction the connection already has one open.
+                if (_ownsTransaction)
+                    _sxmConnection.BeginTransaction();
+
+                _linqToDbDataConnection = CreateLinqConnection();
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
+                if (ownedTransaction != null) { try { ownedTransaction.Dispose(); } catch { /* best effort */ } }
                 SxmLogging.Log(ex, $"SxmLinqDbContext ctor failure. Database: '{databaseName}'.");
-                // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
+                // Cancellation/fatal - rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
+                if (ownedTransaction != null) { try { ownedTransaction.Dispose(); } catch { /* best effort */ } }
                 string errStr = $"SxmLinqDbContext ctor failure. Database: '{databaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
         }
 
-        public SxmChangeSet GetChangeSet() => _changeSet;
+        /// <summary>
+        /// Creates a LinqToDB <see cref="DataConnection"/> enlisted in the connection's current
+        /// SQLite transaction and registers it for context recovery from query chains.
+        /// </summary>
+        private DataConnection CreateLinqConnection()
+        {
+            Microsoft.Data.Sqlite.SqliteTransaction tx = _sxmConnection.CurrentTransaction
+                ?? throw new InvalidOperationException("No open SQLite transaction on the shared connection.");
+
+            var dc = new DataConnection(new DataOptions()
+                        .UseMappingSchema(SxmMapping.Schema)
+                        .UseTransaction(SQLiteTools.GetDataProvider(SQLiteProvider.Microsoft), tx));
+
+            _enlistedTransaction = tx;
+            _contextRegistry[dc] = new WeakReference<SxmLinqDbContext>(this);
+            return dc;
+        }
+
+        /// <summary>
+        /// Ensures a SQLite transaction is open on the shared connection and that the LinqToDB
+        /// connection is enlisted in it. Rebuilds the LinqToDB connection after an explicit
+        /// commit/rollback started a new transaction.
+        /// </summary>
+        private void EnsureLinqConnectionCurrent()
+        {
+            if (_sxmConnection.CurrentTransaction == null)
+                _sxmConnection.BeginTransaction();
+
+            if (!ReferenceEquals(_enlistedTransaction, _sxmConnection.CurrentTransaction))
+            {
+                _contextRegistry.TryRemove(_linqToDbDataConnection, out _);
+                try { _linqToDbDataConnection.Dispose(); } catch { /* best effort */ }
+                _linqToDbDataConnection = CreateLinqConnection();
+            }
+        }
+
+        /// <summary>
+        /// True when a write operation executed through this context has thrown.
+        /// While faulted, subsequent write operations are skipped and disposal rolls back the transaction.
+        /// Call <see cref="RollbackTransactionAsync"/> to discard the failed transaction and reset the context.
+        /// </summary>
+        public bool Faulted => _sqlTransaction.EncounteredError;
+
+        /// <summary>
+        /// True when a transaction is currently open on the shared connection.
+        /// </summary>
+        public bool HasActiveTransaction => !_isDisposed && _sxmConnection.CurrentTransaction != null;
 
         /// <summary>
         /// Attempts to recover the SxmLinqDbContext from a LinqToDB query provider.
@@ -103,117 +192,197 @@ namespace SQLiteXM
         // LinqToDB table access
         public SxmTable<T> GetTable<T>() where T : class
         {
+            ThrowIfDisposed();
+            EnsureLinqConnectionCurrent();
+
             // Wrap the provider table so callers get an IQueryable-like wrapper that also
-            // exposes LoadWith without referencing LinqToDB. Pass this context for deferred bulk operations.
+            // exposes LoadWith without referencing LinqToDB. Pass this context for transactional bulk operations.
             return new SxmTable<T>(_linqToDbDataConnection.GetTable<T>(), this);
         }
 
         // Make raw provider escape hatches internal to prevent consumers from calling LinqToDB APIs directly.
-        // Keeps the safe public SxmLinqDbContext surface (GetTable, Insert/Update/Delete lifecycles, SubmitChanges).
+        // Keeps the safe public SxmLinqDbContext surface (GetTable, bulk Update/Delete, Commit/Rollback).
         // Advanced users inside the library (or friend assemblies) can still use these helpers.
 
         // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
         internal ITable<T> GetRawTable<T>() where T : class
         {
+            ThrowIfDisposed();
+            EnsureLinqConnectionCurrent();
             return _linqToDbDataConnection.GetTable<T>();
         }
 
-
-        // Added explicit high-level helpers for advanced operations (BulkCopy, raw SQL, query execution).
-        // Kept low-level WithDataConnectionAsync internal so only library code (or friend assemblies) may access DataConnection.
-
-        // Controlled async escape-hatch for advanced library code that needs direct DataConnection access.
-        // Internal to prevent application code from bypassing SxmLinqDbContext semantics.
-        // Do NOT dispose or retain the DataConnection instance — it's owned by this context.
-        private async Task<T> WithDataConnectionAsync<T>(Func<LinqToDB.Data.DataConnection, Task<T>> action)
-        {
-            if (action == null) throw new ArgumentNullException(nameof(action));
-            return await action(_linqToDbDataConnection).ConfigureFalse();
-        }
-
-        // -------------------------
-        // High-level advanced helpers
-        // -------------------------
+        // ---------- Entity operations (immediate execution) ----------
 
         /// <summary>
-        /// // C# example (caller in app code)
-        ///using var ctx = new SxmLinqDbContext();
-
-        // Prepare many entities
-        ///var batch = Enumerable.Range(1, 1000)
-        ///.Select(i => new UserRecord { name = $"User {i}", address = "Bulk St" })
-        ///.ToList();
-
-        // Perform efficient bulk insert, returns rows copied
-        ///long rowsCopied = await ctx.BulkCopyAsync(batch).ConfigureFalse();
-        ///Console.WriteLine($"Rows copied: {rowsCopied}");
-        ///
-        /// 
-        /// Perform a bulk copy of the provided entities using LinqToDB bulk API.
-        /// Returns number of rows copied.
-        /// This is a controlled helper that does not expose the DataConnection to callers.
+        /// Inserts the entity immediately inside the context transaction (started lazily).
+        /// When the entity derives from <see cref="SxmEntity"/> its <c>id</c> property is populated
+        /// with the database-generated identity value.
+        /// The transaction auto-commits when the context is disposed without errors.
         /// </summary>
-        private async Task<long> BulkCopyAsync<T>(IEnumerable<T> entities, LinqToDB.Data.BulkCopyOptions? options = null) where T : class
+        /// <returns>The number of rows inserted (0 when the context is faulted and the operation was skipped).</returns>
+        public Task<int> InsertAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
         {
-            if (entities == null) throw new ArgumentNullException(nameof(entities));
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return ExecuteWriteAsync(async () =>
+            {
+                if (entity is SxmEntity sxmEntity)
+                {
+                    long identity = await _linqToDbDataConnection.InsertWithInt64IdentityAsync(entity, token: cancellationToken).ConfigureFalse();
+                    sxmEntity.id = identity;
+                    return 1;
+                }
 
-            var opts = options ?? new LinqToDB.Data.BulkCopyOptions();
-            var result = await WithDataConnectionAsync(dc => dc.BulkCopyAsync(opts, entities)).ConfigureFalse();
-            return result?.RowsCopied ?? 0L;
+                return await _linqToDbDataConnection.InsertAsync(entity, token: cancellationToken).ConfigureFalse();
+            });
         }
 
         /// <summary>
-        /// Execute a raw SQL statement (non-query) on the underlying connection.
-        /// Returns the number of rows affected.
-        /// This helper accepts SQL and parameters and runs it safely on the internal DataConnection.
+        /// Updates the entity (by primary key) immediately inside the context transaction (started lazily).
         /// </summary>
-        private Task<int> ExecuteRawSqlAsync(string sql, params object[] parameters)
+        /// <returns>The number of rows updated (0 when the context is faulted and the operation was skipped).</returns>
+        public Task<int> UpdateAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
         {
-            if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
-            // Use internal escape hatch — still keeps DataConnection out of public API surface.
-            return WithDataConnectionAsync(dc => dc.ExecuteAsync(sql, parameters));
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return ExecuteWriteAsync(() => _linqToDbDataConnection.UpdateAsync(entity, token: cancellationToken));
         }
 
         /// <summary>
-        /// Execute a LINQ query produced by the provided factory against the internal table and return a materialized list.
-        /// The factory receives an SxmTable<T> so callers do not need to reference LinqToDB types.
-        /// Use this when you need to run slightly more complex queries but want to remain within the safe API.
+        /// Deletes the entity (by primary key) immediately inside the context transaction (started lazily).
         /// </summary>
-        private Task<List<T>> ExecuteQueryAsync<T>(Func<SxmTable<T>, IQueryable<T>> queryFactory) where T : class
+        /// <returns>The number of rows deleted (0 when the context is faulted and the operation was skipped).</returns>
+        public Task<int> DeleteAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
         {
-            if (queryFactory == null) throw new ArgumentNullException(nameof(queryFactory));
-
-            // Execute synchronously (materialize) on the internal connection / table.
-            var table = new SxmTable<T>(_linqToDbDataConnection.GetTable<T>());
-            var q = queryFactory(table) ?? Enumerable.Empty<T>().AsQueryable();
-
-            // Materialize synchronously and return as completed Task — caller can await.
-            List<T> list = q.ToList();
-            return Task.FromResult(list);
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return ExecuteWriteAsync(() => _linqToDbDataConnection.DeleteAsync(entity, token: cancellationToken));
         }
 
         /// <summary>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="sql"/> is null or whitespace.</exception>
-        /// using var ctx = new SxmLinqDbContext();
-        /// var rows = await ctx.QueryAsync("SELECT id, name, address FROM UserRecord WHERE id > @p0", 100).ConfigureFalse();
-        /// foreach (var row in rows)
-        ///     Console.WriteLine($"{row["id"]}: {row["name"]} - {row["address"]}");
-        ///
-        /// int affected = await ctx.ExecuteRawSqlAsync("UPDATE UserRecord SET address = {0} WHERE name = {1}", "New Addr", "Alice").ConfigureFalse();
-        /// Note: ExecuteRawSqlAsync uses LinqToDB ExecuteAsync so it accepts LinqToDB-style placeholders.
-        /// 
+        /// Inserts or replaces the entity (by primary key) immediately inside the context transaction (started lazily).
+        /// </summary>
+        /// <returns>The number of rows affected (0 when the context is faulted and the operation was skipped).</returns>
+        public Task<int> InsertOrReplaceAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            return ExecuteWriteAsync(() => _linqToDbDataConnection.InsertOrReplaceAsync(entity, token: cancellationToken));
+        }
+
+        // ---------- Transaction management ------------------
+
+        /// <summary>
+        /// Executes a write operation immediately inside the shared context transaction.
+        /// Mirrors <see cref="SxmSqlTransaction"/> semantics: once any operation has thrown (via LINQ,
+        /// entity writes or named SQL on the shared transaction), subsequent operations are skipped
+        /// (returning 0) and the transaction rolls back on dispose.
+        /// The first failure is logged, marks the context as <see cref="Faulted"/>, and is rethrown.
+        /// </summary>
+        /// <param name="operation">The delegate performing the write and returning affected row count.</param>
+        /// <returns>The number of rows affected, or 0 when the operation was skipped because the context is faulted.</returns>
+        internal async Task<int> ExecuteWriteAsync(Func<Task<int>> operation)
+        {
+            if (operation == null) throw new ArgumentNullException(nameof(operation));
+            ThrowIfDisposed();
+
+            if (_sqlTransaction.EncounteredError)
+            {
+                // Consistent with SxmSqlTransaction: silently skip subsequent statements after a failure.
+                return 0;
+            }
+
+            EnsureLinqConnectionCurrent();
+
+            try
+            {
+                return await operation().ConfigureFalse();
+            }
+            catch (System.Exception ex)
+            {
+                _sqlTransaction.EncounteredError = true;
+                SxmLogging.Log(ex, $"SxmLinqDbContext write operation failure. Database: '{_databaseName}'.");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Optionally commits the current transaction early while continuing to hold the connection.
+        /// Auto-commit on dispose is the recommended pattern; use this only when you need to end the
+        /// SQL transaction before the context is disposed.
+        /// Write operations performed after an explicit commit start a new transaction.
+        /// No-op when no transaction is open.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Thrown when the context is faulted; call <see cref="RollbackTransactionAsync"/> instead.</exception>
+        public async Task CommitTransactionAsync()
+        {
+            ThrowIfDisposed();
+
+            if (_sqlTransaction.EncounteredError)
+                throw new InvalidOperationException(
+                    "Cannot commit: a previous operation on this context failed. " +
+                    "Call RollbackAsync() to discard the transaction and reset the context.");
+
+            if (_sxmConnection.CurrentTransaction == null) return;
+
+            SQLiteErrorCode errorCode = await _sxmConnection.FinishTransactionAsync(SxmDefines.CommitTransaction).ConfigureFalse();
+            if (errorCode != SQLiteErrorCode.Ok)
+            {
+                throw new InvalidOperationException($"Commit failed with SQLite error code '{errorCode}'. Database: '{_databaseName}'.");
+            }
+        }
+
+        /// <summary>
+        /// Optionally rolls back the current transaction, discarding all uncommitted work, and resets
+        /// the faulted state so the context can be used again (subsequent writes start a new transaction).
+        /// No-op when no transaction is open (still clears the faulted state).
+        /// </summary>
+        public async Task RollbackTransactionAsync()
+        {
+            ThrowIfDisposed();
+
+            try
+            {
+                if (_sxmConnection.CurrentTransaction != null)
+                {
+                    await _sxmConnection.FinishTransactionAsync(SxmDefines.RollbackTransaction).ConfigureFalse();
+                }
+            }
+            finally
+            {
+                _sqlTransaction.EncounteredError = false;
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_isDisposed) throw new ObjectDisposedException(nameof(SxmLinqDbContext));
+        }
+
+        // ---------- Raw SQL query ------------------
+
+        /// <summary>
         /// Execute a SQL SELECT (or any query returning rows) and materialize the result as a
         /// list of dictionaries (column name -> value). Parameters are added as @p0, @p1, ...
+        /// Participates in the context transaction when one is active.
         /// Example: QueryAsync("SELECT * FROM UserRecord WHERE id = @p0", 42)
         /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="sql"/> is null or whitespace.</exception>
         public async Task<List<Dictionary<string, object?>>> QueryAsync(string sql, params object?[] parameters)
         {
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
-            if (_sqliteConnection == null) throw new InvalidOperationException("SQLite connection is not available.");
+            ThrowIfDisposed();
 
-            // Use the owned SqliteConnection directly (safe — still not exposing it).
-            await using SqliteCommand cmd = _sqliteConnection.CreateCommand();
+            SqliteConnection sqliteConnection = _sxmConnection.UnderlyingConnection
+                ?? throw new InvalidOperationException("SQLite connection is not available.");
+
+            // Use the shared SqliteConnection directly (safe - still not exposing it).
+            await using SqliteCommand cmd = sqliteConnection.CreateCommand();
             cmd.CommandText = sql;
+
+            // Enlist in the active shared transaction (Microsoft.Data.Sqlite requires the command's
+            // Transaction property to be set when the connection has a pending local transaction).
+            if (_sxmConnection.CurrentTransaction is SqliteTransaction sqliteTx)
+            {
+                cmd.Transaction = sqliteTx;
+            }
 
             // Add parameters named @p0, @p1, ... to keep the API simple.
             for (int i = 0; i < (parameters?.Length ?? 0); i++)
@@ -242,345 +411,80 @@ namespace SQLiteXM
             return results;
         }
 
-        // ---------- Change tracking API ------------------
-
-        public void InsertOnSubmit<T>(T entity) where T : SxmEntity
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-
-            _changeSet.Add(entity, ChangeType.Insert);
-        }
-
-        public void UpdateOnSubmit<T>(T entity) where T : SxmEntity
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-
-            _changeSet.Add(entity, ChangeType.Update);
-        }
-
-        public void DeleteOnSubmit<T>(T entity) where T : SxmEntity
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-
-            _changeSet.Add(entity, ChangeType.Delete);
-        }
-
-        public void InsertOrReplaceOnSubmit<T>(T entity) where T : SxmEntity
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-
-            _changeSet.Add(entity, ChangeType.InsertOrReplace);
-        }
-
-        public void InsertOrUpdateOnSubmit<T>(T entity) where T : SxmEntity
-        {
-            if (entity == null) throw new ArgumentNullException(nameof(entity));
-
-            _changeSet.Add(entity, ChangeType.InsertOrUpdate);
-        }
-
-        /// <summary>
-        /// Enqueues a bulk update operation to be executed during SubmitChangesAsync within the transaction.
-        /// </summary>
-        /// <param name="bulkOperation">The delegate that executes the bulk update.</param>
-        internal void EnqueueBulkUpdate(Func<Task<int>> bulkOperation)
-        {
-            if (bulkOperation == null) throw new ArgumentNullException(nameof(bulkOperation));
-            _changeSet.AddBulkOperation(ChangeType.BulkUpdate, bulkOperation);
-        }
-
-        /// <summary>
-        /// Enqueues a bulk delete operation to be executed during SubmitChangesAsync within the transaction.
-        /// </summary>
-        /// <param name="bulkOperation">The delegate that executes the bulk delete.</param>
-        internal void EnqueueBulkDelete(Func<Task<int>> bulkOperation)
-        {
-            if (bulkOperation == null) throw new ArgumentNullException(nameof(bulkOperation));
-            _changeSet.AddBulkOperation(ChangeType.BulkDelete, bulkOperation);
-        }
-
-        // ---------- SubmitChanges ------------------------
-        /// <summary>
-        /// Submits all pending changes (inserts, updates, deletes) within a single transaction.
-        /// Default behavior: stops on first failure and rolls back the entire transaction.
-        /// </summary>
-        /// <returns>A SubmitChangesResult containing succeeded and failed operations.</returns>
-        public async Task<SubmitChangesResult> SubmitChangesAsync()
-        {
-            return await SubmitChangesAsync(ConflictMode.FailOnFirstError).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Submits all pending changes (inserts, updates, deletes) within a single transaction.
-        /// </summary>
-        /// <param name="conflictMode">Controls behavior when operations fail:
-        /// - FailOnFirstError (default): Stop on first failure and rollback the entire transaction.
-        /// - ContinueOnError: Continue processing all operations and commit successes (partial commit).
-        /// </param>
-        /// <returns>A SubmitChangesResult containing succeeded and failed operations.</returns>
-        public async Task<SubmitChangesResult> SubmitChangesAsync(ConflictMode conflictMode)
-        {
-            var report = new SubmitChangesResult();
-            if (_changeSet.IsEmpty)
-            {
-                report.AllSucceeded = true;
-                return report;
-            }
-
-            // One transaction for the whole unit of work
-            await using (SxmSqlTransaction sxmTrans = SxmSqlTransaction.Create())
-            {
-                try
-                {
-                    List<ChangeAction> actions = _changeSet.GetOrderedActions().ToList();
-
-                    foreach (ChangeAction action in actions)
-                    {
-                        try
-                        {
-                            switch (action.Type)
-                            {
-                                case ChangeType.Insert:
-                                case ChangeType.Update:
-                                    // Save decides insert vs update based on existence; use transaction-aware overload.
-                                    await action.Entity!.SaveAsync(sxmTrans).ConfigureFalse();
-                                    break;
-
-                                case ChangeType.Delete:
-                                    await action.Entity!.DeleteAsync(sxmTrans).ConfigureFalse();
-                                    break;
-
-                                case ChangeType.InsertOrReplace:
-                                    await action.Entity!.InsertOrReplaceAsync(sxmTrans).ConfigureFalse();
-                                    break;
-
-                                case ChangeType.InsertOrUpdate:
-                                    await action.Entity!.InsertOrUpdateAsync(sxmTrans).ConfigureFalse();
-                                    break;
-
-                                case ChangeType.BulkUpdate:
-                                case ChangeType.BulkDelete:
-                                    // Execute bulk operation within the transaction
-                                    int rowsAffected = await action.BulkOperation!().ConfigureFalse();
-                                    action.Result = new ChangeResult
-                                    {
-                                        Success = true,
-                                        Error = null,
-                                        RowsAffected = rowsAffected
-                                    };
-                                    report.Succeeded.Add(action);
-                                    continue; // Skip entity-specific result handling below
-                            }
-
-                            // Success (entity operations)
-                            action.Result = new ChangeResult
-                            {
-                                Success = true,
-                                Error = null,
-                                IdAfterOperation = action.Entity!.id > 0 ? action.Entity.id : null,
-                                SynchIdAfterOperation = action.Entity.synchId
-                            };
-
-                            report.Succeeded.Add(action);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Record failure
-                            action.Result = new ChangeResult
-                            {
-                                Success = false,
-                                Error = ex,
-                                // Only set entity-specific fields if this is an entity operation
-                                IdAfterOperation = action.Entity?.id > 0 ? action.Entity.id : null,
-                                SynchIdAfterOperation = action.Entity?.synchId,
-                                RowsAffected = 0  // Failed operations affect 0 rows
-                            };
-
-                            report.Failed.Add(action);
-
-                            // Stop immediately if FailOnFirstError
-                            if (conflictMode == ConflictMode.FailOnFirstError)
-                                break;
-
-                            // Otherwise continue processing (ContinueOnError)
-                        }
-                    }
-
-                    // Commit/rollback decision
-                    if (conflictMode == ConflictMode.ContinueOnError)
-                    {
-                        // Always commit (partial success is acceptable)
-                        await sxmTrans.CommitTransactionAsync().ConfigureFalse();
-                    }
-                    else // FailOnFirstError
-                    {
-                        // Rollback if any failure; otherwise commit
-                        if (report.Failed.Count > 0)
-                        {
-                            await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
-                        }
-                        else
-                        {
-                            await sxmTrans.CommitTransactionAsync().ConfigureFalse();
-                        }
-                    }
-                }
-                catch
-                {
-                    // Best-effort rollback if commit/processing failed.
-                    try
-                    {
-                        await sxmTrans.RollbackTransactionAsync().ConfigureFalse();
-                    }
-                    catch
-                    {
-                        // Swallow rollback exceptions — keep original exception semantics.
-                    }
-
-                    throw;
-                }
-                finally
-                {
-                    // Always clear the change set after any submit attempt.
-                    // This prevents accidental duplicate submissions and makes the behavior predictable.
-                    // If retry is needed, the caller must explicitly re-queue operations.
-                    _changeSet.Clear();
-                }
-            }
-
-            report.AllSucceeded = report.Failed.Count == 0;
-            report.Partial = report.Succeeded.Count > 0 && report.Failed.Count > 0;
-            return report;
-        }
-
         // ---------- Dispose ------------------------------
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
 
-        protected virtual void Dispose(bool disposing)
+        /// <summary>
+        /// Asynchronously disposes the context. When a transaction is open:
+        /// commits it when no operation failed; rolls it back when the context is <see cref="Faulted"/>.
+        /// Commit failures are logged and rethrown after a best-effort rollback.
+        /// </summary>
+        public async ValueTask DisposeAsync()
         {
             if (_isDisposed) return;
 
-            if (disposing)
+            try
             {
-                // Unregister from the context registry
-                if (_linqToDbDataConnection != null)
+                // Only the owning context finishes the transaction. A joined context leaves
+                // commit/rollback to the outer ambient SxmSqlTransaction.
+                if (_ownsTransaction && _sxmConnection.CurrentTransaction != null)
                 {
-                    _contextRegistry.TryRemove(_linqToDbDataConnection, out _);
+                    if (!_sqlTransaction.EncounteredError)
+                    {
+                        SQLiteErrorCode errorCode = await _sxmConnection.FinishTransactionAsync(SxmDefines.CommitTransaction).ConfigureFalse();
+                        if (errorCode != SQLiteErrorCode.Ok)
+                        {
+                            var commitEx = new InvalidOperationException($"Auto-commit failed with SQLite error code '{errorCode}'. Database: '{_databaseName}'.");
+                            SxmLogging.Log(commitEx, $"SxmLinqDbContext auto-commit failure on dispose. Database: '{_databaseName}'.");
+                            try { await _sxmConnection.FinishTransactionAsync(SxmDefines.RollbackTransaction).ConfigureFalse(); } catch { /* best effort */ }
+                            throw commitEx;
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            await _sxmConnection.FinishTransactionAsync(SxmDefines.RollbackTransaction).ConfigureFalse();
+                        }
+                        catch (System.Exception ex)
+                        {
+                            // Log and continue cleanup; do not throw during rollback of a faulted context.
+                            SxmLogging.Log(ex, $"SxmLinqDbContext rollback failure on dispose. Database: '{_databaseName}'.");
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CleanupLinqConnection();
+
+                if (_ownsTransaction)
+                {
+                    // Disposing the owned ambient transaction pops it from the ambient stack and
+                    // releases/destroys the private connection. The SQLite transaction has already
+                    // been finished above, so its auto-commit is a no-op.
+                    try { await _sqlTransaction.DisposeAsync().ConfigureFalse(); }
+                    catch (System.Exception ex) { SxmLogging.Log(ex, $"SxmLinqDbContext transaction dispose failure. Database: '{_databaseName}'."); }
                 }
 
-                SxmConnection.CloseConnection(_sqliteConnection, _databaseName);
-                _linqToDbDataConnection?.Dispose();
+                _isDisposed = true;
             }
 
-            _isDisposed = true;
+            GC.SuppressFinalize(this);
         }
-    }
 
-
-    /// <summary>
-    /// Controls SubmitChanges behavior when an individual operation throws.
-    /// </summary>
-    public enum ConflictMode
-    {
-        /// <summary>
-        /// (DEFAULT) Stop on first failure and rollback the entire transaction.
-        /// Returns a SubmitChangesResult with the failed action in report.Failed.
-        /// </summary>
-        FailOnFirstError,
-
-        /// <summary>
-        /// Continue processing all actions even when failures occur, then commit successes.
-        /// Inspect report.Succeeded and report.Failed to see partial results.
-        /// </summary>
-        ContinueOnError
-    }
-
-    /// <summary>
-    /// Aggregate result returned by SubmitChanges.
-    /// </summary>
-    public class SubmitChangesResult
-    {
-        public List<ChangeAction> Succeeded { get; } = new List<ChangeAction>();
-        public List<ChangeAction> Failed { get; } = new List<ChangeAction>();
-        public bool AllSucceeded { get; set; }
-        public bool Partial { get; set; }
-
-        /// <summary>
-        /// Returns true if any operations failed.
-        /// </summary>
-        public bool AnyFailed => Failed.Count > 0;
-
-        /// <summary>
-        /// Returns the total number of operations (succeeded + failed).
-        /// </summary>
-        public int TotalOperations => Succeeded.Count + Failed.Count;
-
-        /// <summary>
-        /// Returns a human-readable summary of the result.
-        /// </summary>
-        public string GetErrorSummary()
+        public void Dispose()
         {
-            if (AllSucceeded) return "All operations succeeded.";
+            DisposeAsync().AsTask().GetAwaiter().GetResult();
+            GC.SuppressFinalize(this);
+        }
 
-            var first = Failed.FirstOrDefault();
-            if (Failed.Count == 1)
+        private void CleanupLinqConnection()
+        {
+            if (_linqToDbDataConnection != null)
             {
-                var entityInfo = first?.Entity != null
-                    ? $" (Entity: {first.Entity.GetType().Name}, Id: {first.Entity.id})"
-                    : string.Empty;
-                return $"1 operation failed{entityInfo}: {first?.Result?.Error?.Message ?? "Unknown error"}";
+                _contextRegistry.TryRemove(_linqToDbDataConnection, out _);
+                try { _linqToDbDataConnection.Dispose(); } catch { /* best effort */ }
             }
-
-            var firstError = first?.Result?.Error?.Message ?? "Unknown error";
-            return $"{Failed.Count} of {TotalOperations} operations failed. First error: {firstError}";
-        }
-    }
-
-    /// <summary>
-    /// Exception thrown when SubmitChanges fails and EnsureSuccess() is called.
-    /// Contains the full SubmitChangesResult for detailed error inspection.
-    /// </summary>
-    public class SubmitChangesException : InvalidOperationException
-    {
-        /// <summary>
-        /// The SubmitChangesResult containing detailed failure information.
-        /// </summary>
-        public SubmitChangesResult Result { get; }
-
-        public SubmitChangesException(string message, SubmitChangesResult result)
-            : base(message, result.Failed.FirstOrDefault()?.Result?.Error)
-        {
-            Result = result;
-        }
-    }
-
-    /// <summary>
-    /// Extension methods for SubmitChangesResult.
-    /// </summary>
-    public static class SubmitChangesResultExtensions
-    {
-        /// <summary>
-        /// Throws a SubmitChangesException if any operations failed, otherwise returns the result for chaining.
-        /// Use this when you want fail-fast behavior with exceptions.
-        /// </summary>
-        /// <param name="result">The SubmitChangesResult to check.</param>
-        /// <returns>The same result if all operations succeeded.</returns>
-        /// <exception cref="SubmitChangesException">Thrown when any operations failed.</exception>
-        public static SubmitChangesResult ThrowIfFailed(this SubmitChangesResult result)
-        {
-            if (result == null) throw new ArgumentNullException(nameof(result));
-
-            if (!result.AllSucceeded)
-            {
-                throw new SubmitChangesException(result.GetErrorSummary(), result);
-            }
-
-            return result;
         }
     }
 }
-

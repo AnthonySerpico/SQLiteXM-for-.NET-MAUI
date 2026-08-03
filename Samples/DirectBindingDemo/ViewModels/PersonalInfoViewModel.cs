@@ -57,19 +57,21 @@ public partial class PersonalInfoViewModel : BaseViewModel
         try
         {
             // Load the existing User entity from the database
-            using var context = new SxmLinqDbContext("AppData");
-            var user = context.GetTable<User>()
-                .FirstOrDefault(u => u.id == UserId);
-
-            if (user != null)
+            await using (var context = new SxmLinqDbContext("AppData"))
             {
-                // Set the entity as CurrentUser
-                // Now XAML bindings will read/write directly to this entity
-                CurrentUser = user;
+                var user = context.GetTable<User>()
+                    .FirstOrDefault(u => u.id == UserId);
 
-                // Set default DateOfBirth if not already set
-                if (CurrentUser.DateOfBirth == null)
-                    CurrentUser.DateOfBirth = DateTime.Now.AddYears(-25);
+                if (user != null)
+                {
+                    // Set the entity as CurrentUser
+                    // Now XAML bindings will read/write directly to this entity
+                    CurrentUser = user;
+
+                    // Set default DateOfBirth if not already set
+                    if (CurrentUser.DateOfBirth == null)
+                        CurrentUser.DateOfBirth = DateTime.Now.AddYears(-25);
+                }
             }
         }
         catch (Exception ex)

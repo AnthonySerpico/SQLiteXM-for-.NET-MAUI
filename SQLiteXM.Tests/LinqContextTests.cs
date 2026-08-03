@@ -31,11 +31,13 @@ public class LinqContextTests : TestBase
         await entity3.SaveAsync();
 
         // Act
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var table = context.GetTable<SimpleEntity>();
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var table = context.GetTable<SimpleEntity>();
 
-        // Assert
-        table.Should().NotBeNull();
+            // Assert
+            table.Should().NotBeNull();
+        }
     }
 
     [Fact]
@@ -50,14 +52,16 @@ public class LinqContextTests : TestBase
         await entity2.SaveAsync();
 
         // Act
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var results = context.GetTable<SimpleEntity>()
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var results = context.GetTable<SimpleEntity>()
             .Where(e => e.Age > 50)
             .ToList();
 
-        // Assert
-        results.Should().HaveCount(1);
-        results[0].Name.Should().Be("Old");
+            // Assert
+            results.Should().HaveCount(1);
+            results[0].Name.Should().Be("Old");
+        }
     }
 
     [Fact]
@@ -74,16 +78,18 @@ public class LinqContextTests : TestBase
         await entity3.SaveAsync();
 
         // Act
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var results = context.GetTable<SimpleEntity>()
-            .OrderBy(e => e.Age)
-            .ToList();
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var results = context.GetTable<SimpleEntity>()
+                .OrderBy(e => e.Age)
+                .ToList();
 
-        // Assert
-        results.Should().HaveCount(3);
-        results[0].Name.Should().Be("Alice");
-        results[1].Name.Should().Be("Bob");
-        results[2].Name.Should().Be("Charlie");
+            // Assert
+            results.Should().HaveCount(3);
+            results[0].Name.Should().Be("Alice");
+            results[1].Name.Should().Be("Bob");
+            results[2].Name.Should().Be("Charlie");
+        }
     }
 
     [Fact]
@@ -95,13 +101,15 @@ public class LinqContextTests : TestBase
         await entity.SaveAsync();
 
         // Act
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var names = context.GetTable<SimpleEntity>()
-            .Select(e => e.Name)
-            .ToList();
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var names = context.GetTable<SimpleEntity>()
+                .Select(e => e.Name)
+                .ToList();
 
-        // Assert
-        names.Should().Contain("Test User");
+            // Assert
+            names.Should().Contain("Test User");
+        }
     }
 
     [Fact]
@@ -113,13 +121,15 @@ public class LinqContextTests : TestBase
         await entity.SaveAsync();
 
         // Act
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var result = context.GetTable<SimpleEntity>()
-            .FirstOrDefault(e => e.Age == 42);
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var result = context.GetTable<SimpleEntity>()
+                .FirstOrDefault(e => e.Age == 42);
 
-        // Assert
-        result.Should().NotBeNull();
-        result!.Name.Should().Be("Single");
+            // Assert
+            result.Should().NotBeNull();
+            result!.Name.Should().Be("Single");
+        }
     }
 
     [Fact]
@@ -139,11 +149,13 @@ public class LinqContextTests : TestBase
         await transaction.CommitTransactionAsync();
 
         // Act
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var count = context.GetTable<SimpleEntity>().Count();
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var count = context.GetTable<SimpleEntity>().Count();
 
-        // Assert
-        count.Should().Be(5);
+            // Assert
+            count.Should().Be(5);
+        }
     }
 
     [Fact]
@@ -170,13 +182,15 @@ public class LinqContextTests : TestBase
         await transaction.CommitTransactionAsync();
 
         // Act
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var results = context.GetTable<SimpleEntity>()
-            .Where(e => e.IsActive && e.Age > 30)
-            .ToList();
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var results = context.GetTable<SimpleEntity>()
+                .Where(e => e.IsActive && e.Age > 30)
+                .ToList();
 
-        // Assert
-        results.Should().HaveCount(1);
-        results[0].Name.Should().Be("Active Old");
+            // Assert
+            results.Should().HaveCount(1);
+            results[0].Name.Should().Be("Active Old");
+        }
     }
 }

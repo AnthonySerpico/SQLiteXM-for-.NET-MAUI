@@ -70,7 +70,7 @@ public class EntityCrudTests : TestBase
         retrieved.Age.Should().Be(30, "age should be updated in database");
 
         // Assert - Verify only one record exists (no duplicate insert)
-        var allEntities = GetAllEntitiesFromDb<SimpleEntity>();
+        List<SimpleEntity> allEntities = await GetAllEntitiesFromDb<SimpleEntity>();
         allEntities.Count(e => e.id == originalId).Should().Be(1, "only one record with this ID should exist");
     }
 
@@ -330,7 +330,7 @@ public class EntityCrudTests : TestBase
         }
 
         // Assert - Verify correct count in database
-        var count = GetEntityCountFromDb<SimpleEntity>();
+        var count = await GetEntityCountFromDb<SimpleEntity>();
         count.Should().BeGreaterOrEqualTo(10, "at least 10 concurrent entities should be in database");
     }
 }

@@ -48,17 +48,19 @@ public partial class PreferencesViewModel : BaseViewModel
     {
         try
         {
-            using var context = new SxmLinqDbContext("AppData");
-            var user = context.GetTable<User>()
-                .FirstOrDefault(u => u.id == UserId);
-
-            if (user != null)
+            await using (var context = new SxmLinqDbContext("AppData"))
             {
-                CurrentUser = user;
+                var user = context.GetTable<User>()
+                    .FirstOrDefault(u => u.id == UserId);
 
-                // Initialize preferences for this user
-                CurrentPreferences.UserId = user.id;
-                CurrentPreferences.CreatedAt = DateTime.UtcNow;
+                if (user != null)
+                {
+                    CurrentUser = user;
+
+                    // Initialize preferences for this user
+                    CurrentPreferences.UserId = user.id;
+                    CurrentPreferences.CreatedAt = DateTime.UtcNow;
+                }
             }
         }
         catch (Exception ex)

@@ -232,13 +232,13 @@ public partial class QueryExecutionViewModel : BaseViewModel
         // This is a simplified execution - in reality, we'd need to dynamically compile
         // For the demo, we'll execute predefined queries based on the query ID
 
-        using var context = new SxmLinqDbContext("Chinook");
+        await using (var context = new SxmLinqDbContext("Chinook"))
 
         return QueryExample?.Id switch
         {
             "basic_1" => context.GetTable<Artist>().OrderBy(a => a.Name).ToList(),
             "basic_2" => context.GetTable<Genre>().OrderBy(g => g.Name).ToList(),
-            "basic_3" => ExecuteBasic3(),
+            "basic_3" => await ExecuteBasic3(),
             "basic_4" => context.GetTable<Artist>().Where(a => a.Name.Contains("Zeppelin")).ToList(),
             "basic_5" => context.GetTable<Track>().Where(t => t.UnitPrice >= 0.99m && t.UnitPrice <= 1.49m).OrderBy(t => t.UnitPrice).ThenBy(t => t.Name).Take(100).ToList(),
             "basic_6" => context.GetTable<Track>().OrderByDescending(t => t.UnitPrice).ThenBy(t => t.Name).Take(10).ToList(),
@@ -247,56 +247,56 @@ public partial class QueryExecutionViewModel : BaseViewModel
             "basic_9" => context.GetTable<Track>().Where(t => t.Composer != null && t.Composer != "").OrderBy(t => t.Composer).ThenBy(t => t.Name).Take(100).ToList(),
             "basic_10" => context.GetTable<MediaType>().OrderBy(m => m.Name).ToList(),
 
-            "rel_1" => ExecuteRel1(),
-            "rel_2" => ExecuteRel2(),
-            "rel_3" => ExecuteRel3(),
-            "rel_4" => ExecuteRel4(),
-            "rel_5" => ExecuteRel5(),
-            "rel_6" => ExecuteRel6(),
-            "rel_7" => ExecuteRel7(),
-            "rel_8" => ExecuteRel8(),
+            "rel_1" => await ExecuteRel1(),
+            "rel_2" => await ExecuteRel2(),
+            "rel_3" => await ExecuteRel3(),
+            "rel_4" => await ExecuteRel4(),
+            "rel_5" => await ExecuteRel5(),
+            "rel_6" => await ExecuteRel6(),
+            "rel_7" => await ExecuteRel7(),
+            "rel_8" => await ExecuteRel8(),
 
-            "agg_1" => ExecuteAgg1(),
-            "agg_2" => ExecuteAgg2(),
-            "agg_3" => ExecuteAgg3(),
-            "agg_4" => ExecuteAgg4(),
-            "agg_5" => ExecuteAgg5(),
-            "agg_6" => ExecuteAgg6(),
-            "agg_7" => ExecuteAgg7(),
-            "agg_8" => ExecuteAgg8(),
-            "agg_9" => ExecuteAgg9(),
-            "agg_10" => ExecuteAgg10(),
+            "agg_1" => await ExecuteAgg1(),
+            "agg_2" => await ExecuteAgg2(),
+            "agg_3" => await ExecuteAgg3(),
+            "agg_4" => await ExecuteAgg4(),
+            "agg_5" => await ExecuteAgg5(),
+            "agg_6" => await ExecuteAgg6(),
+            "agg_7" => await ExecuteAgg7(),
+            "agg_8" => await ExecuteAgg8(),
+            "agg_9" => await ExecuteAgg9(),
+            "agg_10" => await ExecuteAgg10(),
 
             "adv_1" => context.GetTable<Track>().OrderBy(t => t.Name).Skip(0).Take(20).ToList(),
-            "adv_2" => ExecuteAdv2(),
-            "adv_3" => ExecuteAdv3(),
-            "adv_4" => ExecuteAdv4(),
-            "adv_5" => ExecuteAdv5(),
-            "adv_6" => ExecuteAdv6(),
-            "adv_7" => ExecuteAdv7(),
-            "adv_8" => ExecuteAdv8(),
-            "adv_9" => ExecuteAdv9(),
-            "adv_10" => ExecuteAdv10(),
-            "adv_11" => ExecuteAdv11(),
+            "adv_2" => await ExecuteAdv2(),
+            "adv_3" => await ExecuteAdv3(),
+            "adv_4" => await ExecuteAdv4(),
+            "adv_5" => await ExecuteAdv5(),
+            "adv_6" => await ExecuteAdv6(),
+            "adv_7" => await ExecuteAdv7(),
+            "adv_8" => await ExecuteAdv8(),
+            "adv_9" => await ExecuteAdv9(),
+            "adv_10" => await ExecuteAdv10(),
+            "adv_11" => await ExecuteAdv11(),
 
             "perf_1" => context.GetTable<Track>().OrderBy(t => t.Name).Take(1000).ToList(),
-            "perf_2" => ExecutePerf2(),
+            "perf_2" => await ExecutePerf2(),
             "perf_3" => context.GetTable<Track>().OrderBy(t => t.id).Skip(20).Take(20).ToList(),
             "perf_4" => context.GetTable<Track>().Select(t => new { t.id, t.Name, t.UnitPrice }).Take(100).ToList(),
-            "perf_5" => ExecutePerf5(),
-            "perf_6" => ExecutePerf6(),
-            "perf_7" => ExecutePerf7(),
-            "perf_8" => ExecutePerf8(),
-            "perf_9" => ExecutePerf9(),
+            "perf_5" => await ExecutePerf5(),
+            "perf_6" => await ExecutePerf6(),
+            "perf_7" => await ExecutePerf7(),
+            "perf_8" => await ExecutePerf8(),
+            "perf_9" => await ExecutePerf9(),
 
-            "m2m_1" => ExecuteM2M1(),
-            "m2m_2" => ExecuteM2M2(),
-            "m2m_3" => ExecuteM2M3(),
-            "m2m_4" => ExecuteM2M4(),
-            "m2m_5" => ExecuteM2M5(),
-            "m2m_6" => ExecuteM2M6(),
-            "m2m_7" => ExecuteM2M7(),
-            "m2m_8" => ExecuteM2M8(),
+            "m2m_1" => await ExecuteM2M1(),
+            "m2m_2" => await ExecuteM2M2(),
+            "m2m_3" => await ExecuteM2M3(),
+            "m2m_4" => await ExecuteM2M4(),
+            "m2m_5" => await ExecuteM2M5(),
+            "m2m_6" => await ExecuteM2M6(),
+            "m2m_7" => await ExecuteM2M7(),
+            "m2m_8" => await ExecuteM2M8(),
 
             "trans_1" => await ExecuteTrans1Async(),
             "trans_2" => await ExecuteTrans2Async(),
@@ -305,12 +305,12 @@ public partial class QueryExecutionViewModel : BaseViewModel
             "trans_5" => await ExecuteTrans5Async(),
             "trans_6" => await ExecuteTrans6Async(),
 
-            "param_1" => ExecuteParam1(),
-            "param_2" => ExecuteParam2(),
-            "param_3" => ExecuteParam3(),
-            "param_4" => ExecuteParam4(),
-            "param_5" => ExecuteParam5(),
-            "param_6" => ExecuteParam6(),
+            "param_1" => await ExecuteParam1(),
+            "param_2" => await ExecuteParam2(),
+            "param_3" => await ExecuteParam3(),
+            "param_4" => await ExecuteParam4(),
+            "param_5" => await ExecuteParam5(),
+            "param_6" => await ExecuteParam6(),
 
             "mod_1" => await ExecuteMod1Async(),
             "mod_2" => await ExecuteMod2Async(),
@@ -325,20 +325,23 @@ public partial class QueryExecutionViewModel : BaseViewModel
         };
     }
 
-    private object ExecuteBasic3()
+    private async Task<object> ExecuteBasic3()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
-        if (rockGenre != null)
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            return context.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).OrderBy(t => t.Name).Take(50).ToList();
+            var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
+            if (rockGenre != null)
+            {
+                var obj = context.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).OrderBy(t => t.Name).Take(50).ToList();
+                return obj;
+            }
+            return new List<Track>();
         }
-        return new List<Track>();
     }
 
-    private object ExecuteRel1()
+    private async Task<object> ExecuteRel1()
     {
-        using var context = new SxmLinqDbContext("Chinook");
+        await using (var context = new SxmLinqDbContext("Chinook"))
         return (from track in context.GetTable<Track>()
                 join album in context.GetTable<Album>() on track.AlbumId equals album.id
                 orderby track.Name
@@ -347,320 +350,357 @@ public partial class QueryExecutionViewModel : BaseViewModel
                 .ToList();
     }
 
-    private object ExecuteRel2()
+    private async Task<object> ExecuteRel2()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from album in context.GetTable<Album>()
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                orderby artist.Name, album.Title
-                select new { album.Title, ArtistName = artist.Name, album.id })
-                .ToList();
-    }
-
-    private object ExecuteRel3()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
-                from genre in genreGroup.DefaultIfEmpty()
-                orderby artist.Name, album.Title
-                select new 
-                { 
-                    TrackName = track.Name,
-                    AlbumTitle = album.Title,
-                    ArtistName = artist.Name,
-                    GenreName = genre != null ? genre.Name : "Unknown",
-                    track.Milliseconds
-                })
-                .Take(100)
-                .ToList();
-    }
-
-    private object ExecuteAgg1()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
-                from genre in genreGroup.DefaultIfEmpty()
-                group track by new { GenreId = genre != null ? genre.id : 0, GenreName = genre != null ? genre.Name : "Unknown" } into g
-                select new 
-                { 
-                    Genre = g.Key.GenreName,
-                    TrackCount = g.Count(),
-                    TotalDurationMinutes = g.Sum(t => t.Milliseconds) / 1000 / 60
-                })
-                .OrderByDescending(x => x.TrackCount)
-                .ToList();
-    }
-
-    private object ExecuteAgg2()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from album in context.GetTable<Album>()
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                group album by new { artist.id, artist.Name } into g
-                select new 
-                { 
-                    ArtistName = g.Key.Name,
-                    AlbumCount = g.Count()
-                })
-                .OrderByDescending(x => x.AlbumCount)
-                .Take(20)
-                .ToList();
-    }
-
-    private object ExecuteAgg3()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-                group track by new { genre.id, genre.Name } into g
-                select new 
-                { 
-                    Genre = g.Key.Name,
-                    AvgDurationMinutes = g.Average(t => t.Milliseconds) / 1000.0 / 60.0,
-                    TrackCount = g.Count()
-                })
-                .OrderByDescending(x => x.AvgDurationMinutes)
-                .ToList();
-    }
-
-    private object ExecuteAdv2()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                orderby artist.Name ascending, album.Title ascending, track.TrackNumber ascending
-                select new { artist.Name, album.Title, track.TrackNumber, TrackName = track.Name })
-                .Take(100)
-                .ToList();
-    }
-
-    private object ExecutePerf2()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from invoiceLine in context.GetTable<InvoiceLine>()
-                join invoice in context.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
-                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                where customer.Country == "USA"
-                select new 
-                { 
-                    CustomerName = customer.FirstName + " " + customer.LastName,
-                    TrackName = track.Name,
-                    AlbumTitle = album.Title,
-                    invoiceLine.Quantity,
-                    invoiceLine.UnitPrice
-                })
-                .Take(500)
-                .ToList();
-    }
-
-    private object ExecuteM2M1()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.Name.Contains("Music"));
-        if (playlist != null)
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            return (from pt in context.GetTable<PlaylistTrack>()
-                    join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                    where pt.PlaylistId == playlist.id
-                    orderby track.Name
-                    select track)
-                    .Take(50)
+            return (from album in context.GetTable<Album>()
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    orderby artist.Name, album.Title
+                    select new { album.Title, ArtistName = artist.Name, album.id })
                     .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteRel3()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
+                    from genre in genreGroup.DefaultIfEmpty()
+                    orderby artist.Name, album.Title
+                    select new
+                    {
+                        TrackName = track.Name,
+                        AlbumTitle = album.Title,
+                        ArtistName = artist.Name,
+                        GenreName = genre != null ? genre.Name : "Unknown",
+                        track.Milliseconds
+                    })
+                    .Take(100)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteAgg1()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
+                    from genre in genreGroup.DefaultIfEmpty()
+                    group track by new { GenreId = genre != null ? genre.id : 0, GenreName = genre != null ? genre.Name : "Unknown" } into g
+                    select new
+                    {
+                        Genre = g.Key.GenreName,
+                        TrackCount = g.Count(),
+                        TotalDurationMinutes = g.Sum(t => t.Milliseconds) / 1000 / 60
+                    })
+                    .OrderByDescending(x => x.TrackCount)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteAgg2()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from album in context.GetTable<Album>()
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    group album by new { artist.id, artist.Name } into g
+                    select new
+                    {
+                        ArtistName = g.Key.Name,
+                        AlbumCount = g.Count()
+                    })
+                    .OrderByDescending(x => x.AlbumCount)
+                    .Take(20)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteAgg3()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                    group track by new { genre.id, genre.Name } into g
+                    select new
+                    {
+                        Genre = g.Key.Name,
+                        AvgDurationMinutes = g.Average(t => t.Milliseconds) / 1000.0 / 60.0,
+                        TrackCount = g.Count()
+                    })
+                    .OrderByDescending(x => x.AvgDurationMinutes)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteAdv2()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    orderby artist.Name ascending, album.Title ascending, track.TrackNumber ascending
+                    select new { artist.Name, album.Title, track.TrackNumber, TrackName = track.Name })
+                    .Take(100)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecutePerf2()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from invoiceLine in context.GetTable<InvoiceLine>()
+                    join invoice in context.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
+                    join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                    join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    where customer.Country == "USA"
+                    select new
+                    {
+                        CustomerName = customer.FirstName + " " + customer.LastName,
+                        TrackName = track.Name,
+                        AlbumTitle = album.Title,
+                        invoiceLine.Quantity,
+                        invoiceLine.UnitPrice
+                    })
+                    .Take(500)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteM2M1()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.Name.Contains("Music"));
+            if (playlist != null)
+            {
+                return (from pt in context.GetTable<PlaylistTrack>()
+                        join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                        where pt.PlaylistId == playlist.id
+                        orderby track.Name
+                        select track)
+                        .Take(50)
+                        .ToList();
+            }
         }
         return new List<Track>();
     }
 
-    private object ExecuteM2M2()
+    private async Task<object> ExecuteM2M2()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var track = context.GetTable<Track>().FirstOrDefault(t => t.Name.Contains("Track"));
-        if (track != null)
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            return (from pt in context.GetTable<PlaylistTrack>()
-                    join playlist in context.GetTable<Playlist>() on pt.PlaylistId equals playlist.id
-                    where pt.TrackId == track.id
-                    select playlist)
-                    .ToList();
+            var track = context.GetTable<Track>().FirstOrDefault(t => t.Name.Contains("Track"));
+            if (track != null)
+            {
+                return (from pt in context.GetTable<PlaylistTrack>()
+                        join playlist in context.GetTable<Playlist>() on pt.PlaylistId equals playlist.id
+                        where pt.TrackId == track.id
+                        select playlist)
+                        .ToList();
+            }
         }
         return new List<Playlist>();
     }
 
-    private object ExecuteM2M3()
+    private async Task<object> ExecuteM2M3()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from playlist in context.GetTable<Playlist>()
-                join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
-                from pt in playlistTracks.DefaultIfEmpty()
-                join track in context.GetTable<Track>() on pt.TrackId equals track.id into tracks
-                from track in tracks.DefaultIfEmpty()
-                group track by new { playlist.id, playlist.Name } into g
-                select new 
-                { 
-                    PlaylistName = g.Key.Name,
-                    TrackCount = g.Count(t => t != null),
-                    TotalDurationMinutes = g.Where(t => t != null).Sum(t => t.Milliseconds) / 1000 / 60
-                })
-                .OrderByDescending(x => x.TrackCount)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from playlist in context.GetTable<Playlist>()
+                    join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
+                    from pt in playlistTracks.DefaultIfEmpty()
+                    join track in context.GetTable<Track>() on pt.TrackId equals track.id into tracks
+                    from track in tracks.DefaultIfEmpty()
+                    group track by new { playlist.id, playlist.Name } into g
+                    select new
+                    {
+                        PlaylistName = g.Key.Name,
+                        TrackCount = g.Count(t => t != null),
+                        TotalDurationMinutes = g.Where(t => t != null).Sum(t => t.Milliseconds) / 1000 / 60
+                    })
+                    .OrderByDescending(x => x.TrackCount)
+                    .ToList();
+        }
     }
 
     // Relationship queries
-    private object ExecuteRel4()
+    private async Task<object> ExecuteRel4()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from customer in context.GetTable<Customer>()
-                join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
-                from employee in empGroup.DefaultIfEmpty()
-                orderby customer.LastName, customer.FirstName
-                select new
-                {
-                    CustomerName = customer.FirstName + " " + customer.LastName,
-                    customer.Email,
-                    SupportRep = employee != null ? employee.FirstName + " " + employee.LastName : "None",
-                    SupportRepEmail = employee != null ? employee.Email : ""
-                })
-                .Take(50)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from customer in context.GetTable<Customer>()
+                    join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
+                    from employee in empGroup.DefaultIfEmpty()
+                    orderby customer.LastName, customer.FirstName
+                    select new
+                    {
+                        CustomerName = customer.FirstName + " " + customer.LastName,
+                        customer.Email,
+                        SupportRep = employee != null ? employee.FirstName + " " + employee.LastName : "None",
+                        SupportRepEmail = employee != null ? employee.Email : ""
+                    })
+                    .Take(50)
+                    .ToList();
+        }
     }
 
-    private object ExecuteRel5()
+    private async Task<object> ExecuteRel5()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from emp in context.GetTable<Employee>()
-                join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
-                from manager in mgrGroup.DefaultIfEmpty()
-                orderby emp.LastName, emp.FirstName
-                select new
-                {
-                    EmployeeName = emp.FirstName + " " + emp.LastName,
-                    emp.Title,
-                    ManagerName = manager != null ? manager.FirstName + " " + manager.LastName : "No Manager",
-                    ManagerTitle = manager != null ? manager.Title : ""
-                })
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from emp in context.GetTable<Employee>()
+                    join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
+                    from manager in mgrGroup.DefaultIfEmpty()
+                    orderby emp.LastName, emp.FirstName
+                    select new
+                    {
+                        EmployeeName = emp.FirstName + " " + emp.LastName,
+                        emp.Title,
+                        ManagerName = manager != null ? manager.FirstName + " " + manager.LastName : "No Manager",
+                        ManagerTitle = manager != null ? manager.Title : ""
+                    })
+                    .ToList();
+        }
     }
 
-    private object ExecuteRel6()
+    private async Task<object> ExecuteRel6()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from invoice in context.GetTable<Invoice>()
-                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                orderby invoice.InvoiceDate descending
-                select new
-                {
-                    invoice.id,
-                    invoice.InvoiceDate,
-                    CustomerName = customer.FirstName + " " + customer.LastName,
-                    customer.Country,
-                    invoice.Total
-                })
-                .Take(100)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from invoice in context.GetTable<Invoice>()
+                    join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                    orderby invoice.InvoiceDate descending
+                    select new
+                    {
+                        invoice.id,
+                        invoice.InvoiceDate,
+                        CustomerName = customer.FirstName + " " + customer.LastName,
+                        customer.Country,
+                        invoice.Total
+                    })
+                    .Take(100)
+                    .ToList();
+        }
     }
 
-    private object ExecuteRel7()
+    private async Task<object> ExecuteRel7()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
-                from genre in genreGroup.DefaultIfEmpty()
-                join mediaType in context.GetTable<MediaType>() on track.MediaTypeId equals mediaType.id into mtGroup
-                from mediaType in mtGroup.DefaultIfEmpty()
-                orderby artist.Name, album.Title, track.TrackNumber
-                select new
-                {
-                    TrackName = track.Name,
-                    ArtistName = artist.Name,
-                    AlbumTitle = album.Title,
-                    GenreName = genre != null ? genre.Name : "Unknown",
-                    MediaTypeName = mediaType != null ? mediaType.Name : "Unknown",
-                    track.UnitPrice,
-                    DurationMinutes = track.Milliseconds / 1000.0 / 60.0
-                })
-                .Take(50)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
+                    from genre in genreGroup.DefaultIfEmpty()
+                    join mediaType in context.GetTable<MediaType>() on track.MediaTypeId equals mediaType.id into mtGroup
+                    from mediaType in mtGroup.DefaultIfEmpty()
+                    orderby artist.Name, album.Title, track.TrackNumber
+                    select new
+                    {
+                        TrackName = track.Name,
+                        ArtistName = artist.Name,
+                        AlbumTitle = album.Title,
+                        GenreName = genre != null ? genre.Name : "Unknown",
+                        MediaTypeName = mediaType != null ? mediaType.Name : "Unknown",
+                        track.UnitPrice,
+                        DurationMinutes = track.Milliseconds / 1000.0 / 60.0
+                    })
+                    .Take(50)
+                    .ToList();
+        }
     }
 
-    private object ExecuteRel8()
+    private async Task<object> ExecuteRel8()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                select new 
-                { 
-                    track.Name, 
-                    Composer = track.Composer ?? "No Composer"
-                })
-                .Take(50)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    select new 
+                    { 
+                        track.Name, 
+                        Composer = track.Composer ?? "No Composer"
+                    })
+                    .Take(50)
+                    .ToList();
+        }
     }
 
     // Aggregation queries
-    private object ExecuteAgg4()
+    private async Task<object> ExecuteAgg4()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from invoice in context.GetTable<Invoice>()
-                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                group invoice by new { customer.id, CustomerName = customer.FirstName + " " + customer.LastName, customer.Country } into g
-                select new
-                {
-                    Customer = g.Key.CustomerName,
-                    Country = g.Key.Country,
-                    TotalSpent = g.Sum(i => i.Total),
-                    InvoiceCount = g.Count()
-                })
-                .OrderByDescending(x => x.TotalSpent)
-                .Take(20)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from invoice in context.GetTable<Invoice>()
+                    join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                    group invoice by new { customer.id, CustomerName = customer.FirstName + " " + customer.LastName, customer.Country } into g
+                    select new
+                    {
+                        Customer = g.Key.CustomerName,
+                        Country = g.Key.Country,
+                        TotalSpent = g.Sum(i => i.Total),
+                        InvoiceCount = g.Count()
+                    })
+                    .OrderByDescending(x => x.TotalSpent)
+                    .Take(20)
+                    .ToList();
+        }
     }
 
-    private object ExecuteAgg5()
+    private async Task<object> ExecuteAgg5()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from invoiceLine in context.GetTable<InvoiceLine>()
-                join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
-                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-                group invoiceLine by new { genre.id, genre.Name } into g
-                select new
-                {
-                    Genre = g.Key.Name,
-                    TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
-                    UnitsSold = g.Sum(il => il.Quantity)
-                })
-                .OrderByDescending(x => x.TotalRevenue)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from invoiceLine in context.GetTable<InvoiceLine>()
+                    join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
+                    join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                    group invoiceLine by new { genre.id, genre.Name } into g
+                    select new
+                    {
+                        Genre = g.Key.Name,
+                        TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
+                        UnitsSold = g.Sum(il => il.Quantity)
+                    })
+                    .OrderByDescending(x => x.TotalRevenue)
+                    .ToList();
+        }
     }
 
-    private object ExecuteAgg6()
+    private async Task<object> ExecuteAgg6()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from invoice in context.GetTable<Invoice>()
-                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                group invoice by customer.Country into g
-                select new
-                {
-                    Country = g.Key,
-                    AvgInvoiceTotal = g.Average(i => i.Total),
-                    InvoiceCount = g.Count(),
-                    TotalRevenue = g.Sum(i => i.Total)
-                })
-                .OrderByDescending(x => x.TotalRevenue)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from invoice in context.GetTable<Invoice>()
+                    join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                    group invoice by customer.Country into g
+                    select new
+                    {
+                        Country = g.Key,
+                        AvgInvoiceTotal = g.Average(i => i.Total),
+                        InvoiceCount = g.Count(),
+                        TotalRevenue = g.Sum(i => i.Total)
+                    })
+                    .OrderByDescending(x => x.TotalRevenue)
+                    .ToList();
+        }
     }
 
-    private object ExecuteAgg7()
+    private async Task<object> ExecuteAgg7()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var tracks = context.GetTable<Track>().ToList();
-        return new List<object>
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var tracks = context.GetTable<Track>().ToList();
+            return new List<object>
         {
             new
             {
@@ -670,152 +710,167 @@ public partial class QueryExecutionViewModel : BaseViewModel
                 TotalTracks = tracks.Count
             }
         };
+        }
     }
 
-    private object ExecuteAgg8()
+    private async Task<object> ExecuteAgg8()
     {
-        using var context = new SxmLinqDbContext("Chinook");
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var dbTimer = Stopwatch.StartNew();
+            // Optimized: Pre-aggregate invoice data first, then join with customers
+            // This avoids multiple Where() iterations in the SELECT projection
+            var customerStats = (from invoice in context.GetTable<Invoice>()
+                                 group invoice by invoice.CustomerId into g
+                                 select new
+                                 {
+                                     CustomerId = g.Key,
+                                     TotalSpent = g.Sum(i => i.Total),
+                                     OrderCount = g.Count(),
+                                     AvgOrderValue = g.Average(i => i.Total)
+                                 }).ToList();
 
-        var dbTimer = Stopwatch.StartNew();
-        // Optimized: Pre-aggregate invoice data first, then join with customers
-        // This avoids multiple Where() iterations in the SELECT projection
-        var customerStats = (from invoice in context.GetTable<Invoice>()
-                            group invoice by invoice.CustomerId into g
-                            select new
-                            {
-                                CustomerId = g.Key,
-                                TotalSpent = g.Sum(i => i.Total),
-                                OrderCount = g.Count(),
-                                AvgOrderValue = g.Average(i => i.Total)
-                            }).ToList();
+            var customers = context.GetTable<Customer>().ToList();
+            dbTimer.Stop();
+            System.Diagnostics.Debug.WriteLine($"[agg_8] Database query time: {dbTimer.ElapsedMilliseconds}ms");
 
-        var customers = context.GetTable<Customer>().ToList();
-        dbTimer.Stop();
-        System.Diagnostics.Debug.WriteLine($"[agg_8] Database query time: {dbTimer.ElapsedMilliseconds}ms");
-
-        return (from stat in customerStats
-                join customer in customers on stat.CustomerId equals customer.id
-                select new
-                {
-                    Customer = customer.FirstName + " " + customer.LastName,
-                    Country = customer.Country,
-                    TotalSpent = stat.TotalSpent,
-                    OrderCount = stat.OrderCount,
-                    AvgOrderValue = stat.AvgOrderValue
-                })
-                .OrderByDescending(x => x.TotalSpent)
-                .Take(30)
-                .ToList();
+            return (from stat in customerStats
+                    join customer in customers on stat.CustomerId equals customer.id
+                    select new
+                    {
+                        Customer = customer.FirstName + " " + customer.LastName,
+                        Country = customer.Country,
+                        TotalSpent = stat.TotalSpent,
+                        OrderCount = stat.OrderCount,
+                        AvgOrderValue = stat.AvgOrderValue
+                    })
+                    .OrderByDescending(x => x.TotalSpent)
+                    .Take(30)
+                    .ToList();
+        }
     }
 
-    private object ExecuteAgg9()
+    private async Task<object> ExecuteAgg9()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                group track by new { album.id, album.Title, artist.Name } into g
-                select new
-                {
-                    AlbumTitle = g.Key.Title,
-                    ArtistName = g.Key.Name,
-                    TrackCount = g.Count(),
-                    TotalDurationMinutes = g.Sum(t => t.Milliseconds) / 1000.0 / 60.0,
-                    AvgTrackDuration = g.Average(t => t.Milliseconds) / 1000.0 / 60.0
-                })
-                .OrderByDescending(x => x.TrackCount)
-                .Take(30)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    group track by new { album.id, album.Title, artist.Name } into g
+                    select new
+                    {
+                        AlbumTitle = g.Key.Title,
+                        ArtistName = g.Key.Name,
+                        TrackCount = g.Count(),
+                        TotalDurationMinutes = g.Sum(t => t.Milliseconds) / 1000.0 / 60.0,
+                        AvgTrackDuration = g.Average(t => t.Milliseconds) / 1000.0 / 60.0
+                    })
+                    .OrderByDescending(x => x.TrackCount)
+                    .Take(30)
+                    .ToList();
+        }
     }
 
-    private object ExecuteAgg10()
+    private async Task<object> ExecuteAgg10()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from invoiceLine in context.GetTable<InvoiceLine>()
-                join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                group invoiceLine by new { artist.id, artist.Name } into g
-                select new
-                {
-                    ArtistName = g.Key.Name,
-                    TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
-                    TracksSold = g.Sum(il => il.Quantity)
-                })
-                .OrderByDescending(x => x.TotalRevenue)
-                .Take(20)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from invoiceLine in context.GetTable<InvoiceLine>()
+                    join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    group invoiceLine by new { artist.id, artist.Name } into g
+                    select new
+                    {
+                        ArtistName = g.Key.Name,
+                        TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
+                        TracksSold = g.Sum(il => il.Quantity)
+                    })
+                    .OrderByDescending(x => x.TotalRevenue)
+                    .Take(20)
+                    .ToList();
+        }
     }
 
     // Advanced LINQ queries
-    private object ExecuteAdv3()
+    private async Task<object> ExecuteAdv3()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return context.GetTable<Track>()
-            .Where(t => (t.UnitPrice >= 1.0m && t.Milliseconds >= 180000) || 
-                        (t.UnitPrice < 1.0m && t.Milliseconds < 180000))
-            .OrderBy(t => t.UnitPrice)
-            .Take(50)
-            .ToList();
-    }
-
-    private object ExecuteAdv4()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        var artistIds = context.GetTable<Artist>()
-            .OrderBy(a => a.Name)
-            .Take(50)
-            .Select(a => a.id)
-            .ToList();
-
-        return (from track in context.GetTable<Track>()
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                where artistIds.Contains(album.ArtistId)
-                orderby track.Name
-                select track)
-                .Take(100)
-                .ToList();
-    }
-
-    private object ExecuteAdv5()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from customer in context.GetTable<Customer>()
-                let invoiceCount = (from invoice in context.GetTable<Invoice>()
-                                   where invoice.CustomerId == customer.id
-                                   select invoice).Count()
-                orderby invoiceCount
-                select new
-                {
-                    CustomerName = customer.FirstName + " " + customer.LastName,
-                    customer.Country,
-                    InvoiceCount = invoiceCount
-                })
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return context.GetTable<Track>()
+                .Where(t => (t.UnitPrice >= 1.0m && t.Milliseconds >= 180000) ||
+                            (t.UnitPrice < 1.0m && t.Milliseconds < 180000))
+                .OrderBy(t => t.UnitPrice)
                 .Take(50)
                 .ToList();
+        }
     }
 
-    private object ExecuteAdv6()
+    private async Task<object> ExecuteAdv4()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from album in context.GetTable<Album>()
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                group album by new { artist.id, artist.Name } into g
-                orderby g.Count() descending
-                select new
-                {
-                    ArtistName = g.Key.Name,
-                    AlbumCount = g.Count()
-                })
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var artistIds = context.GetTable<Artist>()
+                .OrderBy(a => a.Name)
                 .Take(50)
+                .Select(a => a.id)
                 .ToList();
+
+            return (from track in context.GetTable<Track>()
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    where artistIds.Contains(album.ArtistId)
+                    orderby track.Name
+                    select track)
+                    .Take(100)
+                    .ToList();
+        }
     }
 
-    private object ExecuteAdv7()
+    private async Task<object> ExecuteAdv5()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var tracks = context.GetTable<Track>().ToList();
-        return new List<object>
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from customer in context.GetTable<Customer>()
+                    let invoiceCount = (from invoice in context.GetTable<Invoice>()
+                                        where invoice.CustomerId == customer.id
+                                        select invoice).Count()
+                    orderby invoiceCount
+                    select new
+                    {
+                        CustomerName = customer.FirstName + " " + customer.LastName,
+                        customer.Country,
+                        InvoiceCount = invoiceCount
+                    })
+                    .Take(50)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteAdv6()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from album in context.GetTable<Album>()
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    group album by new { artist.id, artist.Name } into g
+                    orderby g.Count() descending
+                    select new
+                    {
+                        ArtistName = g.Key.Name,
+                        AlbumCount = g.Count()
+                    })
+                    .Take(50)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteAdv7()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var tracks = context.GetTable<Track>().ToList();
+            return new List<object>
         {
             new
             {
@@ -827,159 +882,177 @@ public partial class QueryExecutionViewModel : BaseViewModel
                 MinPrice = tracks.Min(t => t.UnitPrice)
             }
         };
+        }
     }
 
-    private object ExecuteAdv8()
+    private async Task<object> ExecuteAdv8()
     {
-        using var context = new SxmLinqDbContext("Chinook");
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
 
-        var dbTimer = Stopwatch.StartNew();
-        // SQLite doesn't support CROSS/OUTER APPLY, so materialize first
-        var tracksWithGenre = (from track in context.GetTable<Track>()
-                               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-                               select new
-                               {
-                                   GenreId = genre.id,
-                                   GenreName = genre.Name,
-                                   TrackName = track.Name,
-                                   Milliseconds = track.Milliseconds
-                               }).ToList();
-        dbTimer.Stop();
-        System.Diagnostics.Debug.WriteLine($"[adv_8] Database query time: {dbTimer.ElapsedMilliseconds}ms");
+            var dbTimer = Stopwatch.StartNew();
+            // SQLite doesn't support CROSS/OUTER APPLY, so materialize first
+            var tracksWithGenre = (from track in context.GetTable<Track>()
+                                   join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                                   select new
+                                   {
+                                       GenreId = genre.id,
+                                       GenreName = genre.Name,
+                                       TrackName = track.Name,
+                                       Milliseconds = track.Milliseconds
+                                   }).ToList();
+            dbTimer.Stop();
+            System.Diagnostics.Debug.WriteLine($"[adv_8] Database query time: {dbTimer.ElapsedMilliseconds}ms");
 
-        // Now perform Top-3 per group in memory
-        return tracksWithGenre
-                .GroupBy(t => new { t.GenreId, t.GenreName })
-                .SelectMany(g => g.OrderByDescending(t => t.Milliseconds).Take(3)
-                    .Select(track => new
+            // Now perform Top-3 per group in memory
+            return tracksWithGenre
+                    .GroupBy(t => new { t.GenreId, t.GenreName })
+                    .SelectMany(g => g.OrderByDescending(t => t.Milliseconds).Take(3)
+                        .Select(track => new
+                        {
+                            Genre = g.Key.GenreName,
+                            TrackName = track.TrackName,
+                            DurationMinutes = track.Milliseconds / 1000.0 / 60.0
+                        }))
+                    .OrderBy(x => x.Genre)
+                    .ThenByDescending(x => x.DurationMinutes)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecuteAdv9()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from invoice in context.GetTable<Invoice>()
+                    join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                    orderby invoice.InvoiceDate descending
+                    select new
                     {
-                        Genre = g.Key.GenreName,
-                        TrackName = track.TrackName,
-                        DurationMinutes = track.Milliseconds / 1000.0 / 60.0
-                    }))
-                .OrderBy(x => x.Genre)
-                .ThenByDescending(x => x.DurationMinutes)
-                .ToList();
+                        invoice.InvoiceDate,
+                        CustomerName = customer.FirstName + " " + customer.LastName,
+                        invoice.Total,
+                        DaysAgo = (DateTime.Now - invoice.InvoiceDate).Days
+                    })
+                    .Take(100)
+                    .ToList();
+        }
     }
 
-    private object ExecuteAdv9()
+    private async Task<object> ExecuteAdv10()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from invoice in context.GetTable<Invoice>()
-                join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                orderby invoice.InvoiceDate descending
-                select new
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return context.GetTable<Artist>()
+                .Select(a => new
                 {
-                    invoice.InvoiceDate,
-                    CustomerName = customer.FirstName + " " + customer.LastName,
-                    invoice.Total,
-                    DaysAgo = (DateTime.Now - invoice.InvoiceDate).Days
+                    OriginalName = a.Name,
+                    UpperName = a.Name.ToUpper(),
+                    LowerName = a.Name.ToLower(),
+                    FirstThreeChars = a.Name.Length >= 3 ? a.Name.Substring(0, 3) : a.Name,
+                    NameLength = a.Name.Length
                 })
-                .Take(100)
+                .OrderBy(a => a.OriginalName)
+                .Take(20)
                 .ToList();
+        }
     }
 
-    private object ExecuteAdv10()
+    private async Task<object> ExecuteAdv11()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return context.GetTable<Artist>()
-            .Select(a => new
-            {
-                OriginalName = a.Name,
-                UpperName = a.Name.ToUpper(),
-                LowerName = a.Name.ToLower(),
-                FirstThreeChars = a.Name.Length >= 3 ? a.Name.Substring(0, 3) : a.Name,
-                NameLength = a.Name.Length
-            })
-            .OrderBy(a => a.OriginalName)
-            .Take(20)
-            .ToList();
-    }
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var artistNames = context.GetTable<Artist>()
+                .Select(a => new { Name = a.Name, Type = "Artist" })
+                .Take(10);
 
-    private object ExecuteAdv11()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        var artistNames = context.GetTable<Artist>()
-            .Select(a => new { Name = a.Name, Type = "Artist" })
-            .Take(10);
+            var albumTitles = context.GetTable<Album>()
+                .Select(a => new { Name = a.Title, Type = "Album" })
+                .Take(10);
 
-        var albumTitles = context.GetTable<Album>()
-            .Select(a => new { Name = a.Title, Type = "Album" })
-            .Take(10);
-
-        return artistNames.Union(albumTitles)
-            .OrderBy(x => x.Type)
-            .ThenBy(x => x.Name)
-            .ToList();
+            return artistNames.Union(albumTitles)
+                .OrderBy(x => x.Type)
+                .ThenBy(x => x.Name)
+                .ToList();
+        }
     }
 
     // Performance queries
-    private object ExecutePerf5()
+    private async Task<object> ExecutePerf5()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var expensiveAlbums = context.GetTable<Album>()
-            .Where(a => a.Title.StartsWith("A"))
-            .Take(50);
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var expensiveAlbums = context.GetTable<Album>()
+                .Where(a => a.Title.StartsWith("A"))
+                .Take(50);
 
-        return (from album in expensiveAlbums
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                select new { album.Title, artist.Name })
-                .ToList();
+            return (from album in expensiveAlbums
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    select new { album.Title, artist.Name })
+                    .ToList();
+        }
     }
 
-    private object ExecutePerf6()
+    private async Task<object> ExecutePerf6()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var hasExpensiveTracks = context.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
-        var expensiveCount = context.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var hasExpensiveTracks = context.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
+            var expensiveCount = context.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
 
-        return new List<object>
+            return new List<object>
         {
             new { HasExpensiveTracks = hasExpensiveTracks, Count = expensiveCount }
         };
+        }
     }
 
-    private object ExecutePerf7()
+    private async Task<object> ExecutePerf7()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from track in context.GetTable<Track>()
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                select new 
-                { 
-                    TrackName = track.Name, 
-                    AlbumTitle = album.Title 
-                })
-                .Take(100)
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from track in context.GetTable<Track>()
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    select new
+                    {
+                        TrackName = track.Name,
+                        AlbumTitle = album.Title
+                    })
+                    .Take(100)
+                    .ToList();
+        }
+    }
+
+    private async Task<object> ExecutePerf8()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return context.GetTable<Customer>()
+                .Select(c => c.Country)
+                .Distinct()
+                .OrderBy(c => c)
                 .ToList();
+        }
     }
 
-    private object ExecutePerf8()
+    private async Task<object> ExecutePerf9()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return context.GetTable<Customer>()
-            .Select(c => c.Country)
-            .Distinct()
-            .OrderBy(c => c)
-            .ToList();
-    }
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
 
-    private object ExecutePerf9()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+            // This query benefits from IFK_Track_AlbumId index
+            var tracksForAlbums = (from track in context.GetTable<Track>()
+                                   join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                                   where album.Title.StartsWith("A")
+                                   select new { track.Name, album.Title })
+                                   .Take(200)
+                                   .ToList();
 
-        // This query benefits from IFK_Track_AlbumId index
-        var tracksForAlbums = (from track in context.GetTable<Track>()
-                               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                               where album.Title.StartsWith("A")
-                               select new { track.Name, album.Title })
-                               .Take(200)
-                               .ToList();
+            sw.Stop();
+            var elapsedMs = sw.ElapsedMilliseconds;
 
-        sw.Stop();
-        var elapsedMs = sw.ElapsedMilliseconds;
-
-        return new List<object>
+            return new List<object>
         {
             new
             {
@@ -988,133 +1061,141 @@ public partial class QueryExecutionViewModel : BaseViewModel
                 Message = $"Query completed in {elapsedMs}ms using indexed foreign key"
             }
         };
+        }
     }
 
     // Many-to-Many queries
-    private object ExecuteM2M4()
+    private async Task<object> ExecuteM2M4()
     {
-        using var context = new SxmLinqDbContext("Chinook");
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var dbTimer = Stopwatch.StartNew();
+            // Materialize the grouped data first - SQLite can't translate Distinct().Count() in projection
+            var trackPlaylistGroups = (from pt in context.GetTable<PlaylistTrack>()
+                                       join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                                       select new
+                                       {
+                                           TrackId = track.id,
+                                           TrackName = track.Name,
+                                           PlaylistId = pt.PlaylistId
+                                       }).ToList();
+            dbTimer.Stop();
+            System.Diagnostics.Debug.WriteLine($"[m2m_4] Database query time: {dbTimer.ElapsedMilliseconds}ms");
 
-        var dbTimer = Stopwatch.StartNew();
-        // Materialize the grouped data first - SQLite can't translate Distinct().Count() in projection
-        var trackPlaylistGroups = (from pt in context.GetTable<PlaylistTrack>()
-                                   join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                                   select new
-                                   {
-                                       TrackId = track.id,
-                                       TrackName = track.Name,
-                                       PlaylistId = pt.PlaylistId
-                                   }).ToList();
-        dbTimer.Stop();
-        System.Diagnostics.Debug.WriteLine($"[m2m_4] Database query time: {dbTimer.ElapsedMilliseconds}ms");
-
-        // Now perform distinct count in memory
-        return trackPlaylistGroups
-                .GroupBy(x => new { x.TrackId, x.TrackName })
-                .Select(g => new
-                {
-                    TrackName = g.Key.TrackName,
-                    PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-                })
-                .Where(x => x.PlaylistCount > 1)
-                .OrderByDescending(x => x.PlaylistCount)
-                .Take(30)
-                .ToList();
+            // Now perform distinct count in memory
+            return trackPlaylistGroups
+                    .GroupBy(x => new { x.TrackId, x.TrackName })
+                    .Select(g => new
+                    {
+                        TrackName = g.Key.TrackName,
+                        PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                    })
+                    .Where(x => x.PlaylistCount > 1)
+                    .OrderByDescending(x => x.PlaylistCount)
+                    .Take(30)
+                    .ToList();
+        }
     }
 
-    private object ExecuteM2M5()
+    private async Task<object> ExecuteM2M5()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-
-        var dbTimer = Stopwatch.StartNew();
-        // Materialize the joins first - avoid hanging on Distinct().Count() in projection
-        var trackData = (from pt in context.GetTable<PlaylistTrack>()
-                        join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                        select new
-                        {
-                            TrackId = track.id,
-                            TrackName = track.Name,
-                            ArtistName = artist.Name,
-                            PlaylistId = pt.PlaylistId
-                        }).ToList();
-        dbTimer.Stop();
-        System.Diagnostics.Debug.WriteLine($"[m2m_5] Database query time: {dbTimer.ElapsedMilliseconds}ms");
-
-        // Perform distinct count in memory
-        return trackData
-                .GroupBy(x => new { x.TrackId, x.TrackName, x.ArtistName })
-                .Select(g => new
-                {
-                    TrackName = g.Key.TrackName,
-                    ArtistName = g.Key.ArtistName,
-                    PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-                })
-                .OrderByDescending(x => x.PlaylistCount)
-                .Take(20)
-                .ToList();
-    }
-
-    private object ExecuteM2M6()
-    {
-        using var context = new SxmLinqDbContext("Chinook");
-
-        var dbTimer = Stopwatch.StartNew();
-        // Materialize playlist track counts (10k playlist tracks / 50 playlists = ~200 avg)
-        var playlistCounts = (from pt in context.GetTable<PlaylistTrack>()
-                             group pt by pt.PlaylistId into g
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var dbTimer = Stopwatch.StartNew();
+            // Materialize the joins first - avoid hanging on Distinct().Count() in projection
+            var trackData = (from pt in context.GetTable<PlaylistTrack>()
+                             join track in context.GetTable<Track>() on pt.TrackId equals track.id
+                             join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                             join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
                              select new
                              {
-                                 PlaylistId = g.Key,
-                                 TrackCount = g.Count()
+                                 TrackId = track.id,
+                                 TrackName = track.Name,
+                                 ArtistName = artist.Name,
+                                 PlaylistId = pt.PlaylistId
                              }).ToList();
+            dbTimer.Stop();
+            System.Diagnostics.Debug.WriteLine($"[m2m_5] Database query time: {dbTimer.ElapsedMilliseconds}ms");
 
-        var playlists = context.GetTable<Playlist>().ToList();
-        dbTimer.Stop();
-        System.Diagnostics.Debug.WriteLine($"[m2m_6] Database query time: {dbTimer.ElapsedMilliseconds}ms");
-
-        // Join in memory and filter for playlists with fewer than 250 tracks
-        return (from pc in playlistCounts
-                join p in playlists on pc.PlaylistId equals p.id
-                where pc.TrackCount < 250
-                orderby pc.TrackCount
-                select new
-                {
-                    Name = p.Name,
-                    TrackCount = pc.TrackCount
-                })
-                .Take(20)
-                .ToList();
+            // Perform distinct count in memory
+            return trackData
+                    .GroupBy(x => new { x.TrackId, x.TrackName, x.ArtistName })
+                    .Select(g => new
+                    {
+                        TrackName = g.Key.TrackName,
+                        ArtistName = g.Key.ArtistName,
+                        PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                    })
+                    .OrderByDescending(x => x.PlaylistCount)
+                    .Take(20)
+                    .ToList();
+        }
     }
 
-    private object ExecuteM2M7()
+    private async Task<object> ExecuteM2M6()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return new List<object>
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            new { Message = "Pattern: Create PlaylistTrack with both IDs and SaveAsync()" }
-        };
+            var dbTimer = Stopwatch.StartNew();
+            // Materialize playlist track counts (10k playlist tracks / 50 playlists = ~200 avg)
+            var playlistCounts = (from pt in context.GetTable<PlaylistTrack>()
+                                  group pt by pt.PlaylistId into g
+                                  select new
+                                  {
+                                      PlaylistId = g.Key,
+                                      TrackCount = g.Count()
+                                  }).ToList();
+
+            var playlists = context.GetTable<Playlist>().ToList();
+            dbTimer.Stop();
+            System.Diagnostics.Debug.WriteLine($"[m2m_6] Database query time: {dbTimer.ElapsedMilliseconds}ms");
+
+            // Join in memory and filter for playlists with fewer than 250 tracks
+            return (from pc in playlistCounts
+                    join p in playlists on pc.PlaylistId equals p.id
+                    where pc.TrackCount < 250
+                    orderby pc.TrackCount
+                    select new
+                    {
+                        Name = p.Name,
+                        TrackCount = pc.TrackCount
+                    })
+                    .Take(20)
+                    .ToList();
+        }
     }
 
-    private object ExecuteM2M8()
+    private async Task<object> ExecuteM2M7()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        return (from pt1 in context.GetTable<PlaylistTrack>()
-                join pt2 in context.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
-                where pt1.PlaylistId < pt2.PlaylistId
-                join p1 in context.GetTable<Playlist>() on pt1.PlaylistId equals p1.id
-                join p2 in context.GetTable<Playlist>() on pt2.PlaylistId equals p2.id
-                group pt1 by new { Playlist1Name = p1.Name, Playlist2Name = p2.Name } into g
-                select new
-                {
-                    Playlist1 = g.Key.Playlist1Name,
-                    Playlist2 = g.Key.Playlist2Name,
-                    SharedTracks = g.Count()
-                })
-                .OrderByDescending(x => x.SharedTracks)
-                .Take(10)
-                .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return new List<object>
+            {
+                new { Message = "Pattern: Create PlaylistTrack with both IDs and SaveAsync()" }
+            };
+        }
+    }
+
+    private async Task<object> ExecuteM2M8()
+    {
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            return (from pt1 in context.GetTable<PlaylistTrack>()
+                    join pt2 in context.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
+                    where pt1.PlaylistId < pt2.PlaylistId
+                    join p1 in context.GetTable<Playlist>() on pt1.PlaylistId equals p1.id
+                    join p2 in context.GetTable<Playlist>() on pt2.PlaylistId equals p2.id
+                    group pt1 by new { Playlist1Name = p1.Name, Playlist2Name = p2.Name } into g
+                    select new
+                    {
+                        Playlist1 = g.Key.Playlist1Name,
+                        Playlist2 = g.Key.Playlist2Name,
+                        SharedTracks = g.Count()
+                    })
+                    .OrderByDescending(x => x.SharedTracks)
+                    .Take(10)
+                    .ToList();
+        }
     }
 
     private async Task<object?> ExecuteRawSqlQueryAsync()
@@ -1145,7 +1226,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
         if (statementName != null)
         {
-            // Use SxmStatement.InsertAsync - returns List<Dictionary<string, object?>>
+            // Use SxmStatement.RunStatementAsync - returns List<Dictionary<string, object?>>
             var results = await SxmStatement.RunStatementAsync(statementName, new Dictionary<string, object?>(), "Chinook");
             System.Diagnostics.Debug.WriteLine($"Raw SQL returned type: {results?.GetType().FullName}");
             return results;
@@ -1269,7 +1350,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
     // Transaction examples
     private async Task<object> ExecuteTrans1Async()
     {
-        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         try
         {
             var invoice = new Invoice
@@ -1281,13 +1362,13 @@ public partial class QueryExecutionViewModel : BaseViewModel
                 BillingCountry = "USA",
                 Total = 5.97m
             };
-            await invoice.SaveAsync(transaction);
+            await invoice.SaveAsync();
 
             var line1 = new InvoiceLine { InvoiceId = invoice.id, TrackId = 1, UnitPrice = 1.99m, Quantity = 1 };
-            await line1.SaveAsync(transaction);
+            await line1.SaveAsync();
 
             var line2 = new InvoiceLine { InvoiceId = invoice.id, TrackId = 2, UnitPrice = 1.99m, Quantity = 2 };
-            await line2.SaveAsync(transaction);
+            await line2.SaveAsync();
 
             // Commit transaction. The explicit CommitTransactionAsync() call is optional
             // but considered good practice. Without it, the transaction will AUTO-COMMIT
@@ -1304,14 +1385,14 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans2Async()
     {
-        await using var transaction = SxmSqlTransaction.Create("Chinook");
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         try
         {
             var artist = new Artist { Name = "Transaction Test Artist" };
-            await artist.SaveAsync(transaction);
+            await artist.SaveAsync();
 
             var album = new Album { Title = "Test Album", ArtistId = artist.id };
-            await album.SaveAsync(transaction);
+            await album.SaveAsync();
 
             throw new Exception("Simulated error - all changes will be rolled back");
 
@@ -1331,9 +1412,9 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans3Async()
     {
-        await using var transaction = SxmSqlTransaction.Create("Chinook");
-        try
-        {
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
+            try
+            {
             var insertedCount = 0;
             var startTime = DateTime.Now;
 
@@ -1348,7 +1429,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
                     Milliseconds = 180000,
                     UnitPrice = 0.99m
                 };
-                await track.SaveAsync(transaction);
+                await track.SaveAsync();
                 insertedCount++;
             }
 
@@ -1369,21 +1450,20 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans4Async()
     {
-        await using var transaction = SxmSqlTransaction.Create("Chinook");
-        using var context = new SxmLinqDbContext("Chinook");
-        try
-        {
-            var artist = context.GetTable<Artist>().First();
-            var albums = context.GetTable<Album>().Where(a => a.ArtistId == artist.id).Take(3).ToList();
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
+            try
+            {
+            var artist = transaction.GetTable<Artist>().First();
+            var albums = transaction.GetTable<Album>().Where(a => a.ArtistId == artist.id).Take(3).ToList();
 
             var originalName = artist.Name;
             artist.Name = artist.Name + " (Updated)";
-            await artist.SaveAsync(transaction);
+            await artist.SaveAsync();
 
             foreach (var album in albums)
             {
                 album.Title = album.Title + " [Remastered]";
-                await album.SaveAsync(transaction);
+                await album.SaveAsync();
             }
 
             // Commit transaction. The explicit CommitTransactionAsync() call is optional
@@ -1401,20 +1481,19 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteTrans5Async()
     {
-        await using var transaction = SxmSqlTransaction.Create("Chinook");
-        using var context = new SxmLinqDbContext("Chinook");
-        try
-        {
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
+            try
+            {
             var playlist = new Playlist { Name = $"Transaction Demo Playlist {DateTime.Now:HHmmss}" };
-            await playlist.SaveAsync(transaction);
+            await playlist.SaveAsync();
 
-            var topTracks = context.GetTable<Track>().OrderBy(t => t.Name).Take(10).ToList();
+            var topTracks = transaction.GetTable<Track>().OrderBy(t => t.Name).Take(10).ToList();
 
             var trackCount = 0;
             foreach (var track in topTracks)
             {
                 var pt = new PlaylistTrack { PlaylistId = playlist.id, TrackId = track.id };
-                await pt.SaveAsync(transaction);
+                await pt.SaveAsync();
                 trackCount++;
             }
 
@@ -1444,12 +1523,12 @@ public partial class QueryExecutionViewModel : BaseViewModel
         var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
 
         var start2 = DateTime.Now;
-        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         {
             for (int i = 1; i <= 20; i++)
             {
                 var track = new Track { Name = $"Transaction Track {i}", AlbumId = 1, MediaTypeId = 1, GenreId = 1, Milliseconds = 180000, UnitPrice = 0.99m };
-                await track.SaveAsync(transaction);
+                await track.SaveAsync();
             }
             // Commit transaction. The explicit CommitTransactionAsync() call is optional
             // but considered good practice. Without it, the transaction will AUTO-COMMIT
@@ -1465,95 +1544,106 @@ public partial class QueryExecutionViewModel : BaseViewModel
     }
 
     // Parameterized query examples
-    private object ExecuteParam1()
+    private async Task<object> ExecuteParam1()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        string searchTerm = "Love";
-        return context.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            string searchTerm = "Love";
+            return context.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList();
+        }
     }
 
-    private object ExecuteParam2()
+    private async Task<object> ExecuteParam2()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        decimal minPrice = 0.99m;
-        decimal maxPrice = 1.49m;
-        return context.GetTable<Track>()
-            .Where(t => t.UnitPrice >= minPrice && t.UnitPrice <= maxPrice)
-            .OrderBy(t => t.UnitPrice).ThenBy(t => t.Name).Take(50)
-            .Select(t => new { t.Name, t.UnitPrice, DurationMinutes = t.Milliseconds / 1000.0 / 60.0 })
-            .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            decimal minPrice = 0.99m;
+            decimal maxPrice = 1.49m;
+            return context.GetTable<Track>()
+                .Where(t => t.UnitPrice >= minPrice && t.UnitPrice <= maxPrice)
+                .OrderBy(t => t.UnitPrice).ThenBy(t => t.Name).Take(50)
+                .Select(t => new { t.Name, t.UnitPrice, DurationMinutes = t.Milliseconds / 1000.0 / 60.0 })
+                .ToList();
+        }
     }
 
-    private object ExecuteParam3()
+    private async Task<object> ExecuteParam3()
     {
-        using var context = new SxmLinqDbContext("Chinook");
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var startDate = DateTime.Now.AddYears(-3);
+            var endDate = DateTime.Now;
 
-        var startDate = DateTime.Now.AddYears(-3);
-        var endDate = DateTime.Now;
+            // Single-query approach using Ticks comparison
+            // Since DateTime is stored as Ticks (Int64), we can compare directly using the .Ticks property
+            var results = (from invoice in context.GetTable<Invoice>()
+                           join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                           where invoice.InvoiceDate.Ticks >= startDate.Ticks
+                              && invoice.InvoiceDate.Ticks <= endDate.Ticks
+                           orderby invoice.InvoiceDate descending
+                           select new
+                           {
+                               InvoiceId = invoice.id,
+                               Date = invoice.InvoiceDate,
+                               Customer = customer.FirstName + " " + customer.LastName,
+                               Total = invoice.Total
+                           })
+                          .Take(30)
+                          .ToList();
 
-        // Single-query approach using Ticks comparison
-        // Since DateTime is stored as Ticks (Int64), we can compare directly using the .Ticks property
-        var results = (from invoice in context.GetTable<Invoice>()
-                      join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                      where invoice.InvoiceDate.Ticks >= startDate.Ticks 
-                         && invoice.InvoiceDate.Ticks <= endDate.Ticks
-                      orderby invoice.InvoiceDate descending
-                      select new
-                      {
-                          InvoiceId = invoice.id,
-                          Date = invoice.InvoiceDate,
-                          Customer = customer.FirstName + " " + customer.LastName,
-                          Total = invoice.Total
-                      })
-                      .Take(30)
-                      .ToList();
-
-        return results;
+            return results;
+        }
     }
 
-    private object ExecuteParam4()
+    private async Task<object> ExecuteParam4()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        string artistSearchTerm = "Led";
-        int genreId = 1;
-        decimal maxPrice = 1.50m;
-        return (from track in context.GetTable<Track>()
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-                where artist.Name.Contains(artistSearchTerm) && track.GenreId == genreId && track.UnitPrice <= maxPrice
-                orderby track.Name
-                select new { Track = track.Name, Artist = artist.Name, Genre = genre.Name, Price = track.UnitPrice })
-                .Take(30).ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            string artistSearchTerm = "Led";
+            int genreId = 1;
+            decimal maxPrice = 1.50m;
+            return (from track in context.GetTable<Track>()
+                    join album in context.GetTable<Album>() on track.AlbumId equals album.id
+                    join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                    join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+                    where artist.Name.Contains(artistSearchTerm) && track.GenreId == genreId && track.UnitPrice <= maxPrice
+                    orderby track.Name
+                    select new { Track = track.Name, Artist = artist.Name, Genre = genre.Name, Price = track.UnitPrice })
+                    .Take(30).ToList();
+        }
     }
 
-    private object ExecuteParam5()
+    private async Task<object> ExecuteParam5()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        string? artistFilter = "Led";  // Search for "Led" (Led Zeppelin)
-        decimal? minDuration = 180000;
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            string? artistFilter = "Led";  // Search for "Led" (Led Zeppelin)
+            decimal? minDuration = 180000;
 
-        var query = context.GetTable<Track>()
-            .Join(context.GetTable<Album>(), t => t.AlbumId, a => a.id, (t, a) => new { Track = t, Album = a })
-            .Join(context.GetTable<Artist>(), ta => ta.Album.ArtistId, ar => ar.id, (ta, ar) => new { ta.Track, ta.Album, Artist = ar });
+            var query = context.GetTable<Track>()
+                .Join(context.GetTable<Album>(), t => t.AlbumId, a => a.id, (t, a) => new { Track = t, Album = a })
+                .Join(context.GetTable<Artist>(), ta => ta.Album.ArtistId, ar => ar.id, (ta, ar) => new { ta.Track, ta.Album, Artist = ar });
 
-        if (!string.IsNullOrEmpty(artistFilter))
-            query = query.Where(x => x.Artist.Name.Contains(artistFilter));
-        if (minDuration.HasValue)
-            query = query.Where(x => x.Track.Milliseconds >= minDuration.Value);
+            if (!string.IsNullOrEmpty(artistFilter))
+                query = query.Where(x => x.Artist.Name.Contains(artistFilter));
+            if (minDuration.HasValue)
+                query = query.Where(x => x.Track.Milliseconds >= minDuration.Value);
 
-        return query.OrderBy(x => x.Track.Name).Take(30)
-            .Select(x => new { Track = x.Track.Name, Artist = x.Artist.Name, DurationMinutes = x.Track.Milliseconds / 1000.0 / 60.0 })
-            .ToList();
+            return query.OrderBy(x => x.Track.Name).Take(30)
+                .Select(x => new { Track = x.Track.Name, Artist = x.Artist.Name, DurationMinutes = x.Track.Milliseconds / 1000.0 / 60.0 })
+                .ToList();
+        }
     }
 
-    private object ExecuteParam6()
+    private async Task<object> ExecuteParam6()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        string pattern = "Track";  // Searches for "Track" in track names
-        return context.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
-            .Select(t => new { TrackName = t.Name, t.UnitPrice, DurationSeconds = t.Milliseconds / 1000 })
-            .ToList();
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            string pattern = "Track";  // Searches for "Track" in track names
+            return context.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
+                .Select(t => new { TrackName = t.Name, t.UnitPrice, DurationSeconds = t.Milliseconds / 1000 })
+                .ToList();
+        }
     }
 
     // Data modification examples
@@ -1589,45 +1679,51 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     private async Task<object> ExecuteMod3Async()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var track = context.GetTable<Track>().First();
-        var originalPrice = track.UnitPrice;
-        track.UnitPrice = 1.99m;
-        await track.SaveAsync();
-        return new[] { new { TrackId = track.id, TrackName = track.Name, OriginalPrice = originalPrice, NewPrice = track.UnitPrice, Message = "Price updated successfully" } };
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var track = context.GetTable<Track>().First();
+            var originalPrice = track.UnitPrice;
+            track.UnitPrice = 1.99m;
+            await track.SaveAsync();
+            return new[] { new { TrackId = track.id, TrackName = track.Name, OriginalPrice = originalPrice, NewPrice = track.UnitPrice, Message = "Price updated successfully" } };
+        }
     }
 
     private async Task<object> ExecuteMod4Async()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var cheapTracks = context.GetTable<Track>().Where(t => t.UnitPrice < 1.00m).Take(10).ToList();
-        var updateCount = 0;
-        foreach (var track in cheapTracks)
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            track.UnitPrice = 1.29m;
-            await track.SaveAsync();
-            updateCount++;
+            var cheapTracks = context.GetTable<Track>().Where(t => t.UnitPrice < 1.00m).Take(10).ToList();
+            var updateCount = 0;
+            foreach (var track in cheapTracks)
+            {
+                track.UnitPrice = 1.29m;
+                await track.SaveAsync();
+                updateCount++;
+            }
+            return new[] { new { TracksUpdated = updateCount, NewPrice = 1.29m, Message = $"Updated {updateCount} tracks to new price" } };
         }
-        return new[] { new { TracksUpdated = updateCount, NewPrice = 1.29m, Message = $"Updated {updateCount} tracks to new price" } };
     }
 
     private async Task<object> ExecuteMod5Async()
     {
-        using var context = new SxmLinqDbContext("Chinook");
-        var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name.Contains("Rock"));
-        if (rockGenre != null)
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            var rockTracks = context.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).Take(20).ToList();
-            var updateCount = 0;
-            foreach (var track in rockTracks)
+            var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name.Contains("Rock"));
+            if (rockGenre != null)
             {
-                track.UnitPrice = track.UnitPrice * 1.10m;
-                await track.SaveAsync();
-                updateCount++;
+                var rockTracks = context.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).Take(20).ToList();
+                var updateCount = 0;
+                foreach (var track in rockTracks)
+                {
+                    track.UnitPrice = track.UnitPrice * 1.10m;
+                    await track.SaveAsync();
+                    updateCount++;
+                }
+                return new[] { new { Genre = rockGenre.Name, TracksUpdated = updateCount, PriceIncrease = "10%", Message = $"Updated {updateCount} rock tracks" } };
             }
-            return new[] { new { Genre = rockGenre.Name, TracksUpdated = updateCount, PriceIncrease = "10%", Message = $"Updated {updateCount} rock tracks" } };
+            return new[] { new { Message = "Rock genre not found" } };
         }
-        return new[] { new { Message = "Rock genre not found" } };
     }
 
     private async Task<object> ExecuteMod6Async()
@@ -1644,22 +1740,24 @@ public partial class QueryExecutionViewModel : BaseViewModel
         var savedId = tempPlaylist.id;
 
         // Now find and delete the playlist we just created using the ID
-        using var context = new SxmLinqDbContext("Chinook");
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        { 
         var playlist = context.GetTable<Playlist>()
             .FirstOrDefault(p => p.id == savedId);
 
-        if (playlist != null)
-        {
-            var playlistName = playlist.Name;
-            await playlist.DeleteAsync();
+            if (playlist != null)
+            {
+                var playlistName = playlist.Name;
+                await playlist.DeleteAsync();
 
-            return new[] { new 
-            { 
+                return new[] { new
+            {
                 Success = true,
                 DeletedPlaylist = playlistName,
                 SavedId = savedId,
                 Message = "Playlist deleted successfully"
             } };
+            }
         }
 
         return new[] { new 
@@ -1687,35 +1785,36 @@ public partial class QueryExecutionViewModel : BaseViewModel
             savedIds.Add(playlist.id);
         }
 
-        // Now find and delete playlists using the saved IDs
-        using var context = new SxmLinqDbContext("Chinook");
-        var playlistsToDelete = context.GetTable<Playlist>()
-            .Where(p => savedIds.Contains(p.id))
-            .ToList();
-
-        // Use transaction for better performance and atomicity - all deletes succeed or all fail
-        await using var transaction = SxmSqlTransaction.Create("Chinook");
         try
         {
-            var deleteCount = 0;
-            foreach (var playlist in playlistsToDelete)
+            // Now find and delete playlists using the saved IDs
+            await using (var context = new SxmLinqDbContext("Chinook"))
             {
-                await playlist.DeleteAsync(transaction);
-                deleteCount++;
-            }
+                var playlistsToDelete = context.GetTable<Playlist>()
+                    .Where(p => savedIds.Contains(p.id))
+                    .ToList();
 
-            // Commit transaction. The explicit CommitTransactionAsync() call is optional
-            // but considered good practice. Without it, the transaction will AUTO-COMMIT
-            // on Dispose (If No Errors)
-            await transaction.CommitTransactionAsync();
+                // Use transaction for better performance and atomicity - all deletes succeed or all fail
+                var deleteCount = 0;
+                foreach (var playlist in playlistsToDelete)
+                {
+                    await playlist.DeleteAsync();
+                    deleteCount++;
+                }
 
-            return new[] { new 
-            { 
+                // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                // on Dispose (If No Errors)
+                await context.CommitTransactionAsync();
+
+                return new[] { new
+            {
                 PlaylistsCreated = savedIds.Count,
                 PlaylistsDeleted = deleteCount,
                 SavedIds = string.Join(", ", savedIds),
                 Message = $"Created {savedIds.Count} and deleted {deleteCount} temporary playlists (in single transaction)"
             } };
+            }
         }
         catch (Exception ex)
         {
@@ -1745,46 +1844,45 @@ public partial class QueryExecutionViewModel : BaseViewModel
             await playlistTrack.SaveAsync();
         }
 
-        // Now demonstrate deletion with related records
-        using var context = new SxmLinqDbContext("Chinook");
-        await using var transaction = SxmSqlTransaction.Create("Chinook");
-
         try
         {
-            // Load the playlist we just created
-            var playlist = context.GetTable<Playlist>()
-                .FirstOrDefault(p => p.id == playlistId);
-
-            if (playlist != null)
+            // Now demonstrate deletion with related records
+            await using (var context = new SxmLinqDbContext("Chinook"))
             {
-                // First, delete all playlist-track relationships
-                var playlistTracks = context.GetTable<PlaylistTrack>()
-                    .Where(pt => pt.PlaylistId == playlist.id)
-                    .ToList();
+                // Load the playlist we just created
+                var playlist = context.GetTable<Playlist>()
+                    .FirstOrDefault(p => p.id == playlistId);
 
-                var trackCount = playlistTracks.Count;
-                foreach (var pt in playlistTracks)
+                if (playlist != null)
                 {
-                    await pt.DeleteAsync(transaction);
-                }
+                    // First, delete all playlist-track relationships
+                    var playlistTracks = context.GetTable<PlaylistTrack>()
+                        .Where(pt => pt.PlaylistId == playlist.id)
+                        .ToList();
 
-                // Now delete the playlist itself
-                await playlist.DeleteAsync(transaction);
+                    var trackCount = playlistTracks.Count;
+                    foreach (var pt in playlistTracks)
+                    {
+                        await pt.DeleteAsync();
+                    }
 
-                // Commit transaction. The explicit CommitTransactionAsync() call is optional
-                // but considered good practice. Without it, the transaction will AUTO-COMMIT
-                // on Dispose (If No Errors)
-                await transaction.CommitTransactionAsync();
+                    // Now delete the playlist itself
+                    await playlist.DeleteAsync();
 
-                return new[] { new 
-                { 
+                    // Commit transaction. The explicit CommitTransactionAsync() call is optional
+                    // but considered good practice. Without it, the transaction will AUTO-COMMIT
+                    // on Dispose (If No Errors)
+                    await context.CommitTransactionAsync();
+
+                    return new[] { new
+                {
                     Success = true,
                     PlaylistName = playlist.Name,
                     TracksRemoved = trackCount,
                     Message = $"Created playlist with {trackCount} tracks, then deleted all in transaction"
                 } };
+                }
             }
-
             return new[] { new { Success = false, Message = "Playlist not found after creation" } };
         }
         catch (Exception ex)

@@ -10,7 +10,7 @@ namespace SQLiteXM
     /// <summary>
     /// Lightweight wrapper over LinqToDB's update builder so callers that import
     /// <see cref="SQLiteXM"/> don't need to import <c>LinqToDB</c>.
-    /// Bulk updates are deferred and executed within SubmitChangesAsync transaction.
+    /// Bulk updates execute immediately within the context transaction.
     /// </summary>
     /// <typeparam name="T">Entity type.</typeparam>
     public sealed class SxmUpdateSet<T> where T : class
@@ -22,7 +22,7 @@ namespace SQLiteXM
         /// Creates a new wrapper around the LinqToDB update builder instance.
         /// </summary>
         /// <param name="inner">The LinqToDB update builder instance.</param>
-        /// <param name="context">The SxmLinqDbContext to enqueue the operation into (null for immediate execution).</param>
+        /// <param name="context">The SxmLinqDbContext whose transaction the operation executes in (null for immediate LinqToDB execution).</param>
         internal SxmUpdateSet(IUpdatable<T> inner, SxmLinqDbContext? context = null)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
@@ -58,11 +58,12 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Enqueues the bulk update to be executed during SubmitChangesAsync within the transaction.
-        /// All bulk updates participate in the same transaction as entity operations.
+        /// Executes the bulk update immediately inside the context transaction (started lazily on the
+        /// first write). The transaction auto-commits when the context is disposed without errors, or
+        /// can be committed early via <see cref="SxmLinqDbContext.CommitTransactionAsync"/>.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Task that completes when the update is enqueued (actual execution happens in SubmitChangesAsync).</returns>
+        /// <returns>The number of rows updated (0 when the context is faulted and the operation was skipped).</returns>
         /// <exception cref="InvalidOperationException">Thrown when no SxmLinqDbContext is available.</exception>
         public Task<int> UpdateAsync(CancellationToken cancellationToken = default)
         {
@@ -70,11 +71,10 @@ namespace SQLiteXM
                 throw new InvalidOperationException(
                     "Bulk update operations require a SxmLinqDbContext. " +
                     "Use ctx.GetTable<T>() to obtain a context-aware table, then call Set().UpdateAsync(). " +
-                    "Bulk updates must participate in the SubmitChangesAsync() transaction.");
+                    "Bulk updates execute within the context transaction.");
 
-            // Defer execution - enqueue into context's change set
-            _context.EnqueueBulkUpdate(() => _inner.UpdateAsync(cancellationToken));
-            return Task.FromResult(0); // Return placeholder; actual count available after SubmitChangesAsync
+            // Execute immediately within the context transaction.
+            return _context.ExecuteWriteAsync(() => _inner.UpdateAsync(cancellationToken));
         }
     }
 
@@ -91,8 +91,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="SxmTable{T}"/>.
-        /// The update will be deferred and executed within SubmitChangesAsync transaction.
-        /// For single-entity updates, prefer <see cref="SxmLinqDbContext.UpdateOnSubmit"/> + <see cref="SxmLinqDbContext.SubmitChangesAsync"/>.
+        /// The update executes immediately within the context transaction when UpdateAsync is called.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this SxmTable<T> query, Expression<Func<T, TProp>> setter, TProp value)
             where T : class
@@ -110,7 +109,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Starts a LinqToDB update builder for the supplied <see cref="SxmTable{T}"/> using expression value provider.
-        /// The update will be deferred and executed within SubmitChangesAsync transaction.
+        /// The update executes immediately within the context transaction when UpdateAsync is called.
         /// </summary>
         public static SxmUpdateSet<T> Set<T, TProp>(this SxmTable<T> query, Expression<Func<T, TProp>> setter, Expression<Func<T, TProp>> expression)
             where T : class
@@ -310,10 +309,11 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Enqueues a bulk delete operation to be executed during SubmitChangesAsync within the transaction.
-        /// All bulk deletes participate in the same transaction as entity operations.
-        /// For single-entity deletes, prefer <see cref="SxmLinqDbContext.DeleteOnSubmit"/> + <see cref="SxmLinqDbContext.SubmitChangesAsync"/>.
+        /// Executes a bulk delete immediately inside the context transaction (started lazily on the
+        /// first write). The transaction auto-commits when the context is disposed without errors, or
+        /// can be committed early via <see cref="SxmLinqDbContext.CommitTransactionAsync"/>.
         /// </summary>
+        /// <returns>The number of rows deleted (0 when the context is faulted and the operation was skipped).</returns>
         /// <exception cref="InvalidOperationException">Thrown when no SxmLinqDbContext is available.</exception>
         public static Task<int> DeleteAsync<T>(this SxmTable<T> table, CancellationToken cancellationToken = default)
             where T : class
@@ -325,11 +325,10 @@ namespace SQLiteXM
                 throw new InvalidOperationException(
                     "Bulk delete operations require a SxmLinqDbContext. " +
                     "Use ctx.GetTable<T>() to obtain a context-aware table, then call DeleteAsync(). " +
-                    "Bulk deletes must participate in the SubmitChangesAsync() transaction.");
+                    "Bulk deletes execute within the context transaction.");
 
-            // Defer execution - enqueue into context's change set
-            table.DataContext.EnqueueBulkDelete(() => Task.FromResult(LinqToDB.LinqExtensions.Delete<T>((IQueryable<T>)itable)));
-            return Task.FromResult(0); // Return placeholder; actual count available after SubmitChangesAsync
+            // Execute immediately within the context transaction.
+            return table.DataContext.ExecuteWriteAsync(() => LinqToDB.LinqExtensions.DeleteAsync<T>((IQueryable<T>)itable, cancellationToken));
         }
 
         // ---------- Forwarding overloads for IQueryable<T> (keeps fluent chaining) ----------
@@ -519,7 +518,8 @@ namespace SQLiteXM
 
         /// <summary>
         /// Asynchronously deletes matching rows for the provided query.
-        /// Automatically recovers SxmLinqDbContext from LINQ chains for transactional bulk deletes.
+        /// Automatically recovers SxmLinqDbContext from LINQ chains so the delete executes
+        /// immediately inside the context transaction and returns the real row count.
         /// </summary>
         public static Task<int> DeleteAsync<T>(this IQueryable<T> query, CancellationToken cancellationToken = default)
             where T : class
@@ -531,13 +531,12 @@ namespace SQLiteXM
 
             if (context != null)
             {
-                // Defer execution - enqueue into context's change set
-                context.EnqueueBulkDelete(() => Task.FromResult(LinqToDB.LinqExtensions.Delete<T>(query)));
-                return Task.FromResult(0); // Return placeholder; actual count available after SubmitChangesAsync
+                // Execute immediately within the context transaction.
+                return context.ExecuteWriteAsync(() => LinqToDB.LinqExtensions.DeleteAsync<T>(query, cancellationToken));
             }
 
             // No context available - execute immediately (for backward compatibility with direct LinqToDB usage)
-            return Task.FromResult(LinqToDB.LinqExtensions.Delete<T>(query));
+            return LinqToDB.LinqExtensions.DeleteAsync<T>(query, cancellationToken);
         }
 
         /// <summary>

@@ -47,17 +47,19 @@ public partial class ReviewViewModel : BaseViewModel
     {
         try
         {
-            using var context = new SxmLinqDbContext("Session");
-            var draft = context.GetTable<RegistrationDraft>()
-                .FirstOrDefault(d => d.id == DraftId);
-
-            if (draft != null)
+            await using (var context = new SxmLinqDbContext("Session"))
             {
-                Email = draft.Email ?? "";
-                FullName = $"{draft.FirstName} {draft.LastName}".Trim();
-                DateOfBirth = draft.DateOfBirth?.ToString("MMMM d, yyyy") ?? "";
-                Notifications = draft.EnableNotifications ? "Enabled" : "Disabled";
-                ReferralCode = string.IsNullOrWhiteSpace(draft.ReferralCode) ? "None" : draft.ReferralCode;
+                var draft = context.GetTable<RegistrationDraft>()
+                    .FirstOrDefault(d => d.id == DraftId);
+
+                if (draft != null)
+                {
+                    Email = draft.Email ?? "";
+                    FullName = $"{draft.FirstName} {draft.LastName}".Trim();
+                    DateOfBirth = draft.DateOfBirth?.ToString("MMMM d, yyyy") ?? "";
+                    Notifications = draft.EnableNotifications ? "Enabled" : "Disabled";
+                    ReferralCode = string.IsNullOrWhiteSpace(draft.ReferralCode) ? "None" : draft.ReferralCode;
+                }
             }
         }
         catch (Exception ex)
@@ -74,38 +76,41 @@ public partial class ReviewViewModel : BaseViewModel
         try
         {
             IsBusy = true;
+            RegistrationDraft? draft;
+            User? user = default;
 
             // Load draft
-            using var sessionContext = new SxmLinqDbContext("Session");
-            var draft = sessionContext.GetTable<RegistrationDraft>()
-                .FirstOrDefault(d => d.id == DraftId);
-
-            if (draft == null)
+            await using (var sessionContext = new SxmLinqDbContext("Session"))
             {
-                ErrorMessage = "Registration session not found. Please start over.";
-                return;
+                draft = sessionContext.GetTable<RegistrationDraft>().FirstOrDefault(d => d.id == DraftId);
+
+                if (draft == null)
+                {
+                    ErrorMessage = "Registration session not found. Please start over.";
+                    return;
+                }
+
             }
-
-            // Create user
-            User user = new User
-            {
-                Email = draft.Email,
-                PasswordHash = draft.PasswordHash,
-                FirstName = draft.FirstName,
-                LastName = draft.LastName,
-                DateOfBirth = draft.DateOfBirth,
-                CreatedAt = DateTime.UtcNow,
-                LastLoginAt = DateTime.UtcNow
-            };
-
             // ==================================================================================
             // TRANSACTION SCOPE: User and UserPreferences saved atomically to UserData database
             // ==================================================================================
             SxmConnection connection = new SxmConnection("UserData", shared: false);
-            await using SxmSqlTransaction transaction = await SxmSqlTransaction.CreateAsync(connection);
+            await using (SxmSqlTransaction transaction = await SxmSqlTransaction.CreateAsync(connection))
             {
                 try
                 {
+                    // Create user
+                    user = new User
+                    {
+                        Email = draft.Email,
+                        PasswordHash = draft.PasswordHash,
+                        FirstName = draft.FirstName,
+                        LastName = draft.LastName,
+                        DateOfBirth = draft.DateOfBirth,
+                        CreatedAt = DateTime.UtcNow,
+                        LastLoginAt = DateTime.UtcNow
+                    };
+
                     await user.SaveAsync(transaction);
 
                     // Create preferences

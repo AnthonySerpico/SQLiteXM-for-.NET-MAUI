@@ -91,6 +91,18 @@ namespace SQLiteXM
         private Microsoft.Data.Sqlite.SqliteTransaction? _dbConnTransaction;
         private bool _hasCurrentRow;
 
+        /// <summary>
+        /// The underlying provider connection. Internal so other library layers (e.g. the LINQ
+        /// context) can share the same physical connection without exposing it publicly.
+        /// </summary>
+        internal Microsoft.Data.Sqlite.SqliteConnection? UnderlyingConnection => _sqliteConnection;
+
+        /// <summary>
+        /// The currently open SQLite transaction on this connection, or null when none is open.
+        /// Internal so other library layers can enlist commands in the same transaction.
+        /// </summary>
+        internal Microsoft.Data.Sqlite.SqliteTransaction? CurrentTransaction => _dbConnTransaction;
+
         private static readonly object _synchLock = new object();
 
         // Semaphore used to guard concurrent access. Use ownership + reentrancy to avoid accidentally

@@ -258,7 +258,7 @@ public class Track : SxmBaseEntity
 SQLiteXM translates LINQ expressions to optimized SQLite queries:
 
 ```csharp
-using var context = new SxmLinqDbContext("Chinook");
+await using (var context = new SxmLinqDbContext("Chinook"))
 
 var results = (from track in context.GetTable<Track>()
 			   join album in context.GetTable<Album>() on track.AlbumId equals album.id
@@ -275,7 +275,7 @@ var results = (from track in context.GetTable<Track>()
 SQLiteXM supports efficient bulk updates using the deferred execution pattern:
 
 ```csharp
-using var context = new SxmLinqDbContext("Chinook");
+await using (var context = new SxmLinqDbContext("Chinook"))
 
 // Queue bulk update (not executed yet)
 await context.GetTable<Track>()
@@ -292,7 +292,7 @@ await context.SubmitChangesAsync();
 Atomic operations with commit/rollback patterns:
 
 ```csharp
-using var context = new SxmLinqDbContext("Chinook");
+await using (var context = new SxmLinqDbContext("Chinook"))
 
 try
 {
@@ -320,8 +320,8 @@ catch (Exception ex)
 Load SQL statements from `SqlStatements.json` and execute with type-safe results:
 
 ```csharp
-var results = await SxmDatabase.ExecuteQueryAsync<Artist>("GetAllArtistsRaw");
-var dynamic = await SxmDatabase.ExecuteQueryAsync<dynamic>("GetTopSellingTracks");
+var results = await SxmStatement.RunStatementAsync("GetAllArtistsRaw", new Dictionary<string, object?>());
+var dynamic = await SxmStatement.RunStatementAsync("GetTopSellingTracks", new Dictionary<string, object?>());
 ```
 
 ### Parameterized Queries
@@ -329,7 +329,7 @@ var dynamic = await SxmDatabase.ExecuteQueryAsync<dynamic>("GetTopSellingTracks"
 Safe parameter binding prevents SQL injection:
 
 ```csharp
-using var context = new SxmLinqDbContext("Chinook");
+await using (var context = new SxmLinqDbContext("Chinook"))
 
 string searchTerm = userInput; // User-provided input
 var results = context.GetTable<Artist>()

@@ -38,6 +38,17 @@ namespace SQLiteXM
         /// </summary>
         private bool _encounteredError = false;
 
+        /// <summary>
+        /// Internal fault-state accessor so other library layers sharing this transaction
+        /// (e.g. <see cref="SxmLinqDbContext"/>) can observe and propagate failure state,
+        /// ensuring a failure in any layer prevents auto-commit for all layers.
+        /// </summary>
+        internal bool EncounteredError
+        {
+            get => _encounteredError;
+            set => _encounteredError = value;
+        }
+
         // Lease (if created for a shared connection). Dispose async on transaction disposal.
         private ISxmConnectionLease? _connectionLease;
 

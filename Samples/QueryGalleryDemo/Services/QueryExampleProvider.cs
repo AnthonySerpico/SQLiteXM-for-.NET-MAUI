@@ -1516,12 +1516,12 @@ return combined;",
                 Description = "Execute raw SQL from SqlStatements.json",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<Artist>(""GetAllArtistsRaw"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetAllArtistsRaw"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAllArtistsRaw"),
                 Explanation = @"**How It Works:**
 1. SQL query loaded from SqlStatements.json file
-2. ExecuteQueryAsync<Artist> runs raw SQL
+2. RunStatementAsync runs raw SQL
 3. Results mapped to Artist entity type
 4. Returns strongly-typed list of Artist objects
 
@@ -1539,7 +1539,7 @@ return results;",
                 Description = "Complex JOIN query from SqlStatements.json",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTracksWithArtistAlbum"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetTracksWithArtistAlbum"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithArtistAlbum"),
                 Explanation = @"**How It Works:**
@@ -1562,7 +1562,7 @@ return results;",
                 Description = "Aggregation query with sales data from JSON",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTopSellingTracks"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetTopSellingTracks"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopSellingTracks"),
                 Explanation = @"**How It Works:**
@@ -1586,7 +1586,7 @@ return results;",
                 Description = "LEFT JOIN with aggregations for customer analysis",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetCustomerPurchaseStats"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetCustomerPurchaseStats"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomerPurchaseStats"),
                 Explanation = @"**How It Works:**
@@ -1610,7 +1610,7 @@ return results;",
                 Description = "GROUP BY with calculated fields",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetGenrePopularity"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetGenrePopularity"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetGenrePopularity"),
                 Explanation = @"**How It Works:**
@@ -1634,7 +1634,7 @@ return results;",
                 Description = "Multiple LEFT JOINs with SUM aggregation",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetPlaylistDetails"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetPlaylistDetails"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistDetails"),
                 Explanation = @"**How It Works:**
@@ -1658,7 +1658,7 @@ return results;",
                 Description = "Complex multi-table JOIN with COALESCE",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetArtistRevenue"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetArtistRevenue"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetArtistRevenue"),
                 Explanation = @"**How It Works:**
@@ -1682,7 +1682,7 @@ return results;",
                 Description = "WHERE clause with subquery for average comparison",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetExpensiveTracksByGenre"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetExpensiveTracksByGenre"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetExpensiveTracksByGenre"),
                 Explanation = @"**How It Works:**
@@ -1705,7 +1705,7 @@ return results;",
                 Description = "Subquery in FROM clause with multiple aggregations",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetCustomersByCountryWithStats"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetCustomersByCountryWithStats"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomersByCountryWithStats"),
                 Explanation = @"**How It Works:**
@@ -1729,7 +1729,7 @@ return results;",
                 Description = "Date functions with GROUP BY for time series analysis",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetMonthlyRevenueTrend"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetMonthlyRevenueTrend"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetMonthlyRevenueTrend"),
                 Explanation = @"**How It Works:**
@@ -1753,7 +1753,7 @@ return results;",
                 Description = "String concatenation, HAVING clause, multiple aggregates",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTopCustomersWithDetails"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetTopCustomersWithDetails"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopCustomersWithDetails"),
                 Explanation = @"**How It Works:**
@@ -1777,7 +1777,7 @@ return results;",
                 Description = "CASE expression for conditional categorization",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetTracksWithPriceTier"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetTracksWithPriceTier"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithPriceTier"),
                 Explanation = @"**How It Works:**
@@ -1801,7 +1801,7 @@ return results;",
                 Description = "Complex aggregation with HAVING filter",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetAlbumCompletion"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetAlbumCompletion"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAlbumCompletion"),
                 Explanation = @"**How It Works:**
@@ -1825,7 +1825,7 @@ return results;",
                 Description = "Self-join with multiple aggregations",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetEmployeePerformance"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetEmployeePerformance"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetEmployeePerformance"),
                 Explanation = @"**How It Works:**
@@ -1849,7 +1849,7 @@ return results;",
                 Description = "Multiple DISTINCT aggregations for variety analysis",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmDatabase.ExecuteQueryAsync<dynamic>(""GetPlaylistPopularity"");
+                Code = @"var results = await SxmStatement.RunStatementAsync(""GetPlaylistPopularity"", new Dictionary<string, object?>());
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistPopularity"),
                 Explanation = @"**How It Works:**
@@ -2585,14 +2585,14 @@ return playlistPairs;",
                                                     Description = "Insert invoice + invoice lines atomically",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
 try 
 {
     // Create invoice
     var invoice = new Invoice 
     { 
         CustomerId = 1, 
-        InvoiceDate = DateTime.Now, 
+        InvoiceDate = DateTime.Now,  
         BillingAddress = ""123 Demo St"",
         BillingCity = ""Portland"",
         BillingCountry = ""USA"",
@@ -2638,7 +2638,7 @@ try
             return new[] { new { Success = false, Error = ex.Message } };
         }",
                                                     Explanation = @"**How It Works:**
-1. Create SxmSqlTransaction (await using for auto-dispose)
+1. Create SxmLinqDbContext (await using for auto-dispose)
 2. Insert invoice record
 3. Get generated invoice.id
 4. Insert invoice lines referencing invoice.id
@@ -2659,7 +2659,7 @@ try
                                                     Description = "Demonstrate automatic rollback when error occurs",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
 try 
 {
     // Insert a valid artist
@@ -2717,7 +2717,7 @@ catch (Exception ex)
                                                     Description = "Efficiently insert multiple tracks in one transaction",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
 try 
 {
     var insertedCount = 0;
@@ -2780,7 +2780,7 @@ catch (Exception ex)
                                                     Description = "Update artist and all their albums atomically",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
 using var context = new SxmLinqDbContext(""Chinook"");
 try 
 {
@@ -2843,7 +2843,7 @@ catch (Exception ex)
                                                     Description = "Create playlist, add tracks, update statistics",
                                                     Category = QueryCategory.Transactions,
                                                     Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                                    Code = @"await using var transaction = new SxmLinqDbContext(""Chinook"");
 using var context = new SxmLinqDbContext(""Chinook"");
 try 
 {
@@ -2934,7 +2934,7 @@ var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
 
 // Method 2: With transaction (faster)
 var start2 = DateTime.Now;
-await using (var transaction = SxmSqlTransaction.Create(""Chinook""))
+await using (var transaction = new SxmLinqDbContext(""Chinook""))
 {
     for (int i = 1; i <= 20; i++)
     {
@@ -3319,7 +3319,7 @@ return new[] { new
                                                     Category = QueryCategory.DataModification,
                                                     Type = QueryType.Linq,
                                                     Code = @"// Use transaction to ensure both inserts succeed or both fail
-await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+await using var transaction = new SxmLinqDbContext(""Chinook"");
 try
 {
     // Create new artist
@@ -3427,14 +3427,14 @@ var cheapTracks = context.GetTable<Track>()
     .ToList();
 
 // Use transaction for better performance - commit all updates together
-await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+await using var transaction = new SxmLinqDbContext(""Chinook"");
 try
 {
     var updateCount = 0;
     foreach (var track in cheapTracks)
     {
         track.UnitPrice = 1.29m; // Increase price
-        await track.SaveAsync(transaction);
+        await track.SaveAsync();
         updateCount++;
     }
 
@@ -3492,14 +3492,14 @@ var updateCount = 0;
 var genreName = results.FirstOrDefault()?.GenreName ?? ""Rock"";
 
 // Use transaction for better performance - commit all updates together
-await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+await using var transaction = new SxmLinqDbContext(""Chinook"");
 try
 {
     foreach (var item in results)
     {
         // Increase price by 10%
         item.Track.UnitPrice = item.Track.UnitPrice * 1.10m;
-        await item.Track.SaveAsync(transaction);
+        await item.Track.SaveAsync();
         updateCount++;
     }
 
@@ -3624,13 +3624,13 @@ catch (Exception ex)
                                         .ToList();
 
                                     // Use transaction for better performance and atomicity - all deletes succeed or all fail
-                                    await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+                                    await using var transaction = new SxmLinqDbContext(""Chinook"");
                                     try
                                     {
                                         var deleteCount = 0;
                                         foreach (var playlist in playlistsToDelete)
                                         {
-                                            await playlist.DeleteAsync(transaction);
+                                            await playlist.DeleteAsync();
                                             deleteCount++;
                                         }
 
@@ -3694,7 +3694,7 @@ foreach (var trackId in trackIds)
 
 // Now demonstrate deletion with related records
 using var context = new SxmLinqDbContext(""Chinook"");
-await using var transaction = SxmSqlTransaction.Create(""Chinook"");
+await using var transaction = new SxmLinqDbContext(""Chinook"");
 
 try
 {
@@ -3712,11 +3712,11 @@ try
         var trackCount = playlistTracks.Count;
         foreach (var pt in playlistTracks)
         {
-            await pt.DeleteAsync(transaction);
+            await pt.DeleteAsync();
         }
 
         // Now delete the playlist itself
-        await playlist.DeleteAsync(transaction);
+        await playlist.DeleteAsync();
 
         // Commit transaction. The explicit CommitTransactionAsync() call is optional
         // but considered good practice. Without it, the transaction will AUTO-COMMIT

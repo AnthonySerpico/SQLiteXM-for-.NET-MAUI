@@ -172,7 +172,7 @@ public class UserPreferences : SxmEntity { }
 ```csharp
 private async Task LoadUserAsync()
 {
-	using var context = new SxmLinqDbContext("AppData");
+	await using (var context = new SxmLinqDbContext("AppData"))
 	var user = context.GetTable<User>()
 		.FirstOrDefault(u => u.id == UserId);
 

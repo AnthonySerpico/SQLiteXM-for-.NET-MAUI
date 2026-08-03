@@ -42,17 +42,19 @@ public partial class PreferencesViewModel : BaseViewModel
         try
         {
             // Create LINQ context for Session database (using statement ensures proper disposal)
-            using var context = new SxmLinqDbContext("Session");
-
-            // Query for the specific draft by ID using LINQ
-            var draft = context.GetTable<RegistrationDraft>()
-                .FirstOrDefault(d => d.id == DraftId);
-
-            if (draft != null)
+            await using (var context = new SxmLinqDbContext("Session"))
             {
-                AcceptedTerms = draft.AcceptedTerms;
-                EnableNotifications = draft.EnableNotifications;
-                ReferralCode = draft.ReferralCode ?? string.Empty;
+
+                // Query for the specific draft by ID using LINQ
+                var draft = context.GetTable<RegistrationDraft>()
+                    .FirstOrDefault(d => d.id == DraftId);
+
+                if (draft != null)
+                {
+                    AcceptedTerms = draft.AcceptedTerms;
+                    EnableNotifications = draft.EnableNotifications;
+                    ReferralCode = draft.ReferralCode ?? string.Empty;
+                }
             }
         }
         catch (Exception ex)
@@ -74,31 +76,34 @@ public partial class PreferencesViewModel : BaseViewModel
             IsBusy = true;
 
             // Create LINQ context for Session database to load the registration draft
-            using var context = new SxmLinqDbContext("Session");
-            var draft = context.GetTable<RegistrationDraft>()
-                .FirstOrDefault(d => d.id == DraftId);
-
-            if (draft == null)
+            await using (var context = new SxmLinqDbContext("Session"))
             {
-                ErrorMessage = "Registration session not found. Please start over.";
-                return;
+                var draft = context.GetTable<RegistrationDraft>()
+                    .FirstOrDefault(d => d.id == DraftId);
+
+                if (draft == null)
+                {
+                    ErrorMessage = "Registration session not found. Please start over.";
+                    return;
+                }
+
+                // Update draft properties with user preferences
+                draft.AcceptedTerms = AcceptedTerms;
+                draft.EnableNotifications = EnableNotifications;
+                draft.ReferralCode = string.IsNullOrWhiteSpace(ReferralCode) ? null : ReferralCode.Trim().ToUpper();
+                draft.CompletedStep = 3;
+                draft.LastUpdated = DateTime.UtcNow;
+
+                // SaveAsync automatically updates the existing entity (detected by non-zero id)
+                await draft.SaveAsync();
+
+
+                // Navigate to review
+                await Shell.Current.GoToAsync(nameof(ReviewPage), new Dictionary<string, object>
+                {
+                    { "DraftId", draft.id }
+                });
             }
-
-            // Update draft properties with user preferences
-            draft.AcceptedTerms = AcceptedTerms;
-            draft.EnableNotifications = EnableNotifications;
-            draft.ReferralCode = string.IsNullOrWhiteSpace(ReferralCode) ? null : ReferralCode.Trim().ToUpper();
-            draft.CompletedStep = 3;
-            draft.LastUpdated = DateTime.UtcNow;
-
-            // SaveAsync automatically updates the existing entity (detected by non-zero id)
-            await draft.SaveAsync();
-
-            // Navigate to review
-            await Shell.Current.GoToAsync(nameof(ReviewPage), new Dictionary<string, object>
-            {
-                { "DraftId", draft.id }
-            });
         }
         catch (Exception ex)
         {

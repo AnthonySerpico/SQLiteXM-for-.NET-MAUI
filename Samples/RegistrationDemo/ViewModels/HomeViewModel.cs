@@ -42,23 +42,24 @@ public partial class HomeViewModel : BaseViewModel
         try
         {
             // Create LINQ context for UserData database (using statement ensures proper disposal)
-            using var context = new SxmLinqDbContext("UserData");
-
-            // Query for the specific user by ID using LINQ - demonstrates read-only query pattern
-            var user = context.GetTable<User>()
-                .FirstOrDefault(u => u.id == UserId);
-
-            if (user != null)
+            await using (var context = new SxmLinqDbContext("UserData"))
             {
-                WelcomeMessage = $"Welcome, {user.FullName}!";
+                // Query for the specific user by ID using LINQ - demonstrates read-only query pattern
+                var user = context.GetTable<User>()
+                    .FirstOrDefault(u => u.id == UserId);
 
-                var details = $"Email: {user.Email}\n";
-                details += $"Age: {user.Age ?? 0}\n";
-                details += $"Registered: {user.CreatedAt:g}";
-                UserDetails = details;
+                if (user != null)
+                {
+                    WelcomeMessage = $"Welcome, {user.FullName}!";
 
-                DatabaseInfo = $"✅ User stored in: UserData database\n" +
-                              $"✅ Database location: {FileSystem.AppDataDirectory}";
+                    var details = $"Email: {user.Email}\n";
+                    details += $"Age: {user.Age ?? 0}\n";
+                    details += $"Registered: {user.CreatedAt:g}";
+                    UserDetails = details;
+
+                    DatabaseInfo = $"✅ User stored in: UserData database\n" +
+                                  $"✅ Database location: {FileSystem.AppDataDirectory}";
+                }
             }
         }
         catch (Exception ex)

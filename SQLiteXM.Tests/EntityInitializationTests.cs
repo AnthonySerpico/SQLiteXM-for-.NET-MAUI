@@ -34,7 +34,7 @@ public class EntityInitializationTests : TestBase
         entity.id.Should().BeGreaterThan(0, "entity should have been saved");
 
         // Assert - Verify table exists and data is queryable
-        var tableExists = VerifyTableExists<SimpleEntity>();
+        var tableExists = await VerifyTableExists<SimpleEntity>();
         tableExists.Should().BeTrue("table should have been created by schema registration");
 
         var retrieved = await VerifyEntityExistsInDbAsync<SimpleEntity>(entity.id);
@@ -83,7 +83,7 @@ public class EntityInitializationTests : TestBase
         await InitializeSqliteXMAsync();
         var entity1 = new SimpleEntity { Name = "First" };
         await entity1.SaveAsync();
-        var countAfterFirst = GetEntityCountFromDb<SimpleEntity>();
+        int countAfterFirst = await GetEntityCountFromDb<SimpleEntity>();
 
         // Act - Create second instance (schema already registered)
         var entity2 = new SimpleEntity { Name = "Second" };
@@ -106,7 +106,7 @@ public class EntityInitializationTests : TestBase
         retrieved2!.Name.Should().Be("Second");
 
         // Assert - Verify count increased (table was reused, not recreated)
-        var countAfterSecond = GetEntityCountFromDb<SimpleEntity>();
+        int countAfterSecond = await GetEntityCountFromDb<SimpleEntity>();
         countAfterSecond.Should().BeGreaterThan(countAfterFirst, "second entity should be added to existing table");
     }
 

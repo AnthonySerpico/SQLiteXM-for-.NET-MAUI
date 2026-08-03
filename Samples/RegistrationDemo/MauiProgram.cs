@@ -88,7 +88,9 @@ public static class MauiProgram
 				JournalModeOption = SxmJournalMode.Wal
 			};
 
-			await SxmDatabase.InitializeAsync(stream, options);
+			string whereAreYou = FileSystem.AppDataDirectory;
+
+            await SxmDatabase.InitializeAsync(stream, options);
 
 			// Register entity schemas
 			await SxmDatabase.RegisterEntitiesAsync(

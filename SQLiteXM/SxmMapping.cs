@@ -85,6 +85,8 @@ namespace SQLiteXM
             ms.SetDataType(typeof(decimal?), LinqToDB.DataType.NVarChar);
             ms.SetDataType(typeof(ulong), LinqToDB.DataType.NVarChar);
             ms.SetDataType(typeof(ulong?), LinqToDB.DataType.NVarChar);
+            ms.SetDataType(typeof(Guid), LinqToDB.DataType.Blob);
+            ms.SetDataType(typeof(Guid?), LinqToDB.DataType.Blob);
 
             // decimal TEXT
             ms.SetConverter<decimal, string?>(d => SxmColumnDataConverters.DecimalToString(d));
@@ -120,28 +122,24 @@ namespace SQLiteXM
             // TimeOnly TEXT + numeric (Ticks)
             ms.SetConverter<TimeOnly, string?>(t => SxmColumnDataConverters.TimeOnlyToString(t));
             ms.SetConverter<string, TimeOnly?>(s => SxmColumnDataConverters.TimeOnlyFromString(s));
-            ms.SetConverter<TimeOnly, long?>(t => SxmColumnDataConverters.TimeOnlyToTotalMilliseconds(t));
-            ms.SetConverter<long, TimeOnly?>(ticks => SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(ticks));
-            ms.SetConverter<long, TimeOnly>(ticks => SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(ticks) ?? TimeOnly.MinValue);
             ms.SetConverter<TimeOnly, long?>(t => SxmColumnDataConverters.TimeOnlyToTotalTicks(t));
             ms.SetConverter<long, TimeOnly?>(ticks => SxmColumnDataConverters.TimeOnlyFromTotalTicks(ticks));
+            ms.SetConverter<long, TimeOnly>(ticks => SxmColumnDataConverters.TimeOnlyFromTotalTicks(ticks) ?? TimeOnly.MinValue);
             ms.SetConvertExpression<long, TimeOnly>(
-                ticks => SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(ticks) ?? TimeOnly.MinValue);
+                ticks => SxmColumnDataConverters.TimeOnlyFromTotalTicks(ticks) ?? TimeOnly.MinValue);
             ms.SetConvertExpression<long, TimeOnly?>(
-                ticks => SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(ticks));
+                ticks => SxmColumnDataConverters.TimeOnlyFromTotalTicks(ticks));
 
             // TimeSpan TEXT + numeric (Ticks)
             ms.SetConverter<TimeSpan, string?>(t => SxmColumnDataConverters.TimeSpanToString(t));
             ms.SetConverter<string, TimeSpan?>(s => SxmColumnDataConverters.TimeSpanFromString(s));
-            ms.SetConverter<TimeSpan, long?>(t => SxmColumnDataConverters.TimeSpanToTotalMilliseconds(t));
-            ms.SetConverter<long, TimeSpan?>(ticks => SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(ticks));
-            ms.SetConverter<long, TimeSpan>(ticks => SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(ticks) ?? TimeSpan.Zero);
             ms.SetConverter<TimeSpan, long?>(t => SxmColumnDataConverters.TimeSpanToTotalTicks(t));
             ms.SetConverter<long, TimeSpan?>(ticks => SxmColumnDataConverters.TimeSpanFromTotalTicks(ticks));
+            ms.SetConverter<long, TimeSpan>(ticks => SxmColumnDataConverters.TimeSpanFromTotalTicks(ticks) ?? TimeSpan.Zero);
             ms.SetConvertExpression<long, TimeSpan>(
-                ticks => SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(ticks) ?? TimeSpan.Zero);
+                ticks => SxmColumnDataConverters.TimeSpanFromTotalTicks(ticks) ?? TimeSpan.Zero);
             ms.SetConvertExpression<long, TimeSpan?>(
-                ticks => SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(ticks));
+                ticks => SxmColumnDataConverters.TimeSpanFromTotalTicks(ticks));
 
             // DateTimeOffset TEXT + numeric (Ticks)
             ms.SetConverter<DateTimeOffset, string?>(dto => SxmColumnDataConverters.DateTimeOffsetToString(dto));
@@ -157,16 +155,31 @@ namespace SQLiteXM
                 ticksVal => SxmColumnDataConverters.DateTimeOffsetFromTicks(ticksVal) ?? DateTimeOffset.MinValue);
             ms.SetConvertExpression<long, DateTimeOffset?>(
                 ticksVal => SxmColumnDataConverters.DateTimeOffsetFromTicks(ticksVal));
+            ms.SetConvertExpression<DateTimeOffset, long?>(
+                dto => SxmColumnDataConverters.DateTimeOffsetToTicks(dto));
 
             // Guid TEXT + BLOB (native .NET byte order)
             // TEXT: canonical GUID string format
             ms.SetConverter<Guid, string?>(g => SxmColumnDataConverters.GuidToString(g));
             ms.SetConverter<string, Guid?>(s => SxmColumnDataConverters.GuidFromString(s));
+            ms.SetConverter<string, Guid>(s => SxmColumnDataConverters.GuidFromString(s) ?? Guid.Empty);
+            ms.SetConvertExpression<string, Guid>(
+                s => SxmColumnDataConverters.GuidFromString(s) ?? Guid.Empty);
+            ms.SetConvertExpression<string, Guid?>(
+                s => SxmColumnDataConverters.GuidFromString(s));
 
             // BLOB: native .NET byte order (Guid.ToByteArray / new Guid(byte[]))
             // This is the default for BLOB storage and provides best LINQ-to-DB compatibility
             ms.SetConverter<Guid, byte[]?>(g => SxmColumnDataConverters.GuidToNativeBytes(g));
             ms.SetConverter<byte[], Guid?>(b => SxmColumnDataConverters.GuidFromNativeBytes(b));
+            ms.SetConverter<byte[], Guid>(b => SxmColumnDataConverters.GuidFromNativeBytes(b) ?? Guid.Empty);
+
+            // CRITICAL: Use SetConvertExpression for reader materialization so LinqToDB
+            // reads the BLOB as byte[] and converts, instead of calling SqliteDataReader.GetGuid()
+            ms.SetConvertExpression<byte[], Guid>(
+                b => SxmColumnDataConverters.GuidFromNativeBytes(b) ?? Guid.Empty);
+            ms.SetConvertExpression<byte[], Guid?>(
+                b => SxmColumnDataConverters.GuidFromNativeBytes(b));
 
             return ms;
         }

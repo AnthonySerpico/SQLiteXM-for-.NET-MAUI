@@ -450,9 +450,11 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<T?> VerifyEntityExistsInDbAsync<T>(long id) where T : SxmEntity
     {
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
-        return entity;
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
+            return entity;
+        }
     }
 
     /// <summary>
@@ -460,44 +462,56 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task VerifyEntityNotInDbAsync<T>(long id) where T : SxmEntity
     {
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
-        if (entity != null)
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
         {
-            throw new InvalidOperationException($"Entity with id {id} was found in database but should not exist.");
+            var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
+            if (entity != null)
+            {
+                throw new InvalidOperationException($"Entity with id {id} was found in database but should not exist.");
+            }
+            await Task.CompletedTask;
         }
-        await Task.CompletedTask;
     }
 
     /// <summary>
     /// Gets all entities of a given type from the database.
     /// </summary>
-    protected List<T> GetAllEntitiesFromDb<T>() where T : SxmEntity
+    protected async Task<List<T>> GetAllEntitiesFromDb<T>() where T : SxmEntity
     {
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        return context.GetTable<T>().ToList();
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            return context.GetTable<T>().ToList();
+        }
     }
 
     /// <summary>
     /// Gets the count of entities of a given type from the database.
     /// </summary>
-    protected int GetEntityCountFromDb<T>() where T : SxmEntity
+    protected async Task<int> GetEntityCountFromDb<T>() where T : SxmEntity
     {
-        using var context = new SxmLinqDbContext(TestDatabaseName);
-        return context.GetTable<T>().Count();
+        int rc = 0;
+
+        await using (var context = new SxmLinqDbContext(TestDatabaseName))
+        {
+            rc = context.GetTable<T>().Count();
+        }
+
+        return rc;
     }
 
     /// <summary>
     /// Verifies that a table exists in the database by attempting to query it.
     /// Returns true if the table exists, false otherwise.
     /// </summary>
-    protected bool VerifyTableExists<T>() where T : SxmEntity
+    protected async Task<bool> VerifyTableExists<T>() where T : SxmEntity
     {
         try
         {
-            using var context = new SxmLinqDbContext(TestDatabaseName);
-            _ = context.GetTable<T>().Count();
-            return true;
+            await using (var context = new SxmLinqDbContext(TestDatabaseName))
+            {
+                _ = context.GetTable<T>().Count();
+                return true;
+            }
         }
         catch
         {

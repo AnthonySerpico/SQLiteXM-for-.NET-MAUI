@@ -244,79 +244,84 @@ public class DatabaseSeeder
     private async Task<List<Genre>> SeedGenresAsync(IProgress<string>? progress)
     {
         progress?.Report("Seeding genres...");
+        var genres = new List<Genre>();
 
         // Check if genres already exist
-        var existingGenres = await new SxmLinqDbContext("Chinook").GetTable<Genre>().ToListAsync();
-        if (existingGenres.Count > 0)
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            progress?.Report($"Genres already exist ({existingGenres.Count}), skipping...");
-            return existingGenres;
-        }
+            var existingGenres = await context.GetTable<Genre>().ToListAsync();
+            if (existingGenres.Count > 0)
+            {
+                progress?.Report($"Genres already exist ({existingGenres.Count}), skipping...");
+                return existingGenres;
+            }
 
-        var genres = new List<Genre>();
-        foreach (var name in _genreNames)
-        {
-            var genre = new Genre { Name = name };
-            await genre.SaveAsync();
-            genres.Add(genre);
+            foreach (var name in _genreNames)
+            {
+                var genre = new Genre { Name = name };
+                await genre.SaveAsync();
+                genres.Add(genre);
+            }
         }
-
         return genres;
     }
 
     private async Task<List<MediaType>> SeedMediaTypesAsync(IProgress<string>? progress)
     {
         progress?.Report("Seeding media types...");
-
-        // Check if media types already exist
-        var existingMediaTypes = await new SxmLinqDbContext("Chinook").GetTable<MediaType>().ToListAsync();
-        if (existingMediaTypes.Count > 0)
-        {
-            progress?.Report($"Media types already exist ({existingMediaTypes.Count}), skipping...");
-            return existingMediaTypes;
-        }
-
         var mediaTypes = new List<MediaType>();
-        foreach (var name in _mediaTypeNames)
-        {
-            var mediaType = new MediaType { Name = name };
-            await mediaType.SaveAsync();
-            mediaTypes.Add(mediaType);
-        }
 
-        return mediaTypes;
+        await using (var context = new SxmLinqDbContext("Chinook"))
+        {
+            var existingMediaTypes = await context.GetTable<MediaType>().ToListAsync();
+            if (existingMediaTypes.Count > 0)
+            {
+                progress?.Report($"Media types already exist ({existingMediaTypes.Count}), skipping...");
+                return existingMediaTypes;
+            }
+
+            foreach (var name in _mediaTypeNames)
+            {
+                var mediaType = new MediaType { Name = name };
+                await mediaType.SaveAsync();
+                mediaTypes.Add(mediaType);
+            }
+
+            return mediaTypes;
+        }
     }
 
     private async Task<List<Artist>> SeedArtistsAsync(IProgress<string>? progress)
     {
         progress?.Report("Seeding 200 artists...");
-
-        // Check if artists already exist
-        var existingArtists = await new SxmLinqDbContext("Chinook").GetTable<Artist>().ToListAsync();
-        if (existingArtists.Count > 0)
-        {
-            progress?.Report($"Artists already exist ({existingArtists.Count}), skipping...");
-            return existingArtists;
-        }
-
         var artists = new List<Artist>();
 
-        // Add known artists
-        foreach (var name in _artistNames)
+        // Check if artists already exist
+        await using (var context = new SxmLinqDbContext("Chinook"))
         {
-            var artist = new Artist { Name = name };
-            await artist.SaveAsync();
-            artists.Add(artist);
-        }
+            var existingArtists = await context.GetTable<Artist>().ToListAsync();
+            if (existingArtists.Count > 0)
+            {
+                progress?.Report($"Artists already exist ({existingArtists.Count}), skipping...");
+                return existingArtists;
+            }
 
-        // Generate additional artists to reach 200
-        for (int i = _artistNames.Length; i < 200; i++)
-        {
-            var artist = new Artist { Name = $"Artist {i + 1}" };
-            await artist.SaveAsync();
-            artists.Add(artist);
-        }
+            // Add known artists
+            foreach (var name in _artistNames)
+            {
+                var artist = new Artist { Name = name };
+                await artist.SaveAsync();
+                artists.Add(artist);
+            }
 
+            // Generate additional artists to reach 200
+            for (int i = _artistNames.Length; i < 200; i++)
+            {
+                var artist = new Artist { Name = $"Artist {i + 1}" };
+                await artist.SaveAsync();
+                artists.Add(artist);
+            }
+        }
         return artists;
     }
 
@@ -329,7 +334,7 @@ public class DatabaseSeeder
             "Anthology", "Collection", "Classics", "Volume 1", "Volume 2", "Deluxe Edition" };
 
         // Use a single transaction for all inserts
-        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         {
             for (int i = 0; i < 400; i++)
             {
@@ -341,7 +346,7 @@ public class DatabaseSeeder
                     Title = $"{artist.Name} - {titleSuffix} {_random.Next(1980, 2025)}",
                     ArtistId = artist.id
                 };
-                await album.SaveAsync(transaction);
+                await album.SaveAsync();
                 albums.Add(album);
 
                 if (i % 50 == 0 && i > 0)
@@ -366,7 +371,7 @@ public class DatabaseSeeder
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Use a single transaction for all inserts
-        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         {
             // Batch size: insert every N records to reduce SaveAsync overhead
             const int batchSize = 100;
@@ -400,7 +405,7 @@ public class DatabaseSeeder
                     // Save all tracks in batch with minimal awaits
                     foreach (var t in batch)
                     {
-                        await t.SaveAsync(transaction);
+                        await t.SaveAsync();
                     }
                     batch.Clear();
 
@@ -455,7 +460,7 @@ public class DatabaseSeeder
         var batch = new List<PlaylistTrack>();
 
         // Use a single transaction for all inserts - MASSIVE performance improvement
-        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         {
             for (int i = 0; i < 10000; i++)
             {
@@ -478,7 +483,7 @@ public class DatabaseSeeder
                     {
                         foreach (var pt in batch)
                         {
-                            await pt.SaveAsync(transaction);
+                            await pt.SaveAsync();
                         }
                         batch.Clear();
                         progress?.Report($"Seeded {i + 1}/10,000 playlist tracks...");
@@ -491,7 +496,7 @@ public class DatabaseSeeder
             {
                 foreach (var pt in batch)
                 {
-                    await pt.SaveAsync(transaction);
+                    await pt.SaveAsync();
                 }
             }
 
@@ -542,7 +547,7 @@ public class DatabaseSeeder
         var customers = new List<Customer>();
 
         // Use a single transaction for all inserts
-        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         {
             for (int i = 0; i < 500; i++)
             {
@@ -560,7 +565,7 @@ public class DatabaseSeeder
                     Email = $"customer{i + 1}@email.com",
                     SupportRepId = employees[_random.Next(employees.Count)].id
                 };
-                await customer.SaveAsync(transaction);
+                await customer.SaveAsync();
                 customers.Add(customer);
 
                 if (i % 100 == 0 && i > 0)
@@ -586,7 +591,7 @@ public class DatabaseSeeder
         var invoices = new List<Invoice>();
 
         // Use a single transaction for all inserts
-        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         {
             for (int i = 0; i < 2000; i++)
             {
@@ -602,7 +607,7 @@ public class DatabaseSeeder
                     BillingPostalCode = customer.PostalCode,
                     Total = 0 // Will be calculated when adding invoice lines
                 };
-                await invoice.SaveAsync(transaction);
+                await invoice.SaveAsync();
                 invoices.Add(invoice);
 
                 if (i % 500 == 0 && i > 0)
@@ -631,7 +636,7 @@ public class DatabaseSeeder
         var batch = new List<InvoiceLine>();
 
         // Use a single transaction for all inserts - MASSIVE performance improvement
-        await using (var transaction = SxmSqlTransaction.Create("Chinook"))
+        await using (var transaction = new SxmLinqDbContext("Chinook"))
         {
             for (int i = 0; i < 8000; i++)
             {
@@ -659,7 +664,7 @@ public class DatabaseSeeder
                 {
                     foreach (var il in batch)
                     {
-                        await il.SaveAsync(transaction);
+                        await il.SaveAsync();
                     }
                     batch.Clear();
                     progress?.Report($"Seeded {i + 1}/8,000 invoice lines...");
@@ -671,7 +676,7 @@ public class DatabaseSeeder
             {
                 foreach (var il in batch)
                 {
-                    await il.SaveAsync(transaction);
+                    await il.SaveAsync();
                 }
             }
 
@@ -681,7 +686,7 @@ public class DatabaseSeeder
             {
                 var invoice = invoices.First(inv => inv.id == kvp.Key);
                 invoice.Total = kvp.Value;
-                await invoice.SaveAsync(transaction);
+                await invoice.SaveAsync();
             }
 
             // Commit transaction. The explicit CommitTransactionAsync() call is optional

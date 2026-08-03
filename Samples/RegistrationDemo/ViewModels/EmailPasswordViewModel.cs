@@ -40,16 +40,18 @@ public partial class EmailPasswordViewModel : BaseViewModel
             IsBusy = true;
 
             // Create LINQ context for UserData database to check for existing email
-            using var context = new SxmLinqDbContext("UserData");
-
-            // Query to verify email uniqueness - demonstrates LINQ query pattern
-            bool emailExists = context.GetTable<User>()
-                .Any(u => u.Email == Email.Trim().ToLower());
-
-            if (emailExists)
+            await using (var context = new SxmLinqDbContext("UserData"))
             {
-                ErrorMessage = "This email is already registered.";
-                return;
+
+                // Query to verify email uniqueness - demonstrates LINQ query pattern
+                bool emailExists = context.GetTable<User>()
+                    .Any(u => u.Email == Email.Trim().ToLower());
+
+                if (emailExists)
+                {
+                    ErrorMessage = "This email is already registered.";
+                    return;
+                }
             }
 
             // Get or create a registration draft in the Session database
@@ -124,15 +126,16 @@ public partial class EmailPasswordViewModel : BaseViewModel
     private static async Task<RegistrationDraft> GetOrCreateDraftAsync()
     {
         // Create LINQ context for Session database (using statement ensures proper disposal)
-        using var context = new SxmLinqDbContext("Session");
+        await using (var context = new SxmLinqDbContext("Session"))
+        {
+            // Query for most recent draft using LINQ - demonstrates SQLiteXM's LINQ provider
+            var existing = context.GetTable<RegistrationDraft>()
+                .OrderByDescending(d => d.StartedAt)
+                .FirstOrDefault();
 
-        // Query for most recent draft using LINQ - demonstrates SQLiteXM's LINQ provider
-        var existing = context.GetTable<RegistrationDraft>()
-            .OrderByDescending(d => d.StartedAt)
-            .FirstOrDefault();
-
-        if (existing != null)
-            return existing;
+            if (existing != null)
+                return existing;
+        }
 
         // Create new draft entity
         var draft = new RegistrationDraft

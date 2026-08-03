@@ -61,28 +61,30 @@ public partial class EmailPasswordViewModel : BaseViewModel
             IsBusy = true;
 
             // Check if email already exists in the database
-            using var context = new SxmLinqDbContext("AppData");
-            bool emailExists = context.GetTable<User>()
-                .Any(u => u.Email == CurrentUser.Email!.Trim().ToLower());
-
-            if (emailExists)
+            await using (var context = new SxmLinqDbContext("AppData"))
             {
-                ErrorMessage = "This email is already registered.";
-                return;
+                bool emailExists = context.GetTable<User>()
+                    .Any(u => u.Email == CurrentUser.Email!.Trim().ToLower());
+
+                if (emailExists)
+                {
+                    ErrorMessage = "This email is already registered.";
+                    return;
+                }
+
+                // Hash the password and store in entity
+                CurrentUser.PasswordHash = PasswordHasher.HashPassword(Password);
+                CurrentUser.Email = CurrentUser.Email!.Trim().ToLower();
+                CurrentUser.CreatedAt = DateTime.UtcNow;
+                CurrentUser.LastLoginAt = DateTime.UtcNow;
+
+                // Save the user entity to the database
+                // This is a "draft save" - the user isn't complete yet, but we persist progress
+                await CurrentUser.SaveAsync();
+
+                // Navigate to next page, passing the user ID
+                await Shell.Current.GoToAsync($"PersonalInfoPage?UserId={CurrentUser.id}");
             }
-
-            // Hash the password and store in entity
-            CurrentUser.PasswordHash = PasswordHasher.HashPassword(Password);
-            CurrentUser.Email = CurrentUser.Email!.Trim().ToLower();
-            CurrentUser.CreatedAt = DateTime.UtcNow;
-            CurrentUser.LastLoginAt = DateTime.UtcNow;
-
-            // Save the user entity to the database
-            // This is a "draft save" - the user isn't complete yet, but we persist progress
-            await CurrentUser.SaveAsync();
-
-            // Navigate to next page, passing the user ID
-            await Shell.Current.GoToAsync($"PersonalInfoPage?UserId={CurrentUser.id}");
         }
         catch (Exception ex)
         {

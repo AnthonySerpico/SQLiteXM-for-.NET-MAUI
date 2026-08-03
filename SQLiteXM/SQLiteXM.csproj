@@ -38,12 +38,6 @@
 		<None Remove="SqlStatements\ExampleSqlStatements.xml" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<!-- Your existing ORM dependencies -->
-		<PackageReference Include="linq2db" Version="6.3.0" />
-		<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
-	</ItemGroup>
-
 	<!-- Optional: if you want to ship your example SQL statements as content in the package -->
 	<ItemGroup>
 		<None Include="SqlStatements\ExampleSqlStatements.json" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.json" />
@@ -51,5 +45,9 @@
 		<None Include="SqlStatements\ExampleSqlStatements.xml" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.xml" />
 
 		<None Include="SxmSqliteMetadataExtractor.cs" />
+	</ItemGroup>
+	<ItemGroup>
+	  <PackageReference Include="linq2db" Version="6.3.0" />
+	  <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
 	</ItemGroup>
 </Project>
