@@ -10,7 +10,7 @@ namespace SQLiteXM
     /// SQLiteXM constructs <see cref="ErrorMessage"/> instances from these templates and typically throws
     /// <see cref="SxmException"/> to surface a consistent, library-defined failure contract.
     /// </remarks>
-    public static class SxmErrorMessages
+    internal static class SxmErrorMessages
     {
         /// <summary>
         /// Dictionary of named error templates keyed by error name.
@@ -99,7 +99,7 @@ namespace SQLiteXM
     /// <summary>
     /// Represents a single error template: an error text (possibly with placeholders) and its error code.
     /// </summary>
-    public sealed class ErrorMessage
+    internal sealed class ErrorMessage
     {
         readonly private string _errorText;
         readonly private SxmDefines.SxmErrorCode _errorId;

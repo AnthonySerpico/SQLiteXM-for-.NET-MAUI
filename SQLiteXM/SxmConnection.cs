@@ -8,7 +8,7 @@ namespace SQLiteXM
     /// Common SQLite error codes returned by the underlying provider.
     /// Matches SQLite's native result codes for conversion into the library's API.
     /// </summary>
-    public enum SQLiteErrorCode
+    internal enum SQLiteErrorCode
     {
         Ok = 0,
         Error = 1,
@@ -48,11 +48,6 @@ namespace SQLiteXM
     internal interface ISxmConnectionLease : IAsyncDisposable
     {
         /// <summary>
-        /// The connection instance the lease protects.
-        /// </summary>
-        SxmConnection Connection { get; }
-
-        /// <summary>
         /// The owner token associated with this lease.
         /// </summary>
         Guid OwnerId { get; }
@@ -64,7 +59,7 @@ namespace SQLiteXM
     /// Provides convenience APIs for shared/non-shared connections, parameter handling,
     /// transaction management and simple reader helpers used throughout SQLiteXM.
     /// </summary>
-    public class SxmConnection
+    internal class SxmConnection
     {
         // true => connection is shared / reused across callers
         // false => connection is non-shared / private to the creator
@@ -73,14 +68,14 @@ namespace SQLiteXM
         /// Indicates whether the underlying connection is shared (true) or private (false).
         /// Shared connections may be reused across callers and support reentrant locking via owner tokens.
         /// </summary>
-        public bool Shared => _shared;
+        internal bool Shared => _shared;
 
         private string? _databaseName;
         /// <summary>
         /// The resolved database name for this connection instance.
         /// Can be null for an implicit single-descriptor scenario.
         /// </summary>
-        public string? DatabaseName
+        internal string? DatabaseName
         {
             get { return _databaseName; }
         }
@@ -148,11 +143,12 @@ namespace SQLiteXM
         /// <summary>
         /// Create a new SxmConnection for the specified databaseName.
         /// If <paramref name="shared"/> is true the connection may be reused across callers.
+        /// Internal: connections are managed by the library; consumers use <see cref="SxmDbContext"/>.
         /// Throws <see cref="SxmException"/> on initialization failures.
         /// </summary>
         /// <param name="databaseName">Name of the database file (or null to use implicit name).</param>
-        /// <param name="shared">Whether the connection is shared/reused (default true).</param>
-        public SxmConnection(string? databaseName, bool shared = false)
+        /// <param name="shared">Whether the connection is shared/reused (default false).</param>
+        internal SxmConnection(string? databaseName, bool shared = false)
         {
             // Check lifecycle gate first
             if (_lifecycleGateClosed)
@@ -214,9 +210,6 @@ namespace SQLiteXM
         {
             private readonly SxmConnection _connection;
             private int _disposed;
-
-            /// <inheritdoc/>
-            public SxmConnection Connection => _connection;
 
             /// <inheritdoc/>
             public Guid OwnerId { get; }
@@ -629,6 +622,32 @@ namespace SQLiteXM
             }
         }
 
+        /// <summary>
+        /// Synchronous, best-effort cleanup for a private (non-shared) connection whose owning
+        /// transaction/context failed during construction. Rolls back any open SQLite transaction
+        /// and destroys the connection. Intended only for factory failure paths where no async
+        /// context is available; SQLite operations are synchronous under the hood so this does
+        /// not block on genuinely asynchronous work.
+        /// </summary>
+        internal void CleanupFailedCreate()
+        {
+            _connectionGate.Wait();
+            try
+            {
+                if (_dbConnTransaction != null)
+                {
+                    try { _dbConnTransaction.Rollback(); }
+                    catch (System.Exception ex) { SxmLogging.Log(ex, $"CleanupFailedCreate rollback failure. Database: '{this._databaseName}'."); }
+                }
+
+                DestroyConnectionCore();
+            }
+            finally
+            {
+                _connectionGate.Release();
+            }
+        }
+
         private void ReleaseConnectionResources()
         {
             if (_connCommand != null)
@@ -872,7 +891,7 @@ namespace SQLiteXM
         /// Indicates whether the last executed query has row results available.
         /// </summary>
         /// <returns>True if a data reader is present and has rows; otherwise false.</returns>
-        public bool HasRows()
+        internal bool HasRows()
         {
             if (_connDataReader != null)
                 return _connDataReader!.HasRows;

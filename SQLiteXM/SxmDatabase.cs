@@ -55,7 +55,7 @@ namespace SQLiteXM
         /// 
         /// After calling this, you must call InitializeAsync again before using any entities.
         /// </remarks>
-        public static async Task ResetForTestingAsync()
+        internal static async Task ResetForTestingAsync()
         {
             await _initGate.WaitAsync().ConfigureFalse();
             try
@@ -457,7 +457,7 @@ namespace SQLiteXM
         /// Retrieves the numeric database schema version stored in PRAGMA user_version.
         /// </summary>
         /// <returns>The stored user_version value, or -1 on error.</returns>
-        public static async Task<long> GetDbVersionNumberAsync(string databaseName)
+        internal static async Task<long> GetDbVersionNumberAsync(string databaseName)
         {
             long versionNumber = -1;
 
@@ -499,7 +499,7 @@ namespace SQLiteXM
         /// Reset the stored database version number (PRAGMA user_version = 0).
         /// </summary>
         /// <returns>A task that completes when the operation finishes.</returns>
-        public static async Task DeleteDbVersionNumberAsync(string databaseName)
+        internal static async Task DeleteDbVersionNumberAsync(string databaseName)
         {
             try
             {

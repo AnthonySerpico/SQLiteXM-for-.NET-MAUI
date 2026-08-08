@@ -21,7 +21,7 @@ namespace SQLiteXM
     /// delegates up-front to avoid races with shutdown and executes the workers concurrently
     /// using a shared connection instance.
     /// </remarks>
-    public sealed class SxmConnectionManager
+    internal sealed class SxmConnectionManager
     {
         /// <summary>
         /// Global singleton instance.

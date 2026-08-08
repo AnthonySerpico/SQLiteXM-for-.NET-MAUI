@@ -3,7 +3,7 @@ using SQLiteXM;
 using System;
 using static SQLiteXM.SxmDefines;
 
-public class SxmQueryProcessor
+internal class SxmQueryProcessor
 {
     internal static SqlStatementDetails AnalyzeUserQuery(string userSuppliedSql, string? databaseName = null)
     {
@@ -56,7 +56,7 @@ public class SxmQueryProcessor
         return embeddedSqlStatementDetails;
     }
 
-    public class SqlStatementDetails
+    internal class SqlStatementDetails
     {
         internal string TargetTableName { get; set; } = string.Empty;
         internal SqlStatementType SqlStatementType { get; set; } = SqlStatementType.Unknown;

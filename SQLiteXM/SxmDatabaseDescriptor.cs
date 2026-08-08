@@ -8,7 +8,7 @@ namespace SQLiteXM
     /// <summary>
     /// Describes a SQLite database instance and manages descriptors and related logging.
     /// </summary>
-    public class SxmDatabaseDescriptor
+    internal class SxmDatabaseDescriptor
     {
         private static ConcurrentBag<string> _dbDescriptors = new();
 

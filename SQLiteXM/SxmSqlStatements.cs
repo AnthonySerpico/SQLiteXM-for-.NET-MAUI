@@ -9,7 +9,7 @@ namespace SQLiteXM
     /// <summary>
     /// Provides a central store for SQL statement definitions used by the library.
     /// </summary>
-    public class SxmSqlStatements
+    internal class SxmSqlStatements
     {
         internal static ConcurrentDictionary<string, TableDefinition>? TableCreateStatements = new ConcurrentDictionary<string, TableDefinition>();
         /// <summary>

@@ -102,7 +102,7 @@ namespace SQLiteXM
         }
     }
 
-    public sealed class SxmWarning : Exception
+    internal sealed class SxmWarning : Exception
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="SxmWarning"/> class with a specified message.
@@ -113,7 +113,7 @@ namespace SQLiteXM
         }
     }
 
-    public sealed class SxmInformational : Exception
+    internal sealed class SxmInformational : Exception
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="SxmInformational"/> class with a specified message.

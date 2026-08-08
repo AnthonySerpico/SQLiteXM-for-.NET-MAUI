@@ -72,9 +72,10 @@ namespace SQLiteXM
 
                 _databaseName = _sxmConnection.DatabaseName;
 
-                // Only begin a transaction when we own the connection.
-                // When joining an ambient transaction the connection already has one open.
-                if (_ownsTransaction)
+                // Begin a transaction lazily when none is open yet. This covers both owned
+                // connections and freshly created ambient transactions (e.g. created via
+                // SxmSqlTransaction.CreateAsync) that have not executed a statement yet.
+                if (_sxmConnection.CurrentTransaction == null)
                     _sxmConnection.BeginTransaction();
 
                 _linqToDbDataConnection = CreateLinqConnection();
@@ -90,6 +91,111 @@ namespace SQLiteXM
             {
                 if (ownedTransaction != null) { try { ownedTransaction.Dispose(); } catch { /* best effort */ } }
                 string errStr = $"SxmDbContext ctor failure. Database: '{databaseName}'.";
+                SxmLogging.Log(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, errStr);
+            }
+        }
+
+        /// <summary>
+        /// Private ctor used by <see cref="CreateAsync"/>. Receives an already-resolved
+        /// <see cref="SxmSqlTransaction"/> (connection lock acquired and ambient registered by the caller).
+        /// </summary>
+        private SxmDbContext(SxmSqlTransaction transaction, bool ownsTransaction)
+        {
+            _sqlTransaction = transaction;
+            _sxmConnection = transaction.Connection
+                ?? throw new InvalidOperationException("Failed to create SQLite connection.");
+            _ownsTransaction = ownsTransaction;
+            _databaseName = _sxmConnection.DatabaseName;
+
+            // Begin a transaction lazily when none is open yet.
+            if (_sxmConnection.CurrentTransaction == null)
+                _sxmConnection.BeginTransaction();
+
+            _linqToDbDataConnection = CreateLinqConnection();
+        }
+
+        /// <summary>
+        /// Creates an <see cref="SxmDbContext"/> over a caller-supplied <see cref="SxmConnection"/>.
+        /// For shared connections the connection lock is acquired asynchronously and held for the
+        /// lifetime of the context.
+        /// The context owns the transaction: it auto-commits on <see cref="DisposeAsync"/> when no
+        /// operation failed, otherwise it rolls back.
+        /// </summary>
+        /// <param name="conn">An existing <see cref="SxmConnection"/> instance (e.g. supplied by
+        /// <c>SxmConnectionManager.RunWorkersAsync</c>).</param>
+        /// <param name="waitMilliseconds">Maximum time to wait for a shared connection lock (only used for shared connections).</param>
+        /// <param name="cancellationToken">Cancellation token to abort waiting for the lock.</param>
+        /// <returns>An <see cref="SxmDbContext"/> that owns its transaction and, for shared connections, the connection lock.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="conn"/> is null.</exception>
+        /// <exception cref="SxmException">Thrown when a shared connection lock cannot be acquired within the timeout.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when an ambient transaction is already active;
+        /// use <c>new SxmDbContext()</c> to join it instead.</exception>
+        internal static Task<SxmDbContext> CreateAsync(SxmConnection conn, int waitMilliseconds = 100, CancellationToken cancellationToken = default)
+        {
+            if (conn == null) throw new ArgumentNullException(nameof(conn));
+
+            SxmDatabase.EnsureInitialized();
+
+            // IMPORTANT: this method must NOT be 'async'. SxmSqlTransaction.CreateAsync registers
+            // the ambient transaction (AsyncLocal) synchronously before its first await; that
+            // registration only flows to the caller when no async state machine sits in between.
+            Task<SxmSqlTransaction> transactionTask = SxmSqlTransaction.CreateAsync(conn, waitMilliseconds, cancellationToken);
+
+            if (transactionTask.IsCompletedSuccessfully)
+            {
+                // Non-shared connections complete synchronously: build the context on the caller's
+                // execution context so the ambient registration remains visible to the caller.
+                SxmSqlTransaction sqlTransaction = transactionTask.Result;
+                try
+                {
+                    return Task.FromResult(new SxmDbContext(sqlTransaction, ownsTransaction: true));
+                }
+                catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+                {
+                    sqlTransaction.CleanupFailedCreate();
+                    SxmLogging.Log(ex, $"SxmDbContext.CreateAsync failure. Database: '{conn.DatabaseName}'.");
+                    // Cancellation/fatal - rethrow unchanged so callers/runtime can handle appropriately.
+                    throw;
+                }
+                catch (System.Exception ex)
+                {
+                    // Ctor failed: release the ambient transaction so it does not leak.
+                    sqlTransaction.CleanupFailedCreate();
+                    string errStr = $"SxmDbContext.CreateAsync failure. Database: '{conn.DatabaseName}'.";
+                    SxmLogging.Log(ex, errStr);
+                    throw ExceptionHelper.Wrap(ex, errStr);
+                }
+            }
+
+            return CreateCoreAsync(transactionTask, conn);
+        }
+
+        /// <summary>
+        /// Async continuation for <see cref="CreateAsync"/> when the transaction (shared connection
+        /// lease) completes asynchronously. The ambient transaction was already registered on the
+        /// caller's execution context before this method was invoked.
+        /// </summary>
+        private static async Task<SxmDbContext> CreateCoreAsync(Task<SxmSqlTransaction> transactionTask, SxmConnection conn)
+        {
+            SxmSqlTransaction? sqlTransaction = null;
+            try
+            {
+                sqlTransaction = await transactionTask.ConfigureFalse();
+                return new SxmDbContext(sqlTransaction, ownsTransaction: true);
+            }
+            catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
+            {
+                if (sqlTransaction != null) { try { await sqlTransaction.DisposeAsync().ConfigureFalse(); } catch { /* best effort */ } }
+                SxmLogging.Log(ex, $"SxmDbContext.CreateAsync failure. Database: '{conn.DatabaseName}'.");
+                // Cancellation/fatal - rethrow unchanged so callers/runtime can handle appropriately.
+                throw;
+            }
+            catch (System.Exception ex)
+            {
+                // Ctor failed after lock acquisition: release lease/ambient so it does not leak.
+                if (sqlTransaction != null) { try { await sqlTransaction.DisposeAsync().ConfigureFalse(); } catch { /* best effort */ } }
+                string errStr = $"SxmDbContext.CreateAsync failure. Database: '{conn.DatabaseName}'.";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -136,12 +242,12 @@ namespace SQLiteXM
         /// While faulted, subsequent write operations are skipped and disposal rolls back the transaction.
         /// Call <see cref="RollbackTransactionAsync"/> to discard the failed transaction and reset the context.
         /// </summary>
-        public bool Faulted => _sqlTransaction.EncounteredError;
+        internal bool Faulted => _sqlTransaction.EncounteredError;
 
         /// <summary>
         /// True when a transaction is currently open on the shared connection.
         /// </summary>
-        public bool HasActiveTransaction => !_isDisposed && _sxmConnection.CurrentTransaction != null;
+        internal bool HasActiveTransaction => !_isDisposed && _sxmConnection.CurrentTransaction != null;
 
         /// <summary>
         /// Attempts to recover the SxmDbContext from a LinqToDB query provider.
@@ -221,19 +327,14 @@ namespace SQLiteXM
         /// The transaction auto-commits when the context is disposed without errors.
         /// </summary>
         /// <returns>The number of rows inserted (0 when the context is faulted and the operation was skipped).</returns>
-        public Task<int> InsertAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
+        internal Task<int> InsertAsync<T>(T entity, CancellationToken cancellationToken = default) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             return ExecuteWriteAsync(async () =>
             {
-                if (entity is SxmEntity sxmEntity)
-                {
-                    long identity = await _linqToDbDataConnection.InsertWithInt64IdentityAsync(entity, token: cancellationToken).ConfigureFalse();
-                    sxmEntity.id = identity;
-                    return 1;
-                }
-
-                return await _linqToDbDataConnection.InsertAsync(entity, token: cancellationToken).ConfigureFalse();
+                long identity = await _linqToDbDataConnection.InsertWithInt64IdentityAsync(entity, token: cancellationToken).ConfigureFalse();
+                entity.id = identity;
+                return 1;
             });
         }
 
@@ -241,7 +342,7 @@ namespace SQLiteXM
         /// Updates the entity (by primary key) immediately inside the context transaction (started lazily).
         /// </summary>
         /// <returns>The number of rows updated (0 when the context is faulted and the operation was skipped).</returns>
-        public Task<int> UpdateAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
+        internal Task<int> UpdateAsync<T>(T entity, CancellationToken cancellationToken = default) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             return ExecuteWriteAsync(() => _linqToDbDataConnection.UpdateAsync(entity, token: cancellationToken));
@@ -251,7 +352,7 @@ namespace SQLiteXM
         /// Deletes the entity (by primary key) immediately inside the context transaction (started lazily).
         /// </summary>
         /// <returns>The number of rows deleted (0 when the context is faulted and the operation was skipped).</returns>
-        public Task<int> DeleteAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
+        internal Task<int> DeleteAsync<T>(T entity, CancellationToken cancellationToken = default) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             return ExecuteWriteAsync(() => _linqToDbDataConnection.DeleteAsync(entity, token: cancellationToken));
@@ -261,7 +362,7 @@ namespace SQLiteXM
         /// Inserts or replaces the entity (by primary key) immediately inside the context transaction (started lazily).
         /// </summary>
         /// <returns>The number of rows affected (0 when the context is faulted and the operation was skipped).</returns>
-        public Task<int> InsertOrReplaceAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class
+        internal Task<int> InsertOrReplaceAsync<T>(T entity, CancellationToken cancellationToken = default) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             return ExecuteWriteAsync(() => _linqToDbDataConnection.InsertOrReplaceAsync(entity, token: cancellationToken));
@@ -486,5 +587,53 @@ namespace SQLiteXM
                 try { _linqToDbDataConnection.Dispose(); } catch { /* best effort */ }
             }
         }
+
+        /************************************************ RunStatementAsync (public forwarders) ************************************************/
+
+        /// <summary>
+        /// Executes a named SQL statement mapping <paramref name="userObjectParameters"/> onto the statement's
+        /// parameters and projecting results into a list of <typeparamref name="TResult"/> entities.
+        /// </summary>
+        /// <seealso cref="SxmSqlTransaction"/>
+        public Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters);
+
+        /// <summary>
+        /// Executes a named SQL statement with a dictionary of named parameters and projects results
+        /// into a list of <typeparamref name="TResult"/> entities.
+        /// </summary>
+        /// <seealso cref="SxmSqlTransaction"/>
+        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters);
+
+        /// <summary>
+        /// Executes a named SQL statement mapping <paramref name="userObjectParameters"/> onto the statement's
+        /// parameters and returns raw rows as dictionaries.
+        /// </summary>
+        /// <seealso cref="SxmSqlTransaction"/>
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
+            => _sqlTransaction.RunStatementAsync<T>(sqlStatementName, userObjectParameters);
+
+        /// <summary>
+        /// Executes a named SQL statement with a dictionary of named parameters and returns raw rows as dictionaries.
+        /// </summary>
+        /// <seealso cref="SxmSqlTransaction"/>
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
+            => _sqlTransaction.RunStatementAsync(sqlStatementName, sqlStatementParameters);
+
+        /// <summary>
+        /// Executes a named SQL statement with a list of positional parameter objects and projects results
+        /// into a list of <typeparamref name="TResult"/> entities.
+        /// </summary>
+        /// <seealso cref="SxmSqlTransaction"/>
+        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters);
+
+        /// <summary>
+        /// Executes a named SQL statement with a list of positional parameter objects and returns raw rows as dictionaries.
+        /// </summary>
+        /// <seealso cref="SxmSqlTransaction"/>
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters)
+            => _sqlTransaction.RunStatementAsync(sqlStatementName, sqlStatementParameters);
     }
 }

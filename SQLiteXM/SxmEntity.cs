@@ -148,7 +148,7 @@ namespace SQLiteXM
     /// </remarks>
 
     [Table(IsColumnAttributeRequired = false)]
-    public class SxmEntity : INotifyPropertyChanged
+    public abstract class SxmEntity : INotifyPropertyChanged
     {
         #region INotifyPropertyChanged Implementation
 
@@ -429,7 +429,7 @@ namespace SQLiteXM
         public virtual Guid? synchId { get; internal set; }
 
         /// <summary>
-        /// Create an entity instance.
+        /// Called by derived classes during construction. <see cref="SxmEntity"/> is abstract and cannot be instantiated directly.
         /// </summary>
         /// <remarks>
         /// Schema initialization (table creation, indexes, triggers, etc.) is no longer performed during construction.
@@ -437,9 +437,9 @@ namespace SQLiteXM
         /// and initialize their schemas explicitly.
         /// </remarks>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the entity type has not been registered via <see cref="SxmDatabase.RegisterEntitiesAsync"/>.
+        /// Thrown when the derived entity type has not been registered via <see cref="SxmDatabase.RegisterEntitiesAsync"/>.
         /// </exception>
-        public SxmEntity()
+        protected SxmEntity()
         {
             SxmDatabase.EnsureInitialized();
 
@@ -502,91 +502,6 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Saves the current entity to the database by either inserting it if it is new,
-        /// or updating it if it already exists. 
-        /// 
-        /// This method is a semantic alias for <see cref="SaveAsync"/>. 
-        /// It ensures that the entity's identity field (Id) is correctly populated 
-        /// after a successful insert.
-        /// </summary>
-        /// <remarks>
-        /// Currently, this method behaves the same as <see cref="SaveAsync"/>:
-        /// - If the entity does not exist in the database, it is inserted.
-        /// - If the entity exists, it is updated in place.
-        /// 
-        /// Unlike SQLite's native "INSERT OR REPLACE", this method does not delete
-        /// existing rows. This preserves triggers, foreign keys, and the entity's identity.
-        /// </remarks>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task InsertOrUpdateAsync()
-        {
-            await InsertOrReplaceAsync().ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Saves the current entity to the database using the provided transaction, 
-        /// either inserting it if it is new, or updating it if it already exists.
-        /// 
-        /// This method is a semantic alias for <see cref="SaveAsync(SxmSqlTransaction?)"/>. 
-        /// It ensures that the entity's identity field (Id) is correctly populated 
-        /// after a successful insert.
-        /// </summary>
-        /// <param name="sxmTrans">An optional <see cref="SxmSqlTransaction"/> to execute within.</param>
-        /// <remarks>
-        /// Currently, this method behaves the same as <see cref="SaveAsync(SxmSqlTransaction?)"/>:
-        /// - If the entity does not exist in the database, it is inserted.
-        /// - If the entity exists, it is updated in place.
-        /// 
-        /// Unlike SQLite's native "INSERT OR REPLACE", this method does not delete
-        /// existing rows. This preserves triggers, foreign keys, and the entity's identity.
-        /// </remarks>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task InsertOrUpdateAsync(SxmSqlTransaction? sxmTrans)
-        {
-            await InsertOrReplaceAsync(sxmTrans).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Saves the current entity to the database by either inserting it if it is new,
-        /// or updating it if it already exists. This is a semantic alias for <see cref="SaveAsync"/>.
-        /// </summary>
-        /// <remarks>
-        /// The name "InsertOrReplace" is provided for semantic clarity.
-        /// Internally, it behaves identically to <see cref="SaveAsync"/>:
-        /// - Inserts if the entity is new.
-        /// - Updates in place if it already exists.
-        /// 
-        /// Unlike SQLite's native "INSERT OR REPLACE", this implementation preserves 
-        /// the entity's identity, foreign keys, and triggers.
-        /// </remarks>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task InsertOrReplaceAsync()
-        {
-            await SaveAsync().ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Saves the current entity to the database using the provided transaction,
-        /// either inserting it if it is new, or updating it if it already exists.
-        /// This is a semantic alias for <see cref="SaveAsync(SxmSqlTransaction?)"/>.
-        /// </summary>
-        /// <param name="sxmTrans">An optional <see cref="SxmSqlTransaction"/> to execute within.</param>
-        /// <remarks>
-        /// The name "InsertOrReplace" is provided for semantic clarity.
-        /// Internally, it behaves identically to <see cref="SaveAsync(SxmSqlTransaction?)"/>:
-        /// - Inserts if the entity is new.
-        /// - Updates in place if it already exists.
-        /// 
-        /// Unlike SQLite's native "INSERT OR REPLACE", this implementation preserves 
-        /// the entity's identity, foreign keys, and triggers.
-        /// </remarks>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task InsertOrReplaceAsync(SxmSqlTransaction? sxmTrans)
-        {
-            await SaveAsync(sxmTrans).ConfigureFalse();
-        }
-
-        /// <summary>
         /// Saves the current entity to the database using the ambient transaction context, if any.
         /// This method automatically determines whether to insert a new record or update an existing one.
         /// </summary>
@@ -622,7 +537,7 @@ namespace SQLiteXM
         /// - Throws <see cref="InvalidOperationException"/> if the insert or update SQL statement is not found for the table.
         /// </remarks>
         /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SaveAsync(SxmSqlTransaction? sxmTrans)
+        private async Task SaveAsync(SxmSqlTransaction? sxmTrans)
         {
             string tableName = this.GetType().Name;
 
@@ -655,7 +570,7 @@ namespace SQLiteXM
         // Save Statements.
         private async Task InsertAsync(string sqlStatementName)
         {
-            List<Dictionary<string, object?>> result = await SxmStatement.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
+            List<Dictionary<string, object?>> result = await SxmSql.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
             SxmHelpers.LoadDbValues(result[0], this);
         }
         private async Task InsertAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
@@ -667,7 +582,7 @@ namespace SQLiteXM
         // Update statements.
         private async Task UpdateAsync(string sqlStatementName)
         {
-            await SxmStatement.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
+            await SxmSql.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
         }
         private async Task UpdateAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
         {
@@ -687,7 +602,7 @@ namespace SQLiteXM
         /// Delete this entity using the provided transaction (if any). No-op if the record does not exist.
         /// </summary>
         /// <param name="sxmTrans">Optional transaction to use; if null a standalone connection is used.</param>
-        public async Task DeleteAsync(SxmSqlTransaction? sxmTrans)
+        private async Task DeleteAsync(SxmSqlTransaction? sxmTrans)
         {
             // If a transaction/connection is provided, check existence using that connection
             // so we see uncommitted rows that live in the same transaction.
@@ -710,7 +625,7 @@ namespace SQLiteXM
         // Delete statements.
         private async Task DeleteAsync(string sqlStatementName)
         {
-            await SxmStatement.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
+            await SxmSql.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
         }
         private async Task DeleteAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
         {
@@ -909,7 +824,7 @@ namespace SQLiteXM
         /// Useful for mapping values from DTOs or other objects and saving in a single operation.
         /// </summary>
         /// <param name="mapSource">Source object to map values from.</param>
-        public async Task MapAndSaveAsync(object mapSource)
+        internal async Task MapAndSaveAsync(object mapSource)
         {
             MapProperties(mapSource);
             // Persist the entity after mapping. Use CAF() to follow project's await pattern.
@@ -923,7 +838,7 @@ namespace SQLiteXM
         /// Indexer properties are ignored. Both properties must be public instance properties and the destination property must be writable.
         /// </summary>
         /// <param name="source">Source object to copy values from.</param>
-        public void MapProperties(object source)
+        internal void MapProperties(object source)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));

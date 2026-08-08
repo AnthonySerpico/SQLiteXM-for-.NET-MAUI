@@ -1226,8 +1226,8 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
         if (statementName != null)
         {
-            // Use SxmStatement.RunStatementAsync - returns List<Dictionary<string, object?>>
-            var results = await SxmStatement.RunStatementAsync(statementName, new Dictionary<string, object?>(), "Chinook");
+            // Use SxmSql.RunStatementAsync - returns List<Dictionary<string, object?>>
+            var results = await SxmSql.RunStatementAsync(statementName, new Dictionary<string, object?>(), "Chinook");
             System.Diagnostics.Debug.WriteLine($"Raw SQL returned type: {results?.GetType().FullName}");
             return results;
         }

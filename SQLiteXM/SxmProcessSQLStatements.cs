@@ -9,7 +9,7 @@ namespace SQLiteXM
     /// Parser for SQL statements files. Supports XML and JSON formats and populates the SqlStatements registry.
     /// This class exposes static Parse methods and maintains a version and database name read from the file.
     /// </summary>
-    public class SxmProcessSQLStatements
+    internal class SxmProcessSQLStatements
     {
         private SxmProcessSQLStatements() { }
 

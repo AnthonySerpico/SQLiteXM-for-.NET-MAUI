@@ -26,7 +26,7 @@ namespace SQLiteXM
     /// - Prefer the async pattern with <c>await using</c> so the transaction can auto-commit on <see cref="DisposeAsync"/>.
     /// - The synchronous <see cref="Dispose"/> path delegates to <see cref="DisposeAsync"/> and may block.
     /// </remarks>
-    public class SxmSqlTransaction : SxmUTransaction
+    internal class SxmSqlTransaction : SxmUTransaction
     {
         /// <summary>
         /// Database name associated with the underlying connection. May be null for unnamed in-memory connections.
@@ -122,8 +122,13 @@ namespace SQLiteXM
                 return Task.FromResult(tx);
             }
 
-            // Shared connections: use actual async execution
-            return CreateAsyncSharedCore(conn, waitMilliseconds, cancellationToken);
+            // Shared connections: create the transaction and register it as ambient synchronously,
+            // BEFORE any await, so the AsyncLocal registration flows to the caller's execution
+            // context. AsyncLocal writes made inside an async method are discarded when it returns.
+            var sharedTx = new SxmSqlTransaction(conn, ownsLock: false, ownerId: null);
+            SxmAmbientTransaction.Push(sharedTx);
+
+            return CreateAsyncSharedCore(sharedTx, conn, waitMilliseconds, cancellationToken);
         }
 
         /// <summary>
@@ -143,16 +148,37 @@ namespace SQLiteXM
         /// This method is called by <see cref="CreateAsync"/> when the connection is shared and requires asynchronous lock acquisition.
         /// The lease is acquired before creating the transaction, and the transaction owns the lock until disposed.
         /// </remarks>
-        private static async Task<SxmSqlTransaction> CreateAsyncSharedCore(SxmConnection conn, int waitMilliseconds, CancellationToken cancellationToken)
+        private static async Task<SxmSqlTransaction> CreateAsyncSharedCore(SxmSqlTransaction tx, SxmConnection conn, int waitMilliseconds, CancellationToken cancellationToken)
         {
-            // Acquire lease (this internally calls LockAsync and will throw on timeout)
-            var lease = await conn.AcquireLeaseAsync(waitMilliseconds, cancellationToken).ConfigureFalse();
+            try
+            {
+                // Acquire lease (this internally calls LockAsync and will throw on timeout)
+                var lease = await conn.AcquireLeaseAsync(waitMilliseconds, cancellationToken).ConfigureFalse();
 
-            var tx = new SxmSqlTransaction(conn, ownsLock: true, ownerId: lease.OwnerId);
-            tx._connectionLease = lease;
+                tx._connectionLease = lease;
+                tx.AssignLockOwnership(lease.OwnerId);
+                return tx;
+            }
+            catch
+            {
+                // Lease acquisition failed: unwind the ambient registration performed by the caller.
+                // Mutating the shared ambient stack object is visible to the caller's context.
+                try { SxmAmbientTransaction.TryRemove(tx); } catch { /* best effort */ }
+                throw;
+            }
+        }
 
-            SxmAmbientTransaction.Push(tx);
-            return tx;
+        /// <summary>
+        /// Synchronous, best-effort cleanup used when a factory (e.g. <see cref="SxmDbContext.CreateAsync"/>)
+        /// fails after this transaction was created and registered ambient, but before it was handed to the
+        /// caller. Removes the ambient registration, rolls back and destroys the private connection, and
+        /// marks the instance disposed. Intended only for non-shared connections on factory failure paths.
+        /// Never throws.
+        /// </summary>
+        internal void CleanupFailedCreate()
+        {
+            try { SxmAmbientTransaction.TryRemove(this); } catch { /* best effort */ }
+            CleanupFailedCreateCore();
         }
 
         /// <summary>
@@ -253,7 +279,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and map results to <typeparamref name="TResult"/>. Supports entity mapping. Return a List of entity objects.
         /// </summary>
-        public async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
         {
             SqlStatementDetails statementDetails = new();
 
@@ -273,7 +299,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: execute with dictionary parameters and map results to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return a List of entity objects.
         /// </summary>
-        public async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
@@ -282,7 +308,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and return list of dictionary rows. Supports entity mapping. Return list of dictionary rows.
         /// </summary>
-        public async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
+        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
         {
             SqlStatementDetails statementDetails = new();
 
@@ -301,7 +327,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: wrapper for dictionary-to-list overload. Execute with dictionary parameters and return list of dictionary rows. Supports dictionary of named parameters. Return list of dictionary rows.
         /// </summary>
-        public async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
+        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
             return await RunStatementAsync(sqlStatementName, new List<object>(1) { sqlStatementParameters }).ConfigureFalse();
         }
@@ -309,7 +335,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: execute with a list of parameter objects and map results to <typeparamref name="TResult"/>. Supports List of positional parameters. Return a List of entity objects.
         /// </summary>
-        public async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
@@ -321,7 +347,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementName">Named SQL statement.</param>
         /// <param name="sqlStatementParameters">Parameters supplied as a list of dictionaries or other objects as expected by the helper.</param>
         /// <returns>List of result rows as dictionaries. Empty list when no rows are returned.</returns>
-        public async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters)
+        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters)
         {
             List<Dictionary<string, object?>> recordData = default(List<Dictionary<string, object?>>)!;
 

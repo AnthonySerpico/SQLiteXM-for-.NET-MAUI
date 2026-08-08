@@ -11,10 +11,10 @@ namespace SQLiteXM
     /// Provides typed and untyped helper methods for performing INSERT, SELECT, UPDATE and DELETE
     /// statements as well as low-level internal routing to the appropriate helper classes.
     /// </summary>
-    public class SxmStatement
+    public class SxmSql
     {
         // Private constructor prevents instantiation - all members are static.
-        private SxmStatement() { }
+        private SxmSql() { }
 
 
         /************************************************************************* DDL ********************************************************************/

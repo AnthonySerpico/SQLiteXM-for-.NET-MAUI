@@ -320,8 +320,8 @@ catch (Exception ex)
 Load SQL statements from `SqlStatements.json` and execute with type-safe results:
 
 ```csharp
-var results = await SxmStatement.RunStatementAsync("GetAllArtistsRaw", new Dictionary<string, object?>());
-var dynamic = await SxmStatement.RunStatementAsync("GetTopSellingTracks", new Dictionary<string, object?>());
+var results = await SxmSql.RunStatementAsync("GetAllArtistsRaw", new Dictionary<string, object?>());
+var dynamic = await SxmSql.RunStatementAsync("GetTopSellingTracks", new Dictionary<string, object?>());
 ```
 
 ### Parameterized Queries

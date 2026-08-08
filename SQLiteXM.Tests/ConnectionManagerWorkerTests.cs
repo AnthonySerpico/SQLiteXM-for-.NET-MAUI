@@ -32,18 +32,18 @@ public class ConnectionManagerWorkerTests : TestBase
             // Worker 1: Acquires lock and does multiple operations
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                await using (var transaction = await SxmDbContext.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
                     // Multiple save/delete operations like your example
                     var entity = new SimpleEntity { Name = "Worker1_Entity", Age = 100 };
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
 
                     var entity2 = new SimpleEntity { Name = "Worker1_Entity2", Age = 200 };
-                    await entity2.SaveAsync(transaction);
-                    await entity2.DeleteAsync(transaction);
-                    await entity2.SaveAsync(transaction);
+                    await entity2.SaveAsync();
+                    await entity2.DeleteAsync();
+                    await entity2.SaveAsync();
 
                     await transaction.CommitTransactionAsync();
                     worker1Completed = true;
@@ -57,15 +57,15 @@ public class ConnectionManagerWorkerTests : TestBase
 
                 try
                 {
-                    await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                    await using (var transaction = await SxmDbContext.CreateAsync(
                         sharedConn, 
                         waitMilliseconds: 2500))
                     {
                         var entity = new SimpleEntity { Name = "Worker2_Entity", Age = 300 };
-                        await entity.SaveAsync(transaction);
+                        await entity.SaveAsync();
 
-                        await entity.DeleteAsync(transaction);
-                        await entity.SaveAsync(transaction);
+                        await entity.DeleteAsync();
+                        await entity.SaveAsync();
 
                         await transaction.CommitTransactionAsync();
                         worker2Completed = true;
@@ -109,12 +109,12 @@ public class ConnectionManagerWorkerTests : TestBase
             // Worker 1
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                await using (var transaction = await SxmDbContext.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 10000))
                 {
                     var entity = new SimpleEntity { Name = "Worker1", Age = 111 };
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
                     await Task.Delay(50); // Brief hold
                     await transaction.CommitTransactionAsync();
 
@@ -129,12 +129,12 @@ public class ConnectionManagerWorkerTests : TestBase
 
                 try
                 {
-                    await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                    await using (var transaction = await SxmDbContext.CreateAsync(
                         sharedConn, 
                         waitMilliseconds: 10000))
                     {
                         var entity = new SimpleEntity { Name = "Worker2", Age = 222 };
-                        await entity.SaveAsync(transaction);
+                        await entity.SaveAsync();
                         await transaction.CommitTransactionAsync();
 
                         lock (lockObj) { completedWorkers.Add(2); }
@@ -150,12 +150,12 @@ public class ConnectionManagerWorkerTests : TestBase
 
                 try
                 {
-                    await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                    await using (var transaction = await SxmDbContext.CreateAsync(
                         sharedConn, 
                         waitMilliseconds: 10000))
                     {
                         var entity = new SimpleEntity { Name = "Worker3", Age = 333 };
-                        await entity.SaveAsync(transaction);
+                        await entity.SaveAsync();
                         await transaction.CommitTransactionAsync();
 
                         lock (lockObj) { completedWorkers.Add(3); }
@@ -192,27 +192,27 @@ public class ConnectionManagerWorkerTests : TestBase
         {
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                await using (var transaction = await SxmDbContext.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
                     // Pattern from your example: save, delete, save, save
                     var entity = new SimpleEntity { Name = "CycleTest", Age = 99 };
 
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
                     entity.id.Should().BeGreaterThan(0, "first save should assign ID");
 
-                    await entity.DeleteAsync(transaction);
+                    await entity.DeleteAsync();
 
                     // Reset ID to force new insert
                     entity.id = 0;
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
                     entity.id.Should().BeGreaterThan(0, "second save should assign new ID");
 
                     // Update (should reuse same ID)
                     long idBeforeUpdate = entity.id;
                     entity.Age = 100;
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
                     entity.id.Should().Be(idBeforeUpdate, "update should keep same ID");
 
                     finalEntityId = entity.id;
@@ -250,16 +250,15 @@ public class ConnectionManagerWorkerTests : TestBase
         {
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                await using (var transaction = await SxmDbContext.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
                     var entity = new SimpleEntity { Name = "FailTest", Age = 500 };
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
 
-                    // Commit should succeed in normal case
-                    var errorCode = await transaction.CommitTransactionAsync();
-                    errorCode.Should().Be(SQLiteErrorCode.Ok);
+                    // Commit should succeed in normal case (throws on failure)
+                    await transaction.CommitTransactionAsync();
                 }
             }
         };
@@ -316,15 +315,15 @@ public class ConnectionManagerWorkerTests : TestBase
         {
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                await using (var transaction = await SxmDbContext.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
                     var entity1 = new SimpleEntity { Name = "Single1", Age = 1 };
                     var entity2 = new SimpleEntity { Name = "Single2", Age = 2 };
 
-                    await entity1.SaveAsync(transaction);
-                    await entity2.SaveAsync(transaction);
+                    await entity1.SaveAsync();
+                    await entity2.SaveAsync();
 
                     await transaction.CommitTransactionAsync();
                     workerCompleted = true;
@@ -360,12 +359,12 @@ public class ConnectionManagerWorkerTests : TestBase
             // Worker 1: Does rollback
             async (sharedConn) =>
             {
-                await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                await using (var transaction = await SxmDbContext.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 5000))
                 {
                     var entity = new SimpleEntity { Name = "Rollback", Age = 777 };
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
 
                     // Rollback instead of commit
                     await transaction.RollbackTransactionAsync();
@@ -378,12 +377,12 @@ public class ConnectionManagerWorkerTests : TestBase
             {
                 await Task.Delay(100); // Wait for Worker 1
 
-                await using (var transaction = await SxmSqlTransaction.CreateAsync(
+                await using (var transaction = await SxmDbContext.CreateAsync(
                     sharedConn, 
                     waitMilliseconds: 3000))
                 {
                     var entity = new SimpleEntity { Name = "AfterRollback", Age = 888 };
-                    await entity.SaveAsync(transaction);
+                    await entity.SaveAsync();
                     await transaction.CommitTransactionAsync();
                     worker2Completed = true;
                 }

@@ -20,7 +20,7 @@ namespace SQLiteXM
         /// Represents an insert statement entry in an XML SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "insert")]
-        public class Insert
+        internal class Insert
         {
 
             /// <summary>
@@ -46,7 +46,7 @@ namespace SQLiteXM
         /// Represents a select statement entry in an XML SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "select")]
-        public class Select
+        internal class Select
         {
 
             /// <summary>
@@ -72,7 +72,7 @@ namespace SQLiteXM
         /// Represents an update statement entry in an XML SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "update")]
-        public class Update
+        internal class Update
         {
 
             /// <summary>
@@ -98,7 +98,7 @@ namespace SQLiteXM
         /// Represents a delete statement entry in an XML SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "delete")]
-        public class Delete
+        internal class Delete
         {
 
             /// <summary>
@@ -124,7 +124,7 @@ namespace SQLiteXM
         /// Represents a database definition entry in the SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "Database")]
-        public class Database
+        internal class Database
         {
             /// <summary>
             /// The database name.
@@ -143,7 +143,7 @@ namespace SQLiteXM
         /// Represents a trigger entry in an XML SQL statements file.
         /// </summary>
         [XmlRoot(ElementName = "trigger")]
-        public class Trigger
+        internal class Trigger
         {
 
             /// <summary>
@@ -171,7 +171,7 @@ namespace SQLiteXM
         /// Maps top-level XML elements to strongly typed collections.
         /// </summary>
         [XmlRoot(ElementName = "rootxml")]
-        public class RootXml
+        internal class RootXml
         {
 
             /// <summary>
@@ -222,7 +222,7 @@ namespace SQLiteXM
         /// Root model for JSON formatted SQL statements files.
         /// Uses dictionaries for flexible JSON key names and to match expected payload structure.
         /// </summary>
-        public class RootJson
+        internal class RootJson
         {
             /// <summary>
             /// Version number of the SQL statements file format/content.

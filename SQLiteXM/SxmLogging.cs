@@ -18,7 +18,7 @@ namespace SQLiteXM
     /// Instances are stored in the <see cref="_loggers"/> dictionary keyed by database name.
     /// Logging entries are queued and flushed to disk by a single background writer task.
     /// </remarks>
-    public class SxmLogging : System.IDisposable
+    internal class SxmLogging : System.IDisposable
     {
         private readonly long _maxLogSize;
         private readonly string _logPath;

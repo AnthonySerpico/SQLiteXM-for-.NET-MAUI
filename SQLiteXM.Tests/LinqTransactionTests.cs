@@ -27,10 +27,10 @@ public class LinqTransactionTests : TestBase
 
         // Act - Insert inside transaction and rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
             var entity = new SimpleEntity { Name = uniqueName, Age = 42, IsActive = true };
-            await entity.SaveAsync(transaction);
+            await entity.SaveAsync();
 
             entity.id.Should().BeGreaterThan(0, "entity should receive an ID after insert");
 
@@ -63,10 +63,10 @@ public class LinqTransactionTests : TestBase
 
         // Act - Insert inside transaction and commit
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
             var entity = new SimpleEntity { Name = uniqueName, Age = 55, IsActive = true };
-            await entity.SaveAsync(transaction);
+            await entity.SaveAsync();
 
             // Explicit commit
             await transaction.CommitTransactionAsync();
@@ -106,15 +106,15 @@ public class LinqTransactionTests : TestBase
 
         // Act - Insert parent and child in transaction, then rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
             var parent = new ParentEntity { ParentName = parentName };
-            await parent.SaveAsync(transaction);
+            await parent.SaveAsync();
 
             parent.id.Should().BeGreaterThan(0, "parent should receive an ID");
 
             var child = new ChildEntity { ChildName = childName, ParentId = parent.id };
-            await child.SaveAsync(transaction);
+            await child.SaveAsync();
 
             child.id.Should().BeGreaterThan(0, "child should receive an ID");
 
@@ -150,11 +150,11 @@ public class LinqTransactionTests : TestBase
 
         // Act - Update inside transaction and rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
             entity.Name = "Modified";
             entity.Age = 99;
-            await entity.SaveAsync(transaction);
+            await entity.SaveAsync();
 
             // Explicit rollback
             await transaction.RollbackTransactionAsync();
@@ -194,9 +194,9 @@ public class LinqTransactionTests : TestBase
 
         // Act - Delete inside transaction and rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
-            await entity.DeleteAsync(transaction);
+            await entity.DeleteAsync();
 
             // Explicit rollback
             await transaction.RollbackTransactionAsync();
@@ -228,18 +228,18 @@ public class LinqTransactionTests : TestBase
 
         // Act - Perform insert, update, and delete in one transaction, then rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
             // Insert a new entity
             var newEntity = new SimpleEntity { Name = newEntityName, Age = 100, IsActive = false };
-            await newEntity.SaveAsync(transaction);
+            await newEntity.SaveAsync();
 
             // Update existing entity
             existingEntity.Age = 999;
-            await existingEntity.SaveAsync(transaction);
+            await existingEntity.SaveAsync();
 
             // Delete existing entity
-            await existingEntity.DeleteAsync(transaction);
+            await existingEntity.DeleteAsync();
 
             // Rollback everything
             await transaction.RollbackTransactionAsync();

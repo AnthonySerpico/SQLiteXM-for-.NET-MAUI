@@ -18,8 +18,8 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
-        await entity.SaveAsync(transaction);
+        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await entity.SaveAsync();
         await transaction.CommitTransactionAsync();
 
         // Assert - Verify ID was populated
@@ -41,8 +41,8 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
-        await entity.SaveAsync(transaction);
+        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await entity.SaveAsync();
         var tempId = entity.id;
         await transaction.RollbackTransactionAsync();
 
@@ -63,9 +63,9 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
-        await entity1.SaveAsync(transaction);
-        await entity2.SaveAsync(transaction);
+        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await entity1.SaveAsync();
+        await entity2.SaveAsync();
         await transaction.CommitTransactionAsync();
 
         // Assert - Verify IDs were populated
@@ -97,8 +97,8 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
-        await entity.DeleteAsync(transaction);
+        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await entity.DeleteAsync();
         await transaction.CommitTransactionAsync();
 
         // Assert - ID should remain in memory
@@ -118,7 +118,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmSqlTransaction.CreateAsync(connection);
+        await using var transaction = await SxmDbContext.CreateAsync(connection);
 
         // SaveAsync() without transaction parameter uses ambient transaction
         await entity1.SaveAsync();
@@ -148,19 +148,18 @@ public class TransactionTests : TestBase
         var connection = new SxmConnection(TestDatabaseName, shared: false);
 
         // Act & Assert - Attempting to create a nested ambient transaction should fail fast
-        await using var outerTransaction = await SxmSqlTransaction.CreateAsync(connection);
+        await using var outerTransaction = await SxmDbContext.CreateAsync(connection);
 
-        // Verify outer transaction is ambient
+        // Verify outer context registered an ambient transaction
         var currentTx = SxmAmbientTransaction.Current;
-        currentTx.Should().NotBeNull("outer transaction should be ambient");
-        currentTx.Should().BeSameAs(outerTransaction, "outer transaction should be the current ambient transaction");
+        currentTx.Should().NotBeNull("outer context should register an ambient transaction");
 
         // Attempt to create nested transaction - should throw
         InvalidOperationException? caughtException = null;
         try
         {
             var innerConnection = new SxmConnection(TestDatabaseName, shared: false);
-            await using var innerTransaction = await SxmSqlTransaction.CreateAsync(innerConnection);
+            await using var innerTransaction = await SxmDbContext.CreateAsync(innerConnection);
         }
         catch (InvalidOperationException ex)
         {
@@ -174,23 +173,32 @@ public class TransactionTests : TestBase
     }
 
     [Fact]
-    public void AmbientTransaction_NestedCreateSync_ShouldThrowInvalidOperationException()
+    public async Task NestedContext_Ctor_ShouldJoinExistingAmbientTransaction()
     {
-        // Act & Assert - Attempting to create a nested ambient transaction should fail fast
-        using var outerTransaction = SxmSqlTransaction.Create(TestDatabaseName);
+        // Arrange
+        await InitializeSqliteXMAsync();
 
-        // Verify outer transaction is ambient
-        var currentTx = SxmAmbientTransaction.Current;
-        currentTx.Should().NotBeNull("outer transaction should be ambient");
-        currentTx.Should().BeSameAs(outerTransaction, "outer transaction should be the current ambient transaction");
+        // Act & Assert - A nested context created via the ctor joins the ambient transaction
+        await using var outerContext = new SxmDbContext(TestDatabaseName);
 
-        var act = () =>
+        // Verify outer context registered an ambient transaction
+        var ambientBefore = SxmAmbientTransaction.Current;
+        ambientBefore.Should().NotBeNull("outer context should register an ambient transaction");
+
+        await using (var innerContext = new SxmDbContext())
         {
-            using var innerTransaction = SxmSqlTransaction.Create(TestDatabaseName);
-        };
+            // The inner context joins - the ambient transaction is unchanged.
+            SxmAmbientTransaction.Current.Should().BeSameAs(ambientBefore,
+                "inner context should join the existing ambient transaction, not replace it");
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*nested ambient transaction*")
-            .WithMessage("*already active*");
+            // A mismatched database name, however, must throw.
+            var act = () => new SxmDbContext("someOtherDatabase");
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*ambient transaction is active*");
+        }
+
+        // Inner disposal must not tear down the ambient transaction owned by the outer context.
+        SxmAmbientTransaction.Current.Should().BeSameAs(ambientBefore,
+            "ambient transaction should survive inner context disposal");
     }
 }

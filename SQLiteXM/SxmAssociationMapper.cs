@@ -28,7 +28,7 @@ namespace SQLiteXM
     /// - Assign unique names to classes that inherit from <see cref="SxmEntity"/>, even if they are in different namespaces.
     /// - Composite foreign keys are not supported and may create incorrect single-column association mappings when the composite FK components map to the foreign table's primary <c>id</c> column.
     /// </remarks>
-    public static class SxmAssociationMapper
+    internal static class SxmAssociationMapper
     {
         // Reuse the MappingSchema built by SxmMapping to avoid duplicating Build()
 

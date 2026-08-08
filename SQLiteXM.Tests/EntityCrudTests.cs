@@ -75,48 +75,6 @@ public class EntityCrudTests : TestBase
     }
 
     [Fact]
-    public async Task InsertOrUpdateAsync_NewEntity_ShouldInsert()
-    {
-        // Arrange
-        await InitializeSqliteXMAsync();
-        var entity = new SimpleEntity { Name = "New Entity", Age = 20 };
-
-        // Act
-        await entity.InsertOrUpdateAsync();
-
-        // Assert - Verify ID was populated
-        entity.id.Should().BeGreaterThan(0);
-
-        // Assert - Verify data in database
-        var retrieved = await VerifyEntityExistsInDbAsync<SimpleEntity>(entity.id);
-        retrieved.Should().NotBeNull("entity should exist in database");
-        retrieved!.Name.Should().Be("New Entity");
-        retrieved.Age.Should().Be(20);
-    }
-
-    [Fact]
-    public async Task InsertOrUpdateAsync_ExistingEntity_ShouldUpdate()
-    {
-        // Arrange
-        await InitializeSqliteXMAsync();
-        var entity = new SimpleEntity { Name = "Original", Age = 25 };
-        await entity.SaveAsync();
-        var originalId = entity.id;
-
-        // Act
-        entity.Name = "Modified";
-        await entity.InsertOrUpdateAsync();
-
-        // Assert - Verify ID stayed the same
-        entity.id.Should().Be(originalId);
-
-        // Assert - Verify updated data in database
-        var retrieved = await VerifyEntityExistsInDbAsync<SimpleEntity>(entity.id);
-        retrieved.Should().NotBeNull("entity should exist in database");
-        retrieved!.Name.Should().Be("Modified", "name should be updated in database");
-    }
-
-    [Fact]
     public async Task DeleteAsync_ExistingEntity_ShouldRemoveFromDatabase()
     {
         // Arrange

@@ -11,7 +11,7 @@ namespace SQLiteXM
     /// SQL statements within a SQLite transaction and optionally hold a connection-level lock
     /// for the duration of the SxmUTransaction object's lifetime.
     /// </summary>
-    public class SxmUTransaction : IDisposable, IAsyncDisposable
+    internal class SxmUTransaction : IDisposable, IAsyncDisposable
     {
         private bool _interruptSynchronize = false;
         private SxmConnection? _connection;
@@ -37,6 +37,17 @@ namespace SQLiteXM
             }
 
             this._ownsAsyncLock = ownsLock;
+            this._lockOwnerId = ownerId;
+        }
+
+        /// <summary>
+        /// Assigns connection-lock ownership after construction. Used by async factories that must
+        /// create (and register ambient) the transaction synchronously before acquiring the lock.
+        /// </summary>
+        /// <param name="ownerId">Owner id of the acquired connection lock.</param>
+        internal void AssignLockOwnership(Guid? ownerId)
+        {
+            this._ownsAsyncLock = true;
             this._lockOwnerId = ownerId;
         }
 
@@ -184,6 +195,22 @@ namespace SQLiteXM
                 }
             }
             catch { /* best-effort release; don't let this block final cleanup */ }
+        }
+
+        /// <summary>
+        /// Synchronous, best-effort cleanup used when a factory fails after constructing this
+        /// transaction but before handing it to the caller. Releases any lock, rolls back and
+        /// destroys the private connection, and marks this instance disposed so a later
+        /// <see cref="DisposeAsync"/> is a no-op. Never throws.
+        /// </summary>
+        private protected void CleanupFailedCreateCore()
+        {
+            EnsureLockReleased();
+
+            try { _connection?.CleanupFailedCreate(); } catch { /* best effort */ }
+
+            _connection = null;
+            _disposed = true;
         }
 
         /// <summary>
@@ -709,19 +736,6 @@ namespace SQLiteXM
 
             await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.RollbackTransaction).ConfigureFalse();
             _interruptSynchronize = false;
-        }
-
-        /// <summary>
-        /// Returns true when the last executed query has rows to read.
-        /// </summary>
-        public bool HasRows()
-        {
-            if (_connection is null)
-            {
-                throw new ArgumentNullException($"HasRows failure. SxmConnection '_connection' is null.");
-            }
-
-            return _connection.HasRows();
         }
 
         /// <summary>

@@ -16,7 +16,7 @@ namespace SQLiteXM
     /// Linq2DB operations (mappings, query generation and parameter conversion) use the
     /// same serialization/deserialization logic implemented in <see cref="SxmColumnDataConverters"/>.
     /// </remarks>
-    public static class SxmMapping
+    internal static class SxmMapping
     {
         /// <summary>
         /// Lazily-built <see cref="MappingSchema"/> instance. Construction is deferred until first use.

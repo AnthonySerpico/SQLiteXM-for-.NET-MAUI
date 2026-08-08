@@ -135,7 +135,7 @@ public class MultiDatabasePerformanceTests : IDisposable
 
         // Act - Insert 10,000 products using a transaction for efficiency
         var connection = new SxmConnection("products", shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
             for (int i = 0; i < 10_000; i++)
             {
@@ -144,7 +144,7 @@ public class MultiDatabasePerformanceTests : IDisposable
                     Name = $"Product {i}",
                     Price = i * 1.5m,
                     InStock = i % 2 == 0
-                }.SaveAsync(transaction);
+                }.SaveAsync();
             }
             await transaction.CommitTransactionAsync();
         }
@@ -183,33 +183,33 @@ public class MultiDatabasePerformanceTests : IDisposable
         // Act - Insert 5,000 entities into each of 3 databases (15,000 total) using sequential transactions
         // Products database
         var productConnection = new SxmConnection("products", shared: false);
-        await using (var productTransaction = await SxmSqlTransaction.CreateAsync(productConnection))
+        await using (var productTransaction = await SxmDbContext.CreateAsync(productConnection))
         {
             for (int i = 0; i < 5_000; i++)
             {
-                await new Product { Name = $"Product {i}", Price = i, InStock = true }.SaveAsync(productTransaction);
+                await new Product { Name = $"Product {i}", Price = i, InStock = true }.SaveAsync();
             }
             await productTransaction.CommitTransactionAsync();
         }
 
         // Orders database
         var orderConnection = new SxmConnection("orders", shared: false);
-        await using (var orderTransaction = await SxmSqlTransaction.CreateAsync(orderConnection))
+        await using (var orderTransaction = await SxmDbContext.CreateAsync(orderConnection))
         {
             for (int i = 0; i < 5_000; i++)
             {
-                await new Order { CustomerName = $"Customer {i}", Total = i * 10, IsPaid = true }.SaveAsync(orderTransaction);
+                await new Order { CustomerName = $"Customer {i}", Total = i * 10, IsPaid = true }.SaveAsync();
             }
             await orderTransaction.CommitTransactionAsync();
         }
 
         // Audit database
         var auditConnection = new SxmConnection("audit", shared: false);
-        await using (var auditTransaction = await SxmSqlTransaction.CreateAsync(auditConnection))
+        await using (var auditTransaction = await SxmDbContext.CreateAsync(auditConnection))
         {
             for (int i = 0; i < 5_000; i++)
             {
-                await new AuditLog { Action = $"Action {i}", Timestamp = DateTime.Now }.SaveAsync(auditTransaction);
+                await new AuditLog { Action = $"Action {i}", Timestamp = DateTime.Now }.SaveAsync();
             }
             await auditTransaction.CommitTransactionAsync();
         }
@@ -258,7 +258,7 @@ public class MultiDatabasePerformanceTests : IDisposable
         var insertStopwatch = Stopwatch.StartNew();
 
         var connection = new SxmConnection("products", shared: false);
-        await using (var transaction = await SxmSqlTransaction.CreateAsync(connection))
+        await using (var transaction = await SxmDbContext.CreateAsync(connection))
         {
             for (int i = 0; i < 50_000; i++)
             {
@@ -267,7 +267,7 @@ public class MultiDatabasePerformanceTests : IDisposable
                     Name = $"Product {i}",
                     Price = i % 1000,
                     InStock = i % 3 == 0
-                }.SaveAsync(transaction);
+                }.SaveAsync();
             }
             await transaction.CommitTransactionAsync();
         }

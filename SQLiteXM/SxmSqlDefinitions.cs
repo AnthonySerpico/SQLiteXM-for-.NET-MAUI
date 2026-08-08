@@ -4,7 +4,7 @@
     /// Represents a SQL table definition (CREATE TABLE statement) and an associated
     /// cloud synchronization indicator.
     /// </summary>
-    public class TableDefinition
+    internal class TableDefinition
     {
         private string _tableSQL;
         /// <summary>
@@ -40,7 +40,7 @@
     /// <summary>
     /// Represents a SELECT statement and the table it targets.
     /// </summary>
-    public class SelectDefinition
+    internal class SelectDefinition
     {
         private string _tableName;
         /// <summary>
@@ -74,7 +74,7 @@
     /// <summary>
     /// Represents an INSERT statement for a specific table.
     /// </summary>
-    public class InsertDefinition
+    internal class InsertDefinition
     {
         private string _tableName;
         /// <summary>
@@ -108,7 +108,7 @@
     /// <summary>
     /// Represents an UPDATE statement for a specific table.
     /// </summary>
-    public class UpdateDefinition
+    internal class UpdateDefinition
     {
         private string _tableName;
         /// <summary>
@@ -142,7 +142,7 @@
     /// <summary>
     /// Represents a DELETE statement for a specific table.
     /// </summary>
-    public class DeleteDefinition
+    internal class DeleteDefinition
     {
         private string _tableName;
         /// <summary>
@@ -176,7 +176,7 @@
     /// <summary>
     /// Represents an index definition, including the CREATE INDEX SQL.
     /// </summary>
-    public class IndexDefinition
+    internal class IndexDefinition
     {
         private string _indexName;
         /// <summary>
@@ -210,7 +210,7 @@
     /// <summary>
     /// Represents a trigger definition, including the CREATE TRIGGER SQL.
     /// </summary>
-    public class TriggerDefinition
+    internal class TriggerDefinition
     {
         /// <summary>
         /// Gets the name of the table associated with the trigger.
@@ -245,7 +245,7 @@
     /// <summary>
     /// Represents an ALTER operation for a column and its associated SQL.
     /// </summary>
-    public class AlterDefinition
+    internal class AlterDefinition
     {
         private string _columnName;
         /// <summary>

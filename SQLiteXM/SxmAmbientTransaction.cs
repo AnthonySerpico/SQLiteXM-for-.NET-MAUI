@@ -8,7 +8,7 @@ namespace SQLiteXM
     /// Ambient transaction holder that flows with <see cref="ExecutionContext"/> (async/await).
     /// Enforces strict LIFO semantics.
     /// </summary>
-    public static class SxmAmbientTransaction
+    internal static class SxmAmbientTransaction
     {
         /// <summary>
         /// Per-execution-context storage for the ambient transaction stack.

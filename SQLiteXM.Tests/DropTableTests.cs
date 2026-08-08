@@ -9,7 +9,7 @@ using Xunit;
 namespace SQLiteXM.Tests;
 
 /// <summary>
-/// Tests for SxmStatement.DropTableAsync public API.
+/// Tests for SxmSql.DropTableAsync public API.
 /// Validates table dropping behavior including force flag and foreign key handling.
 /// </summary>
 [Collection("Sequential")]
@@ -24,7 +24,7 @@ public class DropTableTests : TestBase
     public async Task DropTableAsync_NonExistentTable_ShouldSucceed()
     {
         await InitializeSqliteXMAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync("NonExistentTable_12345");
+        Func<Task> act = async () => await SxmSql.DropTableAsync("NonExistentTable_12345");
         await act.Should().NotThrowAsync();
     }
 
@@ -34,7 +34,7 @@ public class DropTableTests : TestBase
         await InitializeSqliteXMAsync();
         var entity = new DropTestEntity1 { Name = "Test" };
         await entity.SaveAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity1));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity1));
         await act.Should().NotThrowAsync();
     }
 
@@ -46,7 +46,7 @@ public class DropTableTests : TestBase
         var e2 = new DropTestEntity2 { Name = "Test2" };
         await e1.SaveAsync();
         await e2.SaveAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity2));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity2));
         await act.Should().NotThrowAsync();
     }
 
@@ -60,7 +60,7 @@ public class DropTableTests : TestBase
         await child.SaveAsync();
 
         // Attempting to drop parent table without force=true should throw due to FK constraint
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestParentEntity3));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestParentEntity3));
         await act.Should().ThrowAsync<SqliteException>()
             .WithMessage("*FOREIGN KEY constraint failed*");
     }
@@ -73,7 +73,7 @@ public class DropTableTests : TestBase
         await parent.SaveAsync();
         var child = new DropTestChildEntity4 { ChildName = "Child2", ParentId = parent.id };
         await child.SaveAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestParentEntity4), dbName: null, force: true);
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestParentEntity4), dbName: null, force: true);
         await act.Should().NotThrowAsync();
     }
 
@@ -85,7 +85,7 @@ public class DropTableTests : TestBase
         await parent.SaveAsync();
         var child = new DropTestChildEntity5 { ChildName = "Child3", ParentId = parent.id };
         await child.SaveAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestChildEntity5));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestChildEntity5));
         await act.Should().NotThrowAsync();
     }
 
@@ -95,8 +95,8 @@ public class DropTableTests : TestBase
         await InitializeSqliteXMAsync();
         var entity = new DropTestEntity8 { Name = "Test" };
         await entity.SaveAsync();
-        await SxmStatement.DropTableAsync(nameof(DropTestEntity8));
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity8));
+        await SxmSql.DropTableAsync(nameof(DropTestEntity8));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity8));
         await act.Should().NotThrowAsync();
     }
 
@@ -108,7 +108,7 @@ public class DropTableTests : TestBase
         await entity.SaveAsync();
 
         // Table name with special characters should be handled via QuoteIdentifier
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity9));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity9));
         await act.Should().NotThrowAsync();
     }
 
@@ -116,7 +116,7 @@ public class DropTableTests : TestBase
     public async Task DropTableAsync_NullTableName_ShouldThrow()
     {
         await InitializeSqliteXMAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(null!);
+        Func<Task> act = async () => await SxmSql.DropTableAsync(null!);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Identifier cannot be null or whitespace*");
     }
@@ -125,7 +125,7 @@ public class DropTableTests : TestBase
     public async Task DropTableAsync_WhitespaceTableName_ShouldThrow()
     {
         await InitializeSqliteXMAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync("   ");
+        Func<Task> act = async () => await SxmSql.DropTableAsync("   ");
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Identifier cannot be null or whitespace*");
     }
@@ -134,7 +134,7 @@ public class DropTableTests : TestBase
     public async Task DropTableAsync_EmptyStringTableName_ShouldThrow()
     {
         await InitializeSqliteXMAsync();
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(string.Empty);
+        Func<Task> act = async () => await SxmSql.DropTableAsync(string.Empty);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Identifier cannot be null or whitespace*");
     }
@@ -152,12 +152,12 @@ public class DropTableTests : TestBase
         await entity2.SaveAsync();
         await entity3.SaveAsync();
 
-        await SxmStatement.DropTableAsync(nameof(DropTestEntity10));
-        await SxmStatement.DropTableAsync(nameof(DropTestEntity11));
-        await SxmStatement.DropTableAsync(nameof(DropTestEntity12));
+        await SxmSql.DropTableAsync(nameof(DropTestEntity10));
+        await SxmSql.DropTableAsync(nameof(DropTestEntity11));
+        await SxmSql.DropTableAsync(nameof(DropTestEntity12));
 
         // All drops should succeed
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity10));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity10));
         await act.Should().NotThrowAsync();
     }
 
@@ -168,7 +168,7 @@ public class DropTableTests : TestBase
         var entity = new DropTestEntity13 { Name = "Test", IndexedField = "Value" };
         await entity.SaveAsync();
 
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity13));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity13));
         await act.Should().NotThrowAsync();
     }
 
@@ -183,7 +183,7 @@ public class DropTableTests : TestBase
         await child.SaveAsync();
 
         // Explicitly setting force=false should throw when child records exist
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(
+        Func<Task> act = async () => await SxmSql.DropTableAsync(
             nameof(DropTestParentEntity14), 
             dbName: null, 
             force: false);
@@ -200,7 +200,7 @@ public class DropTableTests : TestBase
         await entity.SaveAsync();
 
         // Using the test database name explicitly
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(
+        Func<Task> act = async () => await SxmSql.DropTableAsync(
             nameof(DropTestEntity15), 
             dbName: TestDatabaseName);
 
@@ -223,7 +223,7 @@ public class DropTableTests : TestBase
         await child.SaveAsync();
 
         // Drop the middle table with force
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(
+        Func<Task> act = async () => await SxmSql.DropTableAsync(
             nameof(DropTestParentEntity16), 
             force: true);
 
@@ -242,8 +242,8 @@ public class DropTableTests : TestBase
         await entity2.SaveAsync();
 
         // Drop tables concurrently
-        var task1 = SxmStatement.DropTableAsync(nameof(DropTestEntity17));
-        var task2 = SxmStatement.DropTableAsync(nameof(DropTestEntity18));
+        var task1 = SxmSql.DropTableAsync(nameof(DropTestEntity17));
+        var task2 = SxmSql.DropTableAsync(nameof(DropTestEntity18));
 
         await Task.WhenAll(task1, task2);
 
@@ -259,7 +259,7 @@ public class DropTableTests : TestBase
         var entity = new DropTestEntity19 { Name = "Test", UniqueField = "Unique1" };
         await entity.SaveAsync();
 
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity19));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity19));
         await act.Should().NotThrowAsync();
     }
 
@@ -270,7 +270,7 @@ public class DropTableTests : TestBase
         var entity = new DropTestEntityWithAVeryLongNameThatTestsTheLimitsOfTableNameHandling { Name = "Test" };
         await entity.SaveAsync();
 
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(
+        Func<Task> act = async () => await SxmSql.DropTableAsync(
             nameof(DropTestEntityWithAVeryLongNameThatTestsTheLimitsOfTableNameHandling));
 
         await act.Should().NotThrowAsync();
@@ -291,7 +291,7 @@ public class DropTableTests : TestBase
         await child2.SaveAsync();
 
         // Drop parent table with multiple children
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(
+        Func<Task> act = async () => await SxmSql.DropTableAsync(
             nameof(DropTestParentEntity20), 
             force: true);
 
@@ -308,7 +308,7 @@ public class DropTableTests : TestBase
         await entity.DeleteAsync();
 
         // Drop table even after entity deleted
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity21));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity21));
         await act.Should().NotThrowAsync();
     }
 
@@ -331,7 +331,7 @@ public class DropTableTests : TestBase
         entity3.id.Should().BeGreaterThan(0);
 
         // Drop the table with all its data
-        Func<Task> act = async () => await SxmStatement.DropTableAsync(nameof(DropTestEntity22));
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestEntity22));
         await act.Should().NotThrowAsync("dropping table with multiple records should succeed");
     }
 

@@ -86,7 +86,7 @@ public class MixedUnitOfWorkTests : TestBase
         await InitializeSqliteXMAsync();
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-        await using (var tx = SxmSqlTransaction.Create(TestDatabaseName))
+        await using (var tx = new SxmDbContext(TestDatabaseName))
         {
             // Entity write via the outer ambient transaction
             var person = new SimpleEntity { Name = $"Join_{uniquePrefix}_Save", Age = 60, IsActive = true };
@@ -122,7 +122,7 @@ public class MixedUnitOfWorkTests : TestBase
         await InitializeSqliteXMAsync();
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-        await using (var tx = SxmSqlTransaction.Create(TestDatabaseName))
+        await using (var tx = new SxmDbContext(TestDatabaseName))
         {
             var person = new SimpleEntity { Name = $"JoinC_{uniquePrefix}_Save", Age = 62, IsActive = true };
             await person.SaveAsync();

@@ -252,7 +252,7 @@ namespace SQLiteXM
     /// Helper class used to construct index attributes programmatically.
     /// Not an attribute itself; used to build index names and field lists.
     /// </summary>
-    public class IndexProperties : IIndexProperties
+    internal class IndexProperties : IIndexProperties
     {
         /// <inheritdoc/>
         public string[] IndexFields { get; set; }
