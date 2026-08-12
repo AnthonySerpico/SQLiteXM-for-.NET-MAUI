@@ -1,4 +1,4 @@
-using QueryGalleryDemo.Models;
+﻿using QueryGalleryDemo.Models;
 
 namespace QueryGalleryDemo.Services;
 
@@ -22,6 +22,7 @@ public static class QueryExampleProvider
         examples.AddRange(GetTransactionExamples());
         examples.AddRange(GetParameterizedQueryExamples());
         examples.AddRange(GetDataModificationExamples());
+        examples.AddRange(GetMixedContextExamples());
 
         return examples;
     }
@@ -40,1467 +41,46 @@ public static class QueryExampleProvider
             QueryCategory.Transactions => GetTransactionExamples(),
             QueryCategory.ParameterizedQueries => GetParameterizedQueryExamples(),
             QueryCategory.DataModification => GetDataModificationExamples(),
+            QueryCategory.MixedContext => GetMixedContextExamples(),
             _ => new List<QueryExample>()
         };
     }
 
     private static List<QueryExample> GetBasicQueryExamples()
     {
-        return new List<QueryExample>
-        {
-            new QueryExample
-            {
-                Id = "basic_1",
-                Name = "Get All Artists",
-                Description = "Simple SELECT query to retrieve all artists",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var artists = context.GetTable<Artist>()
-    .OrderBy(a => a.Name)
-    .ToList();
-
-return artists;",
-                Explanation = @"**How It Works:**
-1. Create a database context for the 'Chinook' database
-2. Get the Artist table using GetTable<Artist>()
-3. Sort all artists alphabetically by Name using OrderBy()
-4. Execute the query and convert results to a List
-5. Return the list of Artist objects
-
-**Key Concepts:**
-• This is the simplest type of LINQ query - retrieving all records from a single table
-• OrderBy() translates to SQL ORDER BY clause
-• ToList() executes the query and materializes results in memory
-• The using statement ensures the database context is properly disposed"
-            },
-            new QueryExample
-            {
-                Id = "basic_2",
-                Name = "Get All Genres",
-                Description = "Retrieve all music genres ordered by name",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var genres = context.GetTable<Genre>()
-    .OrderBy(g => g.Name)
-    .ToList();
-
-return genres;",
-                Explanation = @"**How It Works:**
-1. Create a context connected to the Chinook database
-2. Access the Genre table via GetTable<Genre>()
-3. Order genres alphabetically by name
-4. Materialize results into a list
-5. Return the complete list of genres
-
-**Key Concepts:**
-• Same pattern as basic_1 but with a different table
-• GetTable<T>() provides strongly-typed access to database tables
-• Method chaining (.OrderBy().ToList()) is a core LINQ pattern
-• Query execution is deferred until ToList() is called"
-            },
-            new QueryExample
-            {
-                Id = "basic_3",
-                Name = "Filter Tracks by Genre",
-                Description = "Get all Rock tracks using WHERE clause with JOIN",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Single-query approach using JOIN
-var rockTracks = (from track in context.GetTable<Track>()
-                  join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-                  where genre.Name == ""Rock""
-                  orderby track.Name
-                  select track)
-                  .Take(50)
-                  .ToList();
-
-return rockTracks;",
-                Explanation = @"**How It Works:**
-1. Start with the Track table
-2. JOIN to Genre table using GenreId foreign key
-3. Filter for tracks where genre name equals 'Rock'
-4. Sort results by track name
-5. Limit to first 50 results using Take()
-6. Execute and return the list
-
-**Key Concepts:**
-• Uses LINQ query syntax (from...join...where) instead of method syntax
-• JOIN connects related tables using foreign key relationships
-• WHERE clause (where) filters data before returning
-• Take() limits results - important for large datasets
-• This is more efficient than loading all tracks and filtering in memory"
-            },
-            new QueryExample
-            {
-                Id = "basic_4",
-                Name = "Find Artist by Name",
-                Description = "Search for a specific artist using LIKE",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var artists = context.GetTable<Artist>()
-    .Where(a => a.Name.Contains(""Zeppelin""))
-    .ToList();
-
-return artists;",
-                Explanation = @"**How It Works:**
-1. Get the Artist table
-2. Filter using Where() to find artists whose name contains 'Zeppelin'
-3. Contains() performs a partial string match
-4. Execute query with ToList()
-5. Return matching artists
-
-**Key Concepts:**
-• Contains() translates to SQL LIKE '%Zeppelin%' (wildcard search)
-• WHERE clause filters rows at the database level, not in memory
-• Partial string matching is useful for search functionality
-• This is case-sensitive in SQLite by default
-• More efficient than loading all records and filtering with C# code"
-            },
-            new QueryExample
-            {
-                Id = "basic_5",
-                Name = "Get Tracks by Price Range",
-                Description = "Filter tracks between $0.99 and $1.49",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var tracks = context.GetTable<Track>()
-    .Where(t => t.UnitPrice >= 0.99m && t.UnitPrice <= 1.49m)
-    .OrderBy(t => t.UnitPrice)
-    .ThenBy(t => t.Name)
-    .Take(100)
-    .ToList();
-
-return tracks;",
-                Explanation = @"**How It Works:**
-1. Access the Track table
-2. Filter for tracks with price between $0.99 and $1.49 using compound condition
-3. Sort primarily by UnitPrice (low to high)
-4. Then sort by Name (secondary sort for tracks with same price)
-5. Limit to 100 results
-6. Execute and return
-
-**Key Concepts:**
-• Compound WHERE conditions use && (AND) operator
-• ThenBy() creates a secondary sort (ORDER BY price, name)
-• The 'm' suffix (0.99m) specifies decimal literals for currency
-• Range queries are common for filtering by price, date, or other numeric values
-• Multi-level sorting ensures predictable result ordering"
-            },
-            new QueryExample
-            {
-                Id = "basic_6",
-                Name = "Top 10 Most Expensive Tracks",
-                Description = "Get the highest priced tracks using OrderByDescending",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var expensiveTracks = context.GetTable<Track>()
-    .OrderByDescending(t => t.UnitPrice)
-    .ThenBy(t => t.Name)
-    .Take(10)
-    .ToList();
-
-return expensiveTracks;",
-                Explanation = @"**How It Works:**
-1. Get all tracks from the Track table
-2. Sort by UnitPrice in descending order (highest first)
-3. Apply secondary sort by Name (alphabetically)
-4. Take only the first 10 results
-5. Execute and return the top 10 list
-
-**Key Concepts:**
-• OrderByDescending() sorts in reverse (high to low)
-• 'Top N' pattern: sort descending + Take(N)
-• ThenBy() always sorts ascending (even after OrderByDescending)
-• This avoids loading all tracks into memory - database does the sorting
-• Take() should always come after sorting for meaningful results"
-            },
-            new QueryExample
-            {
-                Id = "basic_7",
-                Name = "Tracks by Duration Range",
-                Description = "Find tracks between 3-5 minutes long",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var minMs = 3 * 60 * 1000; // 3 minutes
-var maxMs = 5 * 60 * 1000; // 5 minutes
-var tracks = context.GetTable<Track>()
-    .Where(t => t.Milliseconds >= minMs && t.Milliseconds <= maxMs)
-    .OrderBy(t => t.Milliseconds)
-    .Take(100)
-    .ToList();
-
-return tracks;",
-                Explanation = @"**How It Works:**
-1. Calculate min/max duration in milliseconds (3 and 5 minutes)
-2. Access Track table
-3. Filter tracks within the duration range
-4. Sort by duration (shortest to longest)
-5. Limit to 100 tracks
-6. Execute and return
-
-**Key Concepts:**
-• Duration is stored in milliseconds in the database
-• Variables (minMs, maxMs) are evaluated before the query runs
-• Range filtering is a common pattern for numeric/date fields
-• Tracks are stored with Milliseconds field for precise duration
-• Converting minutes to milliseconds: minutes × 60 × 1000"
-            },
-            new QueryExample
-            {
-                Id = "basic_8",
-                Name = "Case-Insensitive Search",
-                Description = "Search for artists regardless of case",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-string searchTerm = ""led""; // Will match ""Led Zeppelin""
-var artists = context.GetTable<Artist>()
-    .Where(a => a.Name.ToLower().Contains(searchTerm.ToLower()))
-    .OrderBy(a => a.Name)
-    .ToList();
-
-return artists;",
-                Explanation = @"**How It Works:**
-1. Define search term in lowercase ('led')
-2. Access Artist table
-3. Convert both database Name and search term to lowercase
-4. Use Contains() to find matches
-5. Sort results alphabetically
-6. Execute and return
-
-**Key Concepts:**
-• ToLower() ensures case-insensitive matching
-• 'led' will match 'Led Zeppelin', 'LED', 'LeD', etc.
-• Both sides of comparison are lowercased for consistency
-• SQLite string comparison is case-sensitive by default (unlike SQL Server)
-• This pattern is essential for user-friendly search functionality"
-            },
-            new QueryExample
-            {
-                Id = "basic_9",
-                Name = "Tracks with Composer",
-                Description = "Filter tracks that have a composer (NOT NULL)",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var tracksWithComposer = context.GetTable<Track>()
-    .Where(t => t.Composer != null && t.Composer != """")
-    .OrderBy(t => t.Composer)
-    .ThenBy(t => t.Name)
-    .Take(100)
-    .ToList();
-
-return tracksWithComposer;",
-                Explanation = @"**How It Works:**
-1. Access Track table
-2. Filter for tracks where Composer is not null AND not empty string
-3. Sort primarily by Composer name
-4. Then sort by Track name
-5. Limit to 100 results
-6. Execute and return
-
-**Key Concepts:**
-• NULL checking in databases - some fields may be NULL (no value)
-• Must check both null and empty string for completeness
-• != null translates to IS NOT NULL in SQL
-• Composer is optional in Chinook database
-• This pattern filters out 'missing data' records"
-            },
-            new QueryExample
-            {
-                Id = "basic_10",
-                Name = "Distinct Media Types",
-                Description = "Get unique media types using Distinct",
-                Category = QueryCategory.Basic,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var mediaTypes = context.GetTable<MediaType>()
-    .OrderBy(m => m.Name)
-    .ToList();
-
-return mediaTypes;",
-                Explanation = @"**How It Works:**
-1. Access MediaType table
-2. Sort media types alphabetically by Name
-3. Retrieve all records as a list
-4. Return the complete list
-
-**Key Concepts:**
-• MediaType table already contains unique values (it's a lookup table)
-• Distinct() is not needed here because table structure ensures uniqueness
-• Lookup/reference tables typically store unique categorical values
-• OrderBy() ensures consistent, predictable ordering
-• This is an example of querying reference data"
-            }
-        };
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.Basic)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
     }
+
 
     private static List<QueryExample> GetRelationshipQueryExamples()
     {
-        return new List<QueryExample>
-        {
-            new QueryExample
-            {
-                Id = "rel_1",
-                Name = "Tracks with Album Info",
-                Description = "JOIN tracks with their album information",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from track in context.GetTable<Track>()
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               orderby track.Name
-               select new { track.Name, AlbumTitle = album.Title, track.Milliseconds })
-               .Take(50)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with Track table
-2. JOIN to Album table using AlbumId foreign key
-3. Sort results by track name
-4. Project selected fields into anonymous type
-5. Limit to 50 records
-6. Execute and return
-
-**Key Concepts:**
-• INNER JOIN - only returns tracks that have a matching album
-• Foreign key relationship: Track.AlbumId references Album.id
-• Anonymous types (new {...}) let you shape query results
-• JOIN operations happen at the database level for efficiency
-• This demonstrates one-to-many relationship (one album, many tracks)"
-            },
-            new QueryExample
-            {
-                Id = "rel_2",
-                Name = "Albums with Artist Names",
-                Description = "JOIN albums with their artist information",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from album in context.GetTable<Album>()
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               orderby artist.Name, album.Title
-               select new { album.Title, ArtistName = artist.Name, album.id })
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with Album table
-2. JOIN to Artist table using ArtistId foreign key
-3. Sort by artist name first, then album title
-4. Project fields into result object
-5. Retrieve all matching records
-6. Return the list
-
-**Key Concepts:**
-• Multi-level sorting: orderby artist, then album (ORDER BY artist, title)
-• Foreign key Album.ArtistId → Artist.id
-• No Take() means all records are returned (use carefully with large datasets)
-• Result shows hierarchical data (artist → albums)
-• This is the reverse direction of rel_1 (parent → children)"
-            },
-            new QueryExample
-            {
-                Id = "rel_3",
-                Name = "Complete Track Information",
-                Description = "JOIN tracks with album, artist, and genre",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from track in context.GetTable<Track>()
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
-               from genre in genreGroup.DefaultIfEmpty()
-               orderby artist.Name, album.Title, track.TrackNumber
-               select new 
-               { 
-                   TrackName = track.Name,
-                   AlbumTitle = album.Title,
-                   ArtistName = artist.Name,
-                   GenreName = genre != null ? genre.Name : ""Unknown"",
-                   track.Milliseconds
-               })
-               .Take(100)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with Track table
-2. JOIN to Album (required)
-3. JOIN Album to Artist (required)
-4. LEFT JOIN to Genre (optional, using DefaultIfEmpty)
-5. Sort by artist, album, track number
-6. Project combined data from all tables
-7. Take 100 and execute
-
-**Key Concepts:**
-• Chain multiple JOINs to traverse relationships: Track → Album → Artist
-• LEFT JOIN (into...DefaultIfEmpty) includes tracks even if genre is null
-• Null-coalescing: genre != null ? genre.Name : 'Unknown'
-• Three-level sort creates hierarchical ordering
-• This shows how to navigate complex relational data structures"
-            },
-            new QueryExample
-            {
-                Id = "rel_4",
-                Name = "Customers with Support Rep",
-                Description = "JOIN customers with their assigned employee",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from customer in context.GetTable<Customer>()
-               join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
-               from employee in empGroup.DefaultIfEmpty()
-               orderby customer.LastName, customer.FirstName
-               select new
-               {
-                   CustomerName = customer.FirstName + "" "" + customer.LastName,
-                   customer.Email,
-                   SupportRep = employee != null ? employee.FirstName + "" "" + employee.LastName : ""None"",
-                   SupportRepEmail = employee != null ? employee.Email : """"
-               })
-               .Take(50)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with Customer table
-2. LEFT JOIN to Employee via SupportRepId
-3. Sort by customer last name, first name
-4. Build result with customer + support rep info
-5. Handle null employees with conditional logic
-6. Take 50 and return
-
-**Key Concepts:**
-• LEFT JOIN ensures all customers are shown (even without support rep)
-• SupportRepId may be NULL for some customers
-• String concatenation builds full names
-• Conditional expressions handle missing relationships
-• This is common for optional foreign keys"
-            },
-            new QueryExample
-            {
-                Id = "rel_5",
-                Name = "Employee Hierarchy",
-                Description = "Self-join to show employee reporting structure",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from emp in context.GetTable<Employee>()
-               join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
-               from manager in mgrGroup.DefaultIfEmpty()
-               orderby emp.LastName, emp.FirstName
-               select new
-               {
-                   EmployeeName = emp.FirstName + "" "" + emp.LastName,
-                   emp.Title,
-                   ManagerName = manager != null ? manager.FirstName + "" "" + manager.LastName : ""No Manager"",
-                   ManagerTitle = manager != null ? manager.Title : """"
-               })
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Access Employee table
-2. SELF-JOIN: join Employee to itself via ReportsTo field
-3. Use LEFT JOIN to handle top-level managers (no boss)
-4. Sort by employee name
-5. Project employee + manager info
-6. Return organizational hierarchy
-
-**Key Concepts:**
-• Self-join: table joined to itself to model hierarchical data
-• ReportsTo is a foreign key pointing to another Employee.id
-• Common pattern for org charts, threaded comments, category trees
-• Top-level employees have ReportsTo = NULL
-• This shows parent-child relationships within same table"
-            },
-            new QueryExample
-            {
-                Id = "rel_6",
-                Name = "Invoice with Customer Details",
-                Description = "JOIN invoices with customer information",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from invoice in context.GetTable<Invoice>()
-               join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-               orderby invoice.InvoiceDate descending
-               select new
-               {
-                   invoice.id,
-                   invoice.InvoiceDate,
-                   CustomerName = customer.FirstName + "" "" + customer.LastName,
-                   customer.Country,
-                   invoice.Total
-               })
-               .Take(100)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with Invoice table
-2. JOIN to Customer table via CustomerId
-3. Sort by invoice date (newest first)
-4. Project invoice and customer fields together
-5. Limit to 100 most recent
-6. Execute and return
-
-**Key Concepts:**
-• INNER JOIN ensures invoices only returned if customer exists
-• OrderByDescending sorts newest to oldest (descending date)
-• Combines transactional data (invoice) with reference data (customer)
-• Common pattern for order/customer, ticket/user relationships
-• Useful for reporting and invoice history displays"
-            },
-            new QueryExample
-            {
-                Id = "rel_7",
-                Name = "Track with All Related Entities",
-                Description = "JOIN track with genre, media type, album, and artist",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from track in context.GetTable<Track>()
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
-               from genre in genreGroup.DefaultIfEmpty()
-               join mediaType in context.GetTable<MediaType>() on track.MediaTypeId equals mediaType.id into mtGroup
-               from mediaType in mtGroup.DefaultIfEmpty()
-               orderby artist.Name, album.Title, track.TrackNumber
-               select new
-               {
-                   TrackName = track.Name,
-                   ArtistName = artist.Name,
-                   AlbumTitle = album.Title,
-                   GenreName = genre != null ? genre.Name : ""Unknown"",
-                   MediaTypeName = mediaType != null ? mediaType.Name : ""Unknown"",
-                   track.UnitPrice,
-                   DurationMinutes = track.Milliseconds / 1000.0 / 60.0
-               })
-               .Take(50)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with Track
-2. JOIN to Album (required)
-3. JOIN to Artist via Album (required)
-4. LEFT JOIN to Genre (optional)
-5. LEFT JOIN to MediaType (optional)
-6. Sort hierarchically (artist → album → track)
-7. Project all related data
-8. Take 50 and return
-
-**Key Concepts:**
-• Complex multi-table JOIN showing complete track metadata
-• Mix of INNER and LEFT JOINs as needed
-• Calculated field: Milliseconds converted to minutes
-• Demonstrates navigating deep relationship chains
-• This pattern is common for 'detail view' queries"
-            },
-            new QueryExample
-            {
-                Id = "rel_8",
-                Name = "LEFT JOIN vs INNER JOIN",
-                Description = "Compare LEFT JOIN (includes nulls) vs INNER JOIN",
-                Category = QueryCategory.Relationships,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-// LEFT JOIN - includes tracks even without composer
-var leftJoinResults = (from track in context.GetTable<Track>()
-                       select new 
-                       { 
-                           track.Name, 
-                           Composer = track.Composer ?? ""No Composer""
-                       })
-                       .Take(50)
-                       .ToList();
-
-return leftJoinResults;",
-                Explanation = @"**How It Works:**
-1. Select from Track table
-2. Project Name and Composer fields
-3. Use null-coalescing operator (??) to handle null Composer
-4. Take 50 records
-5. Execute and return
-
-**Key Concepts:**
-• NULL handling: ?? operator provides default value when field is null
-• This demonstrates data with optional fields
-• Composer can be NULL in many tracks
-• INNER JOIN would exclude these tracks; this approach includes all
-• Important pattern for working with incomplete/optional data"
-            }
-        };
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.Relationships)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
     }
+
 
     private static List<QueryExample> GetAggregationQueryExamples()
     {
-        return new List<QueryExample>
-        {
-            new QueryExample
-            {
-                Id = "agg_1",
-                Name = "Count Tracks by Genre",
-                Description = "GROUP BY with COUNT aggregate",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from track in context.GetTable<Track>()
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
-               from genre in genreGroup.DefaultIfEmpty()
-               group track by new { GenreId = genre != null ? genre.id : 0, GenreName = genre != null ? genre.Name : ""Unknown"" } into g
-               select new 
-               { 
-                   Genre = g.Key.GenreName,
-                   TrackCount = g.Count(),
-                   TotalDurationMinutes = g.Sum(t => t.Milliseconds) / 1000 / 60
-               })
-               .OrderByDescending(x => x.TrackCount)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Track with Genre (LEFT JOIN)
-2. GROUP BY genre (id and name)
-3. Count tracks in each group
-4. Sum total duration for each genre
-5. Sort by track count (most popular first)
-6. Return aggregated results
-
-**Key Concepts:**
-• GROUP BY collapses rows into groups for aggregation
-• COUNT() counts rows in each group
-• SUM() totals a numeric field across grouped rows
-• Multiple aggregates can be calculated together
-• This pattern is essential for reporting and analytics"
-            },
-            new QueryExample
-            {
-                Id = "agg_2",
-                Name = "Album Count by Artist",
-                Description = "Count how many albums each artist has",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from album in context.GetTable<Album>()
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               group album by new { artist.id, artist.Name } into g
-               select new 
-               { 
-                   ArtistName = g.Key.Name,
-                   AlbumCount = g.Count()
-               })
-               .OrderByDescending(x => x.AlbumCount)
-               .Take(20)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Album with Artist
-2. GROUP BY artist (id and name)
-3. Count albums in each group
-4. Sort by album count descending
-5. Take top 20 most prolific artists
-6. Return results
-
-**Key Concepts:**
-• Simple GROUP BY + COUNT pattern for tallying records
-• Grouping by composite key (id + name) ensures uniqueness
-• OrderByDescending + Take = 'Top N' query
-• Useful for leaderboards, rankings, popularity metrics
-• This is one of the most common SQL patterns"
-            },
-            new QueryExample
-            {
-                Id = "agg_3",
-                Name = "Average Track Duration by Genre",
-                Description = "Calculate average track length per genre",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from track in context.GetTable<Track>()
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-               group track by new { genre.id, genre.Name } into g
-               select new 
-               { 
-                   Genre = g.Key.Name,
-                   AvgDurationMinutes = g.Average(t => t.Milliseconds) / 1000.0 / 60.0,
-                   TrackCount = g.Count()
-               })
-               .OrderByDescending(x => x.AvgDurationMinutes)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Track with Genre
-2. GROUP BY genre
-3. Calculate Average() duration in each group
-4. Convert milliseconds to minutes
-5. Also count tracks per genre
-6. Sort by average duration
-7. Return all results
-
-**Key Concepts:**
-• AVERAGE() aggregate computes mean value
-• Calculated fields work within aggregates
-• Combining multiple aggregates (Average + Count)
-• Useful for statistical analysis and comparisons
-• Shows which genres tend to have longer/shorter tracks"
-            },
-            new QueryExample
-            {
-                Id = "agg_4",
-                Name = "Total Revenue by Customer",
-                Description = "Calculate total spending per customer",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from invoice in context.GetTable<Invoice>()
-               join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-               group invoice by new { customer.id, CustomerName = customer.FirstName + "" "" + customer.LastName, customer.Country } into g
-               select new
-               {
-                   Customer = g.Key.CustomerName,
-                   Country = g.Key.Country,
-                   TotalSpent = g.Sum(i => i.Total),
-                   InvoiceCount = g.Count()
-               })
-               .OrderByDescending(x => x.TotalSpent)
-               .Take(20)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Invoice with Customer
-2. GROUP BY customer (id, name, country)
-3. SUM invoice totals for each customer
-4. COUNT invoices per customer
-5. Sort by total spent (highest first)
-6. Take top 20 customers
-7. Return results
-
-**Key Concepts:**
-• SUM() aggregates monetary values
-• Business intelligence pattern: customer lifetime value
-• Grouping by multiple fields (composite key)
-• Combining SUM + COUNT for richer insights
-• Critical for sales reporting and customer analytics"
-            },
-            new QueryExample
-            {
-                Id = "agg_5",
-                Name = "Sales by Genre",
-                Description = "Calculate total revenue for each music genre",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from invoiceLine in context.GetTable<InvoiceLine>()
-               join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-               group invoiceLine by new { genre.id, genre.Name } into g
-               select new
-               {
-                   Genre = g.Key.Name,
-                   TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
-                   UnitsSold = g.Sum(il => il.Quantity)
-               })
-               .OrderByDescending(x => x.TotalRevenue)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with InvoiceLine (transaction detail)
-2. JOIN to Track, then to Genre
-3. GROUP BY genre
-4. Calculate revenue: SUM(price × quantity)
-5. Also SUM units sold
-6. Sort by revenue descending
-7. Return genre sales report
-
-**Key Concepts:**
-• Calculated aggregates: SUM(price × quantity)
-• Multi-table JOIN for business intelligence
-• Revenue analysis by category
-• Essential for sales and marketing insights
-• Shows which genres are most profitable"
-            },
-            new QueryExample
-            {
-                Id = "agg_6",
-                Name = "Average Invoice Total",
-                Description = "Calculate average invoice amount overall and by country",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-var results = (from invoice in context.GetTable<Invoice>()
-               join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-               group invoice by customer.Country into g
-               select new
-               {
-                   Country = g.Key,
-                   AvgInvoiceTotal = g.Average(i => i.Total),
-                   InvoiceCount = g.Count(),
-                   TotalRevenue = g.Sum(i => i.Total)
-               })
-               .OrderByDescending(x => x.TotalRevenue)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Invoice with Customer
-2. GROUP BY country
-3. Calculate Average invoice total per country
-4. Count invoices per country
-5. SUM total revenue per country
-6. Sort by total revenue
-7. Return country-level metrics
-
-**Key Concepts:**
-• Geographical aggregation for market analysis
-• Multiple aggregates: AVG, COUNT, SUM together
-• Useful for regional sales comparisons
-• Identifies high-value vs high-volume markets
-• Common in business dashboards"
-            },
-            new QueryExample
-            {
-                Id = "agg_7",
-                Name = "MIN/MAX Track Prices",
-                Description = "Find cheapest and most expensive tracks",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var tracks = context.GetTable<Track>().ToList();
-var summary = new
-{
-    MinPrice = tracks.Min(t => t.UnitPrice),
-    MaxPrice = tracks.Max(t => t.UnitPrice),
-    AvgPrice = tracks.Average(t => t.UnitPrice),
-    TotalTracks = tracks.Count
-};
-return new[] { summary };",
-                Explanation = @"**How It Works:**
-1. Load all tracks into memory (ToList)
-2. Calculate MIN price using Min()
-3. Calculate MAX price using Max()
-4. Calculate AVG price using Average()
-5. Count total tracks
-6. Return single summary object
-
-**Key Concepts:**
-• MIN() and MAX() find extreme values
-• Aggregate functions without GROUP BY return single result
-• In-memory aggregation after ToList()
-• Useful for dataset summaries and ranges
-• Shows price spread and distribution"
-            },
-            new QueryExample
-            {
-                Id = "agg_8",
-                Name = "Customer Purchase Statistics",
-                Description = "Detailed customer purchasing patterns (optimized)",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Optimized: Pre-aggregate invoice data first
-var customerStats = (from invoice in context.GetTable<Invoice>()
-                    group invoice by invoice.CustomerId into g
-                    select new
-                    {
-                        CustomerId = g.Key,
-                        TotalSpent = g.Sum(i => i.Total),
-                        OrderCount = g.Count(),
-                        AvgOrderValue = g.Average(i => i.Total)
-                    }).ToList();
-
-var customers = context.GetTable<Customer>().ToList();
-
-var results = (from stat in customerStats
-              join customer in customers on stat.CustomerId equals customer.id
-              select new
-              {
-                  Customer = customer.FirstName + "" "" + customer.LastName,
-                  Country = customer.Country,
-                  stat.TotalSpent,
-                  stat.OrderCount,
-                  stat.AvgOrderValue
-              })
-              .OrderByDescending(x => x.TotalSpent)
-              .Take(30)
-              .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. First query: aggregate invoice data by customer
-2. Calculate SUM, COUNT, AVG per customer
-3. Materialize stats with ToList()
-4. Second query: load customers
-5. JOIN stats with customers in memory
-6. Sort by total spent, take top 30
-7. Return enriched customer statistics
-
-**Key Concepts:**
-• Two-phase aggregation for complex reports
-• In-memory JOIN after separate queries
-• Performance optimization: aggregate first, then join
-• Combines multiple aggregates per customer
-• Pattern for comprehensive customer analytics"
-            },
-            new QueryExample
-            {
-                Id = "agg_9",
-                Name = "Tracks per Album Statistics",
-                Description = "Analyze album sizes (track count distribution)",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from track in context.GetTable<Track>()
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               group track by new { album.id, album.Title, artist.Name } into g
-               select new
-               {
-                   AlbumTitle = g.Key.Title,
-                   ArtistName = g.Key.Name,
-                   TrackCount = g.Count(),
-                   TotalDurationMinutes = g.Sum(t => t.Milliseconds) / 1000.0 / 60.0,
-                   AvgTrackDuration = g.Average(t => t.Milliseconds) / 1000.0 / 60.0
-               })
-               .OrderByDescending(x => x.TrackCount)
-               .Take(30)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Track → Album → Artist
-2. GROUP BY album (id, title, artist name)
-3. COUNT tracks per album
-4. SUM total duration, AVG track duration
-5. Convert milliseconds to minutes
-6. Sort by track count (largest albums first)
-7. Take top 30 albums
-
-**Key Concepts:**
-• Composite grouping key with multiple fields
-• Multiple aggregates: COUNT, SUM, AVG together
-• Useful for album catalog analysis
-• Shows album 'size' metrics
-• Helps identify compilation albums vs regular releases"
-            },
-            new QueryExample
-            {
-                Id = "agg_10",
-                Name = "Revenue by Artist",
-                Description = "Calculate total sales for each artist",
-                Category = QueryCategory.Aggregations,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from invoiceLine in context.GetTable<InvoiceLine>()
-               join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               group invoiceLine by new { artist.id, artist.Name } into g
-               select new
-               {
-                   ArtistName = g.Key.Name,
-                   TotalRevenue = g.Sum(il => il.UnitPrice * il.Quantity),
-                   TracksSold = g.Sum(il => il.Quantity)
-               })
-               .OrderByDescending(x => x.TotalRevenue)
-               .Take(20)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with InvoiceLine (actual sales data)
-2. JOIN to Track → Album → Artist chain
-3. GROUP BY artist
-4. SUM revenue: UnitPrice × Quantity per line
-5. SUM total units sold
-6. Sort by revenue (highest earners first)
-7. Take top 20 artists
-
-**Key Concepts:**
-• Revenue calculation: price × quantity
-• Aggregating transactional data (invoice lines)
-• Following relationship chain to get artist from sales
-• Critical for royalty/revenue reporting
-• Shows bestselling artists by dollar amount"
-            }
-        };
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.Aggregations)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
     }
+
 
     private static List<QueryExample> GetAdvancedLinqExamples()
     {
-        return new List<QueryExample>
-        {
-            new QueryExample
-            {
-                Id = "adv_1",
-                Name = "Paging with Skip/Take",
-                Description = "Implement pagination for large result sets",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-int pageSize = 20;
-int pageNumber = 1; // Change to test different pages
-var tracks = context.GetTable<Track>()
-    .OrderBy(t => t.Name)
-    .Skip((pageNumber - 1) * pageSize)
-    .Take(pageSize)
-    .ToList();
-
-return tracks;",
-                Explanation = @"**How It Works:**
-1. Define page size (20 records per page)
-2. Specify page number (1-based)
-3. OrderBy ensures consistent ordering
-4. Skip calculates offset: (page-1) × size
-5. Take limits to page size
-6. Execute and return one page
-
-**Key Concepts:**
-• Pagination is essential for large datasets
-• Skip/Take pattern is standard for paging
-• MUST have OrderBy for predictable results
-• Formula: skip (pageNumber-1) × pageSize records
-• Common in web APIs and list views"
-            },
-            new QueryExample
-            {
-                Id = "adv_2",
-                Name = "Multiple ORDER BY",
-                Description = "Sort by multiple columns with different directions",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from track in context.GetTable<Track>()
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               orderby artist.Name ascending, album.Title ascending, track.TrackNumber ascending
-               select new { artist.Name, album.Title, track.TrackNumber, TrackName = track.Name })
-               .Take(100)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Track → Album → Artist
-2. Sort by artist name (primary)
-3. Then by album title (secondary)
-4. Then by track number (tertiary)
-5. All sorts are ascending
-6. Take first 100 results
-7. Return sorted list
-
-**Key Concepts:**
-• Multiple ORDER BY creates hierarchical sorting
-• Order matters: first sort is primary, then secondary, etc.
-• Essential for album/track listings in correct order
-• TrackNumber ensures songs play in intended sequence
-• This is how music players organize tracks"
-            },
-            new QueryExample
-            {
-                Id = "adv_3",
-                Name = "Complex WHERE with Multiple Conditions",
-                Description = "Combine multiple filter conditions with AND/OR",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Show AND and OR combinations
-var tracks = context.GetTable<Track>()
-    .Where(t => (t.UnitPrice >= 1.0m && t.Milliseconds >= 180000) || 
-                (t.UnitPrice < 1.0m && t.Milliseconds < 180000))
-    .OrderBy(t => t.UnitPrice)
-    .Take(50)
-    .ToList();
-
-return tracks;",
-                Explanation = @"**How It Works:**
-1. Access Track table
-2. Apply complex WHERE with nested conditions
-3. First group: expensive ($1+) AND long (3+ min)
-4. OR second group: cheap (<$1) AND short (<3 min)
-5. Parentheses control logic grouping
-6. Sort by price
-7. Take 50 matches
-
-**Key Concepts:**
-• AND (&&) requires both conditions true
-• OR (||) requires at least one condition true
-• Parentheses control evaluation order
-• This finds 'consistent' tracks: expensive+long OR cheap+short
-• Essential for complex business logic filtering"
-            },
-            new QueryExample
-            {
-                Id = "adv_4",
-                Name = "Subquery - IN Operator",
-                Description = "Use subquery results to filter another query",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Get first 50 artists
-var artistIds = context.GetTable<Artist>()
-    .OrderBy(a => a.Name)
-    .Take(50)
-    .Select(a => a.id)
-    .ToList();
-
-// Use those IDs to filter tracks
-var tracks = (from track in context.GetTable<Track>()
-              join album in context.GetTable<Album>() on track.AlbumId equals album.id
-              where artistIds.Contains(album.ArtistId)
-              orderby track.Name
-              select track)
-              .Take(100)
-              .ToList();
-
-return tracks;",
-                Explanation = @"**How It Works:**
-1. First query: get top 50 artist IDs
-2. Materialize to list with ToList()
-3. Second query: get tracks
-4. JOIN to albums
-5. Filter using Contains() - SQL IN operator
-6. Only tracks from those 50 artists pass
-7. Take 100 tracks
-
-**Key Concepts:**
-• Two-phase query pattern
-• Contains() translates to SQL IN clause
-• Subquery results used to filter main query
-• Useful when filtering logic is complex
-• Common pattern for dependent queries"
-            },
-            new QueryExample
-            {
-                Id = "adv_5",
-                Name = "Subquery with Count",
-                Description = "Count related records for each customer",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Show customers with their invoice counts
-var customerInvoiceCounts = (from customer in context.GetTable<Customer>()
-                             let invoiceCount = (from invoice in context.GetTable<Invoice>()
-                                                where invoice.CustomerId == customer.id
-                                                select invoice).Count()
-                             orderby invoiceCount
-                             select new
-                             {
-                                 CustomerName = customer.FirstName + "" "" + customer.LastName,
-                                 customer.Country,
-                                 InvoiceCount = invoiceCount
-                             })
-                             .Take(50)
-                             .ToList();
-
-return customerInvoiceCounts;",
-                Explanation = @"**How It Works:**
-1. Start with Customer table
-2. Use 'let' to define subquery variable
-3. Subquery counts invoices per customer
-4. Sort by invoice count
-5. Project customer info + count
-6. Take first 50 customers
-7. Execute and return
-
-**Key Concepts:**
-• 'let' keyword defines intermediate values
-• Subquery executed for each customer
-• Correlated subquery: references outer query's customer.id
-• Useful for showing counts alongside main data
-• Common in dashboard/reporting queries"
-            },
-            new QueryExample
-            {
-                Id = "adv_6",
-                Name = "HAVING Clause (Filter Groups)",
-                Description = "Group by artist and show album counts",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from album in context.GetTable<Album>()
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               group album by new { artist.id, artist.Name } into g
-               orderby g.Count() descending
-               select new
-               {
-                   ArtistName = g.Key.Name,
-                   AlbumCount = g.Count()
-               })
-               .Take(50)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Album with Artist
-2. GROUP BY artist
-3. Order by album count (most prolific artists first)
-4. Select artist name and count
-5. Take top 50 artists
-6. Execute and return
-
-**Key Concepts:**
-• OrderBy after grouping filters/sorts aggregates
-• Equivalent to SQL HAVING in many cases
-• LINQ doesn't have explicit HAVING - use OrderBy/Where on groups
-• Shows most prolific artists
-• Common for 'top N' leaderboard queries"
-            },
-            new QueryExample
-            {
-                Id = "adv_7",
-                Name = "Conditional Aggregates",
-                Description = "Count tracks with different price ranges",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var tracks = context.GetTable<Track>().ToList();
-var priceAnalysis = new
-{
-    CheapTracks = tracks.Count(t => t.UnitPrice < 1.0m),
-    MidPriceTracks = tracks.Count(t => t.UnitPrice >= 1.0m && t.UnitPrice < 1.5m),
-    ExpensiveTracks = tracks.Count(t => t.UnitPrice >= 1.5m),
-    AvgPrice = tracks.Average(t => t.UnitPrice),
-    MaxPrice = tracks.Max(t => t.UnitPrice),
-    MinPrice = tracks.Min(t => t.UnitPrice)
-};
-
-return new[] { priceAnalysis };",
-                Explanation = @"**How It Works:**
-1. Load all tracks into memory
-2. Count tracks in 'cheap' price range
-3. Count tracks in 'mid' price range
-4. Count tracks in 'expensive' range
-5. Calculate average price
-6. Find min and max prices
-7. Return single summary object
-
-**Key Concepts:**
-• Conditional aggregates: Count() with predicate
-• Multiple aggregates over same dataset
-• In-memory LINQ after ToList()
-• Useful for price distribution analysis
-• Common in business intelligence/reporting"
-                                                },
-                                                new QueryExample
-                                                {
-                Id = "adv_8",
-                Name = "Top N per Group",
-                Description = "Get top 3 longest tracks per genre (SQLite-compatible)",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// SQLite doesn't support CROSS/OUTER APPLY, so materialize first
-var tracksWithGenre = (from track in context.GetTable<Track>()
-                      join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-                      select new
-                      {
-                          GenreId = genre.id,
-                          GenreName = genre.Name,
-                          TrackName = track.Name,
-                          Milliseconds = track.Milliseconds
-                      }).ToList();
-
-// Perform Top-3 per group in memory
-var results = tracksWithGenre
-               .GroupBy(t => new { t.GenreId, t.GenreName })
-               .SelectMany(g => g.OrderByDescending(t => t.Milliseconds).Take(3)
-                   .Select(track => new
-                   {
-                       Genre = g.Key.GenreName,
-                       TrackName = track.TrackName,
-                       DurationMinutes = track.Milliseconds / 1000.0 / 60.0
-                   }))
-               .OrderBy(x => x.Genre)
-               .ThenByDescending(x => x.DurationMinutes)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. JOIN Track with Genre and fetch data
-2. Materialize with ToList() (SQLite doesn't support windowing)
-3. GROUP BY genre in memory
-4. For each group, OrderByDescending and Take(3)
-5. SelectMany flattens groups back to list
-6. Sort final results by genre, then duration
-7. Return top 3 per genre
-
-**Key Concepts:**
-• 'Top N per group' is a common SQL pattern
-• SQLite lacks window functions; workaround with in-memory grouping
-• GroupBy + SelectMany pattern for partitioned results
-• Two-phase: fetch data, then process in memory
-• Essential for leaderboards, rankings per category"
-            },
-            new QueryExample
-            {
-                Id = "adv_9",
-                Name = "Date Range Queries",
-                Description = "Query invoices with date filtering",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Show most recent invoices
-var recentInvoices = (from invoice in context.GetTable<Invoice>()
-                      join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                      orderby invoice.InvoiceDate descending
-                      select new
-                      {
-                          invoice.InvoiceDate,
-                          CustomerName = customer.FirstName + "" "" + customer.LastName,
-                          invoice.Total,
-                          DaysAgo = (DateTime.Now - invoice.InvoiceDate).Days
-                      })
-                      .Take(100)
-                      .ToList();
-
-return recentInvoices;",
-                Explanation = @"**How It Works:**
-1. JOIN Invoice with Customer
-2. Sort by InvoiceDate descending (newest first)
-3. Select invoice date, customer name, total
-4. Calculate 'DaysAgo' using DateTime arithmetic
-5. Take 100 most recent invoices
-6. Execute and return
-
-**Key Concepts:**
-• Date arithmetic: DateTime.Now - invoice date
-• .Days property gives difference in days
-• OrderByDescending for newest-first sorting
-• Useful for 'recent activity' views
-• Common in dashboards and activity feeds"
-            },
-            new QueryExample
-            {
-                Id = "adv_10",
-                Name = "String Manipulation",
-                Description = "Use string functions - UPPER, LOWER, TRIM, SUBSTRING",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var artists = context.GetTable<Artist>()
-    .Select(a => new
-    {
-        OriginalName = a.Name,
-        UpperName = a.Name.ToUpper(),
-        LowerName = a.Name.ToLower(),
-        FirstThreeChars = a.Name.Length >= 3 ? a.Name.Substring(0, 3) : a.Name,
-        NameLength = a.Name.Length
-    })
-    .OrderBy(a => a.OriginalName)
-    .Take(20)
-    .ToList();
-
-return artists;",
-                Explanation = @"**How It Works:**
-1. Access Artist table
-2. Project with string transformations:
-   - ToUpper() converts to uppercase
-   - ToLower() converts to lowercase
-   - Substring(0, 3) extracts first 3 characters
-   - Length property gets string length
-3. Sort by original name
-4. Take 20 artists
-5. Execute and return
-
-**Key Concepts:**
-• String functions translate to SQL equivalents
-• ToUpper/ToLower useful for normalization
-• Substring for text extraction
-• Conditional (ternary) operator handles edge cases
-• Common for data cleaning and formatting"
-            },
-            new QueryExample
-            {
-                Id = "adv_11",
-                Name = "UNION - Combine Results",
-                Description = "Combine artists and album titles into one list",
-                Category = QueryCategory.AdvancedLinq,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var artistNames = context.GetTable<Artist>()
-    .Select(a => new { Name = a.Name, Type = ""Artist"" })
-    .Take(10);
-
-var albumTitles = context.GetTable<Album>()
-    .Select(a => new { Name = a.Title, Type = ""Album"" })
-    .Take(10);
-
-var combined = artistNames.Union(albumTitles)
-    .OrderBy(x => x.Type)
-    .ThenBy(x => x.Name)
-    .ToList();
-
-return combined;",
-                Explanation = @"**How It Works:**
-1. First query: select 10 artists with type label
-2. Second query: select 10 albums with type label
-3. Union() combines both result sets
-4. Union removes duplicates (unlike Concat)
-5. Sort by Type, then by Name
-6. Execute and return combined list
-
-**Key Concepts:**
-• UNION combines multiple queries into one result
-• Both queries must have same structure/shape
-• Union() removes duplicates; Concat() keeps all
-• Useful for heterogeneous searches
-• Common in 'search everything' features"
-            }
-        };
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.AdvancedLinq)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
     }
+
 
     private static List<QueryExample> GetRawSqlExamples()
     {
@@ -1908,1851 +488,576 @@ return results;",
 
     private static List<QueryExample> GetPerformanceExamples()
     {
-        return new List<QueryExample>
-        {
-            new QueryExample
-            {
-                Id = "perf_1",
-                Name = "Query 1000+ Tracks",
-                Description = "Performance test with large result set",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var tracks = context.GetTable<Track>()
-    .OrderBy(t => t.Name)
-    .Take(1000)
-    .ToList();
-
-return tracks;",
-                Explanation = @"**How It Works:**
-1. Access Track table
-2. Sort by name (consistent ordering)
-3. Limit to 1000 rows
-4. Execute query and materialize results
-
-**Performance Tips:**
-• Take() limits result set size
-• OrderBy ensures predictable results
-• For very large sets, consider pagination
-• SQLiteXM translates efficiently to SQL LIMIT
-• Baseline for measuring query performance"
-            },
-            new QueryExample
-            {
-                Id = "perf_2",
-                Name = "Complex Multi-Table Join",
-                Description = "JOIN 5 tables with filtering",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from invoiceLine in context.GetTable<InvoiceLine>()
-               join invoice in context.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
-               join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-               join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               where customer.Country == ""USA""
-               select new 
-               { 
-                   CustomerName = customer.FirstName + "" "" + customer.LastName,
-                   TrackName = track.Name,
-                   AlbumTitle = album.Title,
-                   invoiceLine.Quantity,
-                   invoiceLine.UnitPrice
-               })
-               .Take(500)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Start with InvoiceLine (transactional data)
-2. JOIN 4 additional tables
-3. Filter to USA customers only
-4. Project combined data
-5. Limit to 500 results
-
-**Performance Tips:**
-• WHERE clause filters early in the query
-• SQLite handles joins efficiently with indexes
-• Take() prevents unbounded result sets
-• Consider indexed columns for joins
-• 5-table join is a realistic complexity test"
-            },
-            new QueryExample
-            {
-                Id = "perf_3",
-                Name = "Pagination with Skip/Take",
-                Description = "Efficiently paginate through large result sets",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-int pageNumber = 2;
-int pageSize = 20;
-var page = context.GetTable<Track>()
-    .OrderBy(t => t.id)
-    .Skip((pageNumber - 1) * pageSize)
-    .Take(pageSize)
-    .ToList();
-
-return page;",
-                Explanation = @"**How It Works:**
-1. Define page size (20 items)
-2. Calculate offset for page 2
-3. OrderBy ensures consistent ordering
-4. Skip first 20 records
-5. Take next 20 records
-6. Return one page of data
-
-**Performance Tips:**
-• Always use OrderBy before Skip/Take
-• SQLite translates to LIMIT/OFFSET
-• Ideal for infinite scroll or paged lists
-• Reduces memory usage vs loading all data
-• Standard pattern for web APIs"
-            },
-            new QueryExample
-            {
-                Id = "perf_4",
-                Name = "Select Only Required Columns",
-                Description = "Reduce data transfer by projecting only needed fields",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Faster: select only what you need
-var lightweightTracks = context.GetTable<Track>()
-    .Select(t => new { t.id, t.Name, t.UnitPrice })
-    .Take(100)
-    .ToList();
-
-return lightweightTracks;",
-                Explanation = @"**How It Works:**
-1. Access Track table
-2. Project only 3 columns (id, Name, UnitPrice)
-3. Omit unnecessary columns (Composer, Milliseconds, etc.)
-4. Take 100 records
-5. Materialize lightweight results
-
-**Performance Tips:**
-• SELECT only needed columns reduces I/O
-• Smaller result sets = less memory
-• Faster network transfer in distributed apps
-• SQLiteXM generates optimal SELECT
-• Critical for mobile/bandwidth-constrained scenarios"
-            },
-            new QueryExample
-            {
-                Id = "perf_5",
-                Name = "Early Filtering",
-                Description = "Filter before joining for better performance",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Good: filter albums first, then join
-var expensiveAlbums = context.GetTable<Album>()
-    .Where(a => a.Title.StartsWith(""A""))
-    .Take(50);
-
-var results = (from album in expensiveAlbums
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               select new { album.Title, artist.Name })
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. Filter albums first (titles starting with 'A')
-2. Limit to 50 albums
-3. Then join to Artist table
-4. Project combined result
-5. Execute and return
-
-**Performance Tips:**
-• Filter early reduces join size
-• Smaller dataset = faster joins
-• WHERE before JOIN is a key optimization
-• SQLite optimizer benefits from this pattern
-• Avoids processing unnecessary rows"
-            },
-            new QueryExample
-            {
-                Id = "perf_6",
-                Name = "Count Performance",
-                Description = "Compare Count() vs Any() for existence checks",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Faster: use Any() instead of Count() > 0 for existence
-var hasExpensiveTracks = context.GetTable<Track>()
-    .Any(t => t.UnitPrice > 1.50m);
-
-var expensiveCount = context.GetTable<Track>()
-    .Count(t => t.UnitPrice > 1.50m);
-
-return new[] { new { HasExpensiveTracks = hasExpensiveTracks, Count = expensiveCount } };",
-                Explanation = @"**How It Works:**
-1. Any() checks if at least one track > $1.50
-2. Returns true/false immediately when found
-3. Count() actually counts all matching tracks
-4. Returns total count
-5. Both results returned together
-
-**Performance Tips:**
-• Any() is faster for existence checks
-• Any() stops at first match
-• Count() must scan all matching rows
-• Use Any() when you only need yes/no
-• Use Count() when you need the actual number"
-            },
-            new QueryExample
-            {
-                Id = "perf_7",
-                Name = "Avoid N+1 Queries",
-                Description = "Use joins instead of multiple queries",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Good: single query with join
-var tracksWithAlbums = (from track in context.GetTable<Track>()
-                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                        select new 
-                        { 
-                            TrackName = track.Name, 
-                            AlbumTitle = album.Title 
-                        })
-                        .Take(100)
-                        .ToList();
-
-return tracksWithAlbums;",
-                Explanation = @"**How It Works:**
-1. Single query with JOIN
-2. Fetch tracks and albums together
-3. Project combined result
-4. Take 100 results
-5. Execute once
-
-**Performance Tips:**
-• Avoid N+1 problem: 1 query for tracks + N queries for albums
-• JOIN executes in single database round-trip
-• Dramatically faster than loops with queries inside
-• Essential for good ORM performance
-• SQLiteXM makes joins easy with LINQ"
-            },
-            new QueryExample
-            {
-                Id = "perf_8",
-                Name = "Efficient Distinct",
-                Description = "Get unique values efficiently",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var uniqueCountries = context.GetTable<Customer>()
-    .Select(c => c.Country)
-    .Distinct()
-    .OrderBy(c => c)
-    .ToList();
-
-return uniqueCountries;",
-                Explanation = @"**How It Works:**
-1. Select Country column only
-2. Apply Distinct() to remove duplicates
-3. Sort alphabetically
-4. Execute and return unique list
-
-**Performance Tips:**
-• Select single column before Distinct() is efficient
-• SQLite translates to SELECT DISTINCT
-• Reduces result set size significantly
-• Perfect for dropdown lists, filters
-• OrderBy provides user-friendly sorting"
-            },
-            new QueryExample
-            {
-                Id = "perf_9",
-                Name = "Foreign Key Index Performance",
-                Description = "Demonstrates why indexes on foreign keys matter",
-                Category = QueryCategory.Performance,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var sw = System.Diagnostics.Stopwatch.StartNew();
-
-// This query benefits from indexed foreign keys
-var tracksForAlbums = (from track in context.GetTable<Track>()
-                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                       where album.Title.StartsWith(""A"")
-                       select new { track.Name, album.Title })
-                       .Take(200)
-                       .ToList();
-
-sw.Stop();
-var elapsedMs = sw.ElapsedMilliseconds;
-
-return new[] { new { 
-    ResultCount = tracksForAlbums.Count, 
-    ElapsedMs = elapsedMs,
-    Message = $""Query completed in {elapsedMs}ms using indexed foreign key""
-} };",
-                Explanation = @"**How It Works:**
-1. Start stopwatch timer
-2. Query tracks joined with albums
-3. Filter albums by title prefix
-4. Index on Track.AlbumId accelerates the JOIN
-5. Return timing and result count
-
-**Why Indexes Matter:**
-• Without index on AlbumId: SQLite scans entire Track table for each album (slow)
-• With index (IFK_Track_AlbumId): SQLite uses index to find matching tracks instantly
-• Standard Chinook schema includes indexes on ALL foreign keys
-• JOIN performance improves dramatically with proper indexing
-• This query would be 10-100x slower without the index on large datasets
-
-**Chinook Database Indexes:**
-• IFK_Album_ArtistId - Album lookups by artist
-• IFK_Track_AlbumId - Track lookups by album
-• IFK_Track_GenreId - Track lookups by genre
-• IFK_Track_MediaTypeId - Track lookups by media type
-• IFK_InvoiceLine_InvoiceId - Line items by invoice
-• IFK_InvoiceLine_TrackId - Line items by track
-• IFK_PlaylistTrack_PlaylistId - Playlist tracks
-• IFK_PlaylistTrack_TrackId - Track playlists
-• IFK_Invoice_CustomerId - Invoices by customer
-• IFK_Customer_SupportRepId - Customers by rep
-• IFK_Employee_ReportsTo - Employee hierarchy
-
-**Real-World Impact:**
-• Indexed foreign keys are essential for OLTP systems
-• Makes JOIN queries scale with data volume
-• Critical for relationship navigation
-• Referential integrity checks are also faster"
-            }
-        };
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.Performance)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
     }
 
     private static List<QueryExample> GetManyToManyExamples()
     {
-        return new List<QueryExample>
-        {
-            new QueryExample
-            {
-                Id = "m2m_1",
-                Name = "Tracks in a Playlist",
-                Description = "Query many-to-many relationship through junction table with single query",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Single-query approach: JOIN Playlist, PlaylistTrack, and Track
-var tracks = (from playlist in context.GetTable<Playlist>()
-              join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId
-              join track in context.GetTable<Track>() on pt.TrackId equals track.id
-              where playlist.Name.Contains(""Music"")
-              orderby track.Name
-              select track)
-              .Take(50)
-              .ToList();
-
-return tracks;",
-                Explanation = @"**How It Works:**
-1. Start with Playlist table
-2. JOIN to PlaylistTrack (junction table)
-3. JOIN to Track table
-4. Filter playlists by name containing 'Music'
-5. Sort tracks alphabetically
-6. Take 50 tracks
-
-**Key Concepts:**
-• Many-to-many requires junction table (PlaylistTrack)
-• Two joins navigate the relationship
-• Junction table links Playlist ↔ Track
-• Single query is efficient
-• Standard pattern for M:N relationships"
-            },
-            new QueryExample
-            {
-                Id = "m2m_2",
-                Name = "Playlists Containing Track",
-                Description = "Reverse query: find all playlists with a specific track using single query",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Single-query approach: JOIN Track, PlaylistTrack, and Playlist
-var playlists = (from track in context.GetTable<Track>()
-                 join pt in context.GetTable<PlaylistTrack>() on track.id equals pt.TrackId
-                 join playlist in context.GetTable<Playlist>() on pt.PlaylistId equals playlist.id
-                 where track.Name.Contains(""Track"")
-                 select playlist)
-                 .ToList();
-
-return playlists;",
-                Explanation = @"**How It Works:**
-1. Start with Track table
-2. JOIN to PlaylistTrack (junction)
-3. JOIN to Playlist table
-4. Filter tracks by name
-5. Return all matching playlists
-
-**Key Concepts:**
-• Reverse navigation of M:N relationship
-• Same junction table, different direction
-• Track → PlaylistTrack → Playlist
-• Finds 'where is this track used?'
-• Bi-directional querying capability"
-            },
-            new QueryExample
-            {
-                Id = "m2m_3",
-                Name = "Playlist Statistics",
-                Description = "Aggregate data across many-to-many relationship",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var results = (from playlist in context.GetTable<Playlist>()
-               join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
-               from pt in playlistTracks.DefaultIfEmpty()
-               join track in context.GetTable<Track>() on pt.TrackId equals track.id into tracks
-               from track in tracks.DefaultIfEmpty()
-               group track by new { playlist.id, playlist.Name } into g
-               select new 
-               { 
-                   PlaylistName = g.Key.Name,
-                   TrackCount = g.Count(t => t != null),
-                   TotalDurationMinutes = g.Where(t => t != null).Sum(t => t.Milliseconds) / 1000 / 60
-               })
-               .OrderByDescending(x => x.TrackCount)
-               .ToList();
-
-return results;",
-                Explanation = @"**How It Works:**
-1. LEFT JOIN Playlist to PlaylistTrack
-2. LEFT JOIN to Track
-3. GROUP BY playlist
-4. COUNT tracks (excluding nulls)
-5. SUM duration (excluding nulls)
-6. Sort by track count
-
-**Key Concepts:**
-• LEFT JOIN with DefaultIfEmpty()
-• Aggregation across M:N relationship
-• Null-safe counting and summing
-• Shows playlist size metrics
-• Useful for catalog analytics"
-            },
-            new QueryExample
-            {
-                Id = "m2m_4",
-                Name = "Tracks Shared Between Playlists",
-                Description = "Find tracks that appear in multiple playlists (SQLite-compatible)",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Materialize first - SQLite can't translate Distinct().Count() in projection
-var trackPlaylistGroups = (from pt in context.GetTable<PlaylistTrack>()
-                          join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                          select new
-                          {
-                              TrackId = track.id,
-                              TrackName = track.Name,
-                              PlaylistId = pt.PlaylistId
-                          }).ToList();
-
-// Perform distinct count in memory
-var sharedTracks = trackPlaylistGroups
-                   .GroupBy(x => new { x.TrackId, x.TrackName })
-                   .Select(g => new
-                   {
-                       TrackName = g.Key.TrackName,
-                       PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-                   })
-                   .Where(x => x.PlaylistCount > 1)
-                   .OrderByDescending(x => x.PlaylistCount)
-                   .Take(30)
-                   .ToList();
-
-return sharedTracks;",
-                Explanation = @"**How It Works:**
-1. Fetch track-playlist pairs from junction
-2. Materialize to memory (SQLite limitation)
-3. GROUP BY track
-4. COUNT distinct playlists per track
-5. Filter tracks in 2+ playlists
-6. Sort by popularity
-7. Take top 30
-
-**Key Concepts:**
-• Two-phase query for SQLite compatibility
-• In-memory Distinct().Count()
-• Finds 'popular' tracks across playlists
-• M:N analysis pattern
-• Useful for cross-reference metrics"
-            },
-            new QueryExample
-            {
-                Id = "m2m_5",
-                Name = "Popular Tracks in Playlists",
-                Description = "Count how many playlists each track appears in (optimized)",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Materialize joins first - avoid hanging on Distinct().Count()
-var trackData = (from pt in context.GetTable<PlaylistTrack>()
-                join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                select new
-                {
-                    TrackId = track.id,
-                    TrackName = track.Name,
-                    ArtistName = artist.Name,
-                    PlaylistId = pt.PlaylistId
-                }).ToList();
-
-// Perform distinct count in memory
-var popularTracks = trackData
-                   .GroupBy(x => new { x.TrackId, x.TrackName, x.ArtistName })
-                   .Select(g => new
-                   {
-                       TrackName = g.Key.TrackName,
-                       ArtistName = g.Key.ArtistName,
-                       PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-                   })
-                   .OrderByDescending(x => x.PlaylistCount)
-                   .Take(20)
-                   .ToList();
-
-return popularTracks;",
-                Explanation = @"**How It Works:**
-1. JOIN PlaylistTrack → Track → Album → Artist
-2. Fetch all relationships to memory
-3. GROUP BY track and artist
-4. COUNT distinct playlists per track
-5. Sort by playlist count (most popular first)
-6. Take top 20 tracks
-
-**Key Concepts:**
-• Multi-table join through M:N relationship
-• Two-phase for SQLite performance
-• Shows 'most featured' tracks
-• Includes artist context
-• Common in recommendation systems"
-            },
-            new QueryExample
-            {
-                Id = "m2m_6",
-                Name = "Playlists with Few Tracks",
-                Description = "Find playlists with fewer than 250 tracks (optimized)",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Materialize playlist track counts first
-var playlistCounts = (from pt in context.GetTable<PlaylistTrack>()
-                     group pt by pt.PlaylistId into g
-                     select new
-                     {
-                         PlaylistId = g.Key,
-                         TrackCount = g.Count()
-                     }).ToList();
-
-var playlists = context.GetTable<Playlist>().ToList();
-
-// Join in memory and filter
-var smallPlaylists = (from pc in playlistCounts
-                     join p in playlists on pc.PlaylistId equals p.id
-                     where pc.TrackCount < 250
-                     orderby pc.TrackCount
-                     select new
-                     {
-                         Name = p.Name,
-                         TrackCount = pc.TrackCount
-                     })
-                     .Take(20)
-                     .ToList();
-
-return smallPlaylists;",
-                Explanation = @"**How It Works:**
-1. Count tracks per playlist from junction table
-2. Materialize counts
-3. Load playlists
-4. JOIN in memory
-5. Filter playlists with < 250 tracks
-6. Sort by track count (smallest first)
-7. Take 20 results
-
-**Key Concepts:**
-• Two-phase query: aggregate then filter
-• GROUP BY on junction table
-• In-memory join for flexibility
-• HAVING-like filter with WHERE after grouping
-• Finds 'small' or curated playlists"
-            },
-            new QueryExample
-            {
-                Id = "m2m_7",
-                Name = "Add Track to Playlist",
-                Description = "Insert into junction table (many-to-many relationship)",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Note: This is a read-only demo, but this shows the pattern
-var playlist = context.GetTable<Playlist>().FirstOrDefault();
-var track = context.GetTable<Track>().FirstOrDefault();
-
-if (playlist != null && track != null)
-{
-    // In a real app: var newEntry = new PlaylistTrack { PlaylistId = playlist.id, TrackId = track.id };
-    // await newEntry.SaveAsync();
-    return new[] { new { Message = ""Pattern: Create PlaylistTrack with both IDs and SaveAsync()"" } };
-}
-return new[] { new { Message = ""No data to demo with"" } };",
-                Explanation = @"**How It Works (Pattern):**
-1. Get Playlist ID
-2. Get Track ID
-3. Create new PlaylistTrack junction record
-4. Set both foreign keys
-5. Call SaveAsync() to persist
-
-**Key Concepts:**
-• M:N 'add relationship' = insert into junction table
-• No modification to Playlist or Track entities
-• Only junction record is created
-• SQLiteXM handles foreign key validation
-• Common pattern for associating entities"
-            },
-            new QueryExample
-            {
-                Id = "m2m_8",
-                Name = "Playlist Overlap Analysis",
-                Description = "Find which playlists share the most tracks",
-                Category = QueryCategory.ManyToMany,
-                Type = QueryType.Linq,
-                Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var playlistPairs = (from pt1 in context.GetTable<PlaylistTrack>()
-                     join pt2 in context.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
-                     where pt1.PlaylistId < pt2.PlaylistId
-                     join p1 in context.GetTable<Playlist>() on pt1.PlaylistId equals p1.id
-                     join p2 in context.GetTable<Playlist>() on pt2.PlaylistId equals p2.id
-                     group pt1 by new { p1.Name, p2.Name } into g
-                     select new
-                     {
-                         Playlist1 = g.Key.Name,
-                         Playlist2 = g.Key.Name1,
-                         SharedTracks = g.Count()
-                     })
-                     .OrderByDescending(x => x.SharedTracks)
-                     .Take(10)
-                     .ToList();
-
-return playlistPairs;",
-                Explanation = @"**How It Works:**
-1. Self-join PlaylistTrack on TrackId
-2. Filter where PlaylistId1 < PlaylistId2 (avoid duplicates)
-3. JOIN to Playlist table twice for names
-4. GROUP BY playlist pair
-5. COUNT shared tracks
-6. Sort by shared count (most overlap first)
-7. Take top 10 pairs
-
-**Key Concepts:**
-• Self-join pattern on junction table
-• Finds M:N overlap/similarity
-• < condition avoids duplicate pairs
-• Useful for 'similar playlists' features
-• Common in recommendation algorithms"
-            }
-                                                            };
-                                                        }
-
-                                        private static List<QueryExample> GetTransactionExamples()
-                                        {
-                                            return new List<QueryExample>
-                                            {
-                                                new QueryExample
-                                                {
-                                                    Id = "trans_1",
-                                                    Name = "Basic Transaction - Insert Invoice with Lines",
-                                                    Description = "Insert invoice + invoice lines atomically",
-                                                    Category = QueryCategory.Transactions,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
-try 
-{
-    // Create invoice
-    var invoice = new Invoice 
-    { 
-        CustomerId = 1, 
-        InvoiceDate = DateTime.Now,  
-        BillingAddress = ""123 Demo St"",
-        BillingCity = ""Portland"",
-        BillingCountry = ""USA"",
-        Total = 5.97m 
-    };
-    await invoice.SaveAsync();
-
-    // Add invoice lines - all succeed or all fail
-    var line1 = new InvoiceLine 
-    { 
-        InvoiceId = invoice.id, 
-        TrackId = 1, 
-        UnitPrice = 1.99m, 
-            Quantity = 1 
-            };
-            await line1.SaveAsync();
-
-            var line2 = new InvoiceLine 
-            { 
-                InvoiceId = invoice.id, 
-                TrackId = 2, 
-                UnitPrice = 1.99m, 
-                Quantity = 2 
-            };
-            await line2.SaveAsync();
-
-            // Commit transaction. The explicit CommitTransactionAsync() call is optional
-            // but considered good practice. Without it, the transaction will AUTO-COMMIT
-            // on Dispose (If No Errors)
-            await transaction.CommitTransactionAsync();
-
-            return new[] { new 
-            { 
-                Success = true, 
-                InvoiceId = invoice.id, 
-                TotalAmount = invoice.Total,
-                LineCount = 2
-            } };
-        }
-        catch (Exception ex)
-        {
-            // Transaction automatically rolls back on error
-            return new[] { new { Success = false, Error = ex.Message } };
-        }",
-                                                    Explanation = @"**How It Works:**
-1. Create SxmDbContext (await using for auto-dispose)
-2. Insert invoice record
-3. Get generated invoice.id
-4. Insert invoice lines referencing invoice.id
-5. CommitTransactionAsync() or auto-commit on dispose
-6. On error, transaction auto-rolls back
-
-**Key Concepts:**
-• ACID transactions ensure all-or-nothing
-• Multiple inserts execute atomically
-• SaveAsync() enlists in the ambient transaction
-• Auto-rollback on exception
-• Critical for data integrity with related records"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "trans_2",
-                                                    Name = "Transaction Rollback on Error",
-                                                    Description = "Demonstrate automatic rollback when error occurs",
-                                                    Category = QueryCategory.Transactions,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
-try 
-{
-    // Insert a valid artist
-    var artist = new Artist { Name = ""Transaction Test Artist"" };
-    await artist.SaveAsync();
-
-    // Insert an album
-    var album = new Album 
-    { 
-        Title = ""Test Album"", 
-        ArtistId = artist.id 
-    };
-    await album.SaveAsync();
-
-    // Simulate an error - this will cause rollback
-    throw new Exception(""Simulated error - all changes will be rolled back"");
-
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync(); // Never reached
-
-    return new[] { new { Success = true } };
-}
-catch (Exception ex)
-{
-    // Both artist and album inserts are automatically rolled back
-    return new[] { new 
-    { 
-        Success = false, 
-        Error = ex.Message,
-        Note = ""All changes were rolled back"" 
-    } };
-}",
-                                                    Explanation = @"**How It Works:**
-1. Begin transaction
-2. Insert artist successfully
-3. Insert album successfully
-4. Exception is thrown
-5. Control jumps to catch block
-6. Transaction auto-rolls back on dispose
-7. Neither artist nor album persists
-
-**Key Concepts:**
-• Automatic rollback on uncaught exceptions
-• 'await using' ensures proper cleanup
-• All operations undone if ANY fails
-• Database remains consistent
-• No explicit RollbackAsync() needed"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "trans_3",
-                                                    Name = "Batch Insert with Transaction",
-                                                    Description = "Efficiently insert multiple tracks in one transaction",
-                                                    Category = QueryCategory.Transactions,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
-try 
-{
-    var insertedCount = 0;
-    var startTime = DateTime.Now;
-
-    // Insert 50 tracks in a single transaction (fast!)
-    for (int i = 1; i <= 50; i++)
-    {
-        var track = new Track
-        {
-            Name = $""Batch Track {i}"",
-            AlbumId = 1, // Use existing album
-            MediaTypeId = 1,
-            GenreId = 1,
-            Milliseconds = 180000,
-            UnitPrice = 0.99m
-        };
-        await track.SaveAsync();
-        insertedCount++;
-    }
-
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync();
-
-    var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
-
-    return new[] { new 
-    { 
-        Success = true, 
-        TracksInserted = insertedCount,
-        ElapsedMs = elapsed,
-        Note = ""All inserts in single transaction""
-    } };
-}
-catch (Exception ex)
-{
-                                        return new[] { new { Success = false, Error = ex.Message } };
-                                    }",
-                                                    Explanation = @"**How It Works:**
-1. Begin transaction
-2. Loop 50 times
-3. Each SaveAsync() adds to transaction
-4. All inserts buffered
-5. CommitTransactionAsync() writes all at once
-6. Measure total time
-
-**Key Concepts:**
-• Transactions dramatically improve batch insert speed
-• Single commit vs 50 individual commits
-• Reduces disk I/O and locking overhead
-• Can be 10-100x faster than individual saves
-• Essential for bulk data operations"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "trans_4",
-                                                    Name = "Update Multiple Tables in Transaction",
-                                                    Description = "Update artist and all their albums atomically",
-                                                    Category = QueryCategory.Transactions,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
-using var context = new SxmDbContext(""Chinook"");
-try 
-{
-    // Find an artist and their albums
-    var artist = context.GetTable<Artist>().First();
-    var albums = context.GetTable<Album>()
-        .Where(a => a.ArtistId == artist.id)
-        .Take(3)
-        .ToList();
-
-    // Update artist name
-    var originalName = artist.Name;
-    artist.Name = artist.Name + "" (Updated)"";
-    await artist.SaveAsync();
-
-    // Update all album titles for this artist
-    foreach (var album in albums)
-    {
-        album.Title = album.Title + "" [Remastered]"";
-        await album.SaveAsync();
-    }
-
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync();
-
-    return new[] { new 
-    { 
-        Success = true,
-        ArtistOriginal = originalName,
-        ArtistUpdated = artist.Name,
-        AlbumsUpdated = albums.Count
-    } };
-}
-catch (Exception ex)
-{
-    return new[] { new { Success = false, Error = ex.Message } };
-}",
-                                                    Explanation = @"**How It Works:**
-1. Begin transaction
-2. Query artist and their albums
-3. Update artist name
-4. Loop through albums
-5. Update each album title
-6. Commit all updates atomically
-7. On error, all updates roll back
-
-**Key Concepts:**
-• Multi-table updates in single transaction
-• Ensures consistency across related tables
-• All updates succeed together or fail together
-• Prevents partial updates
-• Critical for maintaining referential integrity"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "trans_5",
-                                                    Name = "Complex Multi-Table Transaction",
-                                                    Description = "Create playlist, add tracks, update statistics",
-                                                    Category = QueryCategory.Transactions,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"await using var transaction = new SxmDbContext(""Chinook"");
-using var context = new SxmDbContext(""Chinook"");
-try 
-{
-    // 1. Create new playlist
-    var playlist = new Playlist 
-    { 
-        Name = $""Transaction Demo Playlist {DateTime.Now:HHmmss}""
-    };
-    await playlist.SaveAsync();
-
-    // 2. Get top 10 tracks
-    var topTracks = context.GetTable<Track>()
-        .OrderBy(t => t.Name)
-        .Take(10)
-        .ToList();
-
-    // 3. Add tracks to playlist
-    var trackCount = 0;
-    foreach (var track in topTracks)
-    {
-        var pt = new PlaylistTrack
-        {
-            PlaylistId = playlist.id,
-            TrackId = track.id
-        };
-        await pt.SaveAsync();
-        trackCount++;
-    }
-
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync();
-
-    return new[] { new 
-    { 
-        Success = true,
-        PlaylistId = playlist.id,
-        PlaylistName = playlist.Name,
-        TracksAdded = trackCount,
-        Note = ""All operations committed together""
-                                        } };
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        return new[] { new { Success = false, Error = ex.Message } };
-                                    }",
-                                                    Explanation = @"**How It Works:**
-1. Begin transaction
-2. Create new playlist (get generated ID)
-3. Query top 10 tracks
-4. Loop: insert PlaylistTrack junction records
-5. All 11 inserts (1 playlist + 10 junction) atomic
-6. Commit once
-
-**Key Concepts:**
-• Complex workflow with multiple steps
-• Parent record created first
-• Generated ID used in child records
-• M:N relationship populated atomically
-• Real-world pattern for composite operations"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "trans_6",
-                                                    Name = "Transaction vs No Transaction Performance",
-                                                    Description = "Compare performance: transaction vs individual saves",
-                                                    Category = QueryCategory.Transactions,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"var results = new List<object>();
-
-// Method 1: Without transaction (slower)
-var start1 = DateTime.Now;
-for (int i = 1; i <= 20; i++)
-{
-    var track = new Track
-    {
-        Name = $""No-Transaction Track {i}"",
-        AlbumId = 1,
-        MediaTypeId = 1,
-        GenreId = 1,
-        Milliseconds = 180000,
-        UnitPrice = 0.99m
-    };
-    await track.SaveAsync(); // Individual commit per save
-}
-var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
-
-// Method 2: With transaction (faster)
-var start2 = DateTime.Now;
-await using (var transaction = new SxmDbContext(""Chinook""))
-{
-    for (int i = 1; i <= 20; i++)
-    {
-        var track = new Track
-        {
-            Name = $""Transaction Track {i}"",
-            AlbumId = 1,
-            MediaTypeId = 1,
-            GenreId = 1,
-            Milliseconds = 180000,
-            UnitPrice = 0.99m
-        };
-        await track.SaveAsync();
-    }
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync();
-}
-var transTime = (DateTime.Now - start2).TotalMilliseconds;
-
-results.Add(new 
-{ 
-    Method = ""Without Transaction"",
-    Inserts = 20,
-    TimeMs = noTransTime
-});
-results.Add(new 
-{ 
-    Method = ""With Transaction"",
-    Inserts = 20,
-    TimeMs = transTime,
-    SpeedupFactor = Math.Round(noTransTime / transTime, 2)
-});
-
-return results;",
-                                                    Explanation = @"**How It Works:**
-1. Method 1: 20 inserts without transaction (20 commits)
-2. Measure time
-3. Method 2: 20 inserts with transaction (1 commit)
-4. Measure time
-5. Calculate speedup factor
-6. Return comparison
-
-**Key Concepts:**
-• Transactions provide massive performance gains
-• Without transaction: each save = disk write
-• With transaction: batch all writes
-• Typical speedup: 10-50x faster
-• Always use transactions for batch operations"
-                                                }
-                                            };
-                                        }
-
-                                        private static List<QueryExample> GetParameterizedQueryExamples()
-                                        {
-                                            return new List<QueryExample>
-                                            {
-                                                new QueryExample
-                                                {
-                                                    Id = "param_1",
-                                                    Name = "Search by Name Parameter",
-                                                    Description = "Find tracks matching a search term (safe from SQL injection)",
-                                                    Category = QueryCategory.ParameterizedQueries,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Parameter: user input (simulated)
-string searchTerm = ""Love"";
-
-// Safe parameterized query - searchTerm is treated as data, not SQL
-var results = context.GetTable<Track>()
-    .Where(t => t.Name.Contains(searchTerm))
-    .OrderBy(t => t.Name)
-    .Take(20)
-    .ToList();
-
-return results;",
-                                                    Explanation = @"**How It Works:**
-1. Define search parameter (user input)
-2. Use Contains() in LINQ WHERE clause
-3. SQLiteXM generates parameterized SQL
-4. Search term treated as data, not code
-5. Order and limit results
-
-**Key Concepts:**
-• Parameterized queries prevent SQL injection
-• User input never concatenated into SQL string
-• SQLiteXM handles parameter binding automatically
-• Contains() translates to SQL LIKE '%value%'
-• Essential for secure user-facing search features"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "param_2",
-                                                    Name = "Price Range Filter",
-                                                    Description = "Find tracks within a price range using parameters",
-                                                    Category = QueryCategory.ParameterizedQueries,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Parameters: user-defined price range
-decimal minPrice = 0.99m;
-decimal maxPrice = 1.49m;
-
-var results = context.GetTable<Track>()
-    .Where(t => t.UnitPrice >= minPrice && t.UnitPrice <= maxPrice)
-    .OrderBy(t => t.UnitPrice)
-    .ThenBy(t => t.Name)
-    .Take(50)
-    .Select(t => new
-    {
-        t.Name,
-        t.UnitPrice,
-        DurationMinutes = t.Milliseconds / 1000.0 / 60.0
-    })
-    .ToList();
-
-return results;",
-                                                    Explanation = @"**How It Works:**
-1. Define min and max price parameters
-2. Filter with >= and <= comparisons
-3. Both parameters safely bound
-4. Sort by price, then name
-5. Project needed fields
-6. Return top 50
-
-**Key Concepts:**
-• Range queries with two parameters
-• Both bounds safely parameterized
-• Common UI pattern: price sliders, filters
-• ThenBy for secondary sort
-• Projection reduces data transfer"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "param_3",
-                                                    Name = "Date Range Query",
-                                                    Description = "Find invoices within a date range (demonstrates safe parameterization)",
-                                                    Category = QueryCategory.ParameterizedQueries,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-var startDate = DateTime.Now.AddYears(-3);
-var endDate = DateTime.Now;
-
-// Single-query approach using Ticks comparison
-// Since DateTime is stored as Ticks (Int64), we can compare using .Ticks property
-var results = (from invoice in context.GetTable<Invoice>()
-               join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-               where invoice.InvoiceDate.Ticks >= startDate.Ticks 
-                  && invoice.InvoiceDate.Ticks <= endDate.Ticks
-               orderby invoice.InvoiceDate descending
-               select new
-               {
-                   InvoiceId = invoice.id,
-                   Date = invoice.InvoiceDate,
-                   Customer = customer.FirstName + "" "" + customer.LastName,
-                   Total = invoice.Total
-               })
-               .Take(30)
-               .ToList();
-
-return results;",
-                                                    Explanation = @"**How It Works:**
-1. Define start and end date parameters
-2. Compare using .Ticks property (Int64)
-3. SQLiteXM translates to safe SQL comparison
-4. JOIN customer for display names
-5. Sort newest first
-6. Return 30 recent invoices
-
-**Key Concepts:**
-• DateTime stored as Ticks in SQLite
-• Range filtering with date parameters
-• Safe date comparisons
-• Common for reporting and time-based queries
-• JOIN adds customer context"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "param_4",
-                                                    Name = "Multiple Search Parameters",
-                                                    Description = "Search with artist, genre, and price filters",
-                                                    Category = QueryCategory.ParameterizedQueries,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Multiple parameters
-string artistSearchTerm = ""Led"";
-int genreId = 1; // Rock
-decimal maxPrice = 1.50m;
-
-var results = (from track in context.GetTable<Track>()
-               join album in context.GetTable<Album>() on track.AlbumId equals album.id
-               join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-               where artist.Name.Contains(artistSearchTerm)
-                     && track.GenreId == genreId
-                     && track.UnitPrice <= maxPrice
-               orderby track.Name
-               select new
-               {
-                   Track = track.Name,
-                   Artist = artist.Name,
-                   Genre = genre.Name,
-                   Price = track.UnitPrice
-               })
-               .Take(30)
-               .ToList();
-
-return results;",
-                                                    Explanation = @"**How It Works:**
-1. Define three filter parameters (artist, genre, price)
-2. JOIN 4 tables together
-3. Apply all three WHERE conditions (AND)
-4. All parameters safely bound
-5. Sort and limit results
-
-**Key Concepts:**
-• Multiple parameters in single query
-• Complex filtering with AND logic
-• All inputs parameterized automatically
-• Common advanced search pattern
-• Shows power of combining filters"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "param_5",
-                                                    Name = "Optional Parameter Handling",
-                                                    Description = "Handle nullable/optional search parameters",
-                                                    Category = QueryCategory.ParameterizedQueries,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Optional parameters - null means 'don't filter'
-string? artistFilter = ""Led""; // Search for Led Zeppelin (exists in seeded data)
-decimal? minDuration = 180000; // milliseconds, Try: null to see all durations
-
-var query = context.GetTable<Track>()
-    .Join(context.GetTable<Album>(), 
-          t => t.AlbumId, 
-          a => a.id, 
-          (t, a) => new { Track = t, Album = a })
-    .Join(context.GetTable<Artist>(),
-          ta => ta.Album.ArtistId,
-          ar => ar.id,
-          (ta, ar) => new { ta.Track, ta.Album, Artist = ar });
-
-// Apply filters only if parameters are provided
-if (!string.IsNullOrEmpty(artistFilter))
-    query = query.Where(x => x.Artist.Name.Contains(artistFilter));
-
-if (minDuration.HasValue)
-    query = query.Where(x => x.Track.Milliseconds >= minDuration.Value);
-
-var results = query
-    .OrderBy(x => x.Track.Name)
-    .Take(30)
-    .Select(x => new
-    {
-        Track = x.Track.Name,
-        Artist = x.Artist.Name,
-        DurationMinutes = x.Track.Milliseconds / 1000.0 / 60.0
-    })
-    .ToList();
-
-return results;",
-                                                    Explanation = @"**How It Works:**
-1. Define nullable optional parameters
-2. Build base query
-3. Conditionally add WHERE clauses
-4. Only filter if parameter provided (not null)
-5. Execute final query
-
-**Key Concepts:**
-• Nullable types (string?, decimal?) for optional filters
-• Conditional query building
-• Dynamic WHERE based on user input
-• HasValue check for nullable value types
-• Common pattern for advanced search UIs"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "param_6",
-                                                    Name = "LIKE Pattern Search",
-                                                    Description = "Wildcard search using parameters",
-                                                    Category = QueryCategory.ParameterizedQueries,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Pattern parameter - user defines the search pattern
-string pattern = ""Track""; // Searches for tracks containing 'Track'
-
-// Different search patterns:
-// ""Track"" - contains Track
-// ""The%"" - starts with The (if provider supports it)
-// ""%Live%"" - contains Live
-
-var results = context.GetTable<Track>()
-    .Where(t => t.Name.Contains(pattern))
-    .OrderBy(t => t.Name)
-    .Take(30)
-    .Select(t => new
-    {
-        TrackName = t.Name,
-        t.UnitPrice,
-        DurationSeconds = t.Milliseconds / 1000
-    })
-    .ToList();
-
-return results;",
-                                                    Explanation = @"**How It Works:**
-1. Define search pattern parameter
-2. Use Contains() for wildcard search
-3. Pattern safely parameterized
-4. SQLiteXM translates to LIKE '%pattern%'
-5. Return matching tracks
-
-**Key Concepts:**
-• Contains() → SQL LIKE with wildcards
-• Safe wildcard searching
-• Pattern is treated as data, not SQL
-• No SQL injection risk
-• Common for text search features"
-                                                }
-                                            };
-                                        }
-
-                                        private static List<QueryExample> GetDataModificationExamples()
-                                        {
-                                            return new List<QueryExample>
-                                            {
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_1",
-                                                    Name = "Insert New Track",
-                                                    Description = "Add a single new track to the database",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"var track = new Track
-{
-    Name = $""New Demo Track {DateTime.Now:HHmmss}"",
-    AlbumId = 1, // Use existing album
-    MediaTypeId = 1,
-    GenreId = 1,
-    Composer = ""Demo Composer"",
-    Milliseconds = 240000, // 4 minutes
-    Bytes = 4000000,
-    UnitPrice = 1.29m,
-    TrackNumber = 1
-};
-
-await track.SaveAsync();
-
-return new[] { new 
-{ 
-    Success = true,
-    TrackId = track.id,
-    TrackName = track.Name,
-    Message = ""Track inserted successfully""
-} };",
-                                                    Explanation = @"**How It Works:**
-1. Create new Track instance
-2. Set all required properties
-3. Call SaveAsync() to insert
-4. ID is auto-generated after save
-5. Return confirmation with new ID
-
-**Key Concepts:**
-• Create entity, set properties, save pattern
-• Primary key auto-populated after SaveAsync()
-• Foreign keys (AlbumId) must reference existing records
-• Timestamp in name ensures uniqueness
-• Basic CRUD: Create"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_2",
-                                                    Name = "Insert and Get Generated ID",
-                                                    Description = "Insert related records and retrieve auto-generated IDs in transaction",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"// Use transaction to ensure both inserts succeed or both fail
-await using var transaction = new SxmDbContext(""Chinook"");
-try
-{
-    // Create new artist
-    var artist = new Artist 
-    { 
-        Name = $""New Artist {DateTime.Now:HHmmss}""
-    };
-    await artist.SaveAsync();
-
-    // ID is automatically populated after save
-    var artistId = artist.id;
-
-    // Now create album using the new artist's ID
-    var album = new Album
-    {
-        Title = ""Debut Album"",
-        ArtistId = artistId
-    };
-    await album.SaveAsync();
-
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync();
-
-    return new[] { new 
-    { 
-        ArtistId = artistId,
-        ArtistName = artist.Name,
-        AlbumId = album.id,
-        AlbumTitle = album.Title,
-        Message = ""Artist and Album created atomically with auto-generated IDs""
-    } };
-}
-catch (Exception ex)
-{
-    return new[] { new { Success = false, Error = ex.Message } };
-}",
-                                                    Explanation = @"**How It Works:**
-1. Start transaction
-2. Insert Artist, get auto-generated ID
-3. Use Artist ID as foreign key in Album
-4. Insert Album
-5. Commit both inserts atomically
-
-**Key Concepts:**
-• Auto-generated IDs available immediately after SaveAsync()
-• Transaction ensures both succeed or both fail
-• Common parent-child insert pattern
-• Foreign key relationship enforced
-• Demonstrates ID propagation"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_3",
-                                                    Name = "Update Track Price",
-                                                    Description = "Modify a single field on existing record",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Find a track to update
-var track = context.GetTable<Track>().First();
-
-var originalPrice = track.UnitPrice;
-track.UnitPrice = 1.99m; // Update price
-
-await track.SaveAsync();
-
-return new[] { new 
-{ 
-    TrackId = track.id,
-    TrackName = track.Name,
-    OriginalPrice = originalPrice,
-    NewPrice = track.UnitPrice,
-    Message = ""Price updated successfully""
-} };",
-                                                    Explanation = @"**How It Works:**
-1. Load existing track entity
-2. Modify property (UnitPrice)
-3. Call SaveAsync() to persist change
-4. Only modified field updated in DB
-5. Return before/after values
-
-**Key Concepts:**
-• Load, modify, save pattern
-• Only changed properties updated
-• No explicit UPDATE SQL needed
-• SaveAsync() generates UPDATE statement
-• Basic CRUD: Update"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_4",
-                                                    Name = "Conditional Update",
-                                                    Description = "Update records matching specific criteria using transaction",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Find all tracks under $1.00
-var cheapTracks = context.GetTable<Track>()
-    .Where(t => t.UnitPrice < 1.00m)
-    .Take(10)
-    .ToList();
-
-// Use transaction for better performance - commit all updates together
-await using var transaction = new SxmDbContext(""Chinook"");
-try
-{
-    var updateCount = 0;
-    foreach (var track in cheapTracks)
-    {
-        track.UnitPrice = 1.29m; // Increase price
-        await track.SaveAsync();
-        updateCount++;
-    }
-
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync();
-
-    return new[] { new 
-    { 
-        TracksUpdated = updateCount,
-        NewPrice = 1.29m,
-        Message = $""Updated {updateCount} tracks to new price (in single transaction)""
-    } };
-}
-catch (Exception ex)
-{
-    return new[] { new { Success = false, Error = ex.Message } };
-}",
-                                                    Explanation = @"**How It Works:**
-1. Query for tracks matching criteria
-2. Start transaction
-3. Loop through results, modify each
-4. SaveAsync() on each within transaction
-5. Commit all updates atomically
-
-**Key Concepts:**
-• Bulk update via iteration
-• Transaction improves performance
-• All updates succeed or all fail
-• WHERE clause filters targets
-• Common batch update pattern"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_5",
-                                                    Name = "Bulk Price Increase by Genre",
-                                                    Description = "Update all tracks in a specific genre using single query and transaction",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"using var context = new SxmDbContext(""Chinook"");
-
-// Single-query approach: JOIN Track and Genre directly
-// Note: The query does maximum filtering/joining in the database.
-// However, UPDATE operations require loading entities, modifying properties,
-// and saving individually - this cannot be done in a LINQ SELECT query.
-var results = (from track in context.GetTable<Track>()
-               join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
-               where genre.Name.Contains(""Rock"")
-               select new { Track = track, GenreName = genre.Name })
-               .Take(20)
-               .ToList();
-
-var updateCount = 0;
-var genreName = results.FirstOrDefault()?.GenreName ?? ""Rock"";
-
-// Use transaction for better performance - commit all updates together
-await using var transaction = new SxmDbContext(""Chinook"");
-try
-{
-    foreach (var item in results)
-    {
-        // Increase price by 10%
-        item.Track.UnitPrice = item.Track.UnitPrice * 1.10m;
-        await item.Track.SaveAsync();
-        updateCount++;
-    }
-
-    // Commit transaction. The explicit CommitTransactionAsync() call is optional
-    // but considered good practice. Without it, the transaction will AUTO-COMMIT
-    // on Dispose (If No Errors)
-    await transaction.CommitTransactionAsync();
-
-    return new[] { new 
-    { 
-        Genre = genreName,
-        TracksUpdated = updateCount,
-        PriceIncrease = ""10%"",
-        Message = $""Updated {updateCount} rock tracks (in single transaction)""
-    } };
-}
-catch (Exception ex)
-{
-    return new[] { new 
-    { 
-        Success = false,
-        Error = ex.Message
-    } };
-}",
-                                                    Explanation = @"**How It Works:**
-1. JOIN Track and Genre in single query
-2. Filter by genre name
-3. Load entities with related data
-4. Loop, calculate 10% increase
-5. Save all in transaction
-
-**Key Concepts:**
-• Complex query with JOIN + WHERE
-• Calculated updates (percentage)
-• Transaction for batch performance
-• Demonstrates query + bulk update
-• Common business logic pattern"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_6",
-                                                    Name = "Delete Single Record",
-                                                    Description = "Remove a single playlist from the database",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"// First, create a temporary playlist for deletion demo
-                                    // (ensures we have a playlist without tracks to safely delete)
-                                    var tempPlaylist = new Playlist 
-                                    { 
-                                        Name = $""SingleDeleteDemo-{DateTime.Now:HHmmss}""
-                                    };
-                                    await tempPlaylist.SaveAsync();
-
-                                    // Verify the ID was assigned after save
-                                    var savedId = tempPlaylist.id;
-
-                                    // Now find and delete the playlist we just created using the ID
-                                    using var context = new SxmDbContext(""Chinook"");
-                                    var playlist = context.GetTable<Playlist>()
-                                        .FirstOrDefault(p => p.id == savedId);
-
-                                    if (playlist != null)
-                                    {
-                                        var playlistName = playlist.Name;
-                                        await playlist.DeleteAsync();
-
-                                        return new[] { new 
-                                        { 
-                                            Success = true,
-                                            DeletedPlaylist = playlistName,
-                                            SavedId = savedId,
-                                            Message = ""Playlist deleted successfully""
-                                        } };
-                                    }
-
-                                    return new[] { new 
-                                    { 
-                                        Success = false,
-                                        SavedId = savedId,
-                                        Message = $""Playlist with ID {savedId} not found after save""
-                                    } };",
-                                                    Explanation = @"**How It Works:**
-1. Create temporary playlist for demo
-2. Save and capture auto-generated ID
-3. Load entity by ID
-4. Call DeleteAsync() to remove
-5. Return confirmation
-
-**Key Concepts:**
-• Create test data for safe demo
-• Load entity before delete
-• DeleteAsync() generates DELETE SQL
-• ID used to verify correct record
-• Basic CRUD: Delete"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_7",
-                                                    Name = "Conditional Delete",
-                                                    Description = "Delete multiple records matching criteria using transaction",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"// First, create some temporary playlists for deletion demo
-                                    // (ensures we have playlists without tracks to safely delete)
-                                    var timestamp = DateTime.Now.Ticks; // Use Ticks for uniqueness
-                                    var savedIds = new List<long>();
-
-                                    for (int i = 1; i <= 3; i++)
-                                    {
-                                        var playlist = new Playlist 
-                                        { 
-                                            Name = $""BulkDeleteDemo-{timestamp}-{i}""
-                                        };
-                                        await playlist.SaveAsync();
-                                        savedIds.Add(playlist.id);
-                                    }
-
-                                    // Now find and delete playlists using the saved IDs
-                                    using var context = new SxmDbContext(""Chinook"");
-                                    var playlistsToDelete = context.GetTable<Playlist>()
-                                        .Where(p => savedIds.Contains(p.id))
-                                        .ToList();
-
-                                    // Use transaction for better performance and atomicity - all deletes succeed or all fail
-                                    await using var transaction = new SxmDbContext(""Chinook"");
-                                    try
-                                    {
-                                        var deleteCount = 0;
-                                        foreach (var playlist in playlistsToDelete)
-                                        {
-                                            await playlist.DeleteAsync();
-                                            deleteCount++;
-                                        }
-
-                                        // Commit transaction. The explicit CommitTransactionAsync() call is optional
-                                        // but considered good practice. Without it, the transaction will AUTO-COMMIT
-                                        // on Dispose (If No Errors)
-                                        await transaction.CommitTransactionAsync();
-
-                                        return new[] { new 
-                                        { 
-                                            PlaylistsCreated = savedIds.Count,
-                                            PlaylistsDeleted = deleteCount,
-                                            SavedIds = string.Join("", "", savedIds),
-                                            Message = $""Created {savedIds.Count} and deleted {deleteCount} temporary playlists (in single transaction)""
-                                        } };
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        return new[] { new { Success = false, Error = ex.Message } };
-                                    }",
-                                                    Explanation = @"**How It Works:**
-1. Create 3 temporary playlists
-2. Save and capture their IDs
-3. Query playlists using Contains(ids)
-4. Delete all in transaction
-5. All deletes succeed or all fail
-
-**Key Concepts:**
-• Bulk delete via iteration
-• Transaction ensures atomicity
-• Contains() generates SQL IN clause
-• Common bulk cleanup pattern
-• Demonstrates transactional deletes"
-                                                },
-                                                new QueryExample
-                                                {
-                                                    Id = "mod_8",
-                                                    Name = "Delete with Related Records",
-                                                    Description = "Delete playlist after removing its tracks first",
-                                                    Category = QueryCategory.DataModification,
-                                                    Type = QueryType.Linq,
-                                                    Code = @"// First, create a temporary playlist with tracks for deletion demo
-var tempPlaylist = new Playlist 
-{ 
-    Name = $""RelatedDeleteDemo-{DateTime.Now:HHmmss}""
-};
-await tempPlaylist.SaveAsync();
-var playlistId = tempPlaylist.id;
-
-// Add some tracks to the playlist (use existing track IDs 1, 2, 3)
-var trackIds = new[] { 1, 2, 3 };
-foreach (var trackId in trackIds)
-{
-    var playlistTrack = new PlaylistTrack
-    {
-        PlaylistId = playlistId,
-        TrackId = trackId
-    };
-    await playlistTrack.SaveAsync();
-}
-
-// Now demonstrate deletion with related records
-using var context = new SxmDbContext(""Chinook"");
-await using var transaction = new SxmDbContext(""Chinook"");
-
-try
-{
-    // Load the playlist we just created
-    var playlist = context.GetTable<Playlist>()
-        .FirstOrDefault(p => p.id == playlistId);
-
-    if (playlist != null)
-    {
-        // First, delete all playlist-track relationships
-        var playlistTracks = context.GetTable<PlaylistTrack>()
-            .Where(pt => pt.PlaylistId == playlist.id)
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.ManyToMany)
+            .OrderBy(e => NaturalOrderKey(e.Id))
             .ToList();
-
-        var trackCount = playlistTracks.Count;
-        foreach (var pt in playlistTracks)
-        {
-            await pt.DeleteAsync();
-        }
-
-        // Now delete the playlist itself
-        await playlist.DeleteAsync();
-
-        // Commit transaction. The explicit CommitTransactionAsync() call is optional
-        // but considered good practice. Without it, the transaction will AUTO-COMMIT
-        // on Dispose (If No Errors)
-        await transaction.CommitTransactionAsync();
-
-        return new[] { new 
-        { 
-            Success = true,
-            PlaylistName = playlist.Name,
-            TracksRemoved = trackCount,
-            Message = $""Created playlist with {trackCount} tracks, then deleted all in transaction""
-        } };
     }
 
-    return new[] { new { Success = false, Message = ""Playlist not found after creation"" } };
+    private static List<QueryExample> GetTransactionExamples()
+    {
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.Transactions)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
+    }
+
+    private static List<QueryExample> GetParameterizedQueryExamples()
+    {
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.ParameterizedQueries)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
+    }
+
+    private static List<QueryExample> GetDataModificationExamples()
+    {
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.DataModification)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
+    }
+
+
+	/// <summary>
+	/// Single source of truth: MixedContext examples are declared as
+	/// <c>[QueryExample]</c>-attributed <c>IQueryExampleRunner</c> classes under
+	/// <c>Samples/QueryGalleryDemo/Examples/Mixed/</c>. A Roslyn source generator
+	/// extracts each <c>RunAsync</c> body verbatim as the displayed <c>Code</c> string,
+	/// so display and execution cannot silently drift.
+	/// </summary>
+	private static List<QueryExample> GetMixedContextExamples()
+	{
+		return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+			.Where(e => e.Category == QueryCategory.MixedContext)
+			.OrderBy(e => NaturalOrderKey(e.Id))
+			.ToList();
+	}
+
+	/// <summary>
+	/// Pads the trailing integer suffix of an id (e.g. "mix_10") with leading zeros so
+	/// lexicographic ordering matches natural numeric order ("mix_2" before "mix_10").
+	/// </summary>
+	private static string NaturalOrderKey(string id)
+	{
+		int i = id.Length;
+		while (i > 0 && char.IsDigit(id[i - 1])) i--;
+		if (i == id.Length) return id;
+		return id.Substring(0, i) + id.Substring(i).PadLeft(6, '0');
+	}
+
+#pragma warning disable IDE0051 // Dead code retained for reference until Phase 2 migrates every category.
+	private static List<QueryExample> GetMixedContextExamples_Legacy_UNUSED()
+	{
+		return new List<QueryExample>
+		{
+			new QueryExample
+			{
+				Id = "mix_1",
+				Name = "LINQ + Named SQL (read-only)",
+				Description = "Run a LINQ query and a named SQL statement inside the same SxmDbContext",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+// (1) LINQ read against the context
+var genreNames = ctx.GetTable<Genre>()
+					.OrderBy(g => g.Name)
+					.Select(g => g.Name)
+					.ToList();
+
+// (2) Named SQL from SqlStatements.json - enlists in the same ambient
+//     transaction registered by the SxmDbContext ctor.
+var popularity = await ctx.RunStatementAsync(
+	"GetGenrePopularity",
+	new Dictionary<string, object?>());
+
+return new[]
+{
+	new { Step = "LINQ Genres",           Count = genreNames.Count },
+	new { Step = "Named GenrePopularity", Count = popularity.Count }
+};
+""",
+				Explanation = """
+**How It Works:**
+1. Open an SxmDbContext for the Chinook database
+2. Issue a LINQ query on ctx.GetTable<Genre>()
+3. Call ctx.RunStatementAsync with a named statement
+4. Both share the same underlying connection via the ambient SxmSqlTransaction registered by the context
+
+**Key Concepts:**
+- A single SxmDbContext hosts multiple query styles
+- Read-only work never opens a SQLite transaction (least-work)
+- Named SQL enlists on the ambient transaction automatically
+- await using guarantees clean async disposal
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_2",
+				Name = "LINQ read + Entity DML + Rollback",
+				Description = "Insert an entity, observe it via LINQ within the same tx, then roll back",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+// (1) LINQ read - baseline count
+int before = ctx.GetTable<Artist>().Count();
+
+// (2) Entity DML using the parameterless ambient pattern
+var artist = new Artist { Name = $"_MixDemo_{Guid.NewGuid():N}" };
+await artist.SaveAsync();
+
+// (3) LINQ read again - the new row is visible inside the same tx
+int during = ctx.GetTable<Artist>().Count();
+
+// (4) Discard the work explicitly - nothing persists after dispose
+await ctx.RollbackTransactionAsync();
+
+return new[]
+{
+	new { Step = "Before insert",        Detail = before.ToString() },
+	new { Step = "After insert (in tx)", Detail = during.ToString() },
+	new { Step = "Rolled back",          Detail = "Row discarded on RollbackTransactionAsync" }
+};
+""",
+				Explanation = """
+**How It Works:**
+1. LINQ COUNT gives the starting artist count
+2. new Artist().SaveAsync() enlists on the ambient tx registered by the context
+3. A second LINQ COUNT sees the uncommitted row (read-your-writes)
+4. RollbackTransactionAsync discards everything before dispose
+
+**Key Concepts:**
+- Parameterless SaveAsync() picks up SxmAmbientTransaction.Current
+- LINQ reads see uncommitted writes in the same context
+- Explicit rollback keeps the demo DB clean between runs
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_3",
+				Name = "Entity DML + Embedded SQL verify",
+				Description = "Insert Artist and Album, verify with an embedded SELECT COUNT(*), rollback",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+// (1) Entity DML - parent
+var artist = new Artist { Name = $"_Mix3_{Guid.NewGuid():N}" };
+await artist.SaveAsync();
+
+// (2) Entity DML - child
+var album = new Album { Title = "Mix Demo Album", ArtistId = artist.id };
+await album.SaveAsync();
+
+// (3) Embedded SQL - literal text passed to RunStatementAsync
+var rows = await ctx.RunStatementAsync(
+	$"SELECT COUNT(*) AS ArtistMatches FROM Artist WHERE id = {artist.id}",
+	new Dictionary<string, object?>());
+
+await ctx.RollbackTransactionAsync();
+
+return new[]
+{
+	new { Step = "Inserted",       Detail = $"ArtistId={artist.id}, AlbumId={album.id}" },
+	new { Step = "Embedded COUNT", Detail = rows.FirstOrDefault()?["ArtistMatches"]?.ToString() ?? "0" }
+};
+""",
+				Explanation = """
+**How It Works:**
+1. SaveAsync inserts Artist, then Album referencing the new id
+2. Embedded SQL (literal text passed to RunStatementAsync) executes on the same connection
+3. Rollback ensures nothing persists
+
+**Key Concepts:**
+- Embedded SQL is raw SQL text dispatched by RunStatementAsync
+- It sees uncommitted rows written by SaveAsync
+- All three statements share one transaction
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_4",
+				Name = "Named SQL feeds LINQ",
+				Description = "Use the result of a named SQL statement as input to a follow-up LINQ query",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+// (1) Named SQL - top genres by popularity
+var popularity = await ctx.RunStatementAsync(
+	"GetGenrePopularity",
+	new Dictionary<string, object?>());
+
+var topGenreNames = popularity
+	.Take(3)
+	.Select(r => r["Genre"]?.ToString())
+	.Where(n => n != null)
+	.ToList();
+
+// (2) LINQ - resolve ids, then pull tracks via the same context
+var topGenreIds = ctx.GetTable<Genre>()
+					 .Where(g => topGenreNames.Contains(g.Name))
+					 .Select(g => g.id)
+					 .ToList();
+
+var tracks = ctx.GetTable<Track>()
+				.Where(t => topGenreIds.Contains(t.GenreId))
+				.OrderBy(t => t.Name)
+				.Take(10)
+				.Select(t => new { t.Name, t.GenreId, t.UnitPrice })
+				.ToList();
+
+return tracks;
+""",
+				Explanation = """
+**How It Works:**
+1. Named SQL returns aggregate data (top genres)
+2. Project the names into a plain List<string>
+3. LINQ resolves genre ids, then pulls tracks from the same context
+
+**Key Concepts:**
+- Named SQL and LINQ compose naturally inside one context
+- All statements share the same connection
+- No transaction is opened - both statements are pure reads
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_5",
+				Name = "LINQ read + Entity DML + Embedded UPDATE",
+				Description = "Find genre via LINQ, insert Track, bump price with embedded SQL, verify, rollback",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+// (1) LINQ read
+var rock = ctx.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
+if (rock == null) return new[] { new { Error = "Rock genre missing" } };
+
+// (2) Entity DML - scratch track
+var track = new Track
+{
+	Name         = "Mix Demo Track",
+	AlbumId      = ctx.GetTable<Album>().Select(a => a.id).First(),
+	MediaTypeId  = ctx.GetTable<MediaType>().Select(m => m.id).First(),
+	GenreId      = rock.id,
+	Milliseconds = 200000,
+	UnitPrice    = 0.99m
+};
+await track.SaveAsync();
+
+// (3) Embedded SQL - UPDATE the price
+await ctx.RunStatementAsync(
+	$"UPDATE Track SET UnitPrice = 2.99 WHERE id = {track.id}",
+	new Dictionary<string, object?>());
+
+// (4) LINQ verify the update
+var updated = ctx.GetTable<Track>()
+				 .Where(t => t.id == track.id)
+				 .Select(t => new { t.id, t.Name, t.UnitPrice })
+				 .First();
+
+await ctx.RollbackTransactionAsync();
+
+return new[] { new { Error = (string?)null, updated.id, updated.Name, updated.UnitPrice } };
+""",
+				Explanation = """
+**How It Works:**
+1. LINQ locates the Rock genre
+2. Entity SaveAsync inserts a scratch track
+3. Embedded UPDATE lifts the price
+4. LINQ confirms the new value inside the same transaction
+5. Rollback removes both the insert and the update
+
+**Key Concepts:**
+- LINQ, Entity DML, and embedded SQL freely interleave
+- All observe each other's writes because they share one connection/tx
+- Rollback discards every statement in the tx
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_6",
+				Name = "Explicit Commit mid-context",
+				Description = "Commit early, then continue with a fresh transaction on the same context",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+var uniqueName = $"_Mix6_{Guid.NewGuid():N}";
+
+// (1) Entity DML in the first transaction
+var artist = new Artist { Name = uniqueName };
+await artist.SaveAsync();
+
+// (2) Commit early - subsequent writes open a NEW transaction
+await ctx.CommitTransactionAsync();
+
+// (3) LINQ read - visible because it's already committed
+bool visible = ctx.GetTable<Artist>().Any(a => a.Name == uniqueName);
+
+// (4) LINQ bulk DELETE removes the row in the new tx
+int deleted = ctx.GetTable<Artist>()
+				 .Where(a => a.Name == uniqueName)
+				 .Delete();
+
+// (5) Commit the cleanup
+await ctx.CommitTransactionAsync();
+
+return new[]
+{
+	new { Step = "After first commit", Detail = $"VisibleToLinq={visible}, ArtistId={artist.id}" },
+	new { Step = "Cleanup",            Detail = $"DeletedRows={deleted}" }
+};
+""",
+				Explanation = """
+**How It Works:**
+1. SaveAsync writes inside the first auto-started transaction
+2. CommitTransactionAsync ends that tx early
+3. A follow-up LINQ bulk Delete starts a fresh transaction under the same context
+4. A second CommitTransactionAsync finalizes the cleanup
+
+**Key Concepts:**
+- A single SxmDbContext can span multiple sequential transactions
+- Explicit commit is optional - dispose auto-commits when no errors occurred
+- LINQ bulk Update/Delete lazily starts a transaction on the first write
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_7",
+				Name = "Rollback discards mixed work",
+				Description = "Entity DML + LINQ bulk update + Named SQL, then RollbackTransactionAsync",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+var marker = $"_Mix7_{Guid.NewGuid():N}";
+
+// (1) Entity DML - two scratch artists
+await new Artist { Name = marker + "_A" }.SaveAsync();
+await new Artist { Name = marker + "_B" }.SaveAsync();
+
+// (2) LINQ bulk UPDATE - rename them
+int renamed = ctx.GetTable<Artist>()
+				 .Where(a => a.Name.StartsWith(marker))
+				 .Set(a => a.Name, a => a.Name + "_renamed")
+				 .Update();
+
+// (3) Named SQL runs in the same tx
+var popularity = await ctx.RunStatementAsync(
+	"GetGenrePopularity",
+	new Dictionary<string, object?>());
+
+// (4) Roll everything back
+await ctx.RollbackTransactionAsync();
+
+// (5) After rollback, none of the marker rows survive
+int survivors = ctx.GetTable<Artist>().Count(a => a.Name.StartsWith(marker));
+
+return new[]
+{
+	new { Step = "Bulk renamed",   Detail = renamed.ToString() },
+	new { Step = "Named SQL rows", Detail = popularity.Count.ToString() },
+	new { Step = "After rollback", Detail = $"MarkerRowsRemaining={survivors}" }
+};
+""",
+				Explanation = """
+**How It Works:**
+1. Entity DML inserts scratch rows
+2. LINQ bulk Update renames them via a single SQL statement
+3. Named SQL executes read-only work in the same tx
+4. RollbackTransactionAsync undoes inserts AND updates atomically
+5. A fresh LINQ COUNT confirms zero survivors
+
+**Key Concepts:**
+- Rollback is all-or-nothing across every statement in the tx
+- LINQ bulk writes participate in the ambient tx just like entity DML
+- Named SQL reads see uncommitted work
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_8",
+				Name = "Auto-rollback on exception",
+				Description = "An exception mid-context aborts all mixed work automatically on dispose",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+var marker = $"_Mix8_{Guid.NewGuid():N}";
+try
+{
+	await using var ctx = new SxmDbContext("Chinook");
+
+	// Entity DML
+	await new Artist { Name = marker }.SaveAsync();
+
+	// Named SQL
+	_ = await ctx.RunStatementAsync(
+		"GetGenrePopularity",
+		new Dictionary<string, object?>());
+
+	// Force a failure BEFORE any commit
+	throw new InvalidOperationException("Simulated failure - triggers auto-rollback on dispose");
 }
 catch (Exception ex)
 {
-    return new[] { new { Success = false, Error = ex.Message } };
-}",
-                                                    Explanation = @"**How It Works:**
-1. Start transaction
-2. Load playlist and related tracks
-3. Delete PlaylistTrack join records first
-4. Then delete Playlist itself
-5. Commit all changes atomically
+	// On dispose, the context detected the error and rolled back.
+	await using var probe = new SxmDbContext("Chinook");
+	int survivors = probe.GetTable<Artist>().Count(a => a.Name == marker);
+
+	return new[] { new
+	{
+		Caught = ex.Message,
+		MarkerRowsPersisted = survivors,
+		Note = "Zero survivors proves the mix was rolled back automatically"
+	} };
+}
+""",
+				Explanation = """
+**How It Works:**
+1. Entity DML and Named SQL run under a shared context
+2. An uncaught exception escapes the context body
+3. DisposeAsync detects the failed state and rolls back
+4. A fresh context queries and finds none of the marker rows
 
 **Key Concepts:**
-• Foreign key constraint handling
-• Delete child records before parent
-• Transaction ensures referential integrity
-• All deletes succeed or all fail
-• Demonstrates cascading delete pattern"
-                                                }
-                                            };
-                                        }
-                                    }
+- await using guarantees async disposal even on exception
+- Failure -> rollback; success -> commit
+- Rollback covers every statement executed on the context
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_9",
+				Name = "Three-way read: LINQ + Named SQL + Embedded SQL",
+				Description = "All-reads sample. Confirms one connection is shared; no transaction opened",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
 
+// (1) LINQ
+int albumCount = ctx.GetTable<Album>().Count();
+
+// (2) Named SQL
+var artistRevenue = await ctx.RunStatementAsync(
+	"GetArtistRevenue",
+	new Dictionary<string, object?>());
+
+// (3) Embedded SQL
+var trackRow = await ctx.RunStatementAsync(
+	"SELECT COUNT(*) AS TrackCount FROM Track",
+	new Dictionary<string, object?>());
+
+return new[]
+{
+	new { Source = "LINQ Count<Album>",       Value = albumCount.ToString() },
+	new { Source = "Named GetArtistRevenue",  Value = artistRevenue.Count + " rows" },
+	new { Source = "Embedded COUNT(*) Track", Value = trackRow.FirstOrDefault()?["TrackCount"]?.ToString() ?? "0" }
+};
+""",
+				Explanation = """
+**How It Works:**
+1. LINQ COUNT runs against the context's DataConnection
+2. Named SQL invokes a JSON-registered statement
+3. Embedded SQL is a literal SELECT passed as text
+
+**Key Concepts:**
+- Read-only means no SQLite BEGIN issued (least-work)
+- Every read still goes through the same connection
+- Illustrates the three read paths side by side
+"""
+			},
+			new QueryExample
+			{
+				Id = "mix_10",
+				Name = "End-to-end unit of work",
+				Description = "LINQ + Entity DML + Embedded SQL + Named SQL cooperating, then rollback",
+				Category = QueryCategory.MixedContext,
+				Type = QueryType.Mixed,
+				Code = """
+await using var ctx = new SxmDbContext("Chinook");
+
+// (1) LINQ read - anchor artist
+var anchor = ctx.GetTable<Artist>().OrderBy(a => a.id).First();
+
+// (2) Entity DML - scratch album and track
+var album = new Album { Title = "_Mix10 Album", ArtistId = anchor.id };
+await album.SaveAsync();
+
+var track = new Track
+{
+	Name         = "_Mix10 Track",
+	AlbumId      = album.id,
+	MediaTypeId  = ctx.GetTable<MediaType>().Select(m => m.id).First(),
+	GenreId      = ctx.GetTable<Genre>().Select(g => g.id).First(),
+	Milliseconds = 150000,
+	UnitPrice    = 0.99m
+};
+await track.SaveAsync();
+
+// (3) Embedded SQL - count tracks on this new album (sees uncommitted rows)
+var countRow = await ctx.RunStatementAsync(
+	$"SELECT COUNT(*) AS Cnt FROM Track WHERE AlbumId = {album.id}",
+	new Dictionary<string, object?>());
+
+// (4) Named SQL for context
+var genrePopularity = await ctx.RunStatementAsync(
+	"GetGenrePopularity",
+	new Dictionary<string, object?>());
+
+// (5) LINQ aggregate - confirm from a different angle
+decimal totalPrice = ctx.GetTable<Track>()
+						.Where(t => t.AlbumId == album.id)
+						.Sum(t => t.UnitPrice);
+
+await ctx.RollbackTransactionAsync();
+
+return new[]
+{
+	new { Step = "Anchor artist",        Detail = anchor.Name },
+	new { Step = "New album id",         Detail = album.id.ToString() },
+	new { Step = "New track id",         Detail = track.id.ToString() },
+	new { Step = "Embedded COUNT",       Detail = countRow.FirstOrDefault()?["Cnt"]?.ToString() ?? "?" },
+	new { Step = "Named popularity",     Detail = genrePopularity.Count + " rows" },
+	new { Step = "LINQ SUM(UnitPrice)",  Detail = totalPrice.ToString("N2") },
+	new { Step = "Rolled back",          Detail = "Nothing persists" }
+};
+""",
+				Explanation = """
+**How It Works:**
+1. LINQ finds an anchor Artist
+2. Entity SaveAsync creates a scratch Album and Track
+3. Embedded SQL counts tracks on that new album inside the same tx
+4. Named SQL fetches genre popularity for context
+5. A LINQ aggregate sums UnitPrice for the album
+6. RollbackTransactionAsync throws all of it away
+
+**Key Concepts:**
+- A single SxmDbContext is a unit of work spanning every query style
+- The ambient transaction makes SaveAsync / embedded SQL / named SQL / LINQ interoperable
+- Rollback (or an exception) atomically discards the entire mix
+"""
+			}
+		};
+	}
+#pragma warning restore IDE0051
+}

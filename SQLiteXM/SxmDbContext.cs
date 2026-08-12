@@ -311,7 +311,7 @@ namespace SQLiteXM
         // Advanced users inside the library (or friend assemblies) can still use these helpers.
 
         // Opt-in: return the raw LinqToDB ITable<T> when a caller truly needs LinqToDB APIs.
-        internal ITable<T> GetRawTable<T>() where T : class
+        private ITable<T> GetRawTable<T>() where T : class
         {
             ThrowIfDisposed();
             EnsureLinqConnectionCurrent();
@@ -466,7 +466,7 @@ namespace SQLiteXM
         /// Example: QueryAsync("SELECT * FROM UserRecord WHERE id = @p0", 42)
         /// </summary>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="sql"/> is null or whitespace.</exception>
-        public async Task<List<Dictionary<string, object?>>> QueryAsync(string sql, params object?[] parameters)
+        internal async Task<List<Dictionary<string, object?>>> QueryAsync(string sql, params object?[] parameters)
         {
             if (string.IsNullOrWhiteSpace(sql)) throw new ArgumentNullException(nameof(sql));
             ThrowIfDisposed();
@@ -590,6 +590,10 @@ namespace SQLiteXM
 
         /************************************************ RunStatementAsync (public forwarders) ************************************************/
 
+
+        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<TResult>(sqlStatementName, new Dictionary<string, object?>());
+
         /// <summary>
         /// Executes a named SQL statement mapping <paramref name="userObjectParameters"/> onto the statement's
         /// parameters and projecting results into a list of <typeparamref name="TResult"/> entities.
@@ -605,6 +609,10 @@ namespace SQLiteXM
         /// <seealso cref="SxmSqlTransaction"/>
         public Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
             => _sqlTransaction.RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters);
+
+
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName) 
+            => _sqlTransaction.RunStatementAsync(sqlStatementName, new Dictionary<string, object?>());
 
         /// <summary>
         /// Executes a named SQL statement mapping <paramref name="userObjectParameters"/> onto the statement's

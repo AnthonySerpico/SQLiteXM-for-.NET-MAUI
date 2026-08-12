@@ -116,6 +116,9 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\SQLiteXM\SQLiteXM.csproj" />
+		<ProjectReference Include="..\QueryGalleryDemo.SourceGenerators\QueryGalleryDemo.SourceGenerators.csproj"
+						  OutputItemType="Analyzer"
+						  ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 </Project>

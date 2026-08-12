@@ -14,5 +14,6 @@ public enum QueryCategory
     ManyToMany,
     Transactions,
     ParameterizedQueries,
-    DataModification
+    DataModification,
+    MixedContext
 }

@@ -29,5 +29,6 @@ public class QueryExample
 public enum QueryType
 {
     Linq,
-    RawSql
+    RawSql,
+    Mixed
 }

@@ -32,6 +32,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -281,6 +282,31 @@
                                FontAttributes="Bold"
                                HorizontalOptions="Center"/>
                         <Label Text="INSERT, UPDATE, DELETE operations"
+                               FontSize="12"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Mixed SxmDbContext -->
+                <Frame Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2"
+                       Padding="0"
+                       BorderColor="{StaticResource Primary}"
+                       BackgroundColor="Transparent">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToCategoryCommand}"
+                                            CommandParameter="MixedContext"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="10">
+                        <Label Text="🧩"
+                               FontSize="40"
+                               HorizontalOptions="Center"/>
+                        <Label Text="Mixed SxmDbContext"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                        <Label Text="LINQ + Entity DML + Embedded &amp; Named SQL in one context"
                                FontSize="12"
                                TextColor="{StaticResource Gray600}"
                                HorizontalOptions="Center"

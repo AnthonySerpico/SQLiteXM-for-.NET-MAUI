@@ -52,7 +52,13 @@ namespace SQLiteXM
         }
 
 
-        /************************************************************************* GENERIC ********************************************************************/
+        /************************************************************************* RETURN TResult ********************************************************************/
+
+        public static async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, string? databaseName = default(string)) where TResult : class, new()
+        {
+            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, new Dictionary<string, object?>(), databaseName).ConfigureFalse();
+            return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
+        }
 
         /// <summary>
         /// Generic internal runner that accepts a user-typed parameter object and returns mapped result records.
@@ -99,6 +105,28 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Internal runner that accepts an ordered parameter list and maps results to <typeparamref name="TResult"/>.
+        /// </summary>
+        /// <typeparam name="TResult">Type used to map each result record.</typeparam>
+        /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
+        /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
+        /// <param name="databaseName">Optional database name override.</param>
+        /// <returns>List of mapped records of type <typeparamref name="TResult"/>.</returns>
+        public static async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? databaseName = default(string)) where TResult : class, new()
+        {
+            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
+            return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
+        }
+
+
+        /************************************************************************* RETURN Dictionary ********************************************************************/
+
+        public static async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, string? databaseName = default(string))
+        {
+            return await RunStatementAsync(sqlStatementName, new Dictionary<string, object?>(), databaseName).ConfigureFalse();
+        }
+
+        /// <summary>
         /// Internal runner that accepts a user-typed parameter object and returns raw result dictionaries.
         /// This method validates that 'direct' statement variants are not used with user objects.
         /// </summary>
@@ -122,20 +150,6 @@ namespace SQLiteXM
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
 
             return await RunStatementAsync(sqlStatementName, selectParameterValues, databaseName).ConfigureFalse();
-        }
-
-        /// <summary>
-        /// Internal runner that accepts an ordered parameter list and maps results to <typeparamref name="TResult"/>.
-        /// </summary>
-        /// <typeparam name="TResult">Type used to map each result record.</typeparam>
-        /// <param name="sqlStatementName">Logical name of the SQL statement to execute.</param>
-        /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
-        /// <param name="databaseName">Optional database name override.</param>
-        /// <returns>List of mapped records of type <typeparamref name="TResult"/>.</returns>
-        public static async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? databaseName = default(string)) where TResult : class, new()
-        {
-            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
-            return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
         }
 
         /// <summary>
