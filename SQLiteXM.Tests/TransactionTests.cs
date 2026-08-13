@@ -18,7 +18,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
         await entity.SaveAsync();
         await transaction.CommitTransactionAsync();
 
@@ -41,7 +41,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
         await entity.SaveAsync();
         var tempId = entity.id;
         await transaction.RollbackTransactionAsync();
@@ -63,7 +63,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
         await entity1.SaveAsync();
         await entity2.SaveAsync();
         await transaction.CommitTransactionAsync();
@@ -97,7 +97,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
         await entity.DeleteAsync();
         await transaction.CommitTransactionAsync();
 
@@ -118,7 +118,7 @@ public class TransactionTests : TestBase
 
         // Act
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         // SaveAsync() without transaction parameter uses ambient transaction
         await entity1.SaveAsync();
@@ -148,7 +148,7 @@ public class TransactionTests : TestBase
         var connection = new SxmConnection(TestDatabaseName, shared: false);
 
         // Act & Assert - Attempting to create a nested ambient transaction should fail fast
-        await using var outerTransaction = await SxmDbContext.CreateAsync(connection);
+        await using var outerTransaction = await SxmTransaction.CreateAsync(connection);
 
         // Verify outer context registered an ambient transaction
         var currentTx = SxmAmbientTransaction.Current;
@@ -159,7 +159,7 @@ public class TransactionTests : TestBase
         try
         {
             var innerConnection = new SxmConnection(TestDatabaseName, shared: false);
-            await using var innerTransaction = await SxmDbContext.CreateAsync(innerConnection);
+            await using var innerTransaction = await SxmTransaction.CreateAsync(innerConnection);
         }
         catch (InvalidOperationException ex)
         {
@@ -179,20 +179,20 @@ public class TransactionTests : TestBase
         await InitializeSqliteXMAsync();
 
         // Act & Assert - A nested context created via the ctor joins the ambient transaction
-        await using var outerContext = new SxmDbContext(TestDatabaseName);
+        await using var outerContext = new SxmTransaction(TestDatabaseName);
 
         // Verify outer context registered an ambient transaction
         var ambientBefore = SxmAmbientTransaction.Current;
         ambientBefore.Should().NotBeNull("outer context should register an ambient transaction");
 
-        await using (var innerContext = new SxmDbContext())
+        await using (var innerContext = new SxmTransaction())
         {
             // The inner context joins - the ambient transaction is unchanged.
             SxmAmbientTransaction.Current.Should().BeSameAs(ambientBefore,
                 "inner context should join the existing ambient transaction, not replace it");
 
             // A mismatched database name, however, must throw.
-            var act = () => new SxmDbContext("someOtherDatabase");
+            var act = () => new SxmTransaction("someOtherDatabase");
             act.Should().Throw<InvalidOperationException>()
                 .WithMessage("*ambient transaction is active*");
         }

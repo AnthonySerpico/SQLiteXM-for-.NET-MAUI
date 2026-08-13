@@ -26,7 +26,7 @@ internal sealed class Mix4Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         // (1) Named SQL - top genres by popularity
         var popularity = await ctx.RunStatementAsync(

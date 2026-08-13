@@ -29,7 +29,7 @@ internal sealed class Agg1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
                        from genre in genreGroup.DefaultIfEmpty()
@@ -69,7 +69,7 @@ internal sealed class Agg2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from album in context.GetTable<Album>()
                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
                        group album by new { artist.id, artist.Name } into g
@@ -108,7 +108,7 @@ internal sealed class Agg3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
                        group track by new { genre.id, genre.Name } into g
@@ -147,7 +147,7 @@ internal sealed class Agg4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from invoice in context.GetTable<Invoice>()
                        join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        group invoice by new { customer.id, CustomerName = customer.FirstName + " " + customer.LastName, customer.Country } into g
@@ -188,7 +188,7 @@ internal sealed class Agg5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from invoiceLine in context.GetTable<InvoiceLine>()
                        join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
                        join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
@@ -228,7 +228,7 @@ internal sealed class Agg6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from invoice in context.GetTable<Invoice>()
                        join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        group invoice by customer.Country into g
@@ -268,7 +268,7 @@ internal sealed class Agg7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var tracks = context.GetTable<Track>().ToList();
         var summary = new
         {
@@ -304,7 +304,7 @@ internal sealed class Agg8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var customerStats = (from invoice in context.GetTable<Invoice>()
                              group invoice by invoice.CustomerId into g
                              select new
@@ -357,7 +357,7 @@ internal sealed class Agg9Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -400,7 +400,7 @@ internal sealed class Agg10Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from invoiceLine in context.GetTable<InvoiceLine>()
                        join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
                        join album in context.GetTable<Album>() on track.AlbumId equals album.id

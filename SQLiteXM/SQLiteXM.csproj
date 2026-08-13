@@ -15,7 +15,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
-		<DefineConstants>$(DefineConstants);SXM_DEBUG</DefineConstants>
+		<DefineConstants>$(DefineConstants);DEBUG;SXM_DEBUG</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>

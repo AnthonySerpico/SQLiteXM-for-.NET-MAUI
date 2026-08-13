@@ -30,7 +30,7 @@ internal sealed class Mix8Example : IQueryExampleRunner
         var marker = $"_Mix8_{Guid.NewGuid():N}";
         try
         {
-            await using var ctx = new SxmDbContext("Chinook");
+            await using var ctx = new SxmTransaction("Chinook");
 
             // Entity DML
             await new Artist { Name = marker }.SaveAsync();
@@ -46,7 +46,7 @@ internal sealed class Mix8Example : IQueryExampleRunner
         catch (Exception ex)
         {
             // On dispose, the context detected the error and rolled back.
-            await using var probe = new SxmDbContext("Chinook");
+            await using var probe = new SxmTransaction("Chinook");
             int survivors = probe.GetTable<Artist>().Count(a => a.Name == marker);
 
             return new[] { new

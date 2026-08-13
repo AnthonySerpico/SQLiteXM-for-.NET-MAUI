@@ -29,7 +29,7 @@ internal sealed class Rel1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
                        orderby track.Name
@@ -62,7 +62,7 @@ internal sealed class Rel2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from album in context.GetTable<Album>()
                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
                        orderby artist.Name, album.Title
@@ -95,7 +95,7 @@ internal sealed class Rel3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -139,7 +139,7 @@ internal sealed class Rel4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from customer in context.GetTable<Customer>()
                        join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
                        from employee in empGroup.DefaultIfEmpty()
@@ -180,7 +180,7 @@ internal sealed class Rel5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from emp in context.GetTable<Employee>()
                        join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
                        from manager in mgrGroup.DefaultIfEmpty()
@@ -220,7 +220,7 @@ internal sealed class Rel6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from invoice in context.GetTable<Invoice>()
                        join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        orderby invoice.InvoiceDate descending
@@ -261,7 +261,7 @@ internal sealed class Rel7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -308,7 +308,7 @@ internal sealed class Rel8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        select new
                        {

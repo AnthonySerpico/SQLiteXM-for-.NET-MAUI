@@ -247,7 +247,7 @@ public class DatabaseSeeder
         var genres = new List<Genre>();
 
         // Check if genres already exist
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
         {
             var existingGenres = await context.GetTable<Genre>().ToListAsync();
             if (existingGenres.Count > 0)
@@ -271,7 +271,7 @@ public class DatabaseSeeder
         progress?.Report("Seeding media types...");
         var mediaTypes = new List<MediaType>();
 
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
         {
             var existingMediaTypes = await context.GetTable<MediaType>().ToListAsync();
             if (existingMediaTypes.Count > 0)
@@ -297,7 +297,7 @@ public class DatabaseSeeder
         var artists = new List<Artist>();
 
         // Check if artists already exist
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
         {
             var existingArtists = await context.GetTable<Artist>().ToListAsync();
             if (existingArtists.Count > 0)
@@ -334,7 +334,7 @@ public class DatabaseSeeder
             "Anthology", "Collection", "Classics", "Volume 1", "Volume 2", "Deluxe Edition" };
 
         // Use a single transaction for all inserts
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         {
             for (int i = 0; i < 400; i++)
             {
@@ -371,7 +371,7 @@ public class DatabaseSeeder
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Use a single transaction for all inserts
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         {
             // Batch size: insert every N records to reduce SaveAsync overhead
             const int batchSize = 100;
@@ -460,7 +460,7 @@ public class DatabaseSeeder
         var batch = new List<PlaylistTrack>();
 
         // Use a single transaction for all inserts - MASSIVE performance improvement
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         {
             for (int i = 0; i < 10000; i++)
             {
@@ -547,7 +547,7 @@ public class DatabaseSeeder
         var customers = new List<Customer>();
 
         // Use a single transaction for all inserts
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         {
             for (int i = 0; i < 500; i++)
             {
@@ -591,7 +591,7 @@ public class DatabaseSeeder
         var invoices = new List<Invoice>();
 
         // Use a single transaction for all inserts
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         {
             for (int i = 0; i < 2000; i++)
             {
@@ -636,7 +636,7 @@ public class DatabaseSeeder
         var batch = new List<InvoiceLine>();
 
         // Use a single transaction for all inserts - MASSIVE performance improvement
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         {
             for (int i = 0; i < 8000; i++)
             {

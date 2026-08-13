@@ -21,7 +21,7 @@ namespace QueryGalleryDemo.Examples.Mixed;
 6. RollbackTransactionAsync throws all of it away
 
 **Key Concepts:**
-- A single SxmDbContext is a unit of work spanning every query style
+- A single SxmTransaction is a unit of work spanning every query style
 - The ambient transaction makes SaveAsync / embedded SQL / named SQL / LINQ interoperable
 - Rollback (or an exception) atomically discards the entire mix
 """)]
@@ -29,7 +29,7 @@ internal sealed class Mix10Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         // (1) LINQ read - anchor artist
         var anchor = ctx.GetTable<Artist>().OrderBy(a => a.id).First();

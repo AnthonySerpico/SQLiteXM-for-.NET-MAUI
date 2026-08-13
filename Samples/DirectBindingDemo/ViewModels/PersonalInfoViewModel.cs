@@ -57,7 +57,7 @@ public partial class PersonalInfoViewModel : BaseViewModel
         try
         {
             // Load the existing User entity from the database
-            await using (var context = new SxmDbContext("AppData"))
+            await using (var context = new SxmTransaction("AppData"))
             {
                 var user = context.GetTable<User>()
                     .FirstOrDefault(u => u.id == UserId);

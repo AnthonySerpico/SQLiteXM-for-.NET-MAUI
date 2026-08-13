@@ -19,6 +19,13 @@ public abstract class TestBase : IDisposable
 
     static TestBase()
     {
+#if !DEBUG
+        throw new InvalidOperationException(
+            "SQLiteXM tests MUST be run in Debug configuration. " +
+            "The test suite uses DEBUG-only features like SxmDatabase.ResetForTestingAsync() " +
+            "to properly clean up state between tests. Running in Release mode will cause test failures. " +
+            "Please switch to Debug configuration and try again.");
+#endif
         // Initialize shared paths once for all tests
         TestDatabaseFolder = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", TestDatabaseName);
         Directory.CreateDirectory(TestDatabaseFolder);
@@ -450,7 +457,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<T?> VerifyEntityExistsInDbAsync<T>(long id) where T : SxmEntity
     {
-        await using (var context = new SxmDbContext(TestDatabaseName))
+        await using (var context = new SxmTransaction(TestDatabaseName))
         {
             var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
             return entity;
@@ -462,7 +469,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task VerifyEntityNotInDbAsync<T>(long id) where T : SxmEntity
     {
-        await using (var context = new SxmDbContext(TestDatabaseName))
+        await using (var context = new SxmTransaction(TestDatabaseName))
         {
             var entity = context.GetTable<T>().FirstOrDefault(e => e.id == id);
             if (entity != null)
@@ -478,7 +485,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<List<T>> GetAllEntitiesFromDb<T>() where T : SxmEntity
     {
-        await using (var context = new SxmDbContext(TestDatabaseName))
+        await using (var context = new SxmTransaction(TestDatabaseName))
         {
             return context.GetTable<T>().ToList();
         }
@@ -491,7 +498,7 @@ public abstract class TestBase : IDisposable
     {
         int rc = 0;
 
-        await using (var context = new SxmDbContext(TestDatabaseName))
+        await using (var context = new SxmTransaction(TestDatabaseName))
         {
             rc = context.GetTable<T>().Count();
         }
@@ -507,7 +514,7 @@ public abstract class TestBase : IDisposable
     {
         try
         {
-            await using (var context = new SxmDbContext(TestDatabaseName))
+            await using (var context = new SxmTransaction(TestDatabaseName))
             {
                 _ = context.GetTable<T>().Count();
                 return true;

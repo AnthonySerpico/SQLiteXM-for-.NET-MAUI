@@ -31,7 +31,7 @@ internal sealed class Adv1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
 
         int pageSize = 20;
         int pageNumber = 1; // Change to test different pages
@@ -72,7 +72,7 @@ internal sealed class Adv2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from track in context.GetTable<Track>()
                        join album in context.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -109,7 +109,7 @@ internal sealed class Adv3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var tracks = context.GetTable<Track>()
             .Where(t => (t.UnitPrice >= 1.0m && t.Milliseconds >= 180000) ||
                         (t.UnitPrice < 1.0m && t.Milliseconds < 180000))
@@ -145,7 +145,7 @@ internal sealed class Adv4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
 
         var artistIds = context.GetTable<Artist>()
             .OrderBy(a => a.Name)
@@ -187,7 +187,7 @@ internal sealed class Adv5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var customerInvoiceCounts = (from customer in context.GetTable<Customer>()
                                      let invoiceCount = (from invoice in context.GetTable<Invoice>()
                                                          where invoice.CustomerId == customer.id
@@ -226,7 +226,7 @@ internal sealed class Adv6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from album in context.GetTable<Album>()
                        join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
                        group album by new { artist.id, artist.Name } into g
@@ -263,7 +263,7 @@ internal sealed class Adv7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var tracks = context.GetTable<Track>().ToList();
         var priceAnalysis = new
         {
@@ -299,7 +299,7 @@ internal sealed class Adv8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         // SQLite doesn't support CROSS/OUTER APPLY, so materialize first
         var tracksWithGenre = (from track in context.GetTable<Track>()
                                join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
@@ -348,7 +348,7 @@ internal sealed class Adv9Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var recentInvoices = (from invoice in context.GetTable<Invoice>()
                               join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
                               orderby invoice.InvoiceDate descending
@@ -386,7 +386,7 @@ internal sealed class Adv10Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var artists = context.GetTable<Artist>()
             .Select(a => new
             {
@@ -424,7 +424,7 @@ internal sealed class Adv11Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var artistNames = context.GetTable<Artist>()
             .Select(a => new { Name = a.Name, Type = "Artist" })
             .Take(10);

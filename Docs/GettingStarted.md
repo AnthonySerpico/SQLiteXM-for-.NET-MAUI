@@ -303,13 +303,13 @@ See **ERROR_HANDLING.md** for additional patterns.
 
 # 5. Querying Data
 
-SQLiteXM provides LINQ-based querying through `SxmDbContext`.
+SQLiteXM provides LINQ-based querying through `SxmTransaction`.
 
 ```csharp
-// Create a DB context on the 'MyApp' database
-using var context = new SxmDbContext("MyApp");
+// Create a transaction on the 'MyApp' database
+using var transaction= new SxmTransaction("MyApp");
 
-var users = context.GetTable<User>()
+var users = transaction.GetTable<User>()
                .Where(u => u.Age >= 18)
                .OrderBy(u => u.Name)
                .ToList();
@@ -563,7 +563,7 @@ For advanced transaction scenarios and best practices, see:
 
 # Common Beginner Questions
 
-## Do I Need a DbContext to Save Data?
+## Do I Need a Transaction to Save Data?
 
 No.
 
@@ -573,7 +573,7 @@ await user.SaveAsync();
 
 is often sufficient.
 
-Use a context primarily for LINQ queries and batch operations.
+Use a transactionprimarily for LINQ queries and batch operations.
 
 ## Do I Need to Create Tables Manually?
 

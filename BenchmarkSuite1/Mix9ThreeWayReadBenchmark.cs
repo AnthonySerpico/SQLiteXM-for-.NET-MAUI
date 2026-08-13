@@ -64,7 +64,7 @@ public class Mix9ThreeWayReadBenchmark
 
     private static async Task SeedAsync()
     {
-        await using var ctx = new SxmDbContext(DbName);
+        await using var ctx = new SxmTransaction(DbName);
         for (int i = 0; i < 100; i++)
         {
             var a = new BenchArtist
@@ -79,7 +79,7 @@ public class Mix9ThreeWayReadBenchmark
     //   LINQ Count + named RunStatementAsync + embedded RunStatementAsync
     private static async Task RunMix9BlockAsync()
     {
-        await using var ctx = new SxmDbContext(DbName);
+        await using var ctx = new SxmTransaction(DbName);
         int albumCount = ctx.GetTable<BenchArtist>().Count();
         var artistRevenue = await ctx.RunStatementAsync("GetBenchArtists", new Dictionary<string, object?>());
         var trackRow = await ctx.RunStatementAsync("SELECT COUNT(*) AS TrackCount FROM BenchArtist", new Dictionary<string, object?>());
@@ -91,7 +91,7 @@ public class Mix9ThreeWayReadBenchmark
     // Fast-path comparison: Mix10-style block (LINQ + entity DML + LINQ + rollback), NO RunStatementAsync.
     private static async Task RunFastBlockAsync()
     {
-        await using var ctx = new SxmDbContext(DbName);
+        await using var ctx = new SxmTransaction(DbName);
         int before = ctx.GetTable<BenchArtist>().Count();
         var a = new BenchArtist
         {

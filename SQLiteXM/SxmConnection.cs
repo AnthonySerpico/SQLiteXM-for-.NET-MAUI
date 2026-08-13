@@ -143,7 +143,7 @@ namespace SQLiteXM
         /// <summary>
         /// Create a new SxmConnection for the specified databaseName.
         /// If <paramref name="shared"/> is true the connection may be reused across callers.
-        /// Internal: connections are managed by the library; consumers use <see cref="SxmDbContext"/>.
+        /// Internal: connections are managed by the library; consumers use <see cref="SxmTransaction"/>.
         /// Throws <see cref="SxmException"/> on initialization failures.
         /// </summary>
         /// <param name="databaseName">Name of the database file (or null to use implicit name).</param>

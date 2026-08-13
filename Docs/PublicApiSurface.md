@@ -13,7 +13,7 @@ Legend: 🟢 = entry point · 🟦 = configuration · 🟣 = entity / mapping ·
 SQLiteXM (namespace)
 ├── 🟢  SxmDatabase                       static  — bootstrap & entity registration
 ├── 🟢  SxmSql                            static-like — stand-alone named SQL execution
-├── 🟢  SxmDbContext                      class   — transactional unit of work
+├── 🟢  SxmTransaction                      class   — transactional unit of work
 ├── 🟦  SxmDatabaseOptions                sealed  — init-time configuration
 ├── 🟦  ConnectionOpenedInterceptor       delegate — post-open callback
 ├── 🟦  ConnectionClosedInterceptor       delegate — post-close callback
@@ -61,13 +61,13 @@ SQLiteXM (namespace)
 | `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = null)` |
 | `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters, string? databaseName = null)` |
 
-### 🟢 `SxmDbContext : IDisposable, IAsyncDisposable`
+### 🟢 `SxmTransaction : IDisposable, IAsyncDisposable`
 
 Transactional unit-of-work combining LINQ, entity DML, and raw SQL.
 
 | Kind | Signature |
 |---|---|
-| ctor | `SxmDbContext(string? databaseName = null)` |
+| ctor | `SxmTransaction(string? databaseName = null)` |
 | Table | `SxmTable<T> GetTable<T>() where T : class` |
 | DML | `Task<int> InsertAsync<T>(T entity, CancellationToken ct = default)` |
 | DML | `Task<int> UpdateAsync<T>(T entity, CancellationToken ct = default)` |
@@ -155,7 +155,7 @@ public delegate void ConnectionClosedInterceptor();
 
 | Member | Signature |
 |---|---|
-| ctor | `SxmTable(IQueryable<T> inner, SxmDbContext? context = null)` |
+| ctor | `SxmTable(IQueryable<T> inner, SxmTransaction? context = null)` |
 | `LoadWith` | `SxmTable<T> LoadWith<TProperty>(Expression<Func<T, TProperty?>> navigationProperty)` |
 | `LoadWith` | `SxmTable<T> LoadWith(params Expression<Func<T, object?>>[] navigationProperties)` |
 | IQueryable | `Type ElementType`, `Expression Expression`, `IQueryProvider Provider`, `IEnumerator<T> GetEnumerator()` |
@@ -225,6 +225,6 @@ Carries library error metadata under `Data["sxmErrorCode"]` and (for wrapped `Sq
 | Public types (classes + sealed) | 17 |
 | Public delegates | 2 |
 | Public enums | 7 |
-| Public methods on `SxmDbContext` | 17 |
+| Public methods on `SxmTransaction` | 17 |
 | Public methods on `SxmSql` (all `RunStatementAsync` + `DropTableAsync`) | 7 |
 | Public extension methods in `SxmLinqExtensions` | ~35 (mirrored across `SxmTable<T>` / `IQueryable<T>`) |

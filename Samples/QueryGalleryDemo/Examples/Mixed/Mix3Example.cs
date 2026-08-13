@@ -26,7 +26,7 @@ internal sealed class Mix3Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         // (1) Entity DML - parent
         var artist = new Artist { Name = $"_Mix3_{Guid.NewGuid():N}" };

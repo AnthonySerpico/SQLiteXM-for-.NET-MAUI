@@ -28,7 +28,7 @@ internal sealed class Mix5Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         // (1) LINQ read
         var rock = ctx.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");

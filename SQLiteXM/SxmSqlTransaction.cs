@@ -40,7 +40,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Internal fault-state accessor so other library layers sharing this transaction
-        /// (e.g. <see cref="SxmDbContext"/>) can observe and propagate failure state,
+        /// (e.g. <see cref="SxmTransaction"/>) can observe and propagate failure state,
         /// ensuring a failure in any layer prevents auto-commit for all layers.
         /// </summary>
         internal bool EncounteredError
@@ -169,7 +169,7 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Synchronous, best-effort cleanup used when a factory (e.g. <see cref="SxmDbContext.CreateAsync"/>)
+        /// Synchronous, best-effort cleanup used when a factory (e.g. <see cref="SxmTransaction.CreateAsync"/>)
         /// fails after this transaction was created and registered ambient, but before it was handed to the
         /// caller. Removes the ambient registration, rolls back and destroys the private connection, and
         /// marks the instance disposed. Intended only for non-shared connections on factory failure paths.

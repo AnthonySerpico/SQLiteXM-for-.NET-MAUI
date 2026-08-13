@@ -47,7 +47,7 @@ public partial class ReviewViewModel : BaseViewModel
     {
         try
         {
-            await using (var context = new SxmDbContext("Session"))
+            await using (var context = new SxmTransaction("Session"))
             {
                 var draft = context.GetTable<RegistrationDraft>()
                     .FirstOrDefault(d => d.id == DraftId);
@@ -80,7 +80,7 @@ public partial class ReviewViewModel : BaseViewModel
             User? user = default;
 
             // Load draft
-            await using (var sessionContext = new SxmDbContext("Session"))
+            await using (var sessionContext = new SxmTransaction("Session"))
             {
                 draft = sessionContext.GetTable<RegistrationDraft>().FirstOrDefault(d => d.id == DraftId);
 
@@ -94,7 +94,7 @@ public partial class ReviewViewModel : BaseViewModel
             // ==================================================================================
             // TRANSACTION SCOPE: User and UserPreferences saved atomically to UserData database
             // ==================================================================================
-            await using (SxmDbContext transaction = new SxmDbContext())
+            await using (SxmTransaction transaction = new SxmTransaction())
             {
                 try
                 {

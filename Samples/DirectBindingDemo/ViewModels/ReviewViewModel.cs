@@ -48,7 +48,7 @@ public partial class ReviewViewModel : BaseViewModel
     {
         try
         {
-            await using (var context = new SxmDbContext("AppData"))
+            await using (var context = new SxmTransaction("AppData"))
             {
                 var user = context.GetTable<User>()
                     .FirstOrDefault(u => u.id == UserId);
@@ -96,7 +96,7 @@ public partial class ReviewViewModel : BaseViewModel
 
             // Save User and UserPreferences in a transaction
             // This ensures both are saved atomically or both fail
-            await using (SxmDbContext transaction = new SxmDbContext())
+            await using (SxmTransaction transaction = new SxmTransaction())
             {
                 try
                 { 

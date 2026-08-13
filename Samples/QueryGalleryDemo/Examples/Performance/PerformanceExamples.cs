@@ -27,7 +27,7 @@ internal sealed class Perf1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var tracks = context.GetTable<Track>()
             .OrderBy(t => t.Name)
             .Take(1000)
@@ -59,7 +59,7 @@ internal sealed class Perf2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var results = (from invoiceLine in context.GetTable<InvoiceLine>()
                        join invoice in context.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
                        join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -101,7 +101,7 @@ internal sealed class Perf3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         int pageNumber = 2;
         int pageSize = 20;
         var page = context.GetTable<Track>()
@@ -134,7 +134,7 @@ internal sealed class Perf4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var lightweightTracks = context.GetTable<Track>()
             .Select(t => new { t.id, t.Name, t.UnitPrice })
             .Take(100)
@@ -164,7 +164,7 @@ internal sealed class Perf5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var expensiveAlbums = context.GetTable<Album>()
             .Where(a => a.Title.StartsWith("A"))
             .Take(50);
@@ -198,7 +198,7 @@ internal sealed class Perf6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var hasExpensiveTracks = context.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
         var expensiveCount = context.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
 
@@ -231,7 +231,7 @@ internal sealed class Perf7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var tracksWithAlbums = (from track in context.GetTable<Track>()
                                 join album in context.GetTable<Album>() on track.AlbumId equals album.id
                                 select new
@@ -265,7 +265,7 @@ internal sealed class Perf8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var uniqueCountries = context.GetTable<Customer>()
             .Select(c => c.Country)
             .Distinct()
@@ -297,7 +297,7 @@ internal sealed class Perf9Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         var tracksForAlbums = (from track in context.GetTable<Track>()

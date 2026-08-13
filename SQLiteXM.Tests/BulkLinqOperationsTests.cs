@@ -18,7 +18,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -62,7 +62,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -108,7 +108,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entity = new SimpleEntity
@@ -149,7 +149,7 @@ public class BulkLinqOperationsTests : TestBase
         long entityId;
 
         // Insert and commit in a first context
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             var entity = new SimpleEntity { Name = "NoContextTest", Age = 10 };
             await ctx.InsertAsync(entity);
@@ -157,7 +157,7 @@ public class BulkLinqOperationsTests : TestBase
         } // auto-commit on dispose
 
         // Act - perform bulk update then explicitly roll back
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             await ctx.GetTable<SimpleEntity>()
                 .Where(e => e.id == entityId)
@@ -168,7 +168,7 @@ public class BulkLinqOperationsTests : TestBase
         }
 
         // Assert - Update should NOT be persisted
-        await using var ctx2 = new SxmDbContext(TestDatabaseName);
+        await using var ctx2 = new SxmTransaction(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>().Single(e => e.id == entityId);
         result.Age.Should().Be(10, "update was rolled back");
 
@@ -185,7 +185,7 @@ public class BulkLinqOperationsTests : TestBase
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         long entityId;
 
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             var entity = new SimpleEntity { Name = $"AutoCommit_{uniquePrefix}", Age = 10 };
             await ctx.InsertAsync(entity);
@@ -199,7 +199,7 @@ public class BulkLinqOperationsTests : TestBase
         } // auto-commit on dispose
 
         // Assert - Changes SHOULD be persisted
-        await using var ctx2 = new SxmDbContext(TestDatabaseName);
+        await using var ctx2 = new SxmTransaction(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>()
             .Single(e => e.id == entityId);
 
@@ -218,7 +218,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -264,7 +264,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entities = new[]
@@ -302,7 +302,7 @@ public class BulkLinqOperationsTests : TestBase
 
         long entityId;
 
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             var entity = new SimpleEntity { Name = "NoContextDeleteTest", Age = 10 };
             await ctx.InsertAsync(entity);
@@ -310,7 +310,7 @@ public class BulkLinqOperationsTests : TestBase
         } // auto-commit
 
         // Act - Bulk delete then explicitly roll back
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             await ctx.GetTable<SimpleEntity>()
                 .Where(e => e.id == entityId)
@@ -320,7 +320,7 @@ public class BulkLinqOperationsTests : TestBase
         }
 
         // Assert - Entity should still exist
-        await using var ctx2 = new SxmDbContext(TestDatabaseName);
+        await using var ctx2 = new SxmTransaction(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>().SingleOrDefault(e => e.id == entityId);
         result.Should().NotBeNull("delete was rolled back");
 
@@ -337,7 +337,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
@@ -393,7 +393,7 @@ public class BulkLinqOperationsTests : TestBase
 
         long entityId;
 
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
             var entity = new SimpleEntity { Name = $"FailTest_{uniquePrefix}", Age = 10 };
@@ -402,7 +402,7 @@ public class BulkLinqOperationsTests : TestBase
         } // auto-commit
 
         // Act - bulk update, then explicit rollback
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             await ctx.GetTable<SimpleEntity>()
                 .Where(e => e.id == entityId)
@@ -413,7 +413,7 @@ public class BulkLinqOperationsTests : TestBase
         }
 
         // Assert - Bulk update should NOT be applied
-        await using var ctx2 = new SxmDbContext(TestDatabaseName);
+        await using var ctx2 = new SxmTransaction(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>()
             .Single(e => e.id == entityId);
 
@@ -432,7 +432,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
         var entity = new SimpleEntity { Name = $"Commit_{uniquePrefix}", Age = 10 };
@@ -442,7 +442,7 @@ public class BulkLinqOperationsTests : TestBase
         await ctx.CommitTransactionAsync();
 
         // Assert - visible from another context before the first is disposed
-        await using var ctx2 = new SxmDbContext(TestDatabaseName);
+        await using var ctx2 = new SxmTransaction(TestDatabaseName);
         var result = ctx2.GetTable<SimpleEntity>().SingleOrDefault(e => e.id == entity.id);
         result.Should().NotBeNull("explicit commit persisted the insert");
 
@@ -459,7 +459,7 @@ public class BulkLinqOperationsTests : TestBase
     {
         // Arrange
         await InitializeSqliteXMAsync();
-        await using var ctx = new SxmDbContext(TestDatabaseName);
+        await using var ctx = new SxmTransaction(TestDatabaseName);
 
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 

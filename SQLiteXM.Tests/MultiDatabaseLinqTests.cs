@@ -128,7 +128,7 @@ public class MultiDatabaseLinqTests : IDisposable
 
         // Insert test data
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 0.99m, InStock = true }.SaveAsync();
@@ -137,7 +137,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var inStockProducts = context.GetTable<Product>()
                 .Where(p => p.InStock)
@@ -169,7 +169,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await new Product { Name = "Date", Price = 3.99m, InStock = true }.SaveAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var affordableInStock = context.GetTable<Product>()
                 .Where(p => p.InStock && p.Price < 2.00m)
@@ -201,7 +201,7 @@ public class MultiDatabaseLinqTests : IDisposable
 
         // Products database transaction
         var prodConnection = new SxmConnection("products", shared: false);
-        await using (var prodTransaction = await SxmDbContext.CreateAsync(prodConnection))
+        await using (var prodTransaction = await SxmTransaction.CreateAsync(prodConnection))
         {
             await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
             await new Product { Name = "Banana", Price = 0.99m, InStock = false }.SaveAsync();
@@ -210,7 +210,7 @@ public class MultiDatabaseLinqTests : IDisposable
 
         // Orders database transaction
         var ordConnection = new SxmConnection("orders", shared: false);
-        await using (var ordTransaction = await SxmDbContext.CreateAsync(ordConnection))
+        await using (var ordTransaction = await SxmTransaction.CreateAsync(ordConnection))
         {
             await new Order { CustomerName = "John", Total = 100.00m, IsPaid = true }.SaveAsync();
             await new Order { CustomerName = "Jane", Total = 50.00m, IsPaid = false }.SaveAsync();
@@ -218,7 +218,7 @@ public class MultiDatabaseLinqTests : IDisposable
         }
 
         // Act & Assert - Products database
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var inStockProducts = context.GetTable<Product>().Where(p => p.InStock).ToList();
             Assert.Single(inStockProducts);
@@ -226,7 +226,7 @@ public class MultiDatabaseLinqTests : IDisposable
         }
 
         // Act & Assert - Orders database
-        await using (var context = new SxmDbContext("orders"))
+        await using (var context = new SxmTransaction("orders"))
         {
             var paidOrders = context.GetTable<Order>().Where(o => o.IsPaid).ToList();
             Assert.Single(paidOrders);
@@ -253,7 +253,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 0.99m, InStock = true }.SaveAsync();
@@ -261,7 +261,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var productSummaries = context.GetTable<Product>()
                 .Select(p => new { p.Name, p.Price })
@@ -289,7 +289,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 0.99m, InStock = true }.SaveAsync();
@@ -298,7 +298,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var productNames = context.GetTable<Product>()
                 .Select(p => p.Name)
@@ -331,7 +331,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Cherry", Price = 2.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -340,7 +340,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var sortedProducts = context.GetTable<Product>()
                 .OrderBy(p => p.Price)
@@ -369,7 +369,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 3.99m, InStock = true }.SaveAsync();
@@ -378,7 +378,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var sortedProducts = context.GetTable<Product>()
                 .OrderByDescending(p => p.Price)
@@ -407,7 +407,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 1.99m, InStock = false }.SaveAsync();
@@ -416,7 +416,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var sortedProducts = context.GetTable<Product>()
                 .OrderBy(p => p.Price)
@@ -454,7 +454,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await new Product { Name = "Cherry", Price = 2.99m, InStock = false }.SaveAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var totalCount = context.GetTable<Product>().Count();
             var inStockCount = context.GetTable<Product>().Count(p => p.InStock);
@@ -480,7 +480,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 0.99m, InStock = false }.SaveAsync();
@@ -488,7 +488,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var hasInStock = context.GetTable<Product>().Any(p => p.InStock);
             var hasExpensive = context.GetTable<Product>().Any(p => p.Price > 10.00m);
@@ -514,7 +514,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Order));
 
         var connection = new SxmConnection("orders", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Order { CustomerName = "Alice", Total = 100.00m, IsPaid = true }.SaveAsync();
         await new Order { CustomerName = "Bob", Total = 250.00m, IsPaid = true }.SaveAsync();
@@ -523,7 +523,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("orders"))
+        await using (var context = new SxmTransaction("orders"))
         {
             var totalRevenue = context.GetTable<Order>().Sum(o => o.Total);
             var paidRevenue = context.GetTable<Order>().Where(o => o.IsPaid).Sum(o => o.Total);
@@ -549,7 +549,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.00m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 2.00m, InStock = true }.SaveAsync();
@@ -558,7 +558,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var avgPrice = context.GetTable<Product>().Average(p => p.Price);
 
@@ -582,7 +582,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 0.99m, InStock = true }.SaveAsync();
@@ -591,7 +591,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var minPrice = context.GetTable<Product>().Min(p => p.Price);
             var maxPrice = context.GetTable<Product>().Max(p => p.Price);
@@ -621,7 +621,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         for (int i = 1; i <= 10; i++)
         {
@@ -631,7 +631,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var page1 = context.GetTable<Product>()
                 .OrderBy(p => p.Name)
@@ -676,7 +676,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 0.99m, InStock = true }.SaveAsync();
@@ -687,7 +687,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act - Complex query: Filter, Sort, Project, Paginate
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var results = context.GetTable<Product>()
                 .Where(p => p.Price < 3.00m)
@@ -719,7 +719,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Banana", Price = 0.99m, InStock = true }.SaveAsync();
@@ -727,7 +727,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var found = context.GetTable<Product>().FirstOrDefault(p => p.Name == "Apple");
             var notFound = context.GetTable<Product>().FirstOrDefault(p => p.Name == "Zebra");
@@ -754,7 +754,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "UniqueProduct", Price = 9.99m, InStock = true }.SaveAsync();
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
@@ -762,7 +762,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var unique = context.GetTable<Product>().SingleOrDefault(p => p.Name == "UniqueProduct");
             var notFound = context.GetTable<Product>().SingleOrDefault(p => p.Name == "Zebra");
@@ -793,7 +793,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
         var connection = new SxmConnection("products", shared: false);
-        await using var transaction = await SxmDbContext.CreateAsync(connection);
+        await using var transaction = await SxmTransaction.CreateAsync(connection);
 
         await new Product { Name = "Apple", Price = 1.99m, InStock = true }.SaveAsync();
         await new Product { Name = null, Price = 0.99m, InStock = true }.SaveAsync();
@@ -802,7 +802,7 @@ public class MultiDatabaseLinqTests : IDisposable
         await transaction.CommitTransactionAsync();
 
         // Act
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var withNames = context.GetTable<Product>().Where(p => p.Name != null).ToList();
             var withoutNames = context.GetTable<Product>().Where(p => p.Name == null).ToList();

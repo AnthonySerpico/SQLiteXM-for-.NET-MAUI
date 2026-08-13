@@ -563,11 +563,11 @@ return results;",
 			{
 				Id = "mix_1",
 				Name = "LINQ + Named SQL (read-only)",
-				Description = "Run a LINQ query and a named SQL statement inside the same SxmDbContext",
+				Description = "Run a LINQ query and a named SQL statement inside the same SxmTransaction",
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 // (1) LINQ read against the context
 var genreNames = ctx.GetTable<Genre>()
@@ -576,7 +576,7 @@ var genreNames = ctx.GetTable<Genre>()
 					.ToList();
 
 // (2) Named SQL from SqlStatements.json - enlists in the same ambient
-//     transaction registered by the SxmDbContext ctor.
+//     transaction registered by the SxmTransaction ctor.
 var popularity = await ctx.RunStatementAsync(
 	"GetGenrePopularity",
 	new Dictionary<string, object?>());
@@ -589,13 +589,13 @@ return new[]
 """,
 				Explanation = """
 **How It Works:**
-1. Open an SxmDbContext for the Chinook database
+1. Open an SxmTransaction for the Chinook database
 2. Issue a LINQ query on ctx.GetTable<Genre>()
 3. Call ctx.RunStatementAsync with a named statement
 4. Both share the same underlying connection via the ambient SxmSqlTransaction registered by the context
 
 **Key Concepts:**
-- A single SxmDbContext hosts multiple query styles
+- A single SxmTransaction hosts multiple query styles
 - Read-only work never opens a SQLite transaction (least-work)
 - Named SQL enlists on the ambient transaction automatically
 - await using guarantees clean async disposal
@@ -609,7 +609,7 @@ return new[]
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 // (1) LINQ read - baseline count
 int before = ctx.GetTable<Artist>().Count();
@@ -652,7 +652,7 @@ return new[]
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 // (1) Entity DML - parent
 var artist = new Artist { Name = $"_Mix3_{Guid.NewGuid():N}" };
@@ -695,7 +695,7 @@ return new[]
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 // (1) Named SQL - top genres by popularity
 var popularity = await ctx.RunStatementAsync(
@@ -743,7 +743,7 @@ return tracks;
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 // (1) LINQ read
 var rock = ctx.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
@@ -798,7 +798,7 @@ return new[] { new { Error = (string?)null, updated.id, updated.Name, updated.Un
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 var uniqueName = $"_Mix6_{Guid.NewGuid():N}";
 
@@ -834,7 +834,7 @@ return new[]
 4. A second CommitTransactionAsync finalizes the cleanup
 
 **Key Concepts:**
-- A single SxmDbContext can span multiple sequential transactions
+- A single SxmTransaction can span multiple sequential transactions
 - Explicit commit is optional - dispose auto-commits when no errors occurred
 - LINQ bulk Update/Delete lazily starts a transaction on the first write
 """
@@ -847,7 +847,7 @@ return new[]
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 var marker = $"_Mix7_{Guid.NewGuid():N}";
 
@@ -904,7 +904,7 @@ return new[]
 var marker = $"_Mix8_{Guid.NewGuid():N}";
 try
 {
-	await using var ctx = new SxmDbContext("Chinook");
+	await using var ctx = new SxmTransaction("Chinook");
 
 	// Entity DML
 	await new Artist { Name = marker }.SaveAsync();
@@ -920,7 +920,7 @@ try
 catch (Exception ex)
 {
 	// On dispose, the context detected the error and rolled back.
-	await using var probe = new SxmDbContext("Chinook");
+	await using var probe = new SxmTransaction("Chinook");
 	int survivors = probe.GetTable<Artist>().Count(a => a.Name == marker);
 
 	return new[] { new
@@ -952,7 +952,7 @@ catch (Exception ex)
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 // (1) LINQ
 int albumCount = ctx.GetTable<Album>().Count();
@@ -994,7 +994,7 @@ return new[]
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
-await using var ctx = new SxmDbContext("Chinook");
+await using var ctx = new SxmTransaction("Chinook");
 
 // (1) LINQ read - anchor artist
 var anchor = ctx.GetTable<Artist>().OrderBy(a => a.id).First();
@@ -1052,7 +1052,7 @@ return new[]
 6. RollbackTransactionAsync throws all of it away
 
 **Key Concepts:**
-- A single SxmDbContext is a unit of work spanning every query style
+- A single SxmTransaction is a unit of work spanning every query style
 - The ambient transaction makes SaveAsync / embedded SQL / named SQL / LINQ interoperable
 - Rollback (or an exception) atomically discards the entire mix
 """

@@ -20,14 +20,14 @@ public class LinqTransactionTests : TestBase
         int beforeCount;
 
         // Capture count before transaction
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             beforeCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
         }
 
         // Act - Insert inside transaction and rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             var entity = new SimpleEntity { Name = uniqueName, Age = 42, IsActive = true };
             await entity.SaveAsync();
@@ -39,7 +39,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify no new rows were persisted via LINQ
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             int afterCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
             afterCount.Should().Be(beforeCount, "rollback should prevent any records from being persisted");
@@ -56,14 +56,14 @@ public class LinqTransactionTests : TestBase
         int beforeCount;
 
         // Capture count before transaction
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             beforeCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
         }
 
         // Act - Insert inside transaction and commit
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             var entity = new SimpleEntity { Name = uniqueName, Age = 55, IsActive = true };
             await entity.SaveAsync();
@@ -73,7 +73,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify record is visible via LINQ
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             int afterCount = ctx.GetTable<SimpleEntity>().Count(e => e.Name == uniqueName);
             afterCount.Should().Be(beforeCount + 1, "commit should persist the record");
@@ -98,7 +98,7 @@ public class LinqTransactionTests : TestBase
         int beforeParentCount, beforeChildCount;
 
         // Capture counts before transaction
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             beforeParentCount = ctx.GetTable<ParentEntity>().Count(p => p.ParentName == parentName);
             beforeChildCount = ctx.GetTable<ChildEntity>().Count(c => c.ChildName == childName);
@@ -106,7 +106,7 @@ public class LinqTransactionTests : TestBase
 
         // Act - Insert parent and child in transaction, then rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             var parent = new ParentEntity { ParentName = parentName };
             await parent.SaveAsync();
@@ -123,7 +123,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify no records were persisted via LINQ
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             int afterParentCount = ctx.GetTable<ParentEntity>().Count(p => p.ParentName == parentName);
             int afterChildCount = ctx.GetTable<ChildEntity>().Count(c => c.ChildName == childName);
@@ -150,7 +150,7 @@ public class LinqTransactionTests : TestBase
 
         // Act - Update inside transaction and rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             entity.Name = "Modified";
             entity.Age = 99;
@@ -161,7 +161,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify changes were not persisted via LINQ
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             var retrieved = ctx.GetTable<SimpleEntity>()
                 .FirstOrDefault(e => e.id == entityId);
@@ -185,7 +185,7 @@ public class LinqTransactionTests : TestBase
         long entityId = entity.id;
 
         // Verify it exists before transaction
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             ctx.GetTable<SimpleEntity>()
                 .Any(e => e.id == entityId)
@@ -194,7 +194,7 @@ public class LinqTransactionTests : TestBase
 
         // Act - Delete inside transaction and rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             await entity.DeleteAsync();
 
@@ -203,7 +203,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify record still exists via LINQ
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             var retrieved = ctx.GetTable<SimpleEntity>()
                 .FirstOrDefault(e => e.id == entityId);
@@ -228,7 +228,7 @@ public class LinqTransactionTests : TestBase
 
         // Act - Perform insert, update, and delete in one transaction, then rollback
         var connection = new SxmConnection(TestDatabaseName, shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             // Insert a new entity
             var newEntity = new SimpleEntity { Name = newEntityName, Age = 100, IsActive = false };
@@ -246,7 +246,7 @@ public class LinqTransactionTests : TestBase
         }
 
         // Assert - Verify all operations were rolled back via LINQ
-        using (var ctx = new SxmDbContext(TestDatabaseName))
+        using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             // New entity should not exist
             ctx.GetTable<SimpleEntity>()

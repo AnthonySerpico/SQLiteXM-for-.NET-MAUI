@@ -13,7 +13,7 @@ namespace QueryGalleryDemo.Examples.Transactions;
     type: QueryType.Linq,
     explanation: """
 **How It Works:**
-1. Create SxmDbContext (await using for auto-dispose)
+1. Create SxmTransaction (await using for auto-dispose)
 2. Insert invoice record
 3. Get generated invoice.id
 4. Insert invoice lines referencing invoice.id
@@ -31,7 +31,7 @@ internal sealed class Trans1Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         try
         {
             var invoice = new Invoice
@@ -89,7 +89,7 @@ internal sealed class Trans2Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         try
         {
             var artist = new Artist { Name = "Transaction Test Artist" };
@@ -138,7 +138,7 @@ internal sealed class Trans3Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         try
         {
             var insertedCount = 0;
@@ -198,7 +198,7 @@ internal sealed class Trans4Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         try
         {
             var artist = transaction.GetTable<Artist>().First();
@@ -251,7 +251,7 @@ internal sealed class Trans5Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         try
         {
             var playlist = new Playlist { Name = $"Transaction Demo Playlist {DateTime.Now:HHmmss}" };
@@ -315,7 +315,7 @@ internal sealed class Trans6Example : IQueryExampleRunner
         var noTransTime = (DateTime.Now - start1).TotalMilliseconds;
 
         var start2 = DateTime.Now;
-        await using (var transaction = new SxmDbContext("Chinook"))
+        await using (var transaction = new SxmTransaction("Chinook"))
         {
             for (int i = 1; i <= 20; i++)
             {

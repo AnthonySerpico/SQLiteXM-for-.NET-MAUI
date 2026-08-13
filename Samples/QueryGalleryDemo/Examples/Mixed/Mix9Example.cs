@@ -29,7 +29,7 @@ internal sealed class Mix9Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         // (1) LINQ
         int albumCount = ctx.GetTable<Album>().Count();

@@ -135,7 +135,7 @@ public class MultiDatabasePerformanceTests : IDisposable
 
         // Act - Insert 10,000 products using a transaction for efficiency
         var connection = new SxmConnection("products", shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             for (int i = 0; i < 10_000; i++)
             {
@@ -157,7 +157,7 @@ public class MultiDatabasePerformanceTests : IDisposable
             $"10K inserts took {stopwatch.Elapsed.TotalSeconds:F2}s (expected <60s)");
 
         // Verify all entities were created
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var count = context.GetTable<Product>().Count();
             Assert.Equal(10_000, count);
@@ -183,7 +183,7 @@ public class MultiDatabasePerformanceTests : IDisposable
         // Act - Insert 5,000 entities into each of 3 databases (15,000 total) using sequential transactions
         // Products database
         var productConnection = new SxmConnection("products", shared: false);
-        await using (var productTransaction = await SxmDbContext.CreateAsync(productConnection))
+        await using (var productTransaction = await SxmTransaction.CreateAsync(productConnection))
         {
             for (int i = 0; i < 5_000; i++)
             {
@@ -194,7 +194,7 @@ public class MultiDatabasePerformanceTests : IDisposable
 
         // Orders database
         var orderConnection = new SxmConnection("orders", shared: false);
-        await using (var orderTransaction = await SxmDbContext.CreateAsync(orderConnection))
+        await using (var orderTransaction = await SxmTransaction.CreateAsync(orderConnection))
         {
             for (int i = 0; i < 5_000; i++)
             {
@@ -205,7 +205,7 @@ public class MultiDatabasePerformanceTests : IDisposable
 
         // Audit database
         var auditConnection = new SxmConnection("audit", shared: false);
-        await using (var auditTransaction = await SxmDbContext.CreateAsync(auditConnection))
+        await using (var auditTransaction = await SxmTransaction.CreateAsync(auditConnection))
         {
             for (int i = 0; i < 5_000; i++)
             {
@@ -222,15 +222,15 @@ public class MultiDatabasePerformanceTests : IDisposable
             $"15K inserts across 3 DBs took {stopwatch.Elapsed.TotalSeconds:F2}s (expected <90s)");
 
         // Verify counts
-        using (var productContext = new SxmDbContext("products"))
+        using (var productContext = new SxmTransaction("products"))
         {
             Assert.Equal(5_000, productContext.GetTable<Product>().Count());
         }
-        using (var orderContext = new SxmDbContext("orders"))
+        using (var orderContext = new SxmTransaction("orders"))
         {
             Assert.Equal(5_000, orderContext.GetTable<Order>().Count());
         }
-        using (var auditContext = new SxmDbContext("audit"))
+        using (var auditContext = new SxmTransaction("audit"))
         {
             Assert.Equal(5_000, auditContext.GetTable<AuditLog>().Count());
         }
@@ -258,7 +258,7 @@ public class MultiDatabasePerformanceTests : IDisposable
         var insertStopwatch = Stopwatch.StartNew();
 
         var connection = new SxmConnection("products", shared: false);
-        await using (var transaction = await SxmDbContext.CreateAsync(connection))
+        await using (var transaction = await SxmTransaction.CreateAsync(connection))
         {
             for (int i = 0; i < 50_000; i++)
             {
@@ -278,7 +278,7 @@ public class MultiDatabasePerformanceTests : IDisposable
         // Act - Query with filtering and ordering
         var queryStopwatch = Stopwatch.StartNew();
 
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var results = context.GetTable<Product>()
                 .Where(p => p.Price > 500 && p.InStock)
@@ -325,7 +325,7 @@ public class MultiDatabasePerformanceTests : IDisposable
         // Act - Complex query with multiple operations
         var stopwatch = Stopwatch.StartNew();
 
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var results = context.GetTable<Product>()
                 .Where(p => p.InStock && p.Price >= 100 && p.Price <= 800)
@@ -382,7 +382,7 @@ public class MultiDatabasePerformanceTests : IDisposable
         // Act - Run multiple aggregates
         var stopwatch = Stopwatch.StartNew();
 
-        await using (var context = new SxmDbContext("orders"))
+        await using (var context = new SxmTransaction("orders"))
         {
             var count = context.GetTable<Order>().Count(o => o.IsPaid);
             var sum = context.GetTable<Order>().Where(o => o.IsPaid).Sum(o => o.Total);
@@ -457,12 +457,12 @@ public class MultiDatabasePerformanceTests : IDisposable
             $"100 concurrent writes took {stopwatch.Elapsed.TotalSeconds:F2}s (expected <30s)");
 
         // Verify all entities were created
-        using (var productContext = new SxmDbContext("products"))
+        using (var productContext = new SxmTransaction("products"))
         {
             var productCount = productContext.GetTable<Product>().Count();
             Assert.Equal(50, productCount);
         }
-        using (var orderContext = new SxmDbContext("orders"))
+        using (var orderContext = new SxmTransaction("orders"))
         {
             var orderCount = orderContext.GetTable<Order>().Count();
             Assert.Equal(50, orderCount);
@@ -512,7 +512,7 @@ public class MultiDatabasePerformanceTests : IDisposable
             $"200 operations took {stopwatch.Elapsed.TotalSeconds:F2}s (expected <45s)");
 
         // Verify correct distribution
-        using (var productContext = new SxmDbContext("products"))
+        using (var productContext = new SxmTransaction("products"))
         {
             var productCount = productContext.GetTable<Product>().Count();
             Assert.InRange(productCount, 60, 70); // ~67 expected (200/3)
@@ -549,7 +549,7 @@ public class MultiDatabasePerformanceTests : IDisposable
             var product = new Product { Name = $"User{i}Product", Price = i * 2, InStock = true };
             await product.SaveAsync();
 
-            using (var productContext = new SxmDbContext("products"))
+            using (var productContext = new SxmTransaction("products"))
             {
                 var products = productContext.GetTable<Product>().Where(p => p.Price < 500).ToList();
                 Assert.NotEmpty(products);
@@ -558,7 +558,7 @@ public class MultiDatabasePerformanceTests : IDisposable
             var order = new Order { CustomerName = $"User{i}", Total = i * 20, IsPaid = true };
             await order.SaveAsync();
 
-            using (var orderContext = new SxmDbContext("orders"))
+            using (var orderContext = new SxmTransaction("orders"))
             {
                 var orders = orderContext.GetTable<Order>().Where(o => o.Total > 100).ToList();
                 Assert.NotEmpty(orders);
@@ -574,11 +574,11 @@ public class MultiDatabasePerformanceTests : IDisposable
             $"Mixed operations took {stopwatch.Elapsed.TotalSeconds:F2}s (expected <60s)");
 
         // Verify final counts
-        using (var productContext = new SxmDbContext("products"))
+        using (var productContext = new SxmTransaction("products"))
         {
             Assert.Equal(200, productContext.GetTable<Product>().Count());
         }
-        using (var orderContext = new SxmDbContext("orders"))
+        using (var orderContext = new SxmTransaction("orders"))
         {
             Assert.Equal(200, orderContext.GetTable<Order>().Count());
         }
@@ -613,7 +613,7 @@ public class MultiDatabasePerformanceTests : IDisposable
         {
             await new Product { Name = $"Product{i}", Price = i, InStock = true }.SaveAsync();
 
-            await using (var context = new SxmDbContext("products"))
+            await using (var context = new SxmTransaction("products"))
             {
                 var products = context.GetTable<Product>().Where(p => p.InStock).ToList();
             }
@@ -638,7 +638,7 @@ public class MultiDatabasePerformanceTests : IDisposable
             $"Memory grew by {memoryGrowthMB:F2}MB (expected <100MB)");
 
         // Verify all operations completed
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             Assert.Equal(1000, context.GetTable<Product>().Count());
         }
@@ -690,7 +690,7 @@ public class MultiDatabasePerformanceTests : IDisposable
             $"5000 updates took {stopwatch.Elapsed.TotalSeconds:F2}s (expected <60s)");
 
         // Verify updates
-        await using (var context = new SxmDbContext("products"))
+        await using (var context = new SxmTransaction("products"))
         {
             var allInStock = context.GetTable<Product>().All(p => p.InStock);
             Assert.True(allInStock);

@@ -106,7 +106,7 @@ internal sealed class Mod3Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
         {
             var track = context.GetTable<Track>().First();
             var originalPrice = track.UnitPrice;
@@ -140,7 +140,7 @@ internal sealed class Mod4Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
         {
             var cheapTracks = context.GetTable<Track>().Where(t => t.UnitPrice < 1.00m).Take(10).ToList();
             var updateCount = 0;
@@ -177,7 +177,7 @@ internal sealed class Mod5Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
         {
             var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name.Contains("Rock"));
             if (rockGenre != null)
@@ -226,7 +226,7 @@ internal sealed class Mod6Example : IQueryExampleRunner
         await tempPlaylist.SaveAsync();
         var savedId = tempPlaylist.id;
 
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
         {
             var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.id == savedId);
             if (playlist != null)
@@ -275,7 +275,7 @@ internal sealed class Mod7Example : IQueryExampleRunner
 
         try
         {
-            await using (var context = new SxmDbContext("Chinook"))
+            await using (var context = new SxmTransaction("Chinook"))
             {
                 var playlistsToDelete = context.GetTable<Playlist>().Where(p => savedIds.Contains(p.id)).ToList();
 
@@ -342,7 +342,7 @@ internal sealed class Mod8Example : IQueryExampleRunner
 
         try
         {
-            await using (var context = new SxmDbContext("Chinook"))
+            await using (var context = new SxmTransaction("Chinook"))
             {
                 var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.id == playlistId);
 

@@ -42,7 +42,7 @@ public partial class HomeViewModel : BaseViewModel
         try
         {
             // Create LINQ context for UserData database (using statement ensures proper disposal)
-            await using (var context = new SxmDbContext("UserData"))
+            await using (var context = new SxmTransaction("UserData"))
             {
                 // Query for the specific user by ID using LINQ - demonstrates read-only query pattern
                 var user = context.GetTable<User>()

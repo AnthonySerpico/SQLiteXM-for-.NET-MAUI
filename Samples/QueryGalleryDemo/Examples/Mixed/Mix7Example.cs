@@ -28,7 +28,7 @@ internal sealed class Mix7Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         var marker = $"_Mix7_{Guid.NewGuid():N}";
 

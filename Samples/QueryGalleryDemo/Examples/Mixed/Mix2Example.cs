@@ -27,7 +27,7 @@ internal sealed class Mix2Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         // (1) LINQ read - baseline count
         int before = ctx.GetTable<Artist>().Count();

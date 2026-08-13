@@ -241,7 +241,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
         // This is a simplified execution - in reality, we'd need to dynamically compile
         // For the demo, we'll execute predefined queries based on the query ID
 
-        await using (var context = new SxmDbContext("Chinook"))
+        await using (var context = new SxmTransaction("Chinook"))
 
         return QueryExample?.Id switch
         {

@@ -40,7 +40,7 @@ public partial class EmailPasswordViewModel : BaseViewModel
             IsBusy = true;
 
             // Create LINQ context for UserData database to check for existing email
-            await using (var context = new SxmDbContext("UserData"))
+            await using (var context = new SxmTransaction("UserData"))
             {
 
                 // Query to verify email uniqueness - demonstrates LINQ query pattern
@@ -126,7 +126,7 @@ public partial class EmailPasswordViewModel : BaseViewModel
     private static async Task<RegistrationDraft> GetOrCreateDraftAsync()
     {
         // Create LINQ context for Session database (using statement ensures proper disposal)
-        await using (var context = new SxmDbContext("Session"))
+        await using (var context = new SxmTransaction("Session"))
         {
             // Query for most recent draft using LINQ - demonstrates SQLiteXM's LINQ provider
             var existing = context.GetTable<RegistrationDraft>()

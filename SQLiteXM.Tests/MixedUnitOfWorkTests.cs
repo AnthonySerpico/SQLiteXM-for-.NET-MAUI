@@ -5,7 +5,7 @@ namespace SQLiteXM.Tests;
 
 /// <summary>
 /// Tests proving that entity writes (SxmEntity.SaveAsync/DeleteAsync), embedded SQL and LINQ
-/// operations all participate in the same unit of work when an SxmDbContext is active.
+/// operations all participate in the same unit of work when an SxmTransaction is active.
 /// The context either creates an ambient SxmSqlTransaction (owning) or joins an existing one.
 /// </summary>
 [Collection("Sequential")]
@@ -17,7 +17,7 @@ public class MixedUnitOfWorkTests : TestBase
         await InitializeSqliteXMAsync();
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             // Entity write via ambient transaction created by the context
             var person = new SimpleEntity { Name = $"Mixed_{uniquePrefix}_Save", Age = 40, IsActive = true };
@@ -37,7 +37,7 @@ public class MixedUnitOfWorkTests : TestBase
         } // auto-commit
 
         // Verify persisted after commit
-        await using var verifyCtx = new SxmDbContext(TestDatabaseName);
+        await using var verifyCtx = new SxmTransaction(TestDatabaseName);
         var results = verifyCtx.GetTable<SimpleEntity>()
             .Where(e => e.Name!.StartsWith($"Mixed_{uniquePrefix}"))
             .ToList();
@@ -54,7 +54,7 @@ public class MixedUnitOfWorkTests : TestBase
         await InitializeSqliteXMAsync();
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             var person = new SimpleEntity { Name = $"MixedRb_{uniquePrefix}_Save", Age = 50, IsActive = true };
             await person.SaveAsync();
@@ -73,7 +73,7 @@ public class MixedUnitOfWorkTests : TestBase
         }
 
         // Nothing persisted
-        await using var verifyCtx = new SxmDbContext(TestDatabaseName);
+        await using var verifyCtx = new SxmTransaction(TestDatabaseName);
         var results = verifyCtx.GetTable<SimpleEntity>()
             .Where(e => e.Name!.StartsWith($"MixedRb_{uniquePrefix}"))
             .ToList();
@@ -86,14 +86,14 @@ public class MixedUnitOfWorkTests : TestBase
         await InitializeSqliteXMAsync();
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-        await using (var tx = new SxmDbContext(TestDatabaseName))
+        await using (var tx = new SxmTransaction(TestDatabaseName))
         {
             // Entity write via the outer ambient transaction
             var person = new SimpleEntity { Name = $"Join_{uniquePrefix}_Save", Age = 60, IsActive = true };
             await person.SaveAsync();
 
             // LINQ context joins the outer ambient transaction (same connection/transaction)
-            await using (var ctx = new SxmDbContext())
+            await using (var ctx = new SxmTransaction())
             {
                 var linqEntity = new SimpleEntity { Name = $"Join_{uniquePrefix}_Linq", Age = 61, IsActive = true };
                 await ctx.InsertAsync(linqEntity);
@@ -109,7 +109,7 @@ public class MixedUnitOfWorkTests : TestBase
             await tx.RollbackTransactionAsync();
         }
 
-        await using var verifyCtx = new SxmDbContext(TestDatabaseName);
+        await using var verifyCtx = new SxmTransaction(TestDatabaseName);
         var results = verifyCtx.GetTable<SimpleEntity>()
             .Where(e => e.Name!.StartsWith($"Join_{uniquePrefix}"))
             .ToList();
@@ -122,19 +122,19 @@ public class MixedUnitOfWorkTests : TestBase
         await InitializeSqliteXMAsync();
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-        await using (var tx = new SxmDbContext(TestDatabaseName))
+        await using (var tx = new SxmTransaction(TestDatabaseName))
         {
             var person = new SimpleEntity { Name = $"JoinC_{uniquePrefix}_Save", Age = 62, IsActive = true };
             await person.SaveAsync();
 
-            await using (var ctx = new SxmDbContext())
+            await using (var ctx = new SxmTransaction())
             {
                 var linqEntity = new SimpleEntity { Name = $"JoinC_{uniquePrefix}_Linq", Age = 63, IsActive = true };
                 await ctx.InsertAsync(linqEntity);
             }
         } // outer ambient transaction auto-commits on dispose
 
-        await using var verifyCtx = new SxmDbContext(TestDatabaseName);
+        await using var verifyCtx = new SxmTransaction(TestDatabaseName);
         var results = verifyCtx.GetTable<SimpleEntity>()
             .Where(e => e.Name!.StartsWith($"JoinC_{uniquePrefix}"))
             .ToList();
@@ -151,7 +151,7 @@ public class MixedUnitOfWorkTests : TestBase
         await InitializeSqliteXMAsync();
         string uniquePrefix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-        await using (var ctx = new SxmDbContext(TestDatabaseName))
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
         {
             var person = new SimpleEntity { Name = $"Fault_{uniquePrefix}_Save", Age = 70, IsActive = true };
             await person.SaveAsync();
@@ -173,7 +173,7 @@ public class MixedUnitOfWorkTests : TestBase
         }
 
         // Nothing persisted because the faulted context rolled back on dispose
-        await using var verifyCtx = new SxmDbContext(TestDatabaseName);
+        await using var verifyCtx = new SxmTransaction(TestDatabaseName);
         var results = verifyCtx.GetTable<SimpleEntity>()
             .Where(e => e.Name!.StartsWith($"Fault_{uniquePrefix}"))
             .ToList();

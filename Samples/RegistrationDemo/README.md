@@ -134,7 +134,7 @@ The `SqlStatements.json` file defines two databases:
 ### Creating a Draft (Session Database)
 
 ```csharp
-using var sessionContext = new SxmDbContext("Session");
+using var sessionContext = new SxmTransaction("Session");
 var existingDraft = sessionContext.GetTable<RegistrationDraft>()
 	.FirstOrDefault(d => d.Email == email);
 

@@ -315,7 +315,7 @@ public partial class CustomerViewModel : ObservableObject
 		IsSaving = true;
 		try
 		{
-			using var ctx = await SxmDbContext.CreateAsync();
+			using var ctx = await SxmTransaction.CreateAsync();
 			Customer = await ctx.GetTable<Customer>()
 				.FirstOrDefaultAsync(c => c.id == id);
 
@@ -453,7 +453,7 @@ public partial class OrderViewModel : ObservableObject
 	{
 		if (SelectedOrder == null) return;
 
-		using var ctx = await SxmDbContext.CreateAsync();
+		using var ctx = await SxmTransaction.CreateAsync();
 		var items = await ctx.GetTable<OrderItem>()
 			.Where(i => i.OrderId == SelectedOrder.id)
 			.ToListAsync();
@@ -481,7 +481,7 @@ public partial class CustomerListViewModel : ObservableObject
 
 	private async Task SearchCustomersAsync()
 	{
-		using var ctx = await SxmDbContext.CreateAsync();
+		using var ctx = await SxmTransaction.CreateAsync();
 
 		var query = ctx.GetTable<Customer>().AsQueryable();
 

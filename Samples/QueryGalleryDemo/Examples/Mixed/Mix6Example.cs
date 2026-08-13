@@ -19,7 +19,7 @@ namespace QueryGalleryDemo.Examples.Mixed;
 4. A second CommitTransactionAsync finalizes the cleanup
 
 **Key Concepts:**
-- A single SxmDbContext can span multiple sequential transactions
+- A single SxmTransaction can span multiple sequential transactions
 - Explicit commit is optional - dispose auto-commits when no errors occurred
 - LINQ bulk Update/Delete lazily starts a transaction on the first write
 """)]
@@ -27,7 +27,7 @@ internal sealed class Mix6Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using var ctx = new SxmDbContext("Chinook");
+        await using var ctx = new SxmTransaction("Chinook");
 
         var uniqueName = $"_Mix6_{Guid.NewGuid():N}";
 

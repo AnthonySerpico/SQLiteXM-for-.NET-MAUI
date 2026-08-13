@@ -30,7 +30,7 @@ internal sealed class Param1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         string searchTerm = "Love";
         return Task.FromResult<object>(
             context.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList());
@@ -63,7 +63,7 @@ internal sealed class Param2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         decimal minPrice = 0.99m;
         decimal maxPrice = 1.49m;
         return Task.FromResult<object>(context.GetTable<Track>()
@@ -100,7 +100,7 @@ internal sealed class Param3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         var startDate = DateTime.Now.AddYears(-3);
         var endDate = DateTime.Now;
 
@@ -147,7 +147,7 @@ internal sealed class Param4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         string artistSearchTerm = "Led";
         int genreId = 1;
         decimal maxPrice = 1.50m;
@@ -187,7 +187,7 @@ internal sealed class Param5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         string? artistFilter = "Led";
         decimal? minDuration = 180000;
 
@@ -232,7 +232,7 @@ internal sealed class Param6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmDbContext("Chinook");
+        using var context = new SxmTransaction("Chinook");
         string pattern = "Track";
         var results = context.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
             .Select(t => new { TrackName = t.Name, t.UnitPrice, DurationSeconds = t.Milliseconds / 1000 })
