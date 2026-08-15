@@ -568,25 +568,25 @@ namespace SQLiteXM
         }
 
         // Save Statements.
-        private async Task InsertAsync(string sqlStatementName)
+        private async Task InsertAsync(string sqlOrStatementName)
         {
-            List<Dictionary<string, object?>> result = await SxmSql.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
+            List<Dictionary<string, object?>> result = await SxmSql.RunStatementAsync<SxmEntity>(sqlOrStatementName, this, _databaseName).ConfigureFalse();
             SxmHelpers.LoadDbValues(result[0], this);
         }
-        private async Task InsertAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
+        private async Task InsertAsync(string sqlOrStatementName, SxmSqlTransaction sxmTrans)
         {
-            List<Dictionary<string, object?>> result = await sxmTrans.RunStatementAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
+            List<Dictionary<string, object?>> result = await sxmTrans.RunStatementAsync<SxmEntity>(sqlOrStatementName, this).ConfigureFalse();
             SxmHelpers.LoadDbValues(result[0], this);
         }
 
         // Update statements.
-        private async Task UpdateAsync(string sqlStatementName)
+        private async Task UpdateAsync(string sqlOrStatementName)
         {
-            await SxmSql.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
+            await SxmSql.RunStatementAsync<SxmEntity>(sqlOrStatementName, this, _databaseName).ConfigureFalse();
         }
-        private async Task UpdateAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
+        private async Task UpdateAsync(string sqlOrStatementName, SxmSqlTransaction sxmTrans)
         {
-            await sxmTrans.RunStatementAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
+            await sxmTrans.RunStatementAsync<SxmEntity>(sqlOrStatementName, this).ConfigureFalse();
         }
 
         /// <summary>
@@ -623,13 +623,13 @@ namespace SQLiteXM
         }
 
         // Delete statements.
-        private async Task DeleteAsync(string sqlStatementName)
+        private async Task DeleteAsync(string sqlOrStatementName)
         {
-            await SxmSql.RunStatementAsync<SxmEntity>(sqlStatementName, this, _databaseName).ConfigureFalse();
+            await SxmSql.RunStatementAsync<SxmEntity>(sqlOrStatementName, this, _databaseName).ConfigureFalse();
         }
-        private async Task DeleteAsync(string sqlStatementName, SxmSqlTransaction sxmTrans)
+        private async Task DeleteAsync(string sqlOrStatementName, SxmSqlTransaction sxmTrans)
         {
-            await sxmTrans.RunStatementAsync<SxmEntity>(sqlStatementName, this).ConfigureFalse();
+            await sxmTrans.RunStatementAsync<SxmEntity>(sqlOrStatementName, this).ConfigureFalse();
         }
 
         /// <summary>

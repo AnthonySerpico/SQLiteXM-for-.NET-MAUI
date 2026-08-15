@@ -39,33 +39,33 @@ namespace SQLiteXM
         /// <summary>
         /// Returns the SQL text for a named statement.
         /// </summary>
-        /// <param name="sqlStatementName">The name of the SQL statement to retrieve.</param>
+        /// <param name="sqlOrStatementName">The name of the SQL statement to retrieve.</param>
         /// <returns>The SQL text for the requested statement.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlStatementName"/> is null or when the named statement cannot be found.</exception>
-        public static string GetSqlStatement(string sqlStatementName)
+        /// <exception cref="ArgumentException">Thrown when <paramref name="sqlOrStatementName"/> is null or when the named statement cannot be found.</exception>
+        public static string GetSqlStatement(string sqlOrStatementName)
         {
-            if (sqlStatementName == null)
+            if (sqlOrStatementName == null)
                 throw new ArgumentException("A sql statement name cannot be null.");
 
-            sqlStatementName = sqlStatementName.Trim();
-            switch (SxmHelpers.GetDatabaseStatementTypeFromName(sqlStatementName))
+            sqlOrStatementName = sqlOrStatementName.Trim();
+            switch (SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName))
             {
                 case SqlStatementType.Select:
-                    return SelectStatements[sqlStatementName].SelectSQL;
+                    return SelectStatements[sqlOrStatementName].SelectSQL;
 
                 case SqlStatementType.Insert:
-                    return InsertStatements[sqlStatementName].InsertSQL;
+                    return InsertStatements[sqlOrStatementName].InsertSQL;
 
                 case SqlStatementType.Update:
-                    return UpdateStatements[sqlStatementName].UpdateSQL;
+                    return UpdateStatements[sqlOrStatementName].UpdateSQL;
 
                 case SqlStatementType.Delete:
-                    return DeleteStatements[sqlStatementName].DeleteSQL;
+                    return DeleteStatements[sqlOrStatementName].DeleteSQL;
 
                 default: break;
             }
 
-            throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlStatementName));
+            throw new ArgumentException(string.Format("The sql statement '{0}' could not be found.", sqlOrStatementName));
         }
 
         /// <summary>

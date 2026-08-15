@@ -21,7 +21,7 @@ namespace SQLiteXM
         /// Executes a named SQL statement (one registered with the statement manager)
         /// and returns all selected rows as a list of dictionaries.
         /// </summary>
-        /// <param name="sqlStatementName">The registered SQL statement name to execute.</param>
+        /// <param name="sqlOrStatementName">The registered SQL statement name to execute.</param>
         /// <param name="sqlStatementParameters">Ordered parameters for the statement.</param>
         /// <param name="dbName">Optional database name. If null, the default database is used.</param>
         /// <returns>
@@ -32,7 +32,7 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while creating the transaction or executing the query.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectAsync(string sqlStatementName, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, string? dbName = default)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectAsync(string sqlOrStatementName, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, string? dbName = default)
         {
             List<Dictionary<string, object?>> selectedRows;
             string? databaseName = default;
@@ -43,12 +43,12 @@ namespace SQLiteXM
                 {
                     databaseName = sxmTransaction.Connection?.DatabaseName;
 
-                    await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters, statementDetails.SqlStatementType).ConfigureFalse();
+                    await sxmTransaction.ExecuteQueryAsync(sqlOrStatementName, sqlStatementParameters, statementDetails.SqlStatementType).ConfigureFalse();
                     selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
 
                     // Only do this if this is an INSERT
                     if (statementDetails.SqlStatementType == SqlStatementType.Insert || statementDetails.SqlStatementType == SqlStatementType.InsertDirect)
-                        await SxmSelectHelpers.FinalizeInsertProcessing(sqlStatementName, selectedRows, sxmTransaction, statementDetails);
+                        await SxmSelectHelpers.FinalizeInsertProcessing(sqlOrStatementName, selectedRows, sxmTransaction, statementDetails);
 
                     await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
                 }
@@ -56,14 +56,14 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmSqlStatements.SelectStatements.TryGetValue(sqlStatementName, out SelectDefinition? selectDefinition);
-                SxmLogging.Log(ex, $"PerformSelectAsync failure. SQL statement: '{sqlStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}");
+                SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
+                SxmLogging.Log(ex, $"PerformSelectAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                SxmSqlStatements.SelectStatements.TryGetValue(sqlStatementName, out SelectDefinition? selectDefinition);
-                string errStr = $"PerformSelectAsync failure. SQL statement: '{sqlStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
+                SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
+                string errStr = $"PerformSelectAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }
@@ -75,7 +75,7 @@ namespace SQLiteXM
         /// Executes a named SQL statement using an existing <see cref="SxmUTransaction"/>.
         /// The provided transaction instance is NOT disposed by this method.
         /// </summary>
-        /// <param name="sqlStatementName">The registered SQL statement name to execute.</param>
+        /// <param name="sqlOrStatementName">The registered SQL statement name to execute.</param>
         /// <param name="sqlStatementParameters">Ordered parameters for the statement.</param>
         /// <param name="sxmTransaction">An open <see cref="SxmUTransaction"/> to execute the statement within.</param>
         /// <returns>
@@ -85,30 +85,30 @@ namespace SQLiteXM
         /// <exception cref="System.Exception">
         /// Propagates any exception thrown while executing the query on the provided transaction.
         /// </exception>
-        internal static async Task<List<Dictionary<string, object?>>> PerformSelectTransAsync(string sqlStatementName, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, SxmUTransaction sxmTransaction)
+        internal static async Task<List<Dictionary<string, object?>>> PerformSelectTransAsync(string sqlOrStatementName, List<object> sqlStatementParameters, SqlStatementDetails statementDetails, SxmUTransaction sxmTransaction)
         {
             List<Dictionary<string, object?>> selectedRows;
 
             try
             {
-                await sxmTransaction.ExecuteQueryAsync(sqlStatementName, sqlStatementParameters, statementDetails.SqlStatementType).ConfigureFalse();
+                await sxmTransaction.ExecuteQueryAsync(sqlOrStatementName, sqlStatementParameters, statementDetails.SqlStatementType).ConfigureFalse();
                 selectedRows = sxmTransaction.GetAllRows<Dictionary<string, object?>>();
 
                 // Only do this if this is an INSERT
                 if (statementDetails.SqlStatementType == SqlStatementType.Insert || statementDetails.SqlStatementType == SqlStatementType.InsertDirect)
-                    await SxmSelectHelpers.FinalizeInsertProcessing(sqlStatementName, selectedRows, sxmTransaction, statementDetails);
+                    await SxmSelectHelpers.FinalizeInsertProcessing(sqlOrStatementName, selectedRows, sxmTransaction, statementDetails);
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmSqlStatements.SelectStatements.TryGetValue(sqlStatementName, out SelectDefinition? selectDefinition);
-                SxmLogging.Log(ex, $"PerformSelectTransAsync failure. SQL statement: '{sqlStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}");
+                SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
+                SxmLogging.Log(ex, $"PerformSelectTransAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}");
                 throw;
             }
             catch (System.Exception ex)
             {
-                SxmSqlStatements.SelectStatements.TryGetValue(sqlStatementName, out SelectDefinition? selectDefinition);
-                string errStr = $"PerformSelectTransAsync failure. SQL statement: '{sqlStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
+                SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
+                string errStr = $"PerformSelectTransAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
                 SxmLogging.Log(ex, errStr);
                 throw ExceptionHelper.Wrap(ex, errStr);
             }

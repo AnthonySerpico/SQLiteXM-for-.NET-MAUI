@@ -591,57 +591,57 @@ namespace SQLiteXM
         /************************************************ RunStatementAsync (public forwarders) ************************************************/
 
 
-        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName) where TResult : class, new()
-            => _sqlTransaction.RunStatementAsync<TResult>(sqlStatementName, new Dictionary<string, object?>());
+        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, new Dictionary<string, object?>());
 
         /// <summary>
         /// Executes a named SQL statement mapping <paramref name="userObjectParameters"/> onto the statement's
         /// parameters and projecting results into a list of <typeparamref name="TResult"/> entities.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
-            => _sqlTransaction.RunStatementAsync<T, TResult>(sqlStatementName, userObjectParameters);
+        public Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<T, TResult>(sqlOrStatementName, userObjectParameters);
 
         /// <summary>
         /// Executes a named SQL statement with a dictionary of named parameters and projects results
         /// into a list of <typeparamref name="TResult"/> entities.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
-            => _sqlTransaction.RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters);
+        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, sqlStatementParameters);
 
 
-        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName) 
-            => _sqlTransaction.RunStatementAsync(sqlStatementName, new Dictionary<string, object?>());
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName) 
+            => _sqlTransaction.RunStatementAsync(sqlOrStatementName, new Dictionary<string, object?>());
 
         /// <summary>
         /// Executes a named SQL statement mapping <paramref name="userObjectParameters"/> onto the statement's
         /// parameters and returns raw rows as dictionaries.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
-            => _sqlTransaction.RunStatementAsync<T>(sqlStatementName, userObjectParameters);
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters)
+            => _sqlTransaction.RunStatementAsync<T>(sqlOrStatementName, userObjectParameters);
 
         /// <summary>
         /// Executes a named SQL statement with a dictionary of named parameters and returns raw rows as dictionaries.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
-            => _sqlTransaction.RunStatementAsync(sqlStatementName, sqlStatementParameters);
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters)
+            => _sqlTransaction.RunStatementAsync(sqlOrStatementName, sqlStatementParameters);
 
         /// <summary>
         /// Executes a named SQL statement with a list of positional parameter objects and projects results
         /// into a list of <typeparamref name="TResult"/> entities.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
-            => _sqlTransaction.RunStatementAsync<TResult>(sqlStatementName, sqlStatementParameters);
+        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters) where TResult : class, new()
+            => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, sqlStatementParameters);
 
         /// <summary>
         /// Executes a named SQL statement with a list of positional parameter objects and returns raw rows as dictionaries.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters)
-            => _sqlTransaction.RunStatementAsync(sqlStatementName, sqlStatementParameters);
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, List<object> sqlStatementParameters)
+            => _sqlTransaction.RunStatementAsync(sqlOrStatementName, sqlStatementParameters);
     }
 }

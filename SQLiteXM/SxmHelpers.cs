@@ -278,36 +278,36 @@ namespace SQLiteXM
         /// <summary>
         /// Resolves a SQL statement name (or inline SQL) to a <see cref="SqlStatementType"/>.
         /// </summary>
-        /// <param name="sqlStatementName">Named statement key or an inline SQL string (e.g., "SELECT ...").</param>
+        /// <param name="sqlOrStatementName">Named statement key or an inline SQL string (e.g., "SELECT ...").</param>
         /// <returns>Corresponding <see cref="SqlStatementDetails"/>.</returns>
-        /// <exception cref="ArgumentException">If <paramref name="sqlStatementName"/> is null/empty or cannot be resolved.</exception>
-        internal static SqlStatementDetails GetDatabaseStatementTypeFromSql(string? sqlStatementName, string? databaseName)
+        /// <exception cref="ArgumentException">If <paramref name="sqlOrStatementName"/> is null/empty or cannot be resolved.</exception>
+        internal static SqlStatementDetails GetDatabaseStatementTypeFromSql(string? sqlOrStatementName, string? databaseName)
         {
             // Not a SQL statement in the SQL statements file? Perhaps this is a Direct SQL statement embedded in the code.
             string targetTableName = string.Empty;
-            SqlStatementDetails sqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(sqlStatementName!);
+            SqlStatementDetails sqlStatementDetails = SxmQueryProcessor.AnalyzeUserQuery(sqlOrStatementName!);
 
             if (sqlStatementDetails.SqlStatementType == SqlStatementType.Unknown)
-                throw new ArgumentException(string.Format("The sql statement '{0}' could not be found or identified.", sqlStatementName!.Length > 30 ? (sqlStatementName.Substring(0, 29) + "...") : sqlStatementName));
+                throw new ArgumentException(string.Format("The sql statement '{0}' could not be found or identified.", sqlOrStatementName!.Length > 30 ? (sqlOrStatementName.Substring(0, 29) + "...") : sqlOrStatementName));
 
             return sqlStatementDetails;
         }
 
-        internal static SqlStatementType GetDatabaseStatementTypeFromName(string? sqlStatementName)
+        internal static SqlStatementType GetDatabaseStatementTypeFromName(string? sqlOrStatementName)
         {
-            if (string.IsNullOrEmpty(sqlStatementName))
+            if (string.IsNullOrEmpty(sqlOrStatementName))
                 throw new ArgumentException("A sql statement name cannot be null or empty.");
 
-            if (SxmSqlStatements.SelectStatements.ContainsKey(sqlStatementName))
+            if (SxmSqlStatements.SelectStatements.ContainsKey(sqlOrStatementName))
                 return SqlStatementType.Select;
 
-            if (SxmSqlStatements.UpdateStatements.ContainsKey(sqlStatementName))
+            if (SxmSqlStatements.UpdateStatements.ContainsKey(sqlOrStatementName))
                 return SqlStatementType.Update;
 
-            if (SxmSqlStatements.DeleteStatements.ContainsKey(sqlStatementName))
+            if (SxmSqlStatements.DeleteStatements.ContainsKey(sqlOrStatementName))
                 return SqlStatementType.Delete;
 
-            if (SxmSqlStatements.InsertStatements.ContainsKey(sqlStatementName))
+            if (SxmSqlStatements.InsertStatements.ContainsKey(sqlOrStatementName))
                 return SqlStatementType.Insert;
 
             return SqlStatementType.Unknown;
@@ -1083,29 +1083,29 @@ namespace SQLiteXM
         }
 
 
-        internal static string? SqlStatementFromStatementName(string sqlStatementName, SqlStatementType sqlStatementType)
+        internal static string? SqlStatementFromStatementName(string sqlOrStatementName, SqlStatementType sqlStatementType)
         {
             string? statement = null;
 
             switch (sqlStatementType)
             {
                 case SqlStatementType.Select:
-                    SxmSqlStatements.SelectStatements.TryGetValue(sqlStatementName, out SelectDefinition? selectDefinition);
+                    SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
                     statement = selectDefinition?.SelectSQL;
                     break;
 
                 case SqlStatementType.Update:
-                    SxmSqlStatements.UpdateStatements.TryGetValue(sqlStatementName, out UpdateDefinition? updateDefinition);
+                    SxmSqlStatements.UpdateStatements.TryGetValue(sqlOrStatementName, out UpdateDefinition? updateDefinition);
                     statement = updateDefinition?.UpdateSQL;
                     break;
 
                 case SqlStatementType.Delete:
-                    SxmSqlStatements.DeleteStatements.TryGetValue(sqlStatementName, out DeleteDefinition? deleteDefinition);
+                    SxmSqlStatements.DeleteStatements.TryGetValue(sqlOrStatementName, out DeleteDefinition? deleteDefinition);
                     statement = deleteDefinition?.DeleteSQL;
                     break;
 
                 case SqlStatementType.Insert:
-                    SxmSqlStatements.InsertStatements.TryGetValue(sqlStatementName, out InsertDefinition? insertDefinition);
+                    SxmSqlStatements.InsertStatements.TryGetValue(sqlOrStatementName, out InsertDefinition? insertDefinition);
                     statement = insertDefinition?.InsertSQL;
                     break;
 
@@ -1114,7 +1114,7 @@ namespace SQLiteXM
                 case SqlStatementType.UpdateDirect:
                 case SqlStatementType.DeleteDirect:
                 case SqlStatementType.InsertDirect:
-                    statement = sqlStatementName;
+                    statement = sqlOrStatementName;
                     break;
 
                 default: break;
@@ -1159,13 +1159,13 @@ namespace SQLiteXM
         /// </summary>
         /// <typeparam name="T">Element type.</typeparam>
         /// <param name="list">List returned from RunStatementAsync.</param>
-        /// <param name="sqlStatementName">Name of the SQL statement (used in error text).</param>
+        /// <param name="sqlOrStatementName">Name of the SQL statement (used in error text).</param>
         /// <returns>The first element of <paramref name="list"/>.</returns>
         /// <exception cref="InvalidOperationException">Thrown when the list is null or empty.</exception>
-        internal static T GetFirstOrThrow<T>(List<T>? list, string sqlStatementName)
+        internal static T GetFirstOrThrow<T>(List<T>? list, string sqlOrStatementName)
         {
             if (list == null || list.Count == 0)
-                throw new InvalidOperationException($"Insert statement '{sqlStatementName}' did not return any rows. Ensure the SQL statement returns a row (e.g. use RETURNING) or call a non-returning insert API.");
+                throw new InvalidOperationException($"Insert statement '{sqlOrStatementName}' did not return any rows. Ensure the SQL statement returns a row (e.g. use RETURNING) or call a non-returning insert API.");
 
             return list[0];
         }

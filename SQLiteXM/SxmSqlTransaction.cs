@@ -279,19 +279,19 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and map results to <typeparamref name="TResult"/>. Supports entity mapping. Return a List of entity objects.
         /// </summary>
-        internal async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters) where TResult : class, new()
         {
             SqlStatementDetails statementDetails = new();
 
-            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlStatementName);
+            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
             if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
             {
-                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlStatementName, this._databaseName);
+                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
             }
 
-            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementDetails.SqlStatementType).ConfigureFalse();
+            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlOrStatementName, statementDetails.SqlStatementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
-            List<Dictionary<string, object?>> select = await RunStatementAsync(sqlStatementName, selectParameterValues).ConfigureFalse();
+            List<Dictionary<string, object?>> select = await RunStatementAsync(sqlOrStatementName, selectParameterValues).ConfigureFalse();
 
             return SxmHelpers.PopulateUserRecord<TResult>(select);
         }
@@ -299,55 +299,55 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: execute with dictionary parameters and map results to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return a List of entity objects.
         /// </summary>
-        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
-            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, sqlStatementParameters).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
         }
 
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and return list of dictionary rows. Supports entity mapping. Return list of dictionary rows.
         /// </summary>
-        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters)
+        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters)
         {
             SqlStatementDetails statementDetails = new();
 
-            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlStatementName);
+            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
             if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
             {
-                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlStatementName, this._databaseName);
+                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
             }
 
-            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlStatementName, statementDetails.SqlStatementType).ConfigureFalse();
+            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlOrStatementName, statementDetails.SqlStatementType).ConfigureFalse();
             Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
 
-            return await RunStatementAsync(sqlStatementName, selectParameterValues).ConfigureFalse();
+            return await RunStatementAsync(sqlOrStatementName, selectParameterValues).ConfigureFalse();
         }
 
         /// <summary>
         /// Generic runner: wrapper for dictionary-to-list overload. Execute with dictionary parameters and return list of dictionary rows. Supports dictionary of named parameters. Return list of dictionary rows.
         /// </summary>
-        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters)
+        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters)
         {
-            return await RunStatementAsync(sqlStatementName, new List<object>(1) { sqlStatementParameters }).ConfigureFalse();
+            return await RunStatementAsync(sqlOrStatementName, new List<object>(1) { sqlStatementParameters }).ConfigureFalse();
         }
 
         /// <summary>
         /// Generic runner: execute with a list of parameter objects and map results to <typeparamref name="TResult"/>. Supports List of positional parameters. Return a List of entity objects.
         /// </summary>
-        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
-            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlStatementName, sqlStatementParameters).ConfigureFalse();
+            List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, sqlStatementParameters).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
         }
 
         /// <summary>
         /// Core executor that dispatches to the appropriate helper based on the statement type. Supports a dictionary of named parameters that is put inside a List. Return list of dictionary rows.
         /// </summary>
-        /// <param name="sqlStatementName">Named SQL statement.</param>
+        /// <param name="sqlOrStatementName">Named SQL statement.</param>
         /// <param name="sqlStatementParameters">Parameters supplied as a list of dictionaries or other objects as expected by the helper.</param>
         /// <returns>List of result rows as dictionaries. Empty list when no rows are returned.</returns>
-        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters)
+        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, List<object> sqlStatementParameters)
         {
             List<Dictionary<string, object?>> recordData = default(List<Dictionary<string, object?>>)!;
 
@@ -355,10 +355,10 @@ namespace SQLiteXM
             {
                 SqlStatementDetails statementDetails = new();
 
-                statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlStatementName);
+                statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
                 if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
                 {
-                    statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlStatementName, this._databaseName);
+                    statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
                 }
 
                 try
@@ -369,7 +369,7 @@ namespace SQLiteXM
                         case SqlStatementType.Update:
                         case SqlStatementType.Delete:
                         case SqlStatementType.Insert:
-                            recordData = await SxmSelectHelpers.PerformSelectTransAsync(sqlStatementName, sqlStatementParameters, statementDetails, this).ConfigureFalse();
+                            recordData = await SxmSelectHelpers.PerformSelectTransAsync(sqlOrStatementName, sqlStatementParameters, statementDetails, this).ConfigureFalse();
                             break;
 
 
@@ -378,7 +378,7 @@ namespace SQLiteXM
                         case SqlStatementType.UpdateDirect:
                         case SqlStatementType.DeleteDirect:
                         case SqlStatementType.InsertDirect:
-                            recordData = await SxmSelectHelpers.PerformSelectDirectTransAsync(sqlStatementName, sqlStatementParameters, statementDetails, this).ConfigureFalse();
+                            recordData = await SxmSelectHelpers.PerformSelectDirectTransAsync(sqlOrStatementName, sqlStatementParameters, statementDetails, this).ConfigureFalse();
                             break;
 
                         default: break;
@@ -389,7 +389,7 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, statementDetails.SqlStatementType);
+                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlOrStatementName, statementDetails.SqlStatementType);
                     string statementName = string.Empty;
                     if (statementDetails.SqlStatementType != SqlStatementType.SelectDirect &&
                         statementDetails.SqlStatementType != SqlStatementType.UpdateDirect &&
@@ -397,7 +397,7 @@ namespace SQLiteXM
                         statementDetails.SqlStatementType != SqlStatementType.InsertDirect)
 
                     {
-                        statementName = $"SQL statement: '{sqlStatementName}'.";
+                        statementName = $"SQL statement: '{sqlOrStatementName}'.";
                     }
 
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
@@ -409,7 +409,7 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlStatementName, statementDetails.SqlStatementType);
+                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlOrStatementName, statementDetails.SqlStatementType);
                     string statementName = string.Empty;
                     if (statementDetails.SqlStatementType != SqlStatementType.SelectDirect &&
                         statementDetails.SqlStatementType != SqlStatementType.UpdateDirect &&
@@ -417,7 +417,7 @@ namespace SQLiteXM
                         statementDetails.SqlStatementType != SqlStatementType.InsertDirect)
 
                     {
-                        statementName = $"SQL statement: '{sqlStatementName}'.";
+                        statementName = $"SQL statement: '{sqlOrStatementName}'.";
                     }
 
                     string errStr = $"RunStatementAsync failure. {statementName} Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";

@@ -124,21 +124,21 @@ For the full embedded SQL reference, see [Embedded SQL](SQLiteXM-SQL-Support.md)
 
 ```csharp
 static Task<List<TResult>> RunStatementAsync<TResult>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     string? databaseName = default);
 
 static Task<List<TResult>> RunStatementAsync<T, TResult>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     T userObjectParameters,
     string? databaseName = default);
 
 static Task<List<TResult>> RunStatementAsync<TResult>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     Dictionary<string, object?> sqlStatementParameters,
     string? databaseName = default);
 
 static Task<List<TResult>> RunStatementAsync<TResult>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     List<object> sqlStatementParameters,
     string? databaseName = default);
 ```
@@ -147,21 +147,21 @@ static Task<List<TResult>> RunStatementAsync<TResult>(
 
 ```csharp
 static Task<List<Dictionary<string, object?>>> RunStatementAsync(
-    string sqlStatementName,
+    string sqlOrStatementName,
     string? databaseName = default);
 
 static Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     T userObjectParameters,
     string? databaseName = default);
 
 static Task<List<Dictionary<string, object?>>> RunStatementAsync(
-    string sqlStatementName,
+    string sqlOrStatementName,
     Dictionary<string, object?> sqlStatementParameters,
     string? databaseName = default);
 
 static Task<List<Dictionary<string, object?>>> RunStatementAsync(
-    string sqlStatementName,
+    string sqlOrStatementName,
     List<object> sqlStatementParameters,
     string? databaseName = default);
 ```
@@ -170,7 +170,7 @@ static Task<List<Dictionary<string, object?>>> RunStatementAsync(
 
 ### Named SQL statements
 
-The first argument to every overload is called `sqlStatementName`. If SQLiteXM finds a matching entry in the statements registry loaded from your `SqlStatements.json` file, it runs that *named* statement; otherwise it falls back to parsing the string as embedded SQL.
+The first argument to every overload is called `sqlOrStatementName`. If SQLiteXM finds a matching entry in the statements registry loaded from your `SqlStatements.json` file, it runs that *named* statement; otherwise it falls back to parsing the string as embedded SQL.
 
 Named statements let you keep SQL out of your C# code, reuse the same statement from many call sites, and take advantage of the user-object parameter shape.
 
@@ -293,18 +293,18 @@ await using (var ctx = new SxmTransaction())
 
 ```csharp
 Task<List<TResult>> RunStatementAsync<TResult>(
-    string sqlStatementName);
+    string sqlOrStatementName);
 
 Task<List<TResult>> RunStatementAsync<T, TResult>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     T userObjectParameters);
 
 Task<List<TResult>> RunStatementAsync<TResult>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     Dictionary<string, object?> sqlStatementParameters);
 
 Task<List<TResult>> RunStatementAsync<TResult>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     List<object> sqlStatementParameters);
 ```
 
@@ -312,18 +312,18 @@ Task<List<TResult>> RunStatementAsync<TResult>(
 
 ```csharp
 Task<List<Dictionary<string, object?>>> RunStatementAsync(
-    string sqlStatementName);
+    string sqlOrStatementName);
 
 Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(
-    string sqlStatementName,
+    string sqlOrStatementName,
     T userObjectParameters);
 
 Task<List<Dictionary<string, object?>>> RunStatementAsync(
-    string sqlStatementName,
+    string sqlOrStatementName,
     Dictionary<string, object?> sqlStatementParameters);
 
 Task<List<Dictionary<string, object?>>> RunStatementAsync(
-    string sqlStatementName,
+    string sqlOrStatementName,
     List<object> sqlStatementParameters);
 ```
 

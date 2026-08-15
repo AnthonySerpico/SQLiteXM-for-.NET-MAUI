@@ -54,12 +54,12 @@ SQLiteXM (namespace)
 | Member | Signature |
 |---|---|
 | `DropTableAsync` | `Task DropTableAsync(string tableName, string? dbName = null, bool force = false)` |
-| `RunStatementAsync` | `Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters, string? databaseName = null)` |
-| `RunStatementAsync` | `Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = null)` |
-| `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters, string? databaseName = null)` |
-| `RunStatementAsync` | `Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? databaseName = null)` |
-| `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = null)` |
-| `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters, string? databaseName = null)` |
+| `RunStatementAsync` | `Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters, string? databaseName = null)` |
+| `RunStatementAsync` | `Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = null)` |
+| `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters, string? databaseName = null)` |
+| `RunStatementAsync` | `Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = null)` |
+| `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = null)` |
+| `RunStatementAsync` | `Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = null)` |
 
 ### 🟢 `SxmTransaction : IDisposable, IAsyncDisposable`
 

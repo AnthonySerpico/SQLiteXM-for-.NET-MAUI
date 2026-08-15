@@ -15,6 +15,12 @@
     <Error Condition="'$(Configuration)' != 'Debug'" Text="The test suite MUST be built and run in Debug configuration only. Release builds are not supported for tests. Please switch to Debug configuration." />
   </Target>
 
+  <!-- Clean up any stale Release artifacts to prevent test runner confusion -->
+  <Target Name="CleanStaleReleaseArtifacts" BeforeTargets="BeforeBuild" Condition="'$(Configuration)' == 'Debug'">
+    <RemoveDir Directories="$(ProjectDir)bin\Release" Condition="Exists('$(ProjectDir)bin\Release')" />
+    <Message Text="Cleaned stale Release test artifacts to prevent test discovery conflicts." Condition="Exists('$(ProjectDir)bin\Release')" Importance="high" />
+  </Target>
+
   <ItemGroup>
     <!-- Test Framework -->
     <PackageReference Include="coverlet.collector" Version="6.0.4">

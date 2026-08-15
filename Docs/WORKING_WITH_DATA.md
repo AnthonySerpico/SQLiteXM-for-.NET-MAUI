@@ -175,39 +175,39 @@ The DELETE removes the row. The RETURNING clause returns the row that was delete
 
 ```csharp
 // The SQL statement takes no parameters.
-static Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, string? databaseName = default);
+static Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, string? databaseName = default);
 
 // `userObjectParameters` object provides the SQL parameters, public properties are matched by name to the SQL parameters in the statement.
-static Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters, string? databaseName = default);
+static Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters, string? databaseName = default);
 
 // `sqlStatementParameters` Dictionary provides the SQL parameters, keyed by name to the SQL parameters in the statement.
-static Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = default);
+static Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = default);
 
 // `sqlStatementParameters` List provides the SQL parameters, matched by position to the statement's placeholders.
-static Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters, string? databaseName = default);
+static Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = default);
 ```
 
 **Untyped result overloads:**
 
 ```csharp
 // The SQL statement takes no parameters.
-static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, string? databaseName = default);
+static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, string? databaseName = default);
 
 // `userObjectParameters` object provides the SQL parameters, public properties are matched by name to the SQL parameters in the statement
-static Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters, string? databaseName = default);
+static Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters, string? databaseName = default);
 
 // `sqlStatementParameters` Dictionary provides the SQL parameters, keyed by name to the SQL parameters in the statement.
-static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = default);
+static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = default);
 
 // `sqlStatementParameters` List provides the SQL parameters, matched by position to the statement's placeholders.
-static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters, string? databaseName = default);
+static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = default);
 ```
 
 > 💡 Every overload accepts an optional trailing `databaseName`. Omit it to run against the default database; provide it to target a specific named database. See [Multi-Database Support](multi_database.md).
 
 ### Using named SQL statements with `SxmSql.RunStatementAsync`
 
-The first argument to every `RunStatementAsync` overload is called `sqlStatementName`. This argument is processed in the following order:
+The first argument to every `RunStatementAsync` overload is called `sqlOrStatementName`. This argument is processed in the following order:
 1. Conceptually, the SQL statement is looked up by name in the `SqlStatements.json` file of the project. If a statement with that name exists, its contents are used as the SQL statement.
 2. If no statement with that name exists, the argument is treated as the SQL statement itself.
 
@@ -331,32 +331,32 @@ Both embedded SQL and named SQL statements are fully supported. The call site is
 
 ```csharp
 // The SQL statement takes no parameters.
-Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName);
+Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName);
 
 // `userObjectParameters` object provides the SQL parameters, public properties are matched by name to the SQL parameters in the statement
-Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlStatementName, T userObjectParameters);
+Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters);
 
 // `sqlStatementParameters` Dictionary provides the SQL parameters, keyed by name to the SQL parameters in the statement.
-Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters);
+Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters);
 
 // `sqlStatementParameters` List provides the SQL parameters, matched by position to the statement's placeholders.
-Task<List<TResult>> RunStatementAsync<TResult>(string sqlStatementName, List<object> sqlStatementParameters);
+Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters);
 ```
 
 **Untyped result overloads:**
 
 ```csharp
 // The SQL statement takes no parameters.
-Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName);
+Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName);
 
 // `userObjectParameters` object provides the SQL parameters, public properties are matched by name to the SQL parameters in the statement.
-Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlStatementName, T userObjectParameters);
+Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters);
 
 // `sqlStatementParameters` Dictionary provides the SQL parameters, keyed by name to the SQL parameters in the statement.
-Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, Dictionary<string, object?> sqlStatementParameters);
+Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters);
 
 // `sqlStatementParameters` List provides the SQL parameters, matched by position to the statement's placeholders.
-Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlStatementName, List<object> sqlStatementParameters);
+Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, List<object> sqlStatementParameters);
 ```
 
 Named SQL example:
