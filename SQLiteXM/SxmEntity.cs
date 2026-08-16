@@ -539,6 +539,10 @@ namespace SQLiteXM
         /// <returns>A task representing the asynchronous save operation.</returns>
         private async Task SaveAsync(SxmSqlTransaction? sxmTrans)
         {
+            // Skip the entire save operation if the transaction is faulted (consistent with LINQ and SQL behavior)
+            if (sxmTrans != null && sxmTrans.EncounteredError)
+                return;
+
             string tableName = this.GetType().Name;
 
             if (!await DoesRecordExistAsync(sxmTrans).ConfigureFalse())
@@ -571,12 +575,16 @@ namespace SQLiteXM
         private async Task InsertAsync(string sqlOrStatementName)
         {
             List<Dictionary<string, object?>> result = await SxmSql.RunStatementAsync<SxmEntity>(sqlOrStatementName, this, _databaseName).ConfigureFalse();
-            SxmHelpers.LoadDbValues(result[0], this);
+            // If result is empty, the operation was skipped (e.g., transaction is faulted). Leave entity unchanged.
+            if (result.Count > 0)
+                SxmHelpers.LoadDbValues(result[0], this);
         }
         private async Task InsertAsync(string sqlOrStatementName, SxmSqlTransaction sxmTrans)
         {
             List<Dictionary<string, object?>> result = await sxmTrans.RunStatementAsync<SxmEntity>(sqlOrStatementName, this).ConfigureFalse();
-            SxmHelpers.LoadDbValues(result[0], this);
+            // If result is empty, the operation was skipped (e.g., transaction is faulted). Leave entity unchanged.
+            if (result.Count > 0)
+                SxmHelpers.LoadDbValues(result[0], this);
         }
 
         // Update statements.
@@ -604,6 +612,10 @@ namespace SQLiteXM
         /// <param name="sxmTrans">Optional transaction to use; if null a standalone connection is used.</param>
         private async Task DeleteAsync(SxmSqlTransaction? sxmTrans)
         {
+            // Skip the entire delete operation if the transaction is faulted (consistent with LINQ and SQL behavior)
+            if (sxmTrans != null && sxmTrans.EncounteredError)
+                return;
+
             // If a transaction/connection is provided, check existence using that connection
             // so we see uncommitted rows that live in the same transaction.
             if (!await DoesRecordExistAsync(sxmTrans).ConfigureFalse())

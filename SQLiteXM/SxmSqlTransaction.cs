@@ -353,16 +353,16 @@ namespace SQLiteXM
 
             if (!_encounteredError)
             {
-                SqlStatementDetails statementDetails = new();
-
-                statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
-                if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
-                {
-                    statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
-                }
-
                 try
                 {
+                    SqlStatementDetails statementDetails = new();
+
+                    statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
+                    if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+                    {
+                        statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
+                    }
+
                     switch (statementDetails.SqlStatementType)
                     {
                         case SqlStatementType.Select:
@@ -389,7 +389,20 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlOrStatementName, statementDetails.SqlStatementType);
+                    // Try to extract statement details for logging, but handle gracefully if parsing failed
+                    SqlStatementDetails statementDetails = new();
+                    string? statement = null;
+                    try
+                    {
+                        statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
+                        if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+                        {
+                            statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
+                        }
+                        statement = SxmHelpers.SqlStatementFromStatementName(sqlOrStatementName, statementDetails.SqlStatementType);
+                    }
+                    catch { /* Best effort logging */ }
+
                     string statementName = string.Empty;
                     if (statementDetails.SqlStatementType != SqlStatementType.SelectDirect &&
                         statementDetails.SqlStatementType != SqlStatementType.UpdateDirect &&
@@ -409,7 +422,20 @@ namespace SQLiteXM
                     // Record Error
                     _encounteredError = true;
 
-                    string? statement = SxmHelpers.SqlStatementFromStatementName(sqlOrStatementName, statementDetails.SqlStatementType);
+                    // Try to extract statement details for logging, but handle gracefully if parsing failed
+                    SqlStatementDetails statementDetails = new();
+                    string? statement = null;
+                    try
+                    {
+                        statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
+                        if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+                        {
+                            statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
+                        }
+                        statement = SxmHelpers.SqlStatementFromStatementName(sqlOrStatementName, statementDetails.SqlStatementType);
+                    }
+                    catch { /* Best effort logging */ }
+
                     string statementName = string.Empty;
                     if (statementDetails.SqlStatementType != SqlStatementType.SelectDirect &&
                         statementDetails.SqlStatementType != SqlStatementType.UpdateDirect &&

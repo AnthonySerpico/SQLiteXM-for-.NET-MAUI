@@ -492,7 +492,9 @@ catch (Exception ex)
 }
 ```
 
-If you want to recover a faulted transactionand reuse it — instead of letting it dispose — call `RollbackTransactionAsync()`. That discards the failed transaction, clears the faulted flag, and lets subsequent statements start a fresh transaction on the same transaction.
+If you want to recover a faulted transactionand to reuse it — instead of letting it dispose — call `RollbackTransactionAsync()`. That discards the failed transaction, clears the faulted flag, and lets subsequent statements start a fresh  using the same transaction.
+
+You cannot commit a faulted transaction. This would go against the implied all-or-nothing semantics. If you call `CommitTransactionAsync()` on a faulted transaction, an `InvalidOperationException` is thrown. 
 
 ### Exceptions to know about
 
