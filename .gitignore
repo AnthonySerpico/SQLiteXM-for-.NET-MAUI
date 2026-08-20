@@ -364,3 +364,4 @@ MigrationBackup/
 # Temporary PowerShell utility scripts
 *.ps1
 FodyWeavers.xsd
+/Docs/Hidden
