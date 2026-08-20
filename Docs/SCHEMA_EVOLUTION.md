@@ -1,6 +1,6 @@
 # Schema Evolution
 
-SQLiteXM creates a corresponding table for an entity the first time an entity is registered via `RegisterEntitiesAsync`. As part of this process, it creates columns, indexes, triggers, foreign keys, and other schema objects; creating a schema that reflects the entity and its applied attributes.
+SQLiteXM creates a corresponding table for an entity the first time an entity is registered via `RegisterEntitiesAsync`. As part of this process, it creates columns, indexes, triggers, foreign keys, and other schema objects to create a schema that reflects the entity and its applied attributes.
 
 One of the most common ORM concerns is what happens when an entity changes over time?
 
@@ -24,7 +24,10 @@ the new table are not supported by SQLiteXM as these are not considered safe.
 Changes that can be represented by direct `ALTER TABLE` statements or can be expressed using SQLite-supported schema DDL without rebuilding a 
 table are considered safe. These are the changes listed in the bullet points above.
 
-## Why SQLiteXM Does Not Do Table Rebuilds?
+Here, "safe" means that SQLiteXM can perform the schema change without rebuilding the table; it does not 
+mean that the change is non-destructive, for example, dropping a column is a safe operation but it is destructive because it results in data loss.
+
+## Why SQLiteXM Does Not Rebuild Tables?
 
 SQLiteXM avoids table rebuilds because they are inherently complex, potentially destructive, and often require data transformation logic that 
 cannot be reliably inferred from the schema alone. When existing data must be converted from one representation to another, there is frequently 
@@ -61,7 +64,7 @@ Yes.
 
 If a column exists in the database but is no longer included in the entity model, SQLiteXM will drop the column during registration.
 
-Note: Columns that are still referenced by indexes or triggers cannot be dropped.
+Note: Columns that are still referenced by indexes or triggers or are still required by other schema objects or otherwise violate SQLite's requirements for `DROP COLUMN` cannot be dropped.
 
 That means removing a mapped property from your entity is treated as a real schema change, not just a code-only cleanup.
 

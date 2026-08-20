@@ -114,7 +114,7 @@ public class ApplicationLog : SxmEntity
 }
 ```
 
-* If `Database` is not specified, the entity uses the default database
+* If `Database` is not specified, the entity uses SQLiteXM's default database.
 * Entities are registered with `SxmDatabase.RegisterEntitiesAsync(...)`
 
 
@@ -131,7 +131,7 @@ public class Invoice : SxmEntity
 ```
 
 * When set to `false`, all public properties are automatically mapped to database columns unless marked with `[NotColumn]`
-* When set to `true`, or when omitted, only public properties marked with `[Column]` are mapped
+* When set to `true`, or when omitted, only public properties marked with `[Column]` will be mapped
 
 # 2. Column Attribute
 
@@ -155,7 +155,7 @@ public class Invoice : SxmEntity
 
 The `DataType` property allows you to override the default data type mapping for certain properties.
 
-The default storage type for a `DateTime` is `INTEGER` and is stored as ticks. In the example below, 
+The default storage type for a `DateTime` is `INTEGER`, stored as .NET ticks. In the example below, 
 we are overriding the storage type to `Text`, which will cause SQLiteXM to store this specific 
 DateTime property as an ISO 8601 date:
 ```csharp
@@ -343,7 +343,7 @@ SQLiteXM treats trigger definitions as part of the entity schema and keeps the d
 
 # 8. RequiredNotNull Attribute
 
-Use `[RequiredNotNull]` when a property must never be null and should have a default value.
+Use `[RequiredNotNull]` when a property must not be null and should have a non-null default value.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -390,7 +390,7 @@ For example, consider an Order table that references a Customer table through a 
 | `SetNull` | Set the foreign key column to `NULL` |
 | `SetDefault` | Set the foreign key column to its default value |
 | `Restrict` | Prevent deletion when related rows exist |
-| `NoAction` | Take no automatic action; the delete succeeds only if referential integrity is preserved |
+| `NoAction` | Take no automatic action; the delete succeeds only if referential integrity is preserved. The foreign-key constraint is still enforced. |
 
 ## When to Use It
 
@@ -473,7 +473,7 @@ public class Order : SxmEntity
 	public DateTime OrderDate { get; set; }
 
 	[Column]
-	[RequiredNotNull(0m)]
+	[RequiredNotNull(DefaultValue = 0m)]
 	public decimal Total { get; set; }
 }
 
@@ -499,7 +499,7 @@ public class OrderLine : SxmEntity
 	public string ProductName { get; set; } = string.Empty;
 }
 
-[Table(Database = "Logging", IsColumnAttributeRequired = false)]
+[Table(IsColumnAttributeRequired = false)]
 public class AuditLog : SxmEntity
 {
 	public string Message { get; set; } = string.Empty;
@@ -512,7 +512,6 @@ public class AuditLog : SxmEntity
 * `Customer` uses a unique index on `Email`
 * `Order` references `Customer` through a foreign key
 * `OrderLine` references `Order` and preserves data from a renamed column
-* `AuditLog` is stored in a separate database
 * A trigger adds custom database-side behavior
 * `[NotColumn]` is used for a computed display property
 

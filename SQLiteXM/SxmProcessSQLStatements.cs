@@ -239,18 +239,25 @@ namespace SQLiteXM
                         // Database field is required for triggers
                         if (!triggerEntry.TryGetValue("Database", out string? triggerDatabase) || string.IsNullOrWhiteSpace(triggerDatabase))
                         {
-                            throw new ArgumentException(
-                                "REQUIRED FIELD MISSING: Each trigger entry must specify a 'Database' field.\n" +
-                                $"Trigger for table '{triggerEntry.GetValueOrDefault("Table Name", "[unknown]")}' is missing the required 'Database' field.\n" +
-                                "SOLUTION: Add a \"Database\": \"<database-name>\" field to each trigger entry in your SqlStatements file.\n" +
-                                "EXAMPLE:\n" +
-                                "  \"trigger\": [\n" +
-                                "    {\n" +
-                                "      \"Database\": \"sqlitexmtest\",\n" +
-                                "      \"Table Name\": \"user\",\n" +
-                                "      \"Statement\": \"CREATE TRIGGER ...\"\n" +
-                                "    }\n" +
-                                "  ]");
+                            if (_databases.Count > 1)
+                            {
+                                throw new ArgumentException(
+                                    "REQUIRED FIELD MISSING: Each trigger entry must specify a 'Database' field.\n" +
+                                    $"Trigger for table '{triggerEntry.GetValueOrDefault("Table Name", "[unknown]")}' is missing the required 'Database' field.\n" +
+                                    "SOLUTION: Add a \"Database\": \"<database-name>\" field to each trigger entry in your SqlStatements file.\n" +
+                                    "EXAMPLE:\n" +
+                                    "  \"trigger\": [\n" +
+                                    "    {\n" +
+                                    "      \"Database\": \"sqlitexmtest\",\n" +
+                                    "      \"Table Name\": \"user\",\n" +
+                                    "      \"Statement\": \"CREATE TRIGGER ...\"\n" +
+                                    "    }\n" +
+                                    "  ]");
+                            }
+                            else
+                            {
+                                triggerDatabase = _databases[0];
+                            }
                         }
 
                         // Validate that trigger database references a defined database

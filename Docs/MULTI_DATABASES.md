@@ -17,13 +17,13 @@ This guide explains how to configure and use multiple databases in SQLiteXM.
 
 # Understanding Multiple Databases
 
-SQLiteXM databases are defined in the application's database configuration file, typically named:
+SQLiteXM databases are defined in the application's `SqlStatements.json` configuration file, typically named:
 
 ```text
 SqlStatements.json
 ```
 
-The configuration file determines which databases are available to the application.
+The configuration file determines which databases are available to the application. This file must be included in your application package in the `Resources/Raw` folder and is read during initialization.
 
 ---
 
@@ -120,7 +120,7 @@ In this example:
 
 # Registering Entities
 
-Entity registration works exactly the same regardless of how many databases are configured.
+Entity registration works exactly the same regardless of how many databases are configured or to which database each entity belongs to.
 
 ```csharp
 await SxmDatabase.RegisterEntitiesAsync(
@@ -135,7 +135,7 @@ SQLiteXM automatically creates or updates tables in the correct database based o
 
 # Querying Multiple Databases
 
-When using `SxmTransaction`, specify the database you want to query.
+When using `SxmTransaction`, specify the database you want to query when creating the transaction.
 
 ```csharp
 using var appTransaction = new SxmTransaction("MyApp");
@@ -163,7 +163,7 @@ SQLiteXM enforces the following rules:
 
 ## At Least One Database Required
 
-A configuration must define at least one database.
+The `SqlStatements.json` file must define at least one database.
 
 ```json
 {
@@ -187,7 +187,7 @@ Exactly one database must be marked as the default database.
 }
 ```
 
-## Unlimited Additional Databases
+## Additional Databases
 
 You may define as many non-default databases as needed.
 

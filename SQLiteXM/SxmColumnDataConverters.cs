@@ -202,7 +202,7 @@ namespace SQLiteXM
         /// <returns>Ticks representing <paramref name="dto"/>, or <c>null</c>.</returns>
         internal static long? DateTimeOffsetToTicks(DateTimeOffset? dto)
         {
-            return dto?.Ticks;
+            return dto?.UtcTicks;
         }
 
         /// <summary>

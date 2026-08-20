@@ -1,80 +1,34 @@
 # SQLiteXM for .NET MAUI
 
-SQLiteXM is a high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI and mobile applications.
-
-Define entities, initialize once, and start querying with LINQ—without DbContext setup, migration folders, or EF Core complexity.
+SQLiteXM is a high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.
 
 ---
 
 ## Why SQLiteXM?
 
+We asked ourselves: “What would a deliberately designed SQLite persistence layer for modern .NET/MAUI 
+applications look like—one that supports SQL and LINQ while still providing convenient entities, schema 
+evolution, transactions, mapping, persistence methods, and UI binding?”
+
+The result is SQLiteXM.
+
 | Capability | SQLiteXM |
 |------------|----------|
-| Designed specifically for .NET MAUI + SQLite| ✅ |
-| AOT & IL Trimming Safe | ✅ |
-| Full LINQ Support | ✅ |
+| Designed specifically for .NET MAUI + SQLite | ✅ |
+| Entity-first architecture with built-in persistence methods | ✅ |
+| AOT & IL Trimming Safe — no manual linker configuration needed | ✅ |
+| LINQ query support | ✅ |
 | Raw SQL Support | ✅ |
-| Multi-Database Architecture | ✅ |
-| Full Transaction Support - explicit and ambient transaction patterns | ✅ |
-| Handles mobile lifecycle events - app suspend/resume | ✅ |
-| Fine-grained SQLite PRAGMA control | ✅ |
-| Direct binding support - entities are MAUI binding-ready | ✅ |
-| Async-first design - supports non-blocking UI patterns | ✅ |
-| Zero configuration - no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 184 tests |
-
----
-
-### A Quick Look
-
-```csharp
-var user = new User
-{
-    Name = "Alice",
-    Email = "alice@example.com"
-};
-
-await user.SaveAsync();
-
-using var context = new SxmDbContext("MyApp");
-
-var users = context.GetTable<User>()
-    .Where(u => u.Name.StartsWith("A"))
-    .OrderBy(u => u.Name)
-    .ToList();
-```
-
-No DbContext.
-
-No migration files.
-
-No repository boilerplate.
-
-Just entities, SQLite, and LINQ.
-
----
-
-## ⚙️ AOT & Trimming Design
-
-SQLiteXM is built for .NET MAUI apps targeting AOT and IL-trimmed Release builds. Manual linker configuration or per-model trimming annotations are not required.
-
-Entity types are registered with full metadata preservation:
-```csharp
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-```
-
-This enables safe runtime reflection for property discovery, attribute mapping, and entity materialization in trimmed builds with no additional setup.
-
----
-
-## 📦 Installation
-
-```bash
-# Via NuGet (coming soon)
-dotnet add package SQLiteXM
-
-# Or reference the project directly
-```
+| Automatic entity-to-table mapping | ✅ |
+| Built-in schema evolution | ✅ |
+| SQLite PRAGMAS are first-class initialization options | ✅ |
+| Multiple SQLite Database Support | ✅ |
+| Full Transaction Support — explicit and ambient transaction patterns | ✅ |
+| Handles mobile lifecycle events — app suspend/resume | ✅ |
+| Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
+| Async-first design — supports non-blocking UI patterns | ✅ |
+| Minimal configuration — no migration files, no DbContext setup | ✅ |
+| Automated Test Coverage | 197 tests |
 
 ---
 
@@ -124,15 +78,15 @@ public class Post : SxmEntity
 
 ---
 
-### 2. Create `SqlStatements.json`
+### 2. Create `SqlStatements.json` File
 
-Place this file in `Resources/Raw/` (Build Action: `MauiAsset`):
+Place this file in `Resources/Raw` (Build Action: `MauiAsset`):
 
 ```json
 {
   "databases": [
     {
-      "database": "MyApp",
+      "database": "MyAppDatabase",
       "isDefault": true
     }
   ]
@@ -146,52 +100,16 @@ Place this file in `Resources/Raw/` (Build Action: `MauiAsset`):
 * `isDefault` assigns the default database for entities without an explicit database assignment
 * The configuration is loaded during initialization to establish database connections and schema management
 
-<details>
-<summary>📖 Example: Multi-Database Configuration</summary>
-
-```csharp
-// Define multiple databases in SqlStatements.json
-{
-  "databases": [
-    {
-      "database": "UserData",
-      "isDefault": true
-    },
-    {
-      "database": "AppCache",
-      "isDefault": false
-    }
-  ]
-}
-
-// Create entities  - use 'Database' property to specify which database
-[Table(IsColumnAttributeRequired = false, Database = "UserData")]
-public class UserRecord : SxmEntity
-{
-    public string Name { get; set; }
-    public string Email { get; set; }
-}
-
-[Table(IsColumnAttributeRequired = false, Database = "AppCache")]
-public class CompletedItem : SxmEntity
-{
-    public string Task { get; set; }
-    public DateTime CompletedAt { get; set; }
-}
-```
-
-</details>
-
-
 ---
 
 ### 3. Initialize SQLiteXM
 
+Once your entities and configuration are defined, initialize SQLiteXM in your application startup code.
+
 ```csharp
 public static async Task InitializeDatabaseAsync()
 {
-    using var stream =
-        await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+    using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 
     await SxmDatabase.InitializeAsync(stream);
 
@@ -206,135 +124,61 @@ public static async Task InitializeDatabaseAsync()
 * `OpenAppPackageFileAsync()` loads configuration from the application package
 * `InitializeAsync()` creates and configures the database environment
 * `RegisterEntitiesAsync()` registers entity types and creates or migrates tables as needed
-* Call `InitializeDatabaseAsync()` once during application startup before performing database operations
-<details>
-<summary>📖 Example: Advanced SQLite Initialization</summary>
 
-```csharp
-public static async Task InitializeDatabaseAsync()
-{
-    // Configure advanced SQLite options
-    var databaseOptions = new SxmDatabaseOptions()
-    {
-        // ✅ SQLite PRAGMA configuration
-        ForeignKeys = true,
-        JournalModeOption = SxmJournalMode.Wal,
-        SynchronousModeOption = SxmSynchronousMode.Normal,
-        BusyTimeout = 500,
-        CacheSize = 57,
-        WalAutoCheckpoint = 250,
-        TempStore = SxmTempStore.Memory,
-
-        // ✅ WAL checkpoint control
-        CheckPointConnection = CheckPointConnection.MaxSize,
-        CheckPointWalMaxSize = 32,
-
-        // ✅ Connection pooling
-        DefaultTimeout = 5,
-        EnableConnectionPooling = true,
-
-        // ✅ Logging control
-        EnableLogging = true,
-
-        // ✅ Database path customization
-        DatabaseFolderOverride = FileSystem.AppDataDirectory
-    };
-
-    using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
-
-    if (stream != null)
-    {
-        await SxmDatabase.InitializeAsync(stream, databaseOptions);
-
-        await SxmDatabase.RegisterEntitiesAsync(
-            typeof(User),
-            typeof(Post));
-    }
-}
-```
-
-</details>
-
+Call `InitializeDatabaseAsync()` once during application startup before performing database operations
 
 ---
 
-### 4. Use Your Entities
+### 4. Start Reading and Writing Data
 
 ```csharp
+// 'User' inherits from SxmEntity and is automatically mapped to a database table
 var user = new User
 {
     Name = "Alice",
-    Age = 30,
+    Age = 0,
     Email = "alice@example.com",
     CreatedAt = DateTime.UtcNow
 };
 
+// Insert 'user' into the database
+// 'Age' is initially set to 0; the record is updated below.
 await user.SaveAsync();
 
-using var context = new SxmDbContext("MyApp");
+await using (var ctx = new SxmTransaction())
+{
+    // LINQ — query the user to modify.
+    var existingUser = ctx.GetTable<User>().FirstOrDefault(u => u.Name == "Alice");
 
-var users = context.GetTable<User>()
-    .Where(u => u.Age > 25)
-    .OrderBy(u => u.Name)
-    .ToList();
+    // Embedded SQL — execute SQL within the same transaction.
+    await ctx.RunStatementAsync("UPDATE User SET LastLogin = CURRENT_TIMESTAMP WHERE Name == 'Alice'");
 
-user.Age = 31;
+    // Entity DML — persist the change.
+    // Uses the active transaction.
+    existingUser.Age = 25;
+    await existingUser.SaveAsync();
 
-await user.SaveAsync();
-
-await user.DeleteAsync();
+} // <-- Automatically commits transaction on dispose if no errors occurred
 ```
 
 #### What's happening?
 
-* `SaveAsync()` inserts or updates entities as needed
-* `SxmDbContext` provides LINQ access to registered entities
-* LINQ queries are translated into SQLite queries through LinqToDB
-* Entity instances can be modified and persisted using the same API
+* `SaveAsync()` inserts a new entity or updates an existing entity based on its primary key
+* `SxmTransaction` starts a new transaction scope for database operations
+* All database operations within the transaction participate in the same commit scope
+* LINQ executes against the database and returns an entity instance
+* `RunStatementAsync()` executes embedded SQL within the active transaction
+* Entity instances can be modified and persisted using the same `SaveAsync`
 
 ---
 
-### 5. Transactions
-
-```csharp
-await using var transaction =
-    SxmSqlTransaction.Create("MyApp");
-
-var user = new User
-{
-    Name = "Bob"
-};
-
-await user.SaveAsync(transaction);
-
-var post = new Post
-{
-    Title = "Hello",
-    UserId = user.id
-};
-
-await post.SaveAsync(transaction);
-
-await transaction.CommitTransactionAsync();
-```
-
-#### What's happening?
-
-* `SxmSqlTransaction` creates an explicit SQLite transaction
-* All operations participate in the same commit scope
-* `CommitTransactionAsync()` commits changes immediately
-* Transactions can also automatically commit on disposal when no errors occur
-
-```
-
 💡 Want more examples? Explore the Query Gallery Demo with 90+ interactive examples, or dive into the full documentation.
-```
 
 ---
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **184 tests** (183 passing, 1 intentionally skipped) covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **197 tests** (196 passing, 1 intentionally skipped) covering real-world scenarios.
 
 ### Test Coverage
 
@@ -358,9 +202,10 @@ SQLiteXM includes a comprehensive test suite with **184 tests** (183 passing, 1 
 | Connection Workers | 7 tests | ✅ 100% |
 | Submit Changes | 4 tests | ✅ 100% |
 | Fail-Fast Validation | 5 tests | ✅ 100% |
-| **Total** | **184 tests** | **✅ 100%** |
+| Mixed Operation Transactions | 13 tests | ✅ 100% |
+| **Total** | **197 tests** | **✅ 100%** |
 
-**\*Note:** 1 test intentionally skipped due to a known LINQ limitation (documented in test comments).
+**Note:** 1 test intentionally skipped due to a known LINQ limitation (documented in test comments).
 
 ### Performance Benchmarks (from test suite)
 
@@ -370,15 +215,6 @@ SQLiteXM includes a comprehensive test suite with **184 tests** (183 passing, 1 
 | 50,000 row query | 14ms | With index |
 | Complex LINQ (20K rows) | 12ms | Joins + filters |
 | 100 concurrent writes | 1.2s | Thread-safe operations |
-
-### Running Tests
-
-```bash
-cd SQLiteXM.Tests
-dotnet test
-```
-
-For testing your own code with SQLiteXM, see the **[Testing Guide](docs/Advanced.md#testing-your-app)**.
 
 ---
 
@@ -422,18 +258,14 @@ CollectionView binding with CRUD operations and UI updates.
 
 ---
 
+## 📦 Installation
 
-## 🏗️ Architecture
+```bash
+# Via NuGet (coming soon)
+dotnet add package SQLiteXM
 
-SQLiteXM uses a **static-first** design optimized for mobile:
-
-- **SxmEntity** - Base class with reflection-driven schema creation
-- **SxmInit** - One-time initialization coordinator
-- **SxmConnection** - Lease-based connection manager with reentrancy
-- **SxmSqlTransaction** - Transaction abstraction with explicit control
-- **SxmDbContext** - LinqToDB integration for LINQ queries
-
-**Learn more** in the **[Architecture Guide](docs/Advanced.md)** (coming soon).
+# Or reference the project directly
+```
 
 ---
 
@@ -455,6 +287,8 @@ SQLiteXM uses a **static-first** design optimized for mobile:
 - **[Multi-Database Support](docs/MultiDatabase.md)** - Working with multiple databases
 - **[Performance Guide](docs/Performance.md)** - Optimization tips and benchmarks
 - **[Advanced Topics](docs/Advanced.md)** - Thread safety, testing, migrations, troubleshooting
+
+---
 
 ### 📖 Complete Index
 See **[docs/README.md](docs/README.md)** for the full documentation index.
@@ -484,12 +318,6 @@ MIT License - see [LICENSE](./LICENSE) for details.
 - Built on [Microsoft.Data.Sqlite](https://www.nuget.org/packages/Microsoft.Data.Sqlite)
 - LINQ support via [LinqToDB](https://linq2db.github.io/)
 - Inspired by Entity Framework Core, Dapper, and SQLite-net
-
-## 📞 Support
-
-- 🐛 [Report Issues](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/issues)
-- 💬 [Discussions](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/discussions)
-- 📧 Email: [Your contact]
 
 ---
 

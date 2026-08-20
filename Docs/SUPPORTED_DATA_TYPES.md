@@ -2,7 +2,8 @@
 
 ## Introduction
 
-SQLiteXM supports a focused set of native C# data types and maps them to SQLite storage types during schema creation, parameter binding, and result materialization.
+SQLiteXM supports a select set of .NET/CLR data types and maps them to SQLite storage types during 
+schema creation, parameter binding, and result materialization.
 
 This guide explains:
 
@@ -32,7 +33,8 @@ In practice, this means:
 
 SQLite `INTEGER` is a 64-bit signed value and maps to C# `long`. Smaller integral types such as `int`, `short`, and `byte` are also stored using `INTEGER`.
 
-SQLiteXM does not automatically map enums or complex types. Use converters or map them manually.
+SQLiteXM does not automatically map enums or complex types. These types must be handled using a 
+converter or some other explicit mapping strategy.
 
 ---
 
@@ -102,11 +104,11 @@ public class Product : SxmEntity
 
 ## ulong
 
-`ulong` values are stored as zero-padded `TEXT` because
-SQLite `INTEGER` cannot represent the entire `ulong` range.
+`ulong` values are stored as fixed-width, zero-padded `TEXT` because SQLite `INTEGER` 
+cannot represent the entire `ulong` range without loss of precision.
 
 Zero padding is what preserves lexical sort order for numeric strings.
-With zero padding and a fixed width, string order matches numeric order.
+With fixed width and zero padding, string order matches numeric order.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -168,9 +170,8 @@ public DateTime CreatedOn { get; set; }
 
 ## DateTimeOffset
 
-`DateTimeOffset` values are stored as `INTEGER` by default. SQLiteXM stores them as .NET ticks.
-
-This preserves the instant in time represented by the value.
+`DateTimeOffset` values are stored as `INTEGER` by default using UTC .NET ticks. This preserves the instant represented by the value, 
+but does not preserve the original offset.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -180,7 +181,8 @@ public class Event : SxmEntity
 }
 ```
 
-You can override `DateTimeOffset` to `TEXT`.
+You can override the `DateTimeOffset` storage type and store it as TEXT using the ISO 8601 round-trip format. 
+This preserves both the instant and the original offset.
 
 ```csharp
 [Column(DataType = SQLiteXM.DataType.Text)]
@@ -208,7 +210,8 @@ public DateOnly Date { get; set; }
 
 ## TimeOnly
 
-`TimeOnly` values are stored as `INTEGER` by default. SQLiteXM stores them as the number of milliseconds since midnight.
+`TimeOnly` values are stored as `INTEGER` by default. SQLiteXM stores them as the number of .NET ticks since midnight, 
+preserving the full 100-nanosecond precision of TimeOnly..
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -227,7 +230,7 @@ public TimeOnly StartsAt { get; set; }
 
 ## TimeSpan
 
-`TimeSpan` values are stored as `INTEGER` by default. SQLiteXM stores them as the total number of milliseconds.
+`TimeSpan` values are stored as `INTEGER` by default. SQLiteXM stores them as the total number of ticks.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]

@@ -1,16 +1,24 @@
 # INotifyPropertyChanged Support in SQLiteXM
 
-SQLiteXM provides built-in support for `INotifyPropertyChanged` in the `SxmEntity` base class, enabling seamless two-way data binding between your entities and .NET MAUI UI controls—with zero boilerplate code.
+SQLiteXM provides built-in `INotifyPropertyChanged` support through the SxmEntity base class. SxmEntity provides the `SetProperty` 
+and `OnPropertyChanged` helpers needed to implement property-change notifications without writing the notification boilerplate 
+yourself.
+
+When an entity property uses `SetProperty`, changes to that property are automatically reported through `INotifyPropertyChanged`, 
+allowing .NET MAUI controls and other MVVM infrastructure to react to changes.
 
 ## Overview
 
-All entities that inherit from `SxmEntity` automatically implement `INotifyPropertyChanged`, allowing you to:
+All entities that inherit from SxmEntity automatically implement `INotifyPropertyChanged`, allowing you to:
 - ✅ Bind entity properties directly to MAUI UI controls
 - ✅ Get automatic UI updates when entity properties change
 - ✅ Eliminate repetitive property notification code
 - ✅ Use entities directly in MVVM patterns without wrapper ViewModels
 
-## Quick Start
+### Quick Start
+
+SxmEntity implements `INotifyPropertyChanged` and provides `SetProperty` and `OnPropertyChanged` helpers. To receive 
+property-change notifications, entity properties must use `SetProperty` in their setters or explicitly call `OnPropertyChanged`.
 
 ### Basic Entity with Data Binding
 
@@ -228,16 +236,16 @@ public class Product : SxmEntity
 	public decimal Price
 	{
 		get => _price;
-		set => SetProperty(ref _price, value, () =>
+		set
 		{
-			// Validate
-			if (_price < 0)
-				_price = 0;
+			value = Math.Max(0, value);
 
-			// Update dependent properties
-			OnPropertyChanged(nameof(PriceWithTax));
-			OnPropertyChanged(nameof(DisplayPrice));
-		});
+			SetProperty(ref _price, value, () =>
+			{
+				OnPropertyChanged(nameof(PriceWithTax));
+				OnPropertyChanged(nameof(DisplayPrice));
+			});
+		}
 	}
 
 	public decimal TaxRate { get; set; } = 0.08m;
@@ -350,7 +358,8 @@ public partial class CustomerViewModel : ObservableObject
 }
 ```
 
-**Important:** Do NOT use `[ObservableObject]` attribute on `SxmEntity`-derived classes, as they already implement `INotifyPropertyChanged`.
+**Important:** Do not use CommunityToolkit.Mvvm's `[ObservableObject]` attribute on SxmEntity-derived classes. SxmEntity already 
+implements `INotifyPropertyChanged` and provides the required notification helpers.
 
 ```csharp
 // ❌ DON'T DO THIS - Causes compiler error
@@ -406,9 +415,8 @@ This prevents unnecessary UI updates when the same value is assigned multiple ti
 ### Minimal Overhead
 
 The `INotifyPropertyChanged` implementation adds minimal overhead:
-- Event subscription/invocation: ~nanoseconds per property change
-- Memory: One event handler delegate per subscribed property
-- No impact on database operations or query performance
+- Efficient change detection: `SetProperty` performs an equality comparison and raises an event only when the value changes
+- INotifyPropertyChanged is used for in-memory property-change notification and does not impact database operations or query performance
 
 ### When to Skip SetProperty
 

@@ -538,7 +538,7 @@ internal static class SxmSchemaRegistration
             tableCreated = true;
             var sb = new System.Text.StringBuilder();
             sb.Append($"CREATE TABLE {quotedTable} (");
-            sb.Append($"{SxmHelpers.QuoteIdentifier("id")} INTEGER PRIMARY KEY AUTOINCREMENT");
+            sb.Append($"{SxmHelpers.QuoteIdentifier("id")} INTEGER PRIMARY KEY");
 
             foreach (KeyValuePair<string, string> kvp in SxmEntity._columnNameAndTypeDict[tableName])
             {

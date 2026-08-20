@@ -401,17 +401,17 @@ namespace SQLiteXM
         private string? _databaseName;
 
         /// <summary>
-        /// Primary key column. Mapped to the SQLite INTEGER PRIMARY KEY AUTOINCREMENT column named "id".
+        /// Primary key column. Mapped to the SQLite INTEGER PRIMARY KEY column named "id".
         /// </summary>
         /// <remarks>
-        /// The database determines this value (AUTOINCREMENT). The ORM reads the generated rowid
+        /// The database determines this value. The ORM reads the generated rowid
         /// (using SQLite's last_insert_rowid on the same connection/transaction) and populates this
         /// property immediately after an INSERT. Consumers must not assign this value; the setter is
         /// internal to prevent external modification. The property is used by the ORM for existence
         /// checks, WHERE clauses, and relationship linking.
         /// </remarks>        
         [SuppressMessage("Naming", "IDE1006:Naming Styles", Justification = "Public column name preserved to match DB schema and external consumers.")]
-        [Column, PrimaryKey, Identity]
+        [Column, PrimaryKey]
         public virtual long id { get; set; }
 
         /// <summary>

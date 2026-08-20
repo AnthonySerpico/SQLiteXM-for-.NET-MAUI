@@ -207,13 +207,15 @@ static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrSta
 
 ### Using named SQL statements with `SxmSql.RunStatementAsync`
 
-The first argument to every `RunStatementAsync` overload is called `sqlOrStatementName`. This argument is processed in the following order:
+As an alternative to embedded SQL, you can define named SQL statements in your `SqlStatements.json` file and call them by name. This is called *named* SQL because the statement lives in a separate JSON file instead of inline in your C# code.
+
+Named statements let you keep SQL out of your C# code allowing reuse of the same statement from multiple call sites. It also organizes your SQL in a single, easy to audit location. Every `RunStatementAsync` overload supports named statements.
+
+The first argument to every `RunStatementAsync` overload is called `sqlOrStatementName`. SQLiteXM decides at runtime whether this parameter is a named statement or an embedded SQL statement. This argument is processed in the following order:
 1. Conceptually, the SQL statement is looked up by name in the `SqlStatements.json` file of the project. If a statement with that name exists, its contents are used as the SQL statement.
 2. If no statement with that name exists, the argument is treated as the SQL statement itself.
 
 Because `RunStatementAsync` accepts either a named statement or SQL text, a misspelled statement name is interpreted as SQL text. If the resulting text is not valid SQL, SQLite will report the resulting SQL error.
-
-Named statements let you keep SQL out of your C# code allowing reuse of the same statement from multiple call sites. It also organizes your SQL in a single, easy to audit location. Every `RunStatementAsync` overload supports named statements.
 
 Assume `GetAllCustomers` is defined in `SqlStatements.json` as `SELECT id, Name, Email FROM Customer`. The call site is then simply:
 

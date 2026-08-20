@@ -2,75 +2,65 @@
 
 ## Overview
 
-The SQL Statements file is a centralized JSON (or XML) configuration file that serves as a repository for all named SQL statements used by your SQLiteXM application. This file is processed during database initialization and provides three critical functions:
+The SQL Statements file, typically named `SqlStatements.json`, is SQLiteXM's declarative database-definition and named-SQL 
+repository. It defines the databases used by the application, registers reusable named SQL statements, and defines database triggers.
 
-1. **Database Declaration** - Declares one or more database names and which is the default
-2. **SQL Statement Registry** - Registers named INSERT, SELECT, UPDATE, DELETE, and TRIGGER statements
-3. **Multi-Database Support** - Enables working with multiple separate SQLite database files
+This file is required by SQLiteXM and must be placed in your application's `Resources/Raw` folder. 
+The `Build Action` must be set to `MauiAsset`. The `SqlStatements.json` file is processed during database initialization.
 
-**Note:** Database configurations (folder paths, connection settings, etc.) are specified separately via `SxmDatabaseOptions` during initialization, not in this file.
-
-## Table of Contents
-
-- [File Structure](#file-structure)
-  - [Single Database Configuration](#single-database-configuration)
-  - [Multi-Database Configuration](#multi-database-configuration)
-- [Database Configuration](#database-configuration)
-- [Registering SQL Statements](#registering-sql-statements)
-- [Using Registered Statements](#using-registered-statements)
-- [Multi-Database Examples](#multi-database-examples)
-- [Best Practices](#best-practices)
+**Note:** Database configurations (folder paths, PRAGMA settings, connection settings, etc.) are specified separately via `SxmDatabaseOptions` during initialization, not in this file.
 
 ---
 
 ## File Structure
 
-The SQL Statements file uses a consistent structure with a `databases` array, whether you have one database or multiple databases.
+The SQL Statements file is a JSON document containing arrays for database definitions and each supported SQL statement type.
 
 ### Basic Structure
 
 ```json
 {
-  "databases": [
-	{
-	  "database": "your_database_name",
-	  "isDefault": true
-	}
-  ],
+  "databases": [ /* Database definitions */ ],
 
-  "insert": [ /* INSERT statements */ ],
-  "select": [ /* SELECT statements */ ],
-  "update": [ /* UPDATE statements */ ],
-  "delete": [ /* DELETE statements */ ],
+  "insert":  [ /* INSERT statements  */ ],
+  "select":  [ /* SELECT statements  */ ],
+  "update":  [ /* UPDATE statements  */ ],
+  "delete":  [ /* DELETE statements  */ ],
   "trigger": [ /* TRIGGER statements */ ]
 }
 ```
 
-**Properties:**
-- `databases` (array, required): Array of database definitions
-  - Each database object has:
-	- `database` (string, required): Database name (without `.db` extension)
-	- `isDefault` (boolean, required): Whether this is the default database
-
-**⚠️ Important:** Exactly **one database must be marked as default** (`isDefault: true`).
-
-### Single Database Example
-
-Even with one database, use the `databases` array:
+Below is a minimum valid `SqlStatements.json` file.
 
 ```json
 {
-  "databases": [
-	{
-	  "database": "myapp_database",
-	  "isDefault": true
-	}
-  ],
-
-  "insert": [ /* INSERT statements */ ],
-  "select": [ /* SELECT statements */ ]
+  "databases": [ 
+    {
+      "database": "MainDb",
+      "isDefault": true
+    }
+  ]
 }
 ```
+
+This example defines:
+
+* One database
+* The database name is `MainDb`
+* It is marked as the default database
+* There are no SQL statements defined yet
+
+This instructs SQLiteXM to create a SQLite database file named `MainDb` in the application's data folder.
+
+### Database definition rules
+- There must be at least one database defined in your `SqlStatements.json` file
+- Exactly one database must be marked as the default database
+- You can define as many non-default databases as needed
+
+Most SQLiteXM applications use a single database. However, SQLiteXM also supports applications that need to organize data across 
+multiple databases.
+
+For details, see  ➡️ [Multi-Database Configuration](./MULTI_DATABASES.md)
 
 ### Multi-Database Example
 
@@ -78,178 +68,95 @@ For multiple databases, add more entries to the `databases` array:
 
 ```json
 {
-  "databases": [
+  "databases": 
+  [
 	{
-	  "database": "main_database",
+	  "database": "MainDb",
 	  "isDefault": true
 	},
 	{
-	  "database": "analytics_database",
+	  "database": "AnalyticsDb",
 	  "isDefault": false
 	},
 	{
-	  "database": "cache_database",
+	  "database": "CacheDb",
 	  "isDefault": false
 	}
-  ],
-
-  "insert": [ /* INSERT statements */ ],
-  "select": [ /* SELECT statements */ ]
+  ]
 }
 ```
 
 ---
 
-## Database Configuration
+### **📌 Default Database Purpose** 
+You might ask , "Why is it necessary to mark one database as the default?" The default database is used when a SQLiteXM API provides 
+an optional database name and no database name is supplied. In that case, SQLiteXM executes the operation against the default database. 
+This provides a convenient API for applications that use a single database—the most common scenario—without requiring the database name 
+to be specified on every call.
 
-### Database Name
+---
 
-**Property:** `database`  
-**Type:** `string`  
-**Required:** Yes
+### Registering SQL Statements
 
-The `database` property specifies the name of the SQLite database file that will be created (without the `.db` extension).
+The SQL Statements file contains five arrays where you define the different SQL statement types:
+
+- **`insert`** - INSERT statements
+- **`select`** - SELECT statements
+- **`update`** - UPDATE statements
+- **`delete`** - DELETE statements
+- **`trigger`** - TRIGGER definitions
+
+
+Below is an example definition for an INSERT statement, which would be placed inside the `insert` array.
 
 ```json
 {
-  "database": "myapp_database"
+  "insert": [
+	{
+	  "Statement Name": "insertUser",
+	  "Table Name": "Users",
+	  "Statement": "INSERT INTO Users (username, email, created_at) VALUES (@username, @email, @created_at)"
+	}
+  ]
 }
 ```
 
-This will create a file named `myapp_database.db` in the configured database folder.
-
-### Default Database
-
-**Property:** `isDefault`  
-**Type:** `boolean`  
-**Required:** Yes
-
-The `isDefault` property marks whether this database is the default database for your application.
-
-**Default Database Rules:**
-
-**✅ Required:**
-- **Exactly one database must be marked as default**
-- Every application must have a default database
-- In single-database config: must be `true`
-- In multi-database config: exactly one database in the array must be `true`
-
-**📌 Purpose:**
-The default database is used when you call SQLiteXM APIs without specifying a database name parameter.
-
-**Example - APIs Using Default Database:**
-
-```csharp
-// ✅ These use the default database (no database name specified)
-
-// Entity operations (automatically routes based on [Table] attribute)
-[Table(IsColumnAttributeRequired = false)]  // No Database specified = uses default database
-public class Product : SxmEntity
-{
-	public string Name { get; set; }
-	public decimal Price { get; set; }
-}
-
-var product = new Product { Name = "Widget", Price = 9.99m };
-await product.SaveAsync();  // Saves to default database (where Product table was created)
-
-// LINQ queries
-using var db = new SxmTransaction();  // Uses default database
-var activeProducts = db.GetTable<Product>()
-	.Where(p => p.InStock)
-	.ToList();
-
-// Named statements
-List<User> users = await SxmStatement.SelectAsync<User>(
-	"getActiveUsers",
-	new List<object>()
-);  // Queries default database
-
-// Transactions
-using var transaction = SxmSqlTransaction.Create();  // Uses default database
-await transaction.InsertAsync<Order>("insertOrder", newOrder);
-```
-
-**Example - Entities Routing to Non-Default Databases:**
-
-```csharp
-// ⚠️ Entity automatically routes to non-default database via [Table] attribute
-
-// This entity's table is created in "analytics_database"
-[Table(Database = "analytics_database", IsColumnAttributeRequired = false)]
-public class AnalyticsEvent : SxmEntity
-{
-	public string EventName { get; set; }
-	public DateTime Timestamp { get; set; }
-}
-
-var event = new AnalyticsEvent { EventName = "PageView" };
-await event.SaveAsync();  // Automatically saves to analytics_database (where AnalyticsEvent table is)
-
-// This entity's table is in the default database
-[Table(IsColumnAttributeRequired = false)]  // No Database parameter
-public class Product : SxmEntity
-{
-	public string Name { get; set; }
-}
-
-var product = new Product { Name = "Widget" };
-await product.SaveAsync();  // Automatically saves to default database (where Product table is)
-```
-
-**How Entity Routing Works:**
-
-- If `[Table]` attribute **has no `Database` parameter**: Entity table is created in the **default database**
-- If `[Table]` attribute **has `Database = "name"`**: Entity table is created in the **named database**
-- `SaveAsync()`, `DeleteAsync()`, etc. **automatically route** to wherever the entity's table was created
-- You don't specify the database when calling `SaveAsync()` - it's determined by the `[Table]` attribute
-
-**Example - Explicitly Specifying Database for LINQ/Statements:**
-
-```csharp
-// For LINQ queries and named statements, you can explicitly specify a database
-
-// LINQ with specific database
-using var db = new SxmTransaction("analytics_database");
-var events = db.GetTable<AnalyticsEvent>().ToList();
-
-// Named statements with database parameter
-List<Log> logs = await SxmStatement.SelectAsync<Log>(
-	"getRecentLogs",
-	new List<object> { DateTime.UtcNow.AddHours(-1) },
-	"analytics_database"  // Explicitly specify database
-);
-```
-
----
-
-## Registering SQL Statements
-
-### Statement Arrays
-
-The SQL Statements file contains five arrays for different statement types:
-
-1. **`insert`** - INSERT statements
-2. **`select`** - SELECT statements
-3. **`update`** - UPDATE statements
-4. **`delete`** - DELETE statements
-5. **`trigger`** - TRIGGER definitions
-
-#### Common Fields
-
-**INSERT, SELECT, UPDATE, DELETE statements:**
+INSERT, SELECT, UPDATE, and DELETE statements all use the same three fields for their definitions:
 - **Statement Name** - Unique identifier for the statement
+
 - **Table Name** - The target table
+
 - **Statement** - The actual SQL code
 
-**TRIGGER statements:**
-- **Database** - The target database (REQUIRED)
-- **Table Name** - The target table
-- **Statement** - The actual SQL code
+Named SQL statements are not associated with a specific database in `SqlStatements.json`. A named statement can be executed against 
+any configured database. When calling a SQL execution API such as `RunStatementAsync`, the application specifies the database 
+against which the statement should execute.
+
+### Parameterized Statements
+
+SQLiteXM supports two parameter styles for named SQL statements:
+
+- **Named parameters** — parameters such as `@email` and `@user_id`.
+- **Positional parameters** — parameters such as `@p0`, `@p1`, and so on.
+
+SQL statements that include parameters can use either named parameters, as in the example above 
+(e.g., `@username`, `@email`, `@created_at`), or positional parameters (e.g., `@p0`, `@p1`, etc.).
+SQLiteXM supports both parameter styles, but you cannot mix named and positional parameters within the same statement.
 
 ---
+### Statement Definition Reference
 
-### INSERT Statements
+| Statement Type | JSON Array | Required Fields | Optional Fields | Purpose |
+|---|---|---|---|---|
+| INSERT | `insert` | `Statement Name`, `Table Name`, `Statement` | — | Registers an INSERT statement |
+| SELECT | `select` | `Statement Name`, `Table Name`, `Statement` | — | Registers a SELECT statement |
+| UPDATE | `update` | `Statement Name`, `Table Name`, `Statement` | — | Registers an UPDATE statement |
+| DELETE | `delete` | `Statement Name`, `Table Name`, `Statement` | — | Registers a DELETE statement |
+| TRIGGER | `trigger` | `Table Name`, `Statement` | `Database` | Registers a SQLite trigger definition |
+
+`Database` is required for trigger definitions when more than one database is defined. When only one database exists, it may be omitted.
+
+### INSERT Statements Example
 
 Register INSERT statements that will be used to add records.
 
@@ -270,33 +177,9 @@ Register INSERT statements that will be used to add records.
 }
 ```
 
-**Parameter Binding:**
-- Use `@parameterName` for named parameters
-- Use `@p0`, `@p1`, `@p2` for positional parameters
-
-**Usage Example:**
-
-```csharp
-// Named parameters
-var user = new User 
-{ 
-	username = "john_doe", 
-	email = "john@example.com", 
-	created_at = DateTime.UtcNow 
-};
-
-await SxmStatement.InsertAsync<User>("insertUser", user);
-
-// Positional parameters
-await SxmStatement.InsertAsync(
-	"insertOrder",
-	new List<object> { 123, 99.99, DateTime.UtcNow }
-);
-```
-
 ---
 
-### SELECT Statements
+### SELECT Statements Example
 
 Register SELECT statements for querying data.
 
@@ -327,39 +210,9 @@ Register SELECT statements for querying data.
 }
 ```
 
-**Usage Examples:**
-
-```csharp
-// Get single user by ID (positional parameter)
-List<User> users = await SxmStatement.SelectAsync<User>(
-	"getUserById",
-	new List<object> { 42 }
-);
-User user = users.FirstOrDefault();
-
-// Get all active users (no parameters)
-List<User> activeUsers = await SxmStatement.SelectAsync<User>(
-	"getActiveUsers",
-	new List<object>()
-);
-
-// Get orders by user (named parameter)
-var orderSearch = new { user_id = 123 };
-List<Order> orders = await SxmStatement.SelectAsync<Order>(
-	"getOrdersByUser",
-	orderSearch
-);
-
-// Complex query returning dictionaries
-List<Dictionary<string, object?>> results = await SxmStatement.SelectAsync(
-	"getUsersWithOrders",
-	new List<object>()
-);
-```
-
 ---
 
-### UPDATE Statements
+### UPDATE Statements Example
 
 Register UPDATE statements for modifying records.
 
@@ -385,36 +238,9 @@ Register UPDATE statements for modifying records.
 }
 ```
 
-**Usage Examples:**
-
-```csharp
-// Named parameters with object
-var updateData = new 
-{ 
-	email = "newemail@example.com",
-	updated_at = DateTime.UtcNow,
-	id = 42
-};
-await SxmStatement.UpdateAsync("updateUserEmail", updateData);
-
-// Positional parameter
-await SxmStatement.UpdateAsync(
-	"activateUser",
-	new List<object> { 42 }
-);
-
-// Within transaction
-await using var transaction = SxmSqlTransaction.Create();
-await transaction.UpdateAsync(
-	"updateOrderStatus",
-	new { status = "shipped", updated_at = DateTime.UtcNow, id = 1001 }
-);
-await transaction.CommitTransactionAsync();
-```
-
 ---
 
-### DELETE Statements
+### DELETE Statements Example
 
 Register DELETE statements for removing records.
 
@@ -440,42 +266,34 @@ Register DELETE statements for removing records.
 }
 ```
 
-**Usage Examples:**
-
-```csharp
-// Delete single record
-await SxmStatement.DeleteAsync(
-	"deleteUserById",
-	new List<object> { 42 }
-);
-
-// Delete with date filter
-DateTime cutoffDate = DateTime.UtcNow.AddMonths(-6);
-await SxmStatement.DeleteAsync(
-	"deleteInactiveUsers",
-	new List<object> { cutoffDate }
-);
-
-// Delete within transaction
-await using var transaction = SxmSqlTransaction.Create();
-await transaction.DeleteAsync(
-	"deleteAllUserOrders",
-	new { user_id = 123 }
-);
-await transaction.CommitTransactionAsync();
-```
-
 ---
 
 ### TRIGGER Statements
 
-Register database triggers that execute automatically on INSERT, UPDATE, or DELETE operations.
+Below is an example definition for a TRIGGER, which would be placed inside the `trigger` array.
 
-**Format depends on the number of databases:**
+```json
+{
+   "trigger": [
+     {
+       "Database": "MainDb",
+       "Table Name": "user",
+       "Statement": "CREATE TRIGGER updateCustomer AFTER INSERT ON user BEGIN INSERT INTO customer (name, address) VALUES (new.name, new.address); END;"
+     }
+   ]
+}
+```
+Trigger definitions follow a different identification and configuration pattern from INSERT, SELECT, UPDATE, and DELETE statements. 
+Unlike named SQL statements, triggers do not have a Statement Name.
 
-#### Single Database
+- **Database** - The name of the database where the trigger should run. This is required when more than one database is defined. 
+When only one database is defined, you can simply remove or omit the `"Database": "xxx"` field entirely.
 
-When using one database, triggers **do not require** a `Database` field:
+- **Table Name** - This is the table name immediately after the `ON` keyword in the trigger statement. In SQL this is known as the trigger table.
+
+- **Statement** - The actual trigger statement
+
+When using ONLY one database, triggers **do not require** a `Database` field:
 
 ```json
 {
@@ -499,9 +317,7 @@ When using one database, triggers **do not require** a `Database` field:
 }
 ```
 
-#### Multiple Databases
-
-When using multiple databases, each trigger **must specify** a `Database` field:
+When using multiple databases, each trigger definition **must include** a `Database` field:
 
 ```json
 {
@@ -535,69 +351,6 @@ When using multiple databases, each trigger **must specify** a `Database` field:
   ]
 }
 ```
-
-**Trigger Notes:**
-
-- **One database**: `Database` field is optional (implicitly uses the single database)
-- **Multiple databases**: `Database` field is **REQUIRED** for each trigger
-- Triggers are created automatically during entity schema registration
-- They apply to the specified table
-- Use `NEW` to reference new row values (INSERT/UPDATE)
-- Use `OLD` to reference old row values (UPDATE/DELETE)
-- Triggers from the SQL Statements file are applied during `RegisterEntitiesAsync`
-
-**⚠️ Warning:** If a trigger references a table that hasn't been registered, SQLiteXM will log a warning about unassigned triggers.
-
----
-
-## Using Registered Statements
-
-### In Application Code
-
-Once registered in the SQL Statements file, you can use these statements throughout your application by name.
-
-#### SxmStatement API
-
-```csharp
-using SQLiteXM;
-
-// SELECT
-List<User> users = await SxmStatement.SelectAsync<User>(
-	"getActiveUsers",
-	new List<object>()
-);
-
-// INSERT
-await SxmStatement.InsertAsync<User>("insertUser", newUser);
-
-// UPDATE
-await SxmStatement.UpdateAsync("updateUserEmail", updateData);
-
-// DELETE
-await SxmStatement.DeleteAsync("deleteUserById", new List<object> { userId });
-```
-
-#### Within Transactions
-
-```csharp
-await using var transaction = SxmSqlTransaction.Create();
-
-try
-{
-	// Multiple operations in one transaction
-	await transaction.InsertAsync<Order>("insertOrder", newOrder);
-	await transaction.UpdateAsync("updateUserEmail", emailUpdate);
-	await transaction.DeleteAsync("deleteInactiveUsers", new List<object> { cutoff });
-
-	await transaction.CommitTransactionAsync();
-}
-catch
-{
-	await transaction.RollbackTransactionAsync();
-	throw;
-}
-```
-
 ---
 
 ## Complete Example
@@ -733,122 +486,13 @@ Here's a complete SQL Statements file for a simple e-commerce application using 
   ]
 }
 ```
-
-### Using the Single Database Example
-
-```csharp
-public class EcommerceService
-{
-	// Create new customer
-	public async Task<long> CreateCustomerAsync(string name, string email, string phone)
-	{
-		var customer = new Customer
-		{
-			name = name,
-			email = email,
-			phone = phone,
-			created_at = DateTime.UtcNow
-		};
-
-		var result = await SxmStatement.InsertAsync<Customer>("insertCustomer", customer);
-		return (long)result["id"];
-	}
-
-	// Get customer by email
-	public async Task<Customer?> FindCustomerByEmailAsync(string email)
-	{
-		var customers = await SxmStatement.SelectAsync<Customer>(
-			"getCustomerByEmail",
-			new { email = email }
-		);
-		return customers.FirstOrDefault();
-	}
-
-	// Create order with items
-	public async Task<long> CreateOrderAsync(long customerId, List<OrderItemData> items)
-	{
-		await using var transaction = SxmSqlTransaction.Create();
-
-		try
-		{
-			// Calculate total
-			decimal total = items.Sum(i => i.Quantity * i.UnitPrice);
-
-			// Insert order
-			var orderData = new
-			{
-				customer_id = customerId,
-				order_date = DateTime.UtcNow,
-				total_amount = total,
-				status = "pending"
-			};
-			var orderResult = await transaction.InsertAsync("insertOrder", orderData);
-			long orderId = (long)orderResult["id"];
-
-			// Insert order items (triggers will decrease stock automatically)
-			foreach (var item in items)
-			{
-				var itemData = new
-				{
-					order_id = orderId,
-					product_id = item.ProductId,
-					quantity = item.Quantity,
-					unit_price = item.UnitPrice
-				};
-				await transaction.InsertAsync("insertOrderItem", itemData);
-			}
-
-			await transaction.CommitTransactionAsync();
-			return orderId;
-		}
-		catch
-		{
-			await transaction.RollbackTransactionAsync();
-			throw;
-		}
-	}
-
-	// Get order with items
-	public async Task<OrderWithItems> GetOrderDetailsAsync(long orderId)
-	{
-		// Get order
-		var orders = await SxmStatement.SelectAsync<Order>(
-			"getOrdersByCustomer",  // Could also create getOrderById
-			new List<object> { orderId }
-		);
-		var order = orders.FirstOrDefault();
-
-		// Get items
-		var items = await SxmStatement.SelectAsync(
-			"getOrderItems",
-			new { order_id = orderId }
-		);
-
-		return new OrderWithItems
-		{
-			Order = order,
-			Items = items
-		};
-	}
-
-	// Update order status
-	public async Task ShipOrderAsync(long orderId)
-	{
-		await SxmStatement.UpdateAsync(
-			"updateOrderStatus",
-			new { status = "shipped", updated_at = DateTime.UtcNow, id = orderId }
-		);
-	}
-}
-```
-
 ---
 
 ## Multi-Database Examples
 
 ### Example 1: E-commerce with Separate Analytics
 
-This example separates transactional data from analytics data for better performance and organization:
+This example separates transactional data from analytics data for better organization:
 
 ```json
 {
@@ -908,223 +552,6 @@ This example separates transactional data from analytics data for better perform
   ]
 }
 ```
-
-**Entity Classes:**
-
-```csharp
-// Default database (ecommerce) - Database attribute not required
-[Table(IsColumnAttributeRequired = false)]
-public class Product : SxmEntity
-{
-    public string Name { get; set; }
-    public decimal Price { get; set; }
-    public int Stock { get; set; }
-}
-
-[Table(IsColumnAttributeRequired = false)]
-public class Order : SxmEntity
-{
-    public long CustomerId { get; set; }
-    public decimal TotalAmount { get; set; }
-}
-
-// Analytics database - Must specify Database attribute
-[Table(Database = "analytics", IsColumnAttributeRequired = false)]
-public class PageView : SxmEntity
-{
-    public string PageUrl { get; set; }
-    public long? UserId { get; set; }
-    public DateTime Timestamp { get; set; }
-}
-```
-
-**Usage:**
-
-```csharp
-// Initialize at startup (MAUI)
-await using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
-await SxmDatabase.InitializeAsync(stream);
-await SxmDatabase.RegisterEntitiesAsync(
-    typeof(Product),
-    typeof(Order),
-    typeof(PageView)
-);
-
-// Work with default database (ecommerce)
-var product = new Product 
-{ 
-    Name = "Widget", 
-    Price = 19.99m, 
-    Stock = 100 
-};
-await product.SaveAsync();  // Automatically goes to ecommerce.db
-
-// Work with analytics database
-var pageView = new PageView
-{
-    PageUrl = "/products",
-    UserId = 123,
-    Timestamp = DateTime.UtcNow
-};
-await pageView.SaveAsync();  // Automatically goes to analytics.db (via Database attribute)
-
-// Query default database
-using (var db = new SxmTransaction())
-{
-    var inStockProducts = db.GetTable<Product>()
-        .Where(p => p.Stock > 0)
-        .ToList();
-}
-
-// Query analytics database explicitly
-using (var db = new SxmTransaction("analytics"))
-{
-    var recentViews = db.GetTable<PageView>()
-        .Where(pv => pv.Timestamp > DateTime.UtcNow.AddHours(-1))
-        .ToList();
-}
-```
-
-### Example 2: Multi-Tenant Application
-
-This example uses separate databases for different tenants:
-
-```json
-{
-  "databases": [
-    {
-      "database": "system",
-      "isDefault": true
-    },
-    {
-      "database": "tenant_acme",
-      "isDefault": false
-    },
-    {
-      "database": "tenant_contoso",
-      "isDefault": false
-    }
-  ],
-
-  "insert": [
-    {
-      "Statement Name": "insertTenant",
-      "Table Name": "Tenants",
-      "Statement": "INSERT INTO Tenants (name, database_name, created_at) VALUES (@name, @database_name, @created_at)"
-    },
-    {
-      "Statement Name": "insertUser",
-      "Table Name": "Users",
-      "Statement": "INSERT INTO Users (username, email, tenant_id) VALUES (@username, @email, @tenant_id)"
-    }
-  ],
-
-  "select": [
-    {
-      "Statement Name": "getTenantByName",
-      "Table Name": "Tenants",
-      "Statement": "SELECT * FROM Tenants WHERE name = @name LIMIT 1"
-    },
-    {
-      "Statement Name": "getTenantUsers",
-      "Table Name": "Users",
-      "Statement": "SELECT * FROM Users WHERE tenant_id = @tenant_id"
-    }
-  ],
-
-  "trigger": [
-    {
-      "Database": "system",
-      "Table Name": "Tenants",
-      "Statement": "CREATE TRIGGER audit_tenant_changes AFTER UPDATE ON Tenants BEGIN INSERT INTO TenantAudit (tenant_id, action, timestamp) VALUES (NEW.id, 'updated', CURRENT_TIMESTAMP); END;"
-    },
-    {
-      "Database": "tenant_acme",
-      "Table Name": "Users",
-      "Statement": "CREATE TRIGGER log_user_activity AFTER INSERT ON Users BEGIN INSERT INTO UserActivityLog (user_id, action, timestamp) VALUES (NEW.id, 'created', CURRENT_TIMESTAMP); END;"
-    },
-    {
-      "Database": "tenant_contoso",
-      "Table Name": "Users",
-      "Statement": "CREATE TRIGGER log_user_activity AFTER INSERT ON Users BEGIN INSERT INTO UserActivityLog (user_id, action, timestamp) VALUES (NEW.id, 'created', CURRENT_TIMESTAMP); END;"
-    }
-  ]
-}
-```
-
-**Entity Classes:**
-
-```csharp
-// System database (default)
-[Table(IsColumnAttributeRequired = false)]
-public class Tenant : SxmEntity
-{
-    public string Name { get; set; }
-    public string DatabaseName { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-// Tenant-specific entities
-[Table(Database = "tenant_acme", IsColumnAttributeRequired = false)]
-public class AcmeUser : SxmEntity
-{
-    public string Username { get; set; }
-    public string Email { get; set; }
-    public long TenantId { get; set; }
-}
-
-[Table(Database = "tenant_contoso", IsColumnAttributeRequired = false)]
-public class ContosoUser : SxmEntity
-{
-    public string Username { get; set; }
-    public string Email { get; set; }
-    public long TenantId { get; set; }
-}
-```
-
-**Usage:**
-
-```csharp
-// System operations (default database)
-var tenant = new Tenant
-{
-    Name = "Acme Corp",
-    DatabaseName = "tenant_acme",
-    CreatedAt = DateTime.UtcNow
-};
-await tenant.SaveAsync();  // Goes to system.db
-
-// Tenant-specific operations
-var acmeUser = new AcmeUser
-{
-    Username = "john.doe",
-    Email = "john@acmecorp.com",
-    TenantId = tenant.id
-};
-await acmeUser.SaveAsync();  // Goes to tenant_acme.db
-
-var contosoUser = new ContosoUser
-{
-    Username = "jane.smith",
-    Email = "jane@contoso.com",
-    TenantId = 2
-};
-await contosoUser.SaveAsync();  // Goes to tenant_contoso.db
-
-// Query across databases
-using (var systemDb = new SxmTransaction("system"))
-{
-    var allTenants = systemDb.GetTable<Tenant>().ToList();
-}
-
-using (var acmeDb = new SxmTransaction("tenant_acme"))
-{
-    var acmeUsers = acmeDb.GetTable<AcmeUser>().ToList();
-}
-```
-
----
-
 ## Best Practices
 
 ### 1. **Use Descriptive Statement Names**
@@ -1188,17 +615,7 @@ Group related statements logically:
 // Never build SQL by concatenating user input
 ```
 
-### 5. **Include Limits on SELECT Statements**
-
-```json
-// ✅ Good - Has LIMIT to prevent huge result sets
-"Statement": "SELECT * FROM Users WHERE is_active = 1 LIMIT 1000"
-
-// ⚠️ Caution - No limit (could return millions of rows)
-"Statement": "SELECT * FROM Users WHERE is_active = 1"
-```
-
-### 6. **Document Complex Queries**
+### 5. **Document Complex Queries**
 
 Use clear statement names and table names to document intent:
 
@@ -1210,7 +627,7 @@ Use clear statement names and table names to document intent:
 }
 ```
 
-### 7. **Keep Statements File in Version Control**
+### 6. **Keep Statements File in Version Control**
 
 The SQL Statements file is configuration, so:
 - ✅ Commit it to Git
@@ -1219,7 +636,7 @@ The SQL Statements file is configuration, so:
 - ✅ Version it alongside your code
 
 
-### 8. **Use Database Attribute for Non-Default Tables**
+### 7. **Use Database Attribute for Non-Default Tables**
 
 For multi-database scenarios, use the `[Table(Database = "...")]` attribute on entities:
 
@@ -1235,11 +652,9 @@ public class PageView : SxmEntity { }
 
 ---
 
-## File Placement
+### File Placement
 
-### .NET MAUI Projects
-
-Place the file in your MAUI project's `Resources/Raw` folder:
+Place the SQL statement file in your MAUI project's `Resources/Raw` folder:
 
 ```
 MyMauiApp/
@@ -1248,115 +663,26 @@ MyMauiApp/
 │       └── SqlStatements.json  ← Here
 ├── App.xaml.cs
 └── MauiProgram.cs
+└── etc...
 ```
 
-Ensure the file is configured as a `MauiAsset`:
-
-```xml
-<MauiAsset Include="Resources\Raw\SqlStatements.json" />
-```
+Ensure the file is configured as a `MauiAsset`.
 
 ### Loading from Raw Assets
 
 ```csharp
-// In MauiProgram.cs or App.xaml.cs
 using Stream stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 await SxmDatabase.InitializeAsync(stream, databaseOptions);
 ```
 
----
+### Summary
 
-## Related Documentation
+The `SqlStatements.json` file is SQLiteXM's declarative database and SQL definition file. It:
 
-- [Database Initialization Guide](./DatabaseInitialization.md)
-- [SxmDatabaseOptions Configuration](./SxmDatabaseOptions.md)
-- [Entity Registration](./EntityRegistration.md)
-- [Using Named Statements](./NamedStatements.md)
-
----
-
-## Troubleshooting
-
-### "Database name must be specified"
-
-**Problem:** Missing `database` property in a database entry  
-**Solution:** Ensure each database in the `databases` array has a name:
-
-```json
-{
-  "version": 1,
-  "databases": [
-    {
-      "database": "myapp_database",
-      "isDefault": true
-    }
-  ]
-}
-```
-
-### "No default database configured"
-
-**Problem:** No database has `isDefault: true`  
-**Solution:** Mark exactly one database as default:
-
-```json
-{
-  "version": 1,
-  "databases": [
-    {
-      "database": "myapp_database",
-      "isDefault": true
-    }
-  ]
-}
-```
-
-### "Unassigned trigger(s) detected"
-
-**Problem:** Trigger references a table that wasn't registered  
-**Solution:** Ensure all trigger table names match registered entities:
-
-```json
-{
-  "Table Name": "Users",  // Must match registered entity table name
-  "Statement": "CREATE TRIGGER ..."
-}
-```
-
-Then register the entity:
-
-```csharp
-await SxmDatabase.RegisterEntitiesAsync(typeof(User));
-```
-
-### "Statement not found"
-
-**Problem:** Trying to use a statement name that doesn't exist  
-**Solution:** Check spelling and ensure it's registered:
-
-```csharp
-// Make sure this name exists in the SQL Statements file
-await SxmStatement.SelectAsync<User>("getUserById", new List<object> { 42 });
-```
-
----
-
-## Version Information
-
-- **SQLiteXM Version:** 1.0+
-- **Multi-Database Support:** Added in version 1.0
-- **Last Updated:** January 2025
-- **Compatibility:** .NET 8, .NET 9, .NET MAUI
-
----
-
-## Summary
-
-The SqlStatements file is a powerful configuration tool that:
-- Defines one or more databases for your application
-- Registers named SQL statements for reuse throughout your code
-- Supports both single-database and multi-database scenarios
-- Enables clean separation between SQL and application logic
-- Works seamlessly with SQLiteXM's LINQ and entity APIs
-
-For multi-database applications, use the `databases` array format and mark entities with the `[Table(Database = "...")]` attribute for non-default databases.
+- Defines one or more databases used by the application
+- Identifies one database as the default database
+- Registers reusable named INSERT, SELECT, UPDATE, and DELETE statements
+- Defines SQLite triggers and associates them with their database and trigger table
+- Supports both single-database and multi-database applications
+- Keeps SQL definitions separate from application code
+- Works with SQLiteXM's SQL APIs and database initialization process
