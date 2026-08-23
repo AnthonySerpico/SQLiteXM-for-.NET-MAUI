@@ -2,11 +2,11 @@
 
 ## Overview
 
-The SQL Statements file, typically named `SqlStatements.json`, is SQLiteXM's declarative database-definition and named-SQL 
-repository. It defines the databases used by the application, registers reusable named SQL statements, and defines database triggers.
+The SQL Statements file, typically named `SqlStatements.json`, is SQLiteXM's declarative database-definition and named-SQL statement
+repository. It defines the databases used by the application and where reusable named SQL statements and database triggers are defined.
 
 This file is required by SQLiteXM and must be placed in your application's `Resources/Raw` folder. 
-The `Build Action` must be set to `MauiAsset`. The `SqlStatements.json` file is processed during database initialization.
+The `Build Action` must be set to `MauiAsset`. The SqlStatements.json file is processed during database initialization.
 
 **Note:** Database configurations (folder paths, PRAGMA settings, connection settings, etc.) are specified separately via `SxmDatabaseOptions` during initialization, not in this file.
 
@@ -289,7 +289,7 @@ Unlike named SQL statements, triggers do not have a Statement Name.
 - **Database** - The name of the database where the trigger should run. This is required when more than one database is defined. 
 When only one database is defined, you can simply remove or omit the `"Database": "xxx"` field entirely.
 
-- **Table Name** - This is the table name immediately after the `ON` keyword in the trigger statement. In SQL this is known as the trigger table.
+- **Table Name** - This is the table name immediately after the `ON` keyword in the trigger statement. In SQL, this is known as the trigger table.
 
 - **Statement** - The actual trigger statement
 

@@ -412,7 +412,7 @@ namespace SQLiteXM
         /// </remarks>        
         [SuppressMessage("Naming", "IDE1006:Naming Styles", Justification = "Public column name preserved to match DB schema and external consumers.")]
         [Column, PrimaryKey]
-        public virtual long id { get; set; }
+        public virtual long id { get; internal set; }
 
         /// <summary>
         /// Optional synchronization identifier stored in the database as a BLOB.

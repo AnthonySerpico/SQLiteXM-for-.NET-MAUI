@@ -10,7 +10,7 @@ Most SQLiteXM applications follow the same general lifecycle.
 
 ### Startup (One-Time Initialization)
 
-These steps are typically performed once when your application starts.
+These steps are performed once typically as part of application startup.
 
 ```text
 Startup
@@ -47,7 +47,8 @@ SQLiteXM uses a configuration file typically named:
 ```text
 SqlStatements.json
 ```
-This is where you define the database(s) used by your application. This file must be included in your application package in the `Resources/Raw/` folder and is read during initialization.
+This is where you define the database(s) used by your application. This file must be included in your 
+application package in the `Resources/Raw` folder and the `Build Action` must be set to `MauiAsset`.
 
 Below is an example of a minimal valid `SqlStatements.json` file that defines a single default database named `Chinook`.
 ```json
@@ -65,9 +66,10 @@ Below is an example of a minimal valid `SqlStatements.json` file that defines a 
 <summary>Multiple Databases</summary>
 </details> -->
 
-Most SQLiteXM applications use a single database. However, SQLiteXM also supports applications that need to organize data across multiple databases.
+Most SQLiteXM applications use a single database. However, SQLiteXM also supports applications that need 
+to organize data across multiple SQLite databases.
 
-For details, see  ➡️ [Multi-Database Configuration](./MULTI_DATABASES.md)
+For details, see  ➡️ [Multi-Database Configuration](./multiple-databases.md)
 
 
 ### Database definition rules
@@ -79,7 +81,11 @@ For details, see  ➡️ [Multi-Database Configuration](./MULTI_DATABASES.md)
 
 ## 2. Create Your Entities
 
-Entities are C# classes that you define to represent the data used by your application. They inherit from SxmEntity. SQLiteXM uses these classes to generate and manage the corresponding database tables, columns, indexes, triggers, and relationships.
+Entities are C# classes that you define that represents data used by your application. They inherit 
+from SxmEntity. SQLiteXM uses these classes to create and manage the corresponding database tables, 
+columns, indexes, triggers, and relationships.
+
+If you are unfamiliar with entities, read the first two sections of  ➡️ **[Defining Entities](./defining-entities.md)**.
 
 The example below shows a simple entity class named `User` with three properties: `Name`, `Age`, and `Email`. The `Email` property is indexed to improve query performance.
 During registration, SQLiteXM will create a table named `User` with three columns: `Name`, `Age`, and `Email`. An index will be created on the `Email` column.
@@ -115,7 +121,7 @@ By inheriting from `SxmEntity`, your class automatically gains:
 SQLiteXM supports a variety of entity attributes that control schema creation and database behavior. 
 Below is an entity with a number of applied attributes.
 
-See  ➡️ **[Defining Entities](./DEFINING_ENTITIES.md)** for a complete attribute reference.
+See  ➡️ **[Defining Entities](./defining-entities.md)** for a complete attribute reference.
 
 <!-- ```csharp
 
@@ -189,7 +195,7 @@ Initialization and registration together perform several important tasks.
 
 InitializeAsync():
 
-- Reads database configuration from `SqlStatements.json`
+- Reads the database configuration from `SqlStatements.json`
 - Opens/creates the configured databases
 - Applies the database options and PRAGMA settings
 - Prepares SQLiteXM
@@ -206,32 +212,47 @@ Registration can be performed with one or more entity types.
 
 The second parameter of `InitializeAsync()` is an optional `SxmDatabaseOptions` instance used to customize the operation of SQLiteXM and the SQLite database.
 
-This is covered fully in:
-
-➡️ **[Database Configuration and Initialization](./DATABASE_CONFIGURATION_AND_INITIALIZATION.md)**
+This is covered fully in: ➡️ **[Database Configuration and Initialization](./database-configuration-and-initialization.md)**
 
 ---
 
-## After Initialization and Registration
-Once initialization and registration complete, the startup phase is complete and your application can begin performing normal database operations such as saving, querying, updating, and deleting data.
+## 4. Start Working With Your Data
 
-Your first database operation can be performed using the `User` entity created earlier.
+Once initialization and entity registration are complete, SQLiteXM is ready
+for normal application use.
+You can create and save entities, query and modify data using LINQ or SQL, and begin using transactions.
+
+This is covered fully in: ➡️ **[Working With Data](./working-with-data.md)**
+
+For example:
 
 ```csharp
 var user = new User
 {
-    Name = "John",
+    Name = "Alice",
     Age = 30,
-    Email = "john@example.com"
+    Email = "alice@example.com"
 };
 
+// Insert the new entity.
 await user.SaveAsync();
 
-user.Age = 31;
-await user.SaveAsync();
+await using (var ctx = new SxmTransaction())
+{
+    // Query using LINQ.
+    var existingUser =
+        ctx.GetTable<User>()
+           .FirstOrDefault(u => u.Name == "Alice");
 
-await user.DeleteAsync();
+    // Execute SQL within the same transaction.
+    await ctx.RunStatementAsync(
+        "UPDATE User SET LastLogin = CURRENT_TIMESTAMP WHERE Name = 'Alice'");
+
+    // Modify and persist the entity.
+    existingUser.Age = 31;
+    await existingUser.SaveAsync();
+
+} // <-- Automatically commits transaction on dispose if no errors occurred
 ```
-The first SaveAsync() inserts the new entity. After modifying the entity, the second SaveAsync() updates the existing record. DeleteAsync() then removes it.
-
+<br>&nbsp;</b>
 

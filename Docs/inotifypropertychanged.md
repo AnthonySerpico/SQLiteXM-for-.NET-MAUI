@@ -9,7 +9,7 @@ allowing .NET MAUI controls and other MVVM infrastructure to react to changes.
 
 ## Overview
 
-All entities that inherit from SxmEntity automatically implement `INotifyPropertyChanged`, allowing you to:
+All entities that inherit from SxmEntity implement `INotifyPropertyChanged`, allowing you to:
 - ✅ Bind entity properties directly to MAUI UI controls
 - ✅ Get automatic UI updates when entity properties change
 - ✅ Eliminate repetitive property notification code
@@ -358,8 +358,9 @@ public partial class CustomerViewModel : ObservableObject
 }
 ```
 
-**Important:** Do not use CommunityToolkit.Mvvm's `[ObservableObject]` attribute on SxmEntity-derived classes. SxmEntity already 
-implements `INotifyPropertyChanged` and provides the required notification helpers.
+**Important:** Do not use CommunityToolkit.Mvvm's `[ObservableObject]` attribute on SxmEntity-derived classes. 
+SxmEntity already implements `INotifyPropertyChanged` and provides the required notification helpers, another 
+source of that implementation is unnecessary and can cause conflicts..
 
 ```csharp
 // ❌ DON'T DO THIS - Causes compiler error
@@ -677,21 +678,3 @@ public Customer Customer { get; set; }
 // Bind in XAML
 <Entry Text="{Binding Customer.Name}" />
 ```
-
-## Additional Resources
-
-- [.NET MAUI Data Binding](https://learn.microsoft.com/en-us/dotnet/maui/fundamentals/data-binding/)
-- [INotifyPropertyChanged Interface](https://learn.microsoft.com/en-us/dotnet/api/system.componentmodel.inotifypropertychanged)
-- [CommunityToolkit.Mvvm Documentation](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/)
-- [SQLiteXM Documentation](../README.md)
-
-## Summary
-
-SQLiteXM's built-in `INotifyPropertyChanged` support eliminates the need for repetitive property notification code and enables seamless data binding in .NET MAUI applications. By inheriting from `SxmEntity`, your entities automatically gain:
-
-- ✅ Two-way data binding support
-- ✅ `SetProperty` helper methods
-- ✅ Change detection and notification
-- ✅ Compatibility with all MVVM frameworks
-
-This feature makes SQLiteXM the ideal ORM choice for .NET MAUI + SQLite applications, allowing you to focus on building great apps instead of writing boilerplate code.

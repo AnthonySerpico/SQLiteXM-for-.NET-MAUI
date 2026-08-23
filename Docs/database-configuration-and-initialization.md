@@ -1,17 +1,23 @@
-# SQLiteXM Database Configuration Options
+# SQLiteXM Database Options
 
-## Introduction
+SQLiteXM provides a rich set of configuration options for controlling how SQLite databases are
+initialized and managed. These options include:
 
-This guide walks through the details of configuring and initializing SQLiteXM. 
-There is particular focus on initialization options available to configure SQLiteXM 
-and influence the operation of the SQLite database.
+- PRAGMA settings
+- connection pooling
+- WAL checkpointing
+- logging
+- timeouts
+- database file locations
+
+This guide describes these options and how they are applied in your app.
 
 ---
 
-# 1. Initializing SQLiteXM
+## Initializing SQLiteXM
 
-As we learned in the [`Getting Started Guide`](./GettingStarted.md), initialization is performed once, typically during application startup.
-`InitializeDatabaseAsync` below shows a typical initialization sequence for SQLiteXM.
+As we learned in the [`Getting Started Guide`](./getting-started.md), initialization of SQLiteXM is performed once, typically during application startup.
+The following example shows a typical initialization sequence for SQLiteXM.
 
 
 
@@ -37,7 +43,32 @@ If no options are supplied, SQLiteXM uses its default configuration and SQLite's
 
 ## Database Options
 
-SQLiteXM provides many options for controlling database behavior. Some of the more commonly used settings include:
+
+The following table lists all available options in `SxmDatabaseOptions`, 
+including advanced settings and lifecycle hooks.
+
+
+| Option                    | Default                                   | Typical Recommendation                                                                       |
+| ------------------------- | ----------------------------------------- |  -------------------------------------------------------------------------------------------- |
+| `ForeignKeys`             | SQLite default                            | **`true`** for applications using foreign keys                                               |
+| `JournalModeOption`       | SQLite default                            | **`Wal`** for most applications                                                              |
+| `SynchronousModeOption`   | SQLite default                            | **`Normal`** when using WAL                                                                  |
+| `BusyTimeout`             | SQLite default                            | **3–5 seconds** for most applications                                                        |
+| `CacheSize`               | SQLite default                            | Start with **2–4 MB** and tune as needed                                                     |
+| `WalAutoCheckpoint`       | SQLite default                            | **250–500 pages** for many mobile applications                                               |
+| `TempStore`               | SQLite default                            | Usually leave at default; `Memory` can improve temporary operations when memory is available |
+| `CheckPointConnection`    | SQLite default                            | Usually leave at default unless you need explicit checkpoint control                         |
+| `CheckPointWalMaxSize`    | SQLite default                            | Configure when using `CheckPointConnection.MaxSize`                                          |
+| `EnableConnectionPooling` | Microsoft.Data.Sqlite default-true        | **`true`** for most applications                                                             |
+| `DefaultTimeout`          | Microsoft.Data.Sqlite default-30 seconds  |**30 seconds** is a reasonable starting point for general application workloads              |
+| `EnableLogging`           | `true`                                    | **`true` during development;** disable if production logging is not desired                  |
+| `DatabaseFolderOverride`  | LocalApplicationData                      | Usually leave at the default application-local location                                      |
+| `OnConnectionOpened(...)` | Not registered                            | Use only when connection-specific initialization, verification, or custom logic is required  |
+| `OnConnectionClosed(...)` | Not registered                            | Use only when connection-close handling, cleanup, or instrumentation is required             |
+
+
+
+Of the configuration options listed above, the following are among the most commonly used:
 
 | Option | Purpose |
 |----------|----------|
@@ -49,32 +80,13 @@ SQLiteXM provides many options for controlling database behavior. Some of the mo
 | EnableLogging | Enables SQLiteXM logging and diagnostics |
 | DatabaseFolderOverride | Overrides the default database storage location |
 
-
-Below is a complete list of options available in `SxmDatabaseOptions`:
-
-| Option                    | Default                             | Applied To           | Typical Recommendation                                                                       |
-| ------------------------- | ----------------------------------- | -------------------- | -------------------------------------------------------------------------------------------- |
-| `ForeignKeys`             | `null` (SQLite default)             | Connection           | **`true`** for applications using foreign keys                                               |
-| `JournalModeOption`       | `null` (SQLite default)             | Database             | **`Wal`** for most applications                                                              |
-| `SynchronousModeOption`   | `null` (SQLite default)             | Connection           | **`Normal`** when using WAL                                                                  |
-| `BusyTimeout`             | `null`                              | Connection           | **3–5 seconds** for most applications                                                        |
-| `CacheSize`               | `null` (SQLite default)             | Connection           | Start with **2–4 MB** and tune as needed                                                     |
-| `WalAutoCheckpoint`       | `null` (SQLite default: 1000 pages) | Connection           | **250–500 pages** for many mobile applications                                               |
-| `TempStore`               | `null` (SQLite default)             | Connection           | Usually leave at default; `Memory` can improve temporary operations when memory is available |
-| `CheckPointConnection`    | `null`                              | SQLiteXM             | Usually leave at default unless you need explicit checkpoint control                         |
-| `CheckPointWalMaxSize`    | `null`                              | SQLiteXM             | Configure when using `CheckPointConnection.MaxSize`                                          |
-| `EnableConnectionPooling` | `true`                              | SQLiteXM             | **`true`** for most applications                                                             |
-| `DefaultTimeout`          | `null`                              | Connection/command   | **30 seconds** is a reasonable starting point for general application workloads              |
-| `EnableLogging`           | `true`                              | SQLiteXM             | **`true` during development;** disable if production logging is not desired                  |
-| `DatabaseFolderOverride`  | `null` (LocalApplicationData)       | SQLiteXM             | Usually leave at the default application-local location                                      |
-| `OnConnectionOpened(...)` | Not registered                      | Connection lifecycle | Use only when connection-specific initialization, verification, or custom logic is required  |
-| `OnConnectionClosed(...)` | Not registered                      | Connection lifecycle | Use only when connection-close handling, cleanup, or instrumentation is required             |
-
 ---
 
 ## Recommended Starting Configuration
 
-These three settings provide a good balance of safety and performance for most applications.
+These three settings provide a good balance of safety, durability, and performance
+for most applications and are a recommended starting point for SQLiteXM.
+
 ```csharp
 var options = new SxmDatabaseOptions
 {
@@ -84,7 +96,10 @@ var options = new SxmDatabaseOptions
 };
 ```
 
-Below is an example that includes every available option:
+## Complete Configuration Example
+
+The example below shows every available `SxmDatabaseOptions` setting in use.
+It is provided as a reference and is not intended as a recommended configuration.
 
 ```csharp
 
@@ -141,7 +156,7 @@ Below is an example that includes every available option:
 
 ---
 
-## SQLite PRAGMA Configuration
+## SQLite PRAGMA Settings
 
 ### Foreign Key Enforcement
 
@@ -543,83 +558,6 @@ DatabaseFolderOverride = Path.Combine(
 
 ---
 
-## Complete Configuration Example
-
-Here's a production-ready starting configuration for a .NET MAUI mobile app:
-
-```csharp
-using SQLiteXM;
-using Microsoft.Data.Sqlite;
-
-public async Task InitializeDatabaseAsync()
-{
-    SxmDatabaseOptions databaseOptions = new SxmDatabaseOptions()
-    {
-        // ✅ SQLite PRAGMA configuration
-        ForeignKeys = true,
-        JournalModeOption = SxmJournalMode.Wal,
-        SynchronousModeOption = SxmSynchronousMode.Normal, // Recommended with WAL
-        BusyTimeout = 3000,                                // Safe for multi-threaded apps (3s)
-        CacheSize = 2048,                                  // 2 MB optimized starting cache
-        WalAutoCheckpoint = 250,                           // Keeps WAL small on mobile (~1MB)
-        TempStore = SxmTempStore.Memory,                   // RAM-based sorting and indexing
-
-        // ✅ WAL checkpoint control
-        CheckPointConnection = CheckPointConnection.MaxSize,
-        CheckPointWalMaxSize = 2048,                       // 2 MB
-
-        // ✅ Connection pooling & command limits
-        DefaultTimeout = 30,                              // 30 second command timeout
-        EnableConnectionPooling = true,
-
-        // ✅ Logging control
-        EnableLogging = false,
-
-        // ✅ Secure, app-isolated database path for mobile/desktop
-        // Store database in user's local application data folder
-        DatabaseFolderOverride = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-    };
-
-    // The connection hooks below are optional and can be used to run custom logic when a connection 
-    // is opened or closed. Most applications will not need these hooks. The examples below show how 
-    // to use the supplied connection to verify PRAGMA settings.
-
-    // ✅ Connection opened lifecycle hooks
-    databaseOptions.OnConnectionOpened(connection =>
-    {
-        using var cmd = connection.CreateCommand();
-
-        // Verify foreign keys are enabled
-        cmd.CommandText = "PRAGMA foreign_keys";
-        long? fkEnabled = (long?)cmd.ExecuteScalar();
-        if (fkEnabled != 1)
-        {
-            throw new InvalidOperationException("Failed to enable foreign key constraints");
-        }
-
-        Console.WriteLine("✅ Database connection initialized successfully");
-    });
-
-    // ✅ Connection closed lifecycle hooks
-    databaseOptions.OnConnectionClosed(() =>
-    {
-        // Custom cleanup or tracking logic here
-    });
-
-    await SxmDatabase.InitializeAsync(stream, databaseOptions);
-
-	// Register your entity schemas
-	await SxmDatabase.RegisterEntitiesAsync(
-		typeof(Customer),
-		typeof(Order),
-		typeof(Product)
-	);
-
-	Console.WriteLine("✅ Database initialized with custom options");
-}
-```
-
----
 
 ## Best Practices
 

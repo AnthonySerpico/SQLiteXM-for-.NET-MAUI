@@ -32,9 +32,11 @@ The result is SQLiteXM.
 
 ---
 
-## 🎯 Quick Start (2 Minutes)
+## 📖 Documentation
 
-> 🚀 Check out the comprehensive Getting Started guide for a detailed walkthrough!
+See the **[Documentation Guide](Docs/README.md)** to find the right guide for where you are in your project.
+
+## 🎯 Quick Start (2 Minutes)
 
 ### 1. Define Your Entities
 
@@ -131,6 +133,10 @@ Call `InitializeDatabaseAsync()` once during application startup before performi
 
 ### 4. Start Reading and Writing Data
 
+Once initialization and entity registration are complete, SQLiteXM is ready for normal 
+application use. You can create and save entities, query and modify data using LINQ or 
+SQL, and begin using transactions.
+
 ```csharp
 // 'User' inherits from SxmEntity and is automatically mapped to a database table
 var user = new User
@@ -170,9 +176,6 @@ await using (var ctx = new SxmTransaction())
 * `RunStatementAsync()` executes embedded SQL within the active transaction
 * Entity instances can be modified and persisted using the same `SaveAsync`
 
----
-
-💡 Want more examples? Explore the Query Gallery Demo with 90+ interactive examples, or dive into the full documentation.
 
 ---
 
@@ -215,6 +218,8 @@ SQLiteXM includes a comprehensive test suite with **197 tests** (196 passing, 1 
 | 50,000 row query | 14ms | With index |
 | Complex LINQ (20K rows) | 12ms | Joins + filters |
 | 100 concurrent writes | 1.2s | Thread-safe operations |
+
+Benchmark results are environment-dependent and are provided as indicative results from the project's test suite rather than universal performance guarantees.
 
 ---
 
@@ -269,37 +274,9 @@ dotnet add package SQLiteXM
 
 ---
 
-## 📖 Documentation
-
-### 🚀 Getting Started
-- **[Getting Started Guide](docs/GettingStarted.md)** ⭐ **Start here!**
-- **[Quick Start (2 minutes)](docs/GettingStarted.md#5-minute-quick-start)**
-- **[Sample Apps](Samples/)**
-- **[Query Gallery Demo](Samples/QueryGalleryDemo/)** - Interactive examples
-
-### 📚 Core Guides
-- **[Defining Your Data](docs/DefiningYourData.md)** - Entities, attributes, indexes, migrations
-- **[Querying Data](docs/QueryingData.md)** - LINQ, joins, aggregations
-- **[Saving Data](docs/SavingData.md)** - Insert, update, delete, batching
-- **[Transactions](docs/Transactions.md)** - Transaction patterns and best practices
-
-### 🎯 Advanced Topics
-- **[Multi-Database Support](docs/MultiDatabase.md)** - Working with multiple databases
-- **[Performance Guide](docs/Performance.md)** - Optimization tips and benchmarks
-- **[Advanced Topics](docs/Advanced.md)** - Thread safety, testing, migrations, troubleshooting
-
----
-
-### 📖 Complete Index
-See **[docs/README.md](docs/README.md)** for the full documentation index.
-
----
-
 ## 🛠️ Requirements
 
-- .NET 8.0 or later
-- SQLite 3.x (via Microsoft.Data.Sqlite)
-- LinqToDB 5.x (for LINQ support)
+- .NET MAUI Project
 
 **Platforms:** iOS, Android, macOS, Windows (any .NET MAUI supported platform)
 
@@ -315,8 +292,8 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
-- Built on [Microsoft.Data.Sqlite](https://www.nuget.org/packages/Microsoft.Data.Sqlite)
-- LINQ support via [LinqToDB](https://linq2db.github.io/)
+- Built on [Microsoft.Data.Sqlite]()
+- LINQ support via [LinqToDB]()
 - Inspired by Entity Framework Core, Dapper, and SQLite-net
 
 ---

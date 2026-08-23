@@ -1,8 +1,8 @@
 # SQLiteXM Supported Data Types
 
-## Introduction
 
-SQLiteXM supports a select set of .NET/CLR data types and maps them to SQLite storage types during 
+
+SQLiteXM supports a select set of C# data types and maps them to SQLite storage types during 
 schema creation, parameter binding, and result materialization.
 
 This guide explains:
@@ -18,18 +18,36 @@ For a broader overview of entity design, see **DEFINING_ENTITIES.md**.
 
 # How Type Mapping Works
 
-SQLiteXM determines the SQLite storage type from the CLR property type when entities are registered.
+SQLiteXM determines the SQLite storage type from the C# property type when entities are registered.
 
 At save time, SQLiteXM converts entity property values into values that SQLite can store.
+```text
+C# Property type
+      ↓
+SQLiteXM type mapping
+      ↓
+SQLite storage type
+      ↓
+SQLite database
+```
 
-At read time, SQLiteXM converts stored values back into CLR types.
-
+At read time, SQLiteXM converts stored values back into C# types.
+```text
+SQLite database
+      ↓
+SQLite storage type
+      ↓
+SQLiteXM type mapping
+      ↓
+C# Property type
+```
 In practice, this means:
 
 * Most numeric types map to `INTEGER` or `REAL`
 * `string` maps to `TEXT`
 * `byte[]` maps to `BLOB`
-* Specialized types such as `DateTime`, `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset`, and `Guid` support specific storage strategies
+* `Guid` defaults to `BLOB` but can be stored as `TEXT`
+* Specialized types such as `DateTime`, `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset`, support specific storage strategies
 
 SQLite `INTEGER` is a 64-bit signed value and maps to C# `long`. Smaller integral types such as `int`, `short`, and `byte` are also stored using `INTEGER`.
 
@@ -65,7 +83,7 @@ converter or some other explicit mapping strategy.
 
 ## Nullable Types
 
-SQLiteXM also supports nullable forms of the same CLR types, such as:
+SQLiteXM also supports nullable forms of the same C# types, such as:
 
 * `int?`
 * `DateTime?`
@@ -211,7 +229,7 @@ public DateOnly Date { get; set; }
 ## TimeOnly
 
 `TimeOnly` values are stored as `INTEGER` by default. SQLiteXM stores them as the number of .NET ticks since midnight, 
-preserving the full 100-nanosecond precision of TimeOnly..
+preserving the full 100-nanosecond precision of TimeOnly.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -385,7 +403,7 @@ public class FileChunk : SxmEntity
 
 # Storage Overrides That Are Supported
 
-Only a few CLR types support an alternate SQLite storage type.
+Only a few C# types support an alternate SQLite storage type.
 
 ## Supported overrides
 
@@ -440,13 +458,13 @@ Use `DataType = SQLiteXM.DataType.Text` only when you want a human-readable or i
 
 ## Keep related data consistent
 
-If multiple entities use the same CLR type for the same kind of data, consider keeping the same storage representation across the application.
+If multiple entities use the same C# type for the same kind of data, consider keeping the same storage representation across the application.
 
 ---
 
 # Summary
 
-SQLiteXM supports common numeric, text, binary, and date/time CLR types.
+SQLiteXM supports common numeric, text, binary, and date/time C# types.
 
 Key points:
 

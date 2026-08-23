@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Most SQLiteXM applications use a single database. However, SQLiteXM also supports applications that need to organize data across multiple databases.
+Most SQLiteXM applications use a single SQLite database. However, SQLiteXM also supports applications that need to organize data across multiple SQLite databases.
 
 Common scenarios include:
 
@@ -17,13 +17,14 @@ This guide explains how to configure and use multiple databases in SQLiteXM.
 
 # Understanding Multiple Databases
 
-SQLiteXM databases are defined in the application's `SqlStatements.json` configuration file, typically named:
+In SQLiteXM, databases are defined in the application's `SqlStatements.json` configuration file, typically named:
 
 ```text
 SqlStatements.json
 ```
 
-The configuration file determines which databases are available to the application. This file must be included in your application package in the `Resources/Raw` folder and is read during initialization.
+The configuration file determines which databases are available to the application. This file must be included in your application package in the `Resources/Raw` 
+folder and the `Build Action` must be set to `MauiAsset`. The file is read during initialization.
 
 ---
 
@@ -35,7 +36,7 @@ Most applications only require a single database.
 {
   "databases": [
     {
-      "database": "MyApp",
+      "database": "MainDatabase",
       "isDefault": true
     }
   ]
@@ -45,7 +46,7 @@ Most applications only require a single database.
 In this configuration:
 
 * One database is defined
-* The database name is `MyApp`
+* The database name is `MainDatabase`
 * It is marked as the default database
 
 ---
@@ -58,7 +59,7 @@ To use multiple databases, simply define additional database entries.
 {
   "databases": [
     {
-      "database": "MyApp",
+      "database": "MainDatabase",
       "isDefault": true
     },
     {
@@ -73,10 +74,10 @@ In this example:
 
 | Database | Purpose                          |
 | -------- | -------------------------------- |
-| MyApp    | Primary application database     |
+| MainDatabase    | Primary application database     |
 | Logging  | Logging and diagnostics database |
 
-The default database remains `MyApp`.
+The default database remains `MainDatabase`.
 
 ---
 
@@ -138,7 +139,7 @@ SQLiteXM automatically creates or updates tables in the correct database based o
 When using `SxmTransaction`, specify the database you want to query when creating the transaction.
 
 ```csharp
-using var appTransaction = new SxmTransaction("MyApp");
+using var appTransaction = new SxmTransaction("MainDatabase");
 
 using var logTransaction = new SxmTransaction("Logging");
 ```
@@ -169,7 +170,7 @@ The `SqlStatements.json` file must define at least one database.
 {
   "databases": [
     {
-      "database": "MyApp",
+      "database": "MainDatabase",
       "isDefault": true
     }
   ]
@@ -182,7 +183,7 @@ Exactly one database must be marked as the default database.
 
 ```json
 {
-  "database": "MyApp",
+  "database": "MainDatabase",
   "isDefault": true
 }
 ```
@@ -221,7 +222,7 @@ A common approach is to separate operational data from logging data.
 {
   "databases": [
     {
-      "database": "MyApp",
+      "database": "MainDatabase",
       "isDefault": true
     },
     {
@@ -271,7 +272,7 @@ Choose names that clearly communicate the purpose of each database.
 Examples:
 
 ```text
-MyApp
+MainDatabase
 Logging
 Audit
 Analytics

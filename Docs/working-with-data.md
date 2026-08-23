@@ -4,7 +4,8 @@ SQLiteXM lets you read and write to a database in multiple ways:
 1. Directly using an **entity instance** — we call this entity DML. 
 2. Executing a single **SQL statement** — embedded SQL or named SQL
 3. Inside a **transactional block** that executes multiple LINQ statements as one atomic unit of work. 
-4. The same transaction used to execute LINQ statements can also include entity DML and SQL statements, all in one atomic unit of work. 
+
+The same transaction used to execute LINQ statements can also include entity DML and SQL statements, all in one atomic unit of work. 
 
 This guide walks that spectrum end to end: from the simplest single-statement calls (`entity.SaveAsync()` and `SxmSql.RunStatementAsync(...)`) up to the fully-transactional `SxmTransaction` block that unifies entity DML, named SQL, embedded SQL, and LINQ on one transaction.
 
@@ -14,7 +15,10 @@ This guide walks that spectrum end to end: from the simplest single-statement ca
 
 > 💡 In this guide, database operation means a statement that modifies data, returns data, or when using a `RETURNING` clause, does both. This includes `SELECT`, `INSERT`, `UPDATE`, and `DELETE`, regardless of whether they're expressed as LINQ, SQL, or entity DML.
 
-> 💡 **Prerequisites.** All examples assume that `SxmDatabase.InitializeAsync(...)` has been called once at application startup with your `SqlStatements.json` file, and that `SxmDatabase.RegisterEntitiesAsync(...)` has registered every entity type your code will use. See [Getting Started](GettingStarted.md).
+> 💡 **Prerequisites.** All examples assume that `SxmDatabase.InitializeAsync(...)` and `SxmDatabase.RegisterEntitiesAsync(...)` 
+were called at application startup. 
+
+>  This is covered fully in: ➡️ [Getting Started](./getting-started.md).
 
 > 💡 **Example entities.** Throughout this guide the examples use two minimal illustrative entities:
 >
@@ -45,7 +49,7 @@ There are only two execution modes to remember.
 
 - **Standalone.** A single call is its own atomic unit of work. In standalone mode, SQLiteXM opens a transaction, runs a statement, and commits (or rolls back on failure) before the call returns. Neither the caller nor any surrounding code sees the transaction. This is the mode used by entity DML — `entity.SaveAsync()` and `entity.DeleteAsync()` — and every overload of the static `SxmSql.RunStatementAsync(...)` method.
 <br>&nbsp;</br>
-- **Transactional block.** Many statements — of any kind — are grouped inside `await using var ctx = new SxmTransaction(...);`.  LINQ, entity DML, and `RunStatementAsync` inside the block all run on the *same* connection and the *same* transaction, and either all commit together or all roll back together.
+- **Transactional block.** Many statements — of any kind — are grouped inside `await using var ctx = new SxmTransaction(...);`.  LINQ, entity DML, and SQL inside the block all run on the *same* connection and the *same* transaction, and either all commit together or all roll back together.
 
 LINQ does not have a standalone execution mode. It is only available inside a transaction block.
 
@@ -75,7 +79,7 @@ await customer.SaveAsync();
 await customer.DeleteAsync();
 ```
 
-Each call is atomic on its own. It commits if the statement succeeds and rolls back if it throws, without any commit / rollback calls in the caller's code.
+Each call is atomic on its own. It commits if the statement succeeds and rolls back if it throws, without any commit or rollback calls in the caller's code.
 
 > 💡 There is intentionally no `InsertAsync` or `UpdateAsync` on the public entity surface. `SaveAsync` covers both cases so call sites do not need to know or care which one happens.
 
@@ -169,7 +173,7 @@ The DELETE removes the row. The RETURNING clause returns the row that was delete
 
 - **Typed.** `Task<List<TResult>>` — Returns a list of your entity or model objects, with one instance per database row. Each column value is automatically mapped to a matching public property. Your result type must be a class with a parameterless constructor.
 <br>&nbsp;</br>
-- **Untyped.** `Task<List<Dictionary<string, object?>>>` — Returns a list of Dictionaries, with one Dictionary per database row. Each dictionary maps column names to their values. Useful for ad-hoc queries or dynamic schemas.
+- **Dictionary.** `Task<List<Dictionary<string, object?>>>` — Returns a list of Dictionaries, with one Dictionary per database row. Each dictionary maps column names to their values. Useful for ad-hoc queries or dynamic schemas.
 
 **Typed result overloads:**
 
@@ -187,7 +191,7 @@ static Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName,
 static Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = default);
 ```
 
-**Untyped result overloads:**
+**Dictionary result overloads:**
 
 ```csharp
 // The SQL statement takes no parameters.
@@ -203,7 +207,9 @@ static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrSta
 static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = default);
 ```
 
-> 💡 Every overload accepts an optional trailing `databaseName`. Omit it to run against the default database; provide it to target a specific named database. See [Multi-Database Support](multi_database.md).
+> 💡 Every overload accepts an optional trailing `databaseName`. Omit it to run against the default database; provide it to target a specific named database. 
+
+>  This is covered fully in: ➡️ [Multi-Database Support](./multi-database.md).
 
 ### Using named SQL statements with `SxmSql.RunStatementAsync`
 
@@ -217,7 +223,7 @@ The first argument to every `RunStatementAsync` overload is called `sqlOrStateme
 
 Because `RunStatementAsync` accepts either a named statement or SQL text, a misspelled statement name is interpreted as SQL text. If the resulting text is not valid SQL, SQLite will report the resulting SQL error.
 
-Assume `GetAllCustomers` is defined in `SqlStatements.json` as `SELECT id, Name, Email FROM Customer`. The call site is then simply:
+In the example below, assume `GetAllCustomers` is defined in `SqlStatements.json` as `SELECT id, Name, Email FROM Customer`. The call site is then simply:
 
 ```csharp
 List<Customer> all = await SxmSql.RunStatementAsync<Customer>("GetAllCustomers");
@@ -230,7 +236,7 @@ Customer probe = new Customer { Email = "ada@analytical.io" };
 List<Customer> matches = await SxmSql.RunStatementAsync<Customer, Customer>("GetCustomerByEmail", probe); 
 ```
 
-For the full named-statement reference, see [Named SQL Statements](SQLiteXM-Named-Statements.md).
+Defining named SQL statements is covered fully in: ➡️  [SQL Statements File Guide](./sql-statement-file.md).
 
 ---
 
@@ -251,7 +257,9 @@ await using (SxmTransaction ctx = new SxmTransaction())
 }   // <- auto-commit here (auto-rollback if an exception occurred)
 ```
 
-The database targeted by the transaction is fixed at construction. Pass a database name to run the entire block against a non-default database:
+The database targeted by the transaction is fixed at construction. The example above starts a transaction on the default database. 
+To start a transaction on a non-default database, pass a database name to `SxmTransaction`. See the example below, 
+which starts a transaction on a database named `Archive`:
 
 ```csharp
 await using (SxmTransaction ctx = new SxmTransaction("Archive"))
@@ -314,7 +322,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
     };
     await order.SaveAsync();             // same transaction
 
-}   // both rows commit together
+}   // both saved rows commit together
 ```
 
 > 💡 The same line of code that saves an entity standalone — `await customer.SaveAsync();` — participates in an `SxmTransaction` transaction automatically when written inside one. Nothing at the call site changes. The choice between standalone and transactional is made once, at the surrounding scope, not repeated at every call.
@@ -345,7 +353,7 @@ Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictio
 Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters);
 ```
 
-**Untyped result overloads:**
+**Dictionary result overloads:**
 
 ```csharp
 // The SQL statement takes no parameters.
@@ -391,11 +399,12 @@ await using (SxmTransaction ctx = new SxmTransaction())
 In the example above, `ctx.GetTable<T>()` returns a queryable table backed by the transaction. Standard LINQ operators, along with the async and bulk-write extensions provided by SQLiteXM, all run inside the same transaction as do any `ctx.RunStatementAsync(...)` or entity DML included in the block.
 
 
-For the full LINQ reference, see [LINQ Support](SQLiteXM-LINQ-Support.md).
+For the full LINQ reference, see [LINQ Support](./linq-support.md).
 
 ### Manual commit and rollback (optional)
 
-Auto-commit on dispose is the recommended pattern. When you need to end a transaction earlier than that — for example, to release locks before a long computation — you can call the transaction's methods explicitly:
+Auto-commit on dispose is the recommended pattern. When you wish to end a transaction earlier — for example, because of 
+business rules — you can call the transaction methods `CommitTransactionAsync` or `RollbackTransactionAsync` explicitly.
 
 ```csharp
 await using (SxmTransaction ctx = new SxmTransaction())
@@ -408,7 +417,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 ```
 CommitTransactionAsync() ends the current transaction but does not dispose the SxmTransaction object. The object can therefore be used for subsequent operations, which implicitly begin a new transaction.
 
-`RollbackTransactionAsync()` discards the current transaction's work and also clears the transaction's faulted state, so the transaction can be reused for subsequent work.
+`RollbackTransactionAsync()` discards the current transaction's work and clears the transaction's faulted state, so the transaction can also be reused for subsequent work.
 
 ---
 
@@ -534,13 +543,3 @@ Statement-level failures (constraint violations, syntax errors, and so on) surfa
 - **Do not mix databases in one transaction.** An `SxmTransaction` is bound to one database. If you need to touch a second database, open a separate transaction for it.
 - **Keep transactions short-lived.** A transaction holds a database connection and, once any write has run, an open transaction. Open it, do the work, dispose it.
 
----
-
-## See Also
-
-- [Entity DML](SQLiteXM-Entity-DML.md)
-- [Embedded SQL Query Support](SQLiteXM-SQL-Support.md)
-- [Named SQL Statements](SQLiteXM-Named-Statements.md)
-- [LINQ Support](SQLiteXM-LINQ-Support.md)
-- [Multi-Database Support](multi_database.md)
-- [Defining Entities](defining_entities.md)

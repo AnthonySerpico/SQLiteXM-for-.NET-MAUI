@@ -1,75 +1,63 @@
-# SQLiteXM Defining Entities Guide
+# SQLiteXM Defining Entities
 
-## Introduction
+## Understanding SQLiteXM Entities
 
-SQLiteXM entities are ordinary C# classes that inherit from `SxmEntity`.
+If you are new to SQLiteXM or ORMs, the word entity may be unfamiliar. An entity is simply a C# class
+that represents data your application wants to store in the database.
 
-These classes define the tables, columns, indexes, triggers, and relationships that SQLiteXM creates and manages for your application.
-
-This guide explains how to design entity classes, which attributes SQLiteXM supports, and how those attributes affect schema generation and runtime behavior.
-
----
-
-# Understanding SQLiteXM Entities
-
-An entity class represents one table in a SQLite database.
-
-At a minimum, an entity must:
-
-* Inherit from `SxmEntity`
-* Be registered with `SxmDatabase.RegisterEntitiesAsync(...)`
-* Be included in a database initialized with `SxmDatabase.InitializeAsync(...)`
-
-SQLiteXM uses reflection to read attribute metadata from your entity classes and then creates or updates the corresponding database schema.
-
----
-
-# Basic Entity Pattern
-
-The simplest entity definition looks like this:
+For example, an application might need to store customers. A customer has information such as a name and email address. 
+In SQLiteXM, you define a Customer entity as a C# class:
 
 ```csharp
 using SQLiteXM;
 
 [Table(IsColumnAttributeRequired = false)]
-public class User : SxmEntity
+public class Customer : SxmEntity
 {
 	public string? Name { get; set; }
-	public int Age { get; set; }
+	public string? Email { get; set; }
 }
 ```
 
-## What This Means
+SQLiteXM uses this class as the C# representation of a customer record stored in the database.
+Behind the scenes, SQLiteXM maps the entity to a SQLite table:
 
-* `User` becomes a database table
-* The class inherits persistence and notification behavior from `SxmEntity`
-* Properties become database columns
-* SQLiteXM will create or update the table during entity registration
+| C# | | SQLite Database |
+|---|---|---|
+|`Customer` Object     | ─────►  | `Customer` table
+|`Name` Property     | ─────►  | `Name` column
+|`Email` Property    | ─────►  | `Email` column
 
-Every entity automatically inherits an `id` property from `SxmEntity`. SQLiteXM uses this value as the table's primary key and automatically populates it when a new entity is saved.
+An entity serves two related purposes:
+
+- In your C# code, it represents data your application works with.
+- In SQLiteXM, it defines the structure of a table that is used to store that data.
+
+In this example:
+
+- `Customer` represents data that the application wants to store.
+- SQLiteXM maps `Customer` to a database table also named `Customer`.
+- `Name` and `Email` become database columns in the `Customer` table.
+- A `Customer` object represents one row of that table.
+- `IsColumnAttributeRequired = false` means public properties are automatically mapped to database columns.
+- SQLiteXM creates or updates the corresponding table when the entity is registered.
+
+This means you work with ordinary C# objects in your application, while SQLiteXM handles creating and managing the 
+corresponding database tables and columns for you.
+
+For example, when you create and save a Customer object, SQLiteXM stores its values in the corresponding Customer 
+database table. When you query the database, SQLiteXM can create Customer objects from the stored data.
+
+An entity can also define additional database behavior, such as indexes, relationships, triggers, etc. 
+You add that information using SQLiteXM attributes, which are explained later in this guide.
 
 ---
 
-# Required Entity Workflow
+## Entity Attributes
 
-A typical setup follows this order:
+Once you understand the basic relationship between a C# entity and a database table, you can use attributes to control how SQLiteXM maps the entity to the database.
 
-1. Define entity classes
-2. Initialize SQLiteXM
-3. Register entities
-4. Use the entities for saving, querying, updating, and deleting data
-
-```csharp
-using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
-await SxmDatabase.InitializeAsync(stream);
-await SxmDatabase.RegisterEntitiesAsync(typeof(User));
-```
-
----
-
-# Entity Attributes
-
-SQLiteXM provides attributes that control how a class or member maps to the database.
+SQLiteXM provides attributes that control things such as:
 
 | Attribute | Targets | Purpose |
 |---|---|---|
@@ -83,9 +71,11 @@ SQLiteXM provides attributes that control how a class or member maps to the data
 | `[RequiredNotNull]` | Property | Requires a non-null value and supplies a default |
 | `[ForeignKey]` | Property | Creates a foreign key reference |
 
+The important thing to understand is that the entity defines the data, while the attributes provide additional instructions for how SQLiteXM maps that data to the database.
+
 ---
 
-# 1. Table Attribute
+## Table Attribute
 
 The `[Table]` attribute marks a class as a SQLiteXM entity.
 
@@ -98,8 +88,6 @@ public class Product : SxmEntity
 ```
 
 ## Table Attribute Options
-
-#### Database
 
 The `Database` property tells SQLiteXM the database where the entity's corresponding table should be created.
 
@@ -118,8 +106,6 @@ public class ApplicationLog : SxmEntity
 * Entities are registered with `SxmDatabase.RegisterEntitiesAsync(...)`
 
 
-#### IsColumnAttributeRequired
-
 Use `IsColumnAttributeRequired` when you want to explicitly control which properties are mapped to database columns.
 
 ```csharp
@@ -133,7 +119,7 @@ public class Invoice : SxmEntity
 * When set to `false`, all public properties are automatically mapped to database columns unless marked with `[NotColumn]`
 * When set to `true`, or when omitted, only public properties marked with `[Column]` will be mapped
 
-# 2. Column Attribute
+## Column Attribute
 
 Use `[Column]` to explicitly control the mapping for a property.
 
@@ -151,8 +137,6 @@ public class Invoice : SxmEntity
 
 ## Column Attribute Options
 
-#### Controlling Data Type Mapping
-
 The `DataType` property allows you to override the default data type mapping for certain properties.
 
 The default storage type for a `DateTime` is `INTEGER`, stored as .NET ticks. In the example below, 
@@ -169,7 +153,7 @@ For complete details on data type mapping and supported types, see the [SQLiteXM
 
 ---
 
-# 3. NotColumn Attribute
+## NotColumn Attribute
 
 Use `[NotColumn]` for properties that should not be stored in the database.
 
@@ -187,7 +171,7 @@ public class Person : SxmEntity
 
 When present, `[NotColumn]` prevents the property from being mapped to a database column, regardless of the `IsColumnAttributeRequired` setting on the class.
 
-## When to Use It
+### When to Use It
 
 * Computed properties
 * UI-only properties
@@ -195,7 +179,7 @@ When present, `[NotColumn]` prevents the property from being mapped to a databas
 
 ---
 
-# 4. Rename Attribute
+## Rename Attribute
 
 Use `[Rename]` when a property name changes but you want SQLiteXM to preserve existing data during schema migration.
 
@@ -212,7 +196,7 @@ public class Customer : SxmEntity
 }
 ```
 
-## Multi-Step Renames
+### Multi-Step Renames
 
 If a column was renamed more than once, track the full rename history.
 
@@ -221,7 +205,7 @@ If a column was renamed more than once, track the full rename history.
 public string ProductName { get; set; } = string.Empty;
 ```
 
-## Rules
+### Rules
 
 * The old property must be removed from the entity class
 * SQLiteXM searches rename history from newest to oldest
@@ -230,7 +214,7 @@ public string ProductName { get; set; } = string.Empty;
 
 ---
 
-# 5. Index Attribute
+## Index Attribute
 
 Use `[Index]` to create a non-unique index.
 
@@ -243,7 +227,7 @@ public class Order : SxmEntity
 }
 ```
 
-## Composite Indexes
+### Composite Indexes
 
 You can apply `[Index]` at the class level to define a composite index.
 
@@ -257,7 +241,7 @@ public class Order : SxmEntity
 }
 ```
 
-## When to Use It
+### When to Use It
 
 * Frequently filtered columns
 * Columns used in joins
@@ -265,7 +249,7 @@ public class Order : SxmEntity
 
 ---
 
-# 6. UniqueIndex Attribute
+## UniqueIndex Attribute
 
 Use `[UniqueIndex]` to create a unique index.
 
@@ -278,7 +262,7 @@ public class User : SxmEntity
 }
 ```
 
-## Composite Unique Index
+### Composite Unique Index
 
 You can apply `[UniqueIndex]` at the class level to define a composite index.
 
@@ -291,7 +275,7 @@ public class PlaylistTrack : SxmEntity
 }
 ```
 
-## When to Use It
+### When to Use It
 
 * Prevent duplicate values in a column
 * Enforce uniqueness across multiple columns
@@ -299,7 +283,7 @@ public class PlaylistTrack : SxmEntity
 
 ---
 
-# 7. Trigger Attribute
+## Trigger Attribute
 
 Use `[Trigger]` to attach trigger SQL to an entity class.
 
@@ -316,7 +300,7 @@ public class User : SxmEntity
 }
 ```
 
-## When to Use It
+### When to Use It
 
 * Audit logging
 * Automatic updates
@@ -324,7 +308,7 @@ public class User : SxmEntity
 
 Triggers are created as part of schema initialization and registration.
 
-## Trigger Lifecycle Management
+### Trigger Lifecycle Management
 
 SQLiteXM manages trigger definitions as part of schema synchronization.
 
@@ -341,7 +325,7 @@ SQLiteXM treats trigger definitions as part of the entity schema and keeps the d
 
 ---
 
-# 8. RequiredNotNull Attribute
+## RequiredNotNull Attribute
 
 Use `[RequiredNotNull]` when a property must not be null and should have a non-null default value.
 
@@ -354,7 +338,7 @@ public class Settings : SxmEntity
 }
 ```
 
-## Behavior
+### Behavior
 
 * The attribute stores a default value
 * The default value cannot be null
@@ -362,7 +346,7 @@ public class Settings : SxmEntity
 
 ---
 
-# 9. ForeignKey Attribute
+## ForeignKey Attribute
 
 Use `[ForeignKey]` to declare a relationship to another table.
 
@@ -381,7 +365,7 @@ ForeignKeyDeleteAction determines what SQLite should do when a row in the parent
 
 For example, consider an Order table that references a Customer table through a foreign key. If a customer is deleted, SQLite must decide what happens to the related orders. The selected ForeignKeyDeleteAction controls that behavior.
 
-## ForeignKeyDeleteAction Values
+### ForeignKeyDeleteAction Values
 
 | Value | Meaning |
 |---|---|
@@ -392,7 +376,7 @@ For example, consider an Order table that references a Customer table through a 
 | `Restrict` | Prevent deletion when related rows exist |
 | `NoAction` | Take no automatic action; the delete succeeds only if referential integrity is preserved. The foreign-key constraint is still enforced. |
 
-## When to Use It
+### When to Use It
 
 * Parent-child relationships
 * Referential integrity
@@ -400,7 +384,7 @@ For example, consider an Order table that references a Customer table through a 
 
 ---
 
-# Entity Registration
+### Entity Registration
 
 Defining entities is only the first step. SQLiteXM must also register them before use.
 
@@ -416,31 +400,31 @@ During registration, SQLiteXM creates or updates the schema for each entity and 
 
 ---
 
-# Practical Entity Design Rules
+## Practical Entity Design Rules
 
-## Keep Related Entities Together
+### Keep Related Entities Together
 
 Entities that are frequently queried together should usually live in the same database.
 
-## Use Computed Members Carefully
+### Use Computed Members Carefully
 
 Computed or UI-only members should be marked with `[NotColumn]`.
 
-## Preserve Data During Renames
+### Preserve Data During Renames
 
 Use `[Rename]` whenever a property name changes in a later version of your app.
 
-## Index Query Paths
+###	Index Query Paths
 
 Add indexes to columns that are frequently used for filtering, ordering, or joining.
 
-## Use Foreign Keys for Real Relationships
+### Use Foreign Keys for Real Relationships
 
 Use `[ForeignKey]` when one entity depends on another entity's identifier.
 
 ---
 
-# Complete Example
+## Complete Example
 
 The following example shows a small related model with multiple attributes.
 
@@ -507,7 +491,7 @@ public class AuditLog : SxmEntity
 }
 ```
 
-## What This Example Shows
+### What This Example Shows
 
 * `Customer` uses a unique index on `Email`
 * `Order` references `Customer` through a foreign key
@@ -517,7 +501,7 @@ public class AuditLog : SxmEntity
 
 ---
 
-# Summary
+## Summary
 
 SQLiteXM entities are plain C# classes with attribute-based mapping.
 

@@ -1,7 +1,9 @@
 # Schema Evolution
 
-SQLiteXM creates a corresponding table for an entity the first time an entity is registered via `RegisterEntitiesAsync`. As part of this process, it creates columns, indexes, triggers, foreign keys, and other schema objects to create a schema that reflects the entity and its applied attributes.
+SQLiteXM creates a corresponding table for an entity the first time the entity is registered via `RegisterEntitiesAsync`.
+During subsequent registrations, SQLiteXM compares the entity to the existing database schema and applies any supported schema changes.
 
+As part of this process, SQLiteXM creates and updates columns, indexes, triggers, foreign keys, and other schema objects to reflect the entity and its applied attributes.
 One of the most common ORM concerns is what happens when an entity changes over time?
 
 SQLiteXM follows a conservative, schema-first approach:
@@ -11,9 +13,8 @@ SQLiteXM follows a conservative, schema-first approach:
 * It drops columns when a previously mapped property is removed from an existing entity as long as the column is not used in indexes or triggers
 * It adds, removes, and updates indexes and triggers as these attributes are added, removed, or changed on an existing entity
 
-New tables are created only when you register an entity for the 
-first time. SQLiteXM does not rebuild existing tables when entities change. For existing entities, SQLiteXM compares the updated entity 
-model against the existing database schema and applies the changes. SQLiteXM only supports and applies changes that it considers safe.
+New tables are created when an entity is registered for the first time. SQLiteXM does not rebuild existing tables when entities change; it 
+only applies schema changes that can be performed safely without rebuilding the table.
 
 ## What Changes Are Safe?
 
@@ -64,9 +65,15 @@ Yes.
 
 If a column exists in the database but is no longer included in the entity model, SQLiteXM will drop the column during registration.
 
-Note: Columns that are still referenced by indexes or triggers or are still required by other schema objects or otherwise violate SQLite's requirements for `DROP COLUMN` cannot be dropped.
+⚠️ Important: Removing a mapped property drops its column
 
-That means removing a mapped property from your entity is treated as a real schema change, not just a code-only cleanup.
+Removing a mapped property from an existing entity is a database schema change, not just a code change. During the next RegisterEntitiesAsync call, SQLiteXM will attempt to drop the corresponding column from the database table.
+
+This permanently deletes any data stored in that column.
+
+For example, if you remove EmailAddress from an existing Customer entity, SQLiteXM will treat the existing EmailAddress column as no longer part of the entity schema and will attempt to drop it.
+
+Note: Columns that are still referenced by indexes or triggers or are still required by other schema objects or otherwise violate SQLite's requirements for `DROP COLUMN` cannot be dropped.
 
 ## Can SQLiteXM Add New Indexes?
 
@@ -180,30 +187,20 @@ Changes to existing foreign key definitions are not supported.
 SQLite does not provide direct ALTER TABLE support for modifying foreign key constraints. Because SQLiteXM does not rebuild existing tables, foreign key definitions are considered immutable once created.
 
 
-## Practical Guidance
-
-SQLiteXM is designed to keep the database aligned with the entity model while preserving data. 
-
-However, removing a mapped property from your entity will result in the corresponding column being dropped from the database during the next registration cycle.
-This is a schema change, not just code cleanup and represents a destructive change that will result in data loss.
-
-Of course, dropping a table using the `DropTableAsync` API method is also a destructive operation and should be used with caution.
-
-
 ## Supported (Safe) Schema Changes
 
-| Schema Change | Supported by SQLiteXM | SQLite Requirement | Notes |
-|---------------|------------------------|--------------------|-------|
-| Add column | Yes | Always supported | Uses `ALTER TABLE ADD COLUMN` |
-| Drop column | Yes | SQLite 3.35+ | Column must not be referenced by indexes or triggers |
-| Rename column | Yes | SQLite 3.25+ | Uses `ALTER TABLE RENAME COLUMN` |
-| Add index | Yes | Always supported | All index types supported |
-| Remove index | Yes | Always supported | Drops index via `DROP INDEX` |
-| Modify index | Yes | Always supported | SQLiteXM drops + recreates index |
-| Add trigger | Yes | Always supported | Creates trigger via `CREATE TRIGGER` |
-| Remove trigger | Yes | Always supported | Drops trigger via `DROP TRIGGER` |
-| Modify trigger | Yes | Always supported | SQLiteXM drops + recreates trigger |
-| Rename column via `[Rename]` | Yes | SQLite 3.25+ | Preserves data during property renames |
+| Schema Change | Supported by SQLiteXM | Notes |
+|---------------|------------------------|--------------------|
+| Add column | Yes | Uses `ALTER TABLE ADD COLUMN` |
+| Drop column | Yes | Column must not be referenced by indexes or triggers |
+| Rename column | Yes | Uses `ALTER TABLE RENAME COLUMN` |
+| Add index | Yes | All index types supported |
+| Remove index | Yes | Drops index via `DROP INDEX` |
+| Modify index | Yes | SQLiteXM drops + recreates index |
+| Add trigger | Yes | Creates trigger via `CREATE TRIGGER` |
+| Remove trigger | Yes | Drops trigger via `DROP TRIGGER` |
+| Modify trigger | Yes | SQLiteXM drops + recreates trigger |
+| Rename column via `[Rename]` | Yes | Preserves data during property renames |
 
 
 ## Unsupported (Unsafe) Schema Changes 
