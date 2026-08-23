@@ -15,7 +15,7 @@ develops.
 **Start here if you are new to SQLiteXM.**
 
 A step-by-step introduction to adding SQLiteXM to a .NET MAUI application,
-defining entities, configuring the database, initializing SQLiteXM, and performing
+initializing SQLiteXM, configuring the database, defining entities, and performing
 basic database operations.
 
 **Recommended first read.**
@@ -36,7 +36,7 @@ primary keys, foreign keys, and other entity mapping features.
 
 ### [Supported Data Types](supported-data-types.md)
 
-Reference for the .NET data types supported by SQLiteXM and how they are mapped
+Reference for the C# data types supported by SQLiteXM and how they are mapped
 to SQLite data types.
 
 **Read this when:** You are deciding which property types to use in your entities.
@@ -59,21 +59,21 @@ LINQ, SQL, entity persistence, and transactions.
 These guides explain how SQLiteXM databases are configured and initialized.
 You may not need all of them when first getting started.
 
-### [Database Configuration and Initialization](database-configuration-and-initialization.md)
+### [Applying Database Options](database-configuration-and-initialization.md)
 
-Learn how SQLiteXM configures, initializes, and manages SQLite databases,
-including application startup and database initialization.
+SQLiteXM provides a rich set of configuration options for controlling how SQLite 
+databases are initialized and managed. These include PRAGMA settings, connection pooling,
+WAL checkpointing, timeouts, etc.
 
-**Read this when:** You need to understand the database initialization process
-or customize how SQLiteXM starts up.
+**Read this when:** You need to understand these options and how they are applied in your app.
 
 ### [SQL Statement File](sql-statement-file.md)
 
 Complete reference for the `SqlStatements.json` configuration file, including
-database definitions and SQLite initialization options.
+database definitions and named SQL statements.
 
-**Read this when:** You need to create or modify `SqlStatements.json` or configure
-SQLite database behavior.
+**Read this when:** You need to create or modify `SqlStatements.json` to add 
+new SQL statements or configure adding a database to your application.
 
 ---
 
@@ -126,7 +126,7 @@ This is enough to get SQLiteXM running and begin building an application.
 After the basics, explore the topics relevant to your application:
 
 - **[Supported Data Types](supported-data-types.md)** — when defining properties
-- **[Database Configuration and Initialization](database-configuration-and-initialization.md)** — when customizing database setup
+- **[Applying Database Options](database-configuration-and-initialization.md)** — when applying options to your database
 - **[SQL Statement File](sql-statement-file.md)** — when configuring `SqlStatements.json`
 - **[INotifyPropertyChanged](inotifypropertychanged.md)** — when binding entities to the MAUI UI
 
@@ -146,8 +146,8 @@ When your application begins evolving:
 | [Getting Started](getting-started.md) | Complete first-use walkthrough | **Start here** |
 | [Defining Entities](defining-entities.md) | Entity and schema definition | When designing your data model |
 | [Working with Data](working-with-data.md) | Querying and modifying data | When building data access |
-| [Supported Data Types](supported-data-types.md) | .NET → SQLite type reference | When choosing entity property types |
-| [Database Configuration and Initialization](database-configuration-and-initialization.md) | Database startup and configuration | When configuring initialization |
+| [Supported Data Types](supported-data-types.md) | C# → SQLite type reference | When choosing entity property types |
+| [Applying Database Options](database-configuration-and-initialization.md) | Database options and configuration | When configuring initialization |
 | [SQL Statement File](sql-statement-file.md) | `SqlStatements.json` reference | When configuring the statement file |
 | [Schema Evolution](schema-evolution.md) | Database schema changes | When your model evolves |
 | [Multiple Databases](multiple-databases.md) | Multiple SQLite databases | When one database isn't enough |
@@ -163,7 +163,7 @@ If you are not sure where to look:
 - **"How do I define my entity?"** → [Defining Entities](defining-entities.md)
 - **"What data types can I use?"** → [Supported Data Types](supported-data-types.md)
 - **"How do I query or save data?"** → [Working with Data](working-with-data.md)
-- **"How do I configure the database?"** → [Database Configuration and Initialization](database-configuration-and-initialization.md)
+- **"How do I apply database options?"** → [Applying Database Options and Configuration](database-configuration-and-initialization.md)
 - **"What goes in `SqlStatements.json`?"** → [SQL Statement File](sql-statement-file.md)
 - **"What happens when my schema changes?"** → [Schema Evolution](schema-evolution.md)
 - **"How do I use multiple databases?"** → [Multiple Databases](multiple-databases.md)

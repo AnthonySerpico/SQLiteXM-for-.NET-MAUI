@@ -87,7 +87,7 @@ public sealed class SxmDatabaseOptions
     private static bool? _enableConnectionPooling = null;
 
     /// <summary>
-    /// Gets or sets whether connection pooling is enabled.
+    /// Gets or sets whether logging is enabled.
     /// </summary>
     public bool? EnableLogging { get => _enableLogging; init { _enableLogging = value; } }
     private static bool? _enableLogging = null;
@@ -242,7 +242,7 @@ public sealed class SxmDatabaseOptions
     }
     internal static bool IsLoggingEnabled()
     {
-        return _enableLogging ?? true;
+        return _enableLogging ?? false;
     }
 
     /// <summary>

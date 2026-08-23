@@ -15,7 +15,7 @@ This guide explains how to configure and use multiple databases in SQLiteXM.
 
 ---
 
-# Understanding Multiple Databases
+## Understanding Multiple Databases
 
 In SQLiteXM, databases are defined in the application's `SqlStatements.json` configuration file, typically named:
 
@@ -28,7 +28,7 @@ folder and the `Build Action` must be set to `MauiAsset`. The file is read durin
 
 ---
 
-# Single-Database Configuration
+## Single-Database Configuration
 
 Most applications only require a single database.
 
@@ -51,7 +51,7 @@ In this configuration:
 
 ---
 
-# Multi-Database Configuration
+## Multi-Database Configuration
 
 To use multiple databases, simply define additional database entries.
 
@@ -81,7 +81,7 @@ The default database remains `MainDatabase`.
 
 ---
 
-# Default Database Behavior
+## Default Database Behavior
 
 Entities automatically use the default database unless another database is explicitly specified using the `Database` property of the `[Table]` attribute.
 
@@ -99,7 +99,7 @@ Because no database is specified, the `User` table is created in the default dat
 
 ---
 
-# Assigning an Entity to a Specific Database
+## Assigning an Entity to a Specific Database
 
 Use the `Database` property of the `[Table]` attribute to associate an entity with a non-default database.
 
@@ -119,7 +119,7 @@ In this example:
 
 ---
 
-# Registering Entities
+## Registering Entities
 
 Entity registration works exactly the same regardless of how many databases are configured or to which database each entity belongs to.
 
@@ -134,7 +134,7 @@ SQLiteXM automatically creates or updates tables in the correct database based o
 
 ---
 
-# Querying Multiple Databases
+## Querying Multiple Databases
 
 When using `SxmTransaction`, specify the database you want to query when creating the transaction.
 
@@ -158,11 +158,11 @@ var logs = logTransaction
 
 ---
 
-# Database Configuration Rules
+## Database Configuration Rules
 
 SQLiteXM enforces the following rules:
 
-## At Least One Database Required
+### At Least One Database Required
 
 The `SqlStatements.json` file must define at least one database.
 
@@ -177,7 +177,7 @@ The `SqlStatements.json` file must define at least one database.
 }
 ```
 
-## Only One Default Database
+### Only One Default Database
 
 Exactly one database must be marked as the default database.
 
@@ -188,7 +188,7 @@ Exactly one database must be marked as the default database.
 }
 ```
 
-## Additional Databases
+### Additional Databases
 
 You may define as many non-default databases as needed.
 
@@ -214,7 +214,7 @@ Multiple databases are best suited for separating independent data domains such 
 
 ---
 
-# Common Usage Pattern
+## Common Usage Pattern
 
 A common approach is to separate operational data from logging data.
 
@@ -250,7 +250,7 @@ This allows application data and logging data to remain isolated while still bei
 
 ---
 
-# Best Practices
+## Best Practices
 
 ### Use a Single Database Unless You Need More
 

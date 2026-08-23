@@ -1,7 +1,7 @@
 ﻿# Reading and writing data in SQLiteXM — LINQ, SQL, and Transactional Blocks
 
 SQLiteXM lets you read and write to a database in multiple ways: 
-1. Directly using an **entity instance** — we call this entity DML. 
+1. Directly using an **entity instance** — called entity DML. 
 2. Executing a single **SQL statement** — embedded SQL or named SQL
 3. Inside a **transactional block** that executes multiple LINQ statements as one atomic unit of work. 
 
@@ -165,7 +165,7 @@ The DELETE removes the row. The RETURNING clause returns the row that was delete
 
 > 💡 When a statement does not return rows, such as an INSERT, UPDATE, or DELETE without a RETURNING clause, RunStatementAsync returns an empty result list.
 
-### The eight overloads
+### The RunStatementAsync overloads
 
 `RunStatementAsync` has eight overloads: 2 result types × 4 SQL parameter options.
 
@@ -485,7 +485,7 @@ Inside a transaction, an exception on any statement:
 
 1. Marks the transaction as **faulted**.
 2. Causes any *subsequent* write attempts in the same block to be silently skipped, preventing cascading errors from statements that depend on the failed one.
-3. Causes the transaction to be **rolled back automatically** when the transactionis disposed.
+3. Causes the transaction to be **rolled back automatically** when the transaction is disposed.
 
 The typical pattern is to wrap the entire `await using` block:
 
@@ -503,7 +503,7 @@ catch (Exception ex)
 }
 ```
 
-If you want to recover a faulted transactionand to reuse it — instead of letting it dispose — call `RollbackTransactionAsync()`. That discards the failed transaction, clears the faulted flag, and lets subsequent statements start a fresh  using the same transaction.
+If you want to recover a faulted transaction and to reuse it — instead of letting it dispose — call `RollbackTransactionAsync()`. That discards the failed transaction, clears the faulted flag, and lets subsequent statements start fresh using the same transaction.
 
 You cannot commit a faulted transaction. This would go against the implied all-or-nothing semantics. If you call `CommitTransactionAsync()` on a faulted transaction, an `InvalidOperationException` is thrown. 
 
@@ -511,7 +511,7 @@ You cannot commit a faulted transaction. This would go against the implied all-o
 
 | Exception | When it is thrown |
 |---|---|
-| `InvalidOperationException` | Calling `CommitTransactionAsync()` on a faulted `SxmTransaction` (call `RollbackTransactionAsync()` first); missing generated INSERT/UPDATE/DELETE statement for an entity type; database-name mismatch when a transactiontries to join an ambient transaction that is bound to a different database. |
+| `InvalidOperationException` | Calling `CommitTransactionAsync()` on a faulted `SxmTransaction` (call `RollbackTransactionAsync()` first); missing generated INSERT/UPDATE/DELETE statement for an entity type; database-name mismatch when a transaction tries to join an ambient transaction that is bound to a different database. |
 | `ObjectDisposedException` | Using an `SxmTransaction` after it has been disposed. |
 
 Statement-level failures (constraint violations, syntax errors, and so on) surface as SQLite exceptions, unchanged and unwrapped where practical.
@@ -537,7 +537,7 @@ Statement-level failures (constraint violations, syntax errors, and so on) surfa
 
 - **Start simple.** If the work is a single write or a single read, use `entity.SaveAsync()` / `entity.DeleteAsync()` or `SxmSql.RunStatementAsync(...)`. There is no benefit to wrapping single statements in an `SxmTransaction`.
 - **Reach for `SxmTransaction` when work is compound.** Any time correctness requires that two or more statements succeed or fail together, put them inside one `await using` block.
-- **Prefer `await using` for transactionblocks.** Synchronous `using` still works but will not asynchronously commit or roll back on disposal.
+- **Prefer `await using` for transaction blocks.** Synchronous `using` still works but will not asynchronously commit or roll back on disposal.
 - **Do not commit manually unless you have a reason.** Auto-commit on dispose is the intended pattern. Manual `CommitTransactionAsync` / `RollbackTransactionAsync` are for advanced scenarios (batch boundaries, business-rule aborts, and similar).
 - **Wrap the block, not each statement.** Inside a transaction, individual failures already short-circuit the remaining writes. A single `try` / `catch` around the whole `await using` block is usually enough.
 - **Do not mix databases in one transaction.** An `SxmTransaction` is bound to one database. If you need to touch a second database, open a separate transaction for it.

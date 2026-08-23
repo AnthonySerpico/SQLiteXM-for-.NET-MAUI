@@ -60,7 +60,7 @@ This instructs SQLiteXM to create a SQLite database file named `MainDb` in the a
 Most SQLiteXM applications use a single database. However, SQLiteXM also supports applications that need to organize data across 
 multiple databases.
 
-For details, see  ➡️ [Multi-Database Configuration](./MULTI_DATABASES.md)
+For details, see  ➡️ [Multi-Database Configuration](./multiple-databases.md)
 
 ### Multi-Database Example
 
@@ -635,20 +635,6 @@ The SQL Statements file is configuration, so:
 - ✅ Document breaking changes
 - ✅ Version it alongside your code
 
-
-### 7. **Use Database Attribute for Non-Default Tables**
-
-For multi-database scenarios, use the `[Table(Database = "...")]` attribute on entities:
-
-```csharp
-// Default database - no attribute needed
-[Table(IsColumnAttributeRequired = false)]
-public class User : SxmEntity { }
-
-// Non-default database - must specify
-[Table(Database = "analytics", IsColumnAttributeRequired = false)]
-public class PageView : SxmEntity { }
-```
 
 ---
 

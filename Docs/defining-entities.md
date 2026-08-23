@@ -5,6 +5,9 @@
 If you are new to SQLiteXM or ORMs, the word entity may be unfamiliar. An entity is simply a C# class
 that represents data your application wants to store in the database.
 
+In SQLiteXM, an entity is a C# class that inherits from `SxmEntity` and is registered with
+`SxmDatabase.RegisterEntitiesAsync(...)`.
+
 For example, an application might need to store customers. A customer has information such as a name and email address. 
 In SQLiteXM, you define a Customer entity as a C# class:
 
@@ -19,7 +22,7 @@ public class Customer : SxmEntity
 }
 ```
 
-SQLiteXM uses this class as the C# representation of a customer record stored in the database.
+In this example, SQLiteXM uses this class as the C# representation of a `Customer` record stored in the database.
 Behind the scenes, SQLiteXM maps the entity to a SQLite table:
 
 | C# | | SQLite Database |
@@ -37,10 +40,11 @@ In this example:
 
 - `Customer` represents data that the application wants to store.
 - SQLiteXM maps `Customer` to a database table also named `Customer`.
+- `[Table(IsColumnAttributeRequired = false)]` tells SQLiteXM to automatically map all public properties to database columns.
 - `Name` and `Email` become database columns in the `Customer` table.
 - A `Customer` object represents one row of that table.
-- `IsColumnAttributeRequired = false` means public properties are automatically mapped to database columns.
-- SQLiteXM creates or updates the corresponding table when the entity is registered.
+
+SQLiteXM creates or updates the corresponding table when the entity is registered with `SxmDatabase.RegisterEntitiesAsync(...)`.
 
 This means you work with ordinary C# objects in your application, while SQLiteXM handles creating and managing the 
 corresponding database tables and columns for you.
@@ -48,8 +52,8 @@ corresponding database tables and columns for you.
 For example, when you create and save a Customer object, SQLiteXM stores its values in the corresponding Customer 
 database table. When you query the database, SQLiteXM can create Customer objects from the stored data.
 
-An entity can also define additional database behavior, such as indexes, relationships, triggers, etc. 
-You add that information using SQLiteXM attributes, which are explained later in this guide.
+An entity can also define additional database behavior. You add that information using SQLiteXM attributes, 
+which are explained below.
 
 ---
 
@@ -61,33 +65,46 @@ SQLiteXM provides attributes that control things such as:
 
 | Attribute | Targets | Purpose |
 |---|---|---|
-| `[Table]` | Class | Maps an entity to a table and can assign it to a database |
-| `[Column]` | Property | Maps a member to a column and controls data type mapping |
-| `[NotColumn]` | Property | Excludes a member from schema mapping |
-| `[Rename]` | Property | Preserves data when a property name changes |
+| `[Table]` | Class | Configures table-level behavior and can assign the entity to a database |
+| `[Column]` | Property | Maps a public property to a column |
+| `[NotColumn]` | Property | Excludes a public property from schema mapping |
+| `[Rename]` | Property | Preserves data when a public property name changes |
 | `[Index]` | Class, Property | Creates a non-unique index |
 | `[UniqueIndex]` | Class, Property | Creates a unique index |
 | `[Trigger]` | Class | Adds trigger SQL during schema creation |
 | `[RequiredNotNull]` | Property | Requires a non-null value and supplies a default |
 | `[ForeignKey]` | Property | Creates a foreign key reference |
 
-The important thing to understand is that the entity defines the data, while the attributes provide additional instructions for how SQLiteXM maps that data to the database.
+The important thing to understand is that the entity defines the data, while the attributes provide configuration
+for how SQLiteXM maps that data to the database.
+
+> ✏️ **Note:** A class only needs to inherit from `SxmEntity` to be recognized as an entity. 
+> However, a useful entity will require additional configuration. While attributes are optional,
+> they provide configuration to control which entity properties are mapped to columns and can 
+> define additional schema features such as indexes, foreign keys, triggers, etc.
 
 ---
 
 ## Table Attribute
 
-The `[Table]` attribute marks a class as a SQLiteXM entity.
+The `[Table]` attribute is used to control which database the entity is mapped to and which properties 
+are mapped to table columns.
+
+## Table Attribute Options
+
+Use the `IsColumnAttributeRequired` property of the `Table` attribute when you want to explicitly control 
+which properties are mapped to database columns.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
-public class Product : SxmEntity
+public class Invoice : SxmEntity
 {
-	public string? Name { get; set; }
+	public decimal Total { get; set; }
 }
 ```
 
-## Table Attribute Options
+* When set to `false`, all public properties are automatically mapped to database columns unless marked with `[NotColumn]`
+* When set to `true`, or when omitted, only public properties marked with `[Column]` will be mapped
 
 The `Database` property tells SQLiteXM the database where the entity's corresponding table should be created.
 
@@ -102,22 +119,20 @@ public class ApplicationLog : SxmEntity
 }
 ```
 
-* If `Database` is not specified, the entity uses SQLiteXM's default database.
-* Entities are registered with `SxmDatabase.RegisterEntitiesAsync(...)`
+* If the `Database` property is omitted, the entity's corresponding table is created in the default database.
+* When present, the entity's corresponding table is created in the named database.
 
-
-Use `IsColumnAttributeRequired` when you want to explicitly control which properties are mapped to database columns.
-
+Of course, these two properties can be combined:
 ```csharp
-[Table(IsColumnAttributeRequired = false)]
-public class Invoice : SxmEntity
+[Table(Database = "Logging", IsColumnAttributeRequired = true)]
+public class ApplicationLog : SxmEntity
 {
-	public decimal Total { get; set; }
+	[Column]
+	public string? Message { get; set; }
+	[Column]
+	public DateTime Timestamp { get; set; }
 }
 ```
-
-* When set to `false`, all public properties are automatically mapped to database columns unless marked with `[NotColumn]`
-* When set to `true`, or when omitted, only public properties marked with `[Column]` will be mapped
 
 ## Column Attribute
 
@@ -508,8 +523,8 @@ SQLiteXM entities are plain C# classes with attribute-based mapping.
 Key points:
 
 * Inherit from `SxmEntity`
-* Use `[Table]` to define the entity and optionally choose the database
-* Use `[Column]` to control mapped members
+* Use `[Table]` to configure column mapping and optionally choose the database
+* Use `[Column]` to control mapped public properties
 * Use `[NotColumn]` for values that should not be stored
 * Use `[Rename]` to preserve data during refactoring
 * Use `[Index]` and `[UniqueIndex]` to improve query performance and enforce uniqueness

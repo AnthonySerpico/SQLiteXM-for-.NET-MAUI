@@ -59,9 +59,9 @@ including advanced settings and lifecycle hooks.
 | `TempStore`               | SQLite default                            | Usually leave at default; `Memory` can improve temporary operations when memory is available |
 | `CheckPointConnection`    | SQLite default                            | Usually leave at default unless you need explicit checkpoint control                         |
 | `CheckPointWalMaxSize`    | SQLite default                            | Configure when using `CheckPointConnection.MaxSize`                                          |
-| `EnableConnectionPooling` | Microsoft.Data.Sqlite default-true        | **`true`** for most applications                                                             |
-| `DefaultTimeout`          | Microsoft.Data.Sqlite default-30 seconds  |**30 seconds** is a reasonable starting point for general application workloads              |
-| `EnableLogging`           | `true`                                    | **`true` during development;** disable if production logging is not desired                  |
+| `EnableConnectionPooling` | Microsoft.Data.Sqlite default-**`true`**        | **`true`** for most applications                                                       |
+| `DefaultTimeout`          | Microsoft.Data.Sqlite default-**`30 seconds`**  |**30 seconds** is a reasonable starting point for general application workloads         |
+| `EnableLogging`           | `false`                                    | **`true` during development;** `false` if production logging is not desired                  |
 | `DatabaseFolderOverride`  | LocalApplicationData                      | Usually leave at the default application-local location                                      |
 | `OnConnectionOpened(...)` | Not registered                            | Use only when connection-specific initialization, verification, or custom logic is required  |
 | `OnConnectionClosed(...)` | Not registered                            | Use only when connection-close handling, cleanup, or instrumentation is required             |
@@ -285,8 +285,9 @@ var options = new SxmDatabaseOptions
 - **Medium databases (10-100MB):** 8 MB - 16 MB
 - **Large databases (>100MB):** 16 MB - 32 MB
 
-**Note:** SQLite uses negative values to specify KB. SQLiteXM automatically converts your positive KB value.
-**Note:** This memory usage multiplies by the number of open connections.
+**Note:** SQLiteXM specifies `CacheSize` in kilobytes and converts this value to the appropriate SQLite `cache_size` representation.
+
+**Note:** Cache memory is associated with individual SQLite connections, so increasing the cache size can increase total memory usage when multiple connections are open.
 
 ---
 
@@ -387,7 +388,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `EnableLogging`  
 **Type:** `bool?`  
-**Default:** `true`
+**Default:** `false`
 
 Enables SQLiteXM internal logging.
 
@@ -643,7 +644,7 @@ var options = new SxmDatabaseOptions
 	CheckPointConnection = CheckPointConnection.MaxSize,
 	CheckPointWalMaxSize = 2048,  // 2048 KB (2 MB)
 	EnableConnectionPooling = true,
-	EnableLogging = true
+	EnableLogging = false
 };
 ```
 
@@ -673,7 +674,7 @@ var options = new SxmDatabaseOptions
 {
 	ForeignKeys = true,
 	JournalModeOption = SxmJournalMode.Wal,
-	SynchronousModeOption = SxmSynchronousMode.Full,  // Maximum safety
+	SynchronousModeOption = SxmSynchronousMode.Full,  // Maximum durability
 	BusyTimeout = 30000,
 	CacheSize = 4096,
 	WalAutoCheckpoint = 100,  // Checkpoint frequently

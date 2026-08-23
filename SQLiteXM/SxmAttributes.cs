@@ -215,7 +215,7 @@ namespace SQLiteXM
         /// </exception>
         /// <example>
         /// <code>
-        /// // Column history: "OriginalName" → "MiddleName" → "FinalName"
+        /// Column history: "OriginalName" → "MiddleName" → "FinalName"
         /// [Rename("OriginalName", "MiddleName")]
         /// public string FinalName { get; set; }
         /// </code>

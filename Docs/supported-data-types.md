@@ -12,11 +12,11 @@ This guide explains:
 * Which types can be overridden with a different storage type
 * Short examples for each supported type
 
-For a broader overview of entity design, see **DEFINING_ENTITIES.md**.
+For a broader overview of entity design, see the **[Defining Entities](./defining-entities.md)** guide.
 
 ---
 
-# How Type Mapping Works
+## How Type Mapping Works
 
 SQLiteXM determines the SQLite storage type from the C# property type when entities are registered.
 
@@ -47,7 +47,7 @@ In practice, this means:
 * `string` maps to `TEXT`
 * `byte[]` maps to `BLOB`
 * `Guid` defaults to `BLOB` but can be stored as `TEXT`
-* Specialized types such as `DateTime`, `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset`, support specific storage strategies
+* Specialized types such as `DateTime`, `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset`, use specific storage strategies
 
 SQLite `INTEGER` is a 64-bit signed value and maps to C# `long`. Smaller integral types such as `int`, `short`, and `byte` are also stored using `INTEGER`.
 
@@ -56,7 +56,7 @@ converter or some other explicit mapping strategy.
 
 ---
 
-# Supported Types Overview
+## Supported Types Overview
 
 | C# Data Type | Default SQLite Storage Type | Override Storage Type |
 |---|---|---|
@@ -94,9 +94,9 @@ Nullable values are stored as `NULL` when the property value is `null`.
 
 ---
 
-# Type-by-Type Examples
+## Type-by-Type Examples
 
-## string
+### string
 
 `string` values are stored as `TEXT`.
 
@@ -108,7 +108,7 @@ public class Person : SxmEntity
 }
 ```
 
-## decimal
+### decimal
 
 `decimal` values are stored as `TEXT` to preserve precision. SQLite REAL cannot safely represent many decimal values.
 
@@ -120,7 +120,7 @@ public class Product : SxmEntity
 }
 ```
 
-## ulong
+### ulong
 
 `ulong` values are stored as fixed-width, zero-padded `TEXT` because SQLite `INTEGER` 
 cannot represent the entire `ulong` range without loss of precision.
@@ -136,7 +136,7 @@ public class SequenceItem : SxmEntity
 }
 ```
 
-## Guid
+### Guid
 
 `Guid` values are stored as `BLOB` by default. Guid values stored as BLOB use the 16‑byte binary representation.
 
@@ -165,7 +165,7 @@ Example:
 
 - `3f2504e0-4f89-11d3-9a0c-0305e82c3301`
 
-## DateTime
+### DateTime
 
 `DateTime` values are stored as `INTEGER` by default. SQLiteXM stores them as .NET ticks.
 
@@ -186,7 +186,7 @@ You can override `DateTime` to `TEXT` to store an ISO 8601 string.
 public DateTime CreatedOn { get; set; }
 ```
 
-## DateTimeOffset
+### DateTimeOffset
 
 `DateTimeOffset` values are stored as `INTEGER` by default using UTC .NET ticks. This preserves the instant represented by the value, 
 but does not preserve the original offset.
@@ -207,7 +207,7 @@ This preserves both the instant and the original offset.
 public DateTimeOffset StartTime { get; set; }
 ```
 
-## DateOnly
+### DateOnly
 
 `DateOnly` values are stored as `INTEGER` by default. SQLiteXM stores them as the number of days since the Unix epoch (`1970-01-01`).
 
@@ -226,7 +226,7 @@ You can override `DateOnly` to `TEXT`.
 public DateOnly Date { get; set; }
 ```
 
-## TimeOnly
+### TimeOnly
 
 `TimeOnly` values are stored as `INTEGER` by default. SQLiteXM stores them as the number of .NET ticks since midnight, 
 preserving the full 100-nanosecond precision of TimeOnly.
@@ -246,7 +246,7 @@ You can override `TimeOnly` to `TEXT`.
 public TimeOnly StartsAt { get; set; }
 ```
 
-## TimeSpan
+### TimeSpan
 
 `TimeSpan` values are stored as `INTEGER` by default. SQLiteXM stores them as the total number of ticks.
 
@@ -265,7 +265,7 @@ You can override `TimeSpan` to `TEXT`.
 public TimeSpan Duration { get; set; }
 ```
 
-## bool
+### bool
 
 `bool` values are stored as `INTEGER`.
 
@@ -277,7 +277,7 @@ public class FeatureFlag : SxmEntity
 }
 ```
 
-## byte
+### byte
 
 `byte` values are stored as `INTEGER`.
 
@@ -289,7 +289,7 @@ public class PacketHeader : SxmEntity
 }
 ```
 
-## sbyte
+### sbyte
 
 `sbyte` values are stored as `INTEGER`.
 
@@ -301,7 +301,7 @@ public class SignedCounter : SxmEntity
 }
 ```
 
-## short
+### short
 
 `short` values are stored as `INTEGER`.
 
@@ -313,7 +313,7 @@ public class Sample : SxmEntity
 }
 ```
 
-## ushort
+### ushort
 
 `ushort` values are stored as `INTEGER`.
 
@@ -325,7 +325,7 @@ public class PortInfo : SxmEntity
 }
 ```
 
-## int
+### int
 
 `int` values are stored as `INTEGER`.
 
@@ -337,7 +337,7 @@ public class UserProfile : SxmEntity
 }
 ```
 
-## uint
+### uint
 
 `uint` values are stored as `INTEGER`.
 
@@ -349,7 +349,7 @@ public class Counter : SxmEntity
 }
 ```
 
-## long
+### long
 
 `long` values are stored as `INTEGER`.
 
@@ -363,7 +363,7 @@ public class LogRecord : SxmEntity
 }
 ```
 
-## float
+### float
 
 `float` values are stored as `REAL`.
 
@@ -375,7 +375,7 @@ public class Reading : SxmEntity
 }
 ```
 
-## double
+### double
 
 `double` values are stored as `REAL`.
 
@@ -387,7 +387,7 @@ public class Measurement : SxmEntity
 }
 ```
 
-## byte[]
+### byte[]
 
 `byte[]` values are stored as `BLOB`.
 
@@ -401,11 +401,11 @@ public class FileChunk : SxmEntity
 
 ---
 
-# Storage Overrides That Are Supported
+## Storage Overrides That Are Supported
 
 Only a few C# types support an alternate SQLite storage type.
 
-## Supported overrides
+### Supported overrides
 
 | C# Data Type | Default Storage | Supported Override |
 |---|---|---|
@@ -446,23 +446,23 @@ These types do not currently support a different SQLite storage type through the
 
 ---
 
-# Practical Recommendations
+## Practical Recommendations
 
-## Use the default mapping unless you need a specific format
+### Use the default mapping unless you need a specific format
 
 The default mapping is usually the best choice.
 
-## Override only when needed
+### Override only when needed
 
 Use `DataType = SQLiteXM.DataType.Text` only when you want a human-readable or interoperable representation for a supported type.
 
-## Keep related data consistent
+### Keep related data consistent
 
 If multiple entities use the same C# type for the same kind of data, consider keeping the same storage representation across the application.
 
 ---
 
-# Summary
+## Summary
 
 SQLiteXM supports common numeric, text, binary, and date/time C# types.
 

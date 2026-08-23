@@ -3,7 +3,7 @@
 SQLiteXM creates a corresponding table for an entity the first time the entity is registered via `RegisterEntitiesAsync`.
 During subsequent registrations, SQLiteXM compares the entity to the existing database schema and applies any supported schema changes.
 
-As part of this process, SQLiteXM creates and updates columns, indexes, triggers, foreign keys, and other schema objects to reflect the entity and its applied attributes.
+As part of this process, SQLiteXM creates and updates supported schema objects, including columns, indexes, foreign keys, etc., to reflect the entity and its applied attributes.
 One of the most common ORM concerns is what happens when an entity changes over time?
 
 SQLiteXM follows a conservative, schema-first approach:
@@ -67,11 +67,11 @@ If a column exists in the database but is no longer included in the entity model
 
 ⚠️ Important: Removing a mapped property drops its column
 
-Removing a mapped property from an existing entity is a database schema change, not just a code change. During the next RegisterEntitiesAsync call, SQLiteXM will attempt to drop the corresponding column from the database table.
+Removing a mapped property from an existing entity is a database schema change, not just a code change. During the next `RegisterEntitiesAsync` call, SQLiteXM will attempt to drop the corresponding column from the database table.
 
 This permanently deletes any data stored in that column.
 
-For example, if you remove EmailAddress from an existing Customer entity, SQLiteXM will treat the existing EmailAddress column as no longer part of the entity schema and will attempt to drop it.
+For example, if you remove `EmailAddress` from an existing `Customer` entity, SQLiteXM will treat the existing `EmailAddress` column as no longer part of the entity schema and will attempt to drop it.
 
 Note: Columns that are still referenced by indexes or triggers or are still required by other schema objects or otherwise violate SQLite's requirements for `DROP COLUMN` cannot be dropped.
 
@@ -142,7 +142,9 @@ Yes, when you tell it how.
 Use the `[Rename]` attribute to rename a column and preserve all data. SQLiteXM searches the rename history in the `[Rename]` attribute from newest to oldest and renames the 
 first matching existing column it finds. 
 
-In the example below, SQLiteXM will rename the existing 'FirstName' column to 'GivenName' while preserving existing data.
+### Single Rename
+
+If a property was previously named `FirstName` and is now named `GivenName`, specify the previous name:
 
 ```csharp
 public class Customer : SxmEntity
@@ -151,8 +153,53 @@ public class Customer : SxmEntity
     public string GivenName { get; set; }
 }
 ```
+If the database table currently contains a `FirstName` column, SQLiteXM renames it to `GivenName` rather than dropping the 
+old column and creating a new one. Existing data is preserved.
 
 This is the recommended way to evolve a property name without losing data.
+
+### Multiple Renames
+
+[Rename] also supports a property that has been renamed multiple times over the lifetime of an application.
+
+Suppose a property evolved through these names:
+```text
+OriginalName → MiddleName → FinalName
+```
+The current property is `FinalName`. Its rename history should contain the previous names in chronological order, from oldest to newest:
+
+```csharp
+public class Example : SxmEntity
+{
+    [Rename("OriginalName", "MiddleName")]
+    public string FinalName { get; set; }
+}
+```
+
+The arguments represent the column's naming history:
+```text
+"OriginalName" → "MiddleName" → "FinalName"
+       ↑                ↑              ↑
+    oldest           previous        current
+```
+
+SQLiteXM searches the rename history from newest to oldest and renames the first matching existing column it finds.
+
+This allows the same entity definition to handle databases that may be at different stages of the application's schema history. For example:
+
+- Database A still has `OriginalName`
+- Database B has already been migrated to `MiddleName`
+- Database C already has `FinalName`
+
+The same current entity definition:
+```csharp
+[Rename("OriginalName", "MiddleName")]
+public string FinalName { get; set; }
+```
+
+can recognize either previous name and bring the database to the current FinalName.
+
+> **Important:** Rename names must be supplied in chronological order, from oldest to newest. SQLiteXM searches them in reverse order when looking for an existing column.
 
 ## Does SQLiteXM Support Dropping Tables?
 
@@ -193,14 +240,13 @@ SQLite does not provide direct ALTER TABLE support for modifying foreign key con
 |---------------|------------------------|--------------------|
 | Add column | Yes | Uses `ALTER TABLE ADD COLUMN` |
 | Drop column | Yes | Column must not be referenced by indexes or triggers |
-| Rename column | Yes | Uses `ALTER TABLE RENAME COLUMN` |
 | Add index | Yes | All index types supported |
 | Remove index | Yes | Drops index via `DROP INDEX` |
 | Modify index | Yes | SQLiteXM drops + recreates index |
 | Add trigger | Yes | Creates trigger via `CREATE TRIGGER` |
 | Remove trigger | Yes | Drops trigger via `DROP TRIGGER` |
 | Modify trigger | Yes | SQLiteXM drops + recreates trigger |
-| Rename column via `[Rename]` | Yes | Preserves data during property renames |
+| Rename column via `[Rename]` | Yes | Uses `ALTER TABLE RENAME COLUMN`; `[Rename]` is used to identify the previous column(s) |
 
 
 ## Unsupported (Unsafe) Schema Changes 
