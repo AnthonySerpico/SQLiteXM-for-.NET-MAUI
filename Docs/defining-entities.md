@@ -516,6 +516,50 @@ public class AuditLog : SxmEntity
 
 ---
 
+## Advanced Details
+
+### Inherited Properties
+
+SQLiteXM maps public instance properties inherited from base classes as well as
+properties declared directly on the entity.
+
+This allows common properties to be defined once in a base entity class and
+automatically included in derived entities.
+
+For example:
+
+```csharp
+public abstract class DomainEntity : SxmEntity
+{
+	public DateTime CreatedAt { get; set; }
+	public DateTime ModifiedAt { get; set; }
+}
+
+[Table(IsColumnAttributeRequired = false)]
+public class Customer : DomainEntity
+{
+	public string? Name { get; set; }
+}
+```
+
+Because `Customer` inherits from `DomainEntity`, SQLiteXM maps `CreatedAt` and
+`ModifiedAt` in addition to `Name`.
+
+The resulting `Customer` table contains:
+
+| C#  Property| | SQLite Column |
+|---|---|---|
+|`CreatedAt`     | ─────►  | `CreatedAt` column
+|`ModifiedAt`     | ─────►  | `ModifiedAt` column
+|`Name` Property     | ─────►  | `Name` column
+
+Inherited properties follow the same mapping rules as properties declared
+directly on the entity. `[Column]`, `[NotColumn]`, and
+`[Table(IsColumnAttributeRequired = ...)]` apply to inherited properties as
+well.
+
+---
+
 ## Summary
 
 SQLiteXM entities are plain C# classes with attribute-based mapping.

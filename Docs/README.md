@@ -52,6 +52,10 @@ LINQ, SQL, entity persistence, and transactions.
 
 **Read this when:** You are ready to build your application's data access logic.
 
+### [LINQ Queries](linq-queries.md)
+
+Learn SQLiteXM LINQ extensions and how to use LINQ to query and manipulate data in SQLiteXM, including filtering,
+
 ---
 
 ## ⚙️ Configure Your Database
@@ -118,6 +122,7 @@ Follow this path:
 1. **[Getting Started](getting-started.md)**
 2. **[Defining Entities](defining-entities.md)**
 3. **[Working with Data](working-with-data.md)**
+4. **[LINQ Queries](linq-queries.md)** — when you want to use type-safe queries
 
 This is enough to get SQLiteXM running and begin building an application.
 
@@ -146,6 +151,7 @@ When your application begins evolving:
 | [Getting Started](getting-started.md) | Complete first-use walkthrough | **Start here** |
 | [Defining Entities](defining-entities.md) | Entity and schema definition | When designing your data model |
 | [Working with Data](working-with-data.md) | Querying and modifying data | When building data access |
+| [LINQ Queries](linq-queries.md) | LINQ query guide | When using LINQ or bulk operations |
 | [Supported Data Types](supported-data-types.md) | C# → SQLite type reference | When choosing entity property types |
 | [Applying Database Options](database-configuration-and-initialization.md) | Database options and configuration | When configuring initialization |
 | [SQL Statement File](sql-statement-file.md) | `SqlStatements.json` reference | When configuring the statement file |
@@ -163,6 +169,7 @@ If you are not sure where to look:
 - **"How do I define my entity?"** → [Defining Entities](defining-entities.md)
 - **"What data types can I use?"** → [Supported Data Types](supported-data-types.md)
 - **"How do I query or save data?"** → [Working with Data](working-with-data.md)
+- **"How do I use LINQ?"** → [LINQ Queries](linq-queries.md)
 - **"How do I apply database options?"** → [Applying Database Options and Configuration](database-configuration-and-initialization.md)
 - **"What goes in `SqlStatements.json`?"** → [SQL Statement File](sql-statement-file.md)
 - **"What happens when my schema changes?"** → [Schema Evolution](schema-evolution.md)

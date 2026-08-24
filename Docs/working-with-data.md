@@ -94,7 +94,7 @@ The static method `SxmSql.RunStatementAsync` runs a single SQL statement and ret
 
 ### Quick start — embedded SQL
 
-The simplest way to use `SxmSql.RunStatementAsync` is to pass the SQL text directly to the `RunStatementAsync` method. This is called *embedded* SQL because the statement lives inline in your C# code. See the three examples below.
+The simplest way to use `SxmSql.RunStatementAsync` is to pass the SQL text directly to the `RunStatementAsync` method. This is called *embedded* SQL because the statement lives inline in your C# code. See the four examples below.
 
 (1) Dictionary result, no SQL parameters:
 
@@ -117,11 +117,25 @@ The example above shows another simple SQL SELECT. It returns a `List` of `Custo
 ```csharp
 var parms = new Dictionary<string, object?> { ["MinAmount"] = 100m };
 
-List<Order> big = await SxmSql.RunStatementAsync<Order>("SELECT id, Product, Amount FROM `Order` WHERE Amount >= @MinAmount", parms);
+string sql = "SELECT id, Product, Amount FROM `Order` WHERE Amount >= @MinAmount";
+List<Order> big = await SxmSql.RunStatementAsync<Order>(sql, parms);
 ```
 
 The example above shows a SQL SELECT that takes one named parameter; `@MinAmount`. It returns a `List` of `Order` objects where each `Order` in the List represents a single row returned by the query.
 
+**(4) Positional parameters:**
+
+SQLiteXM also supports positional SQL parameters. Pass the values in a `List<object>` in the same order as the placeholders appear in the SQL statement:
+
+```csharp
+List<object> parms = new List<object> { 42L, 100m };
+
+string sql = "SELECT id, Product, Amount FROM `Order` WHERE CustomerId = @p0 AND Amount >= @p1";
+List<Order> orders = await SxmSql.RunStatementAsync<Order>(sql, parms);
+```
+💡 Named parameters are recommended over positional parameters for most SQL. Positional parameters can be useful when there are only one or two parameters 
+and the SQL is unlikely to change. However, named parameters make the relationship between SQL and its arguments clearer and are less sensitive to 
+changes.
 
 ### Writing and Modifying Data with `RunStatementAsync`
 
@@ -303,6 +317,20 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 Because commit and rollback are automatic, most code never calls `CommitTransactionAsync` or `RollbackTransactionAsync` explicitly, however they are available for the cases that need finer control.
 
+### Creating transactions asynchronously
+
+Creating a transaction with `new SxmTransaction()` is, of course, synchronous. You can also create transactions asynchronously with 
+`await SxmTransaction.CreateAsync()`. 
+
+```csharp
+await using (SxmTransaction ctx = await SxmTransaction.CreateAsync())
+{
+    // ... statements ...
+}
+```
+
+Usually this is not necessary as `new SxmTransaction()` typically completes quickly. However, `CreateAsync()` is useful when transaction creation may 
+perform work that you do not want to perform synchronously, such as a long-running `OnConnectionOpened` callback or code running on a UI thread.
 
 ### Entity DML inside a transaction
 
@@ -399,7 +427,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 In the example above, `ctx.GetTable<T>()` returns a queryable table backed by the transaction. Standard LINQ operators, along with the async and bulk-write extensions provided by SQLiteXM, all run inside the same transaction as do any `ctx.RunStatementAsync(...)` or entity DML included in the block.
 
 
-For the full LINQ reference, see [LINQ Support](./linq-support.md).
+For the full LINQ reference, see [LINQ Queries](./linq-queries.md).
 
 ### Manual commit and rollback (optional)
 

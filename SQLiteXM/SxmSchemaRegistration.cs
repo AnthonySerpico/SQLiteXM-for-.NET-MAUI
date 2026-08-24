@@ -184,7 +184,7 @@ internal static class SxmSchemaRegistration
         }
 
         Lazy<Task> lazyInit = _initTasks.GetOrAdd(tableName, _ => new Lazy<Task>(
-                () => Task.Run(async () =>
+                /*() => Task.Run*/(async () =>
                 {
                     Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
