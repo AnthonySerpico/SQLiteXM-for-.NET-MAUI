@@ -317,21 +317,6 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 Because commit and rollback are automatic, most code never calls `CommitTransactionAsync` or `RollbackTransactionAsync` explicitly, however they are available for the cases that need finer control.
 
-### Creating transactions asynchronously
-
-Creating a transaction with `new SxmTransaction()` is, of course, synchronous. You can also create transactions asynchronously with 
-`await SxmTransaction.CreateAsync()`. 
-
-```csharp
-await using (SxmTransaction ctx = await SxmTransaction.CreateAsync())
-{
-    // ... statements ...
-}
-```
-
-Usually this is not necessary as `new SxmTransaction()` typically completes quickly. However, `CreateAsync()` is useful when transaction creation may 
-perform work that you do not want to perform synchronously, such as a long-running `OnConnectionOpened` callback or code running on a UI thread.
-
 ### Entity DML inside a transaction
 
 `SaveAsync()` and `DeleteAsync()` detect the ambient transaction automatically. The call site is identical to the standalone case — no transaction argument, no enlistment method:
@@ -447,7 +432,7 @@ CommitTransactionAsync() ends the current transaction but does not dispose the S
 
 `RollbackTransactionAsync()` discards the current transaction's work and clears the transaction's faulted state, so the transaction can also be reused for subsequent work.
 
----
+
 
 ## Using LINQ, SQL, and Entity DML in One Transaction
 
@@ -484,6 +469,79 @@ await using (SxmTransaction ctx = new SxmTransaction())
 ```
 
 > This is the pattern to use when business logic needs to read data, make decisions, modify entities, and perform SQL-based side effects while guaranteeing that all of the resulting changes succeed or fail together.
+
+---
+
+## Transaction performance and threading
+
+Do not use Task.Run to create a transaction on a background thread and then use that transaction outside the Task.Run execution flow.
+Doing so can break SQLiteXM's ambient transaction architecture.
+```csharp
+// DO NOT DO THIS — IT CAN BREAK THE AMBIENT TRANSACTION
+SxmTransaction? ctx = null;
+await Task.Run(() => ctx = new SxmTransaction(), default);
+
+await using (ctx)
+{
+    // ... statements ...
+}
+```
+
+You might be tempted to do something like this from the UI thread to avoid blocking while the transaction is created:
+```csharp
+await Task.Run(async () =>
+{
+    await using (var ctx = new SxmTransaction())
+    {
+        // ... statements ...
+    }
+});
+```
+In this case, the transaction is safely created and used within the same `Task.Run` execution flow. While this will 
+work, it is rarely necessary for typical operations.
+
+With connection pooling enabled (the default), `new SxmTransaction()` typically completes very quickly. In testing on a 
+laptop of average performance, transaction creation completed in less than 1 ms. 
+
+**When to consider `Task.Run`:**
+
+`Task.Run` does not make database operations inherently faster. Its purpose in this context is to keep
+the UI thread responsive when database work is expected to occupy the calling thread for a noticeable
+amount of time.
+
+Consider moving the entire database operation to a background thread when the operation is expected to 
+take long enough to affect UI responsiveness, such as when performing:
+
+- **Bulk operations**: Inserting, updating, or deleting large numbers of records
+- **Large queries**: Retrieving datasets with hundreds or thousands of rows
+- **Expensive queries**: Complex joins, subqueries, aggregations (`SUM`, `AVG`, `GROUP BY`), or full table scans
+- **Frequent rapid operations**: For example, saving on every keystroke in a search-as-you-type scenario
+
+**Example of bulk operation that benefits from `Task.Run`:**
+```csharp
+// Good: bulk insert of 10,000 records on background thread
+await Task.Run(async () =>
+{
+    await using (var ctx = new SxmTransaction())
+    {
+        for (int i = 0; i < 10000; i++)
+        {
+            var customer = new Customer { Name = $"Customer {i}" };
+            await customer.SaveAsync();
+        }
+    }
+});
+```
+On our test laptop, this bulk insert of 10,000 records completed in about
+0.5 seconds. This includes transaction creation, all 10,000 inserts, and the
+final commit. The point of using `Task.Run` here is not to reduce that
+execution time, but to prevent the approximately 0.5 seconds of database work
+from occupying the UI thread.
+
+**Another consideration:**
+
+A long-running `OnConnectionOpened` callback can also cause noticeable delays when creating a transaction on the UI 
+thread. If your callback performs significant work, move the long-running work in the callback to a background thread.
 
 ---
 

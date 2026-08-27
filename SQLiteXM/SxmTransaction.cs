@@ -97,27 +97,7 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Creates a new <see cref="SxmTransaction"/> asynchronously by offloading the synchronous
-        /// constructor to a background thread. Use this factory method in MAUI UI contexts where
-        /// blocking the UI thread during transaction initialization (schema validation, callbacks, etc.)
-        /// would cause responsiveness issues.
-        /// </summary>
-        /// <param name="databaseName">Optional database name. Uses the default database if null.</param>
-        /// <param name="cancellationToken">Cancellation token to abort the initialization if needed. 
-        /// The cancellation token can prevent initialization from starting if cancellation occurs before 
-        /// the background operation begins. It cannot interrupt constructor work that has already started.</param>
-        /// <returns>A task that completes with an initialized <see cref="SxmTransaction"/>.</returns>
-        /// <remarks>
-        /// For background/service code, prefer the synchronous constructor <c>new SxmTransaction(databaseName)</c>
-        /// to avoid unnecessary thread pool scheduling overhead.
-        /// </remarks>
-        public static Task<SxmTransaction> CreateAsync(string? databaseName = null, CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => new SxmTransaction(databaseName), cancellationToken);
-        }
-
-        /// <summary>
-        /// Private ctor used by <see cref="CreateAsync"/>. Receives an already-resolved
+        /// Private ctor used for shared connection scenarios. Receives an already-resolved
         /// <see cref="SxmSqlTransaction"/> (connection lock acquired and ambient registered by the caller).
         /// </summary>
         private SxmTransaction(SxmSqlTransaction transaction, bool ownsTransaction)

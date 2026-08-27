@@ -411,7 +411,7 @@ namespace SQLiteXM
         /// checks, WHERE clauses, and relationship linking.
         /// </remarks>        
         [SuppressMessage("Naming", "IDE1006:Naming Styles", Justification = "Public column name preserved to match DB schema and external consumers.")]
-        [Column, PrimaryKey]
+        [Column, PrimaryKey, Identity]
         public virtual long id { get; internal set; }
 
         /// <summary>

@@ -135,7 +135,10 @@ public abstract class TestBase : IDisposable
             typeof(DropTableTests.DropTestChildEntity20A),
             typeof(DropTableTests.DropTestChildEntity20B),
             typeof(DropTableTests.DropTestEntity21),
-            typeof(DropTableTests.DropTestEntity22)
+            typeof(DropTableTests.DropTestEntity22),
+            // LINQ Query Documentation test entities (from LinqQueryDocumentationTests.cs)
+            typeof(LinqQueryDocumentationTests.Customer),
+            typeof(LinqQueryDocumentationTests.Order)
             // NOTE: Column rename test entities are NOT registered here - tests register them individually
             // after setting up test data to properly exercise the rename migration logic
         ).GetAwaiter().GetResult();
@@ -250,7 +253,10 @@ public abstract class TestBase : IDisposable
             typeof(DropTableTests.DropTestChildEntity20A),
             typeof(DropTableTests.DropTestChildEntity20B),
             typeof(DropTableTests.DropTestEntity21),
-            typeof(DropTableTests.DropTestEntity22)
+            typeof(DropTableTests.DropTestEntity22),
+            // LINQ Query Documentation test entities (from LinqQueryDocumentationTests.cs)
+            typeof(LinqQueryDocumentationTests.Customer),
+            typeof(LinqQueryDocumentationTests.Order)
             // NOTE: Column rename test entities are NOT registered here - tests register them individually
             // after setting up test data to properly exercise the rename migration logic
         );
@@ -392,7 +398,10 @@ public abstract class TestBase : IDisposable
             typeof(DropTableTests.DropTestChildEntity20A),
             typeof(DropTableTests.DropTestChildEntity20B),
             typeof(DropTableTests.DropTestEntity21),
-            typeof(DropTableTests.DropTestEntity22)
+            typeof(DropTableTests.DropTestEntity22),
+            // LINQ Query Documentation test entities
+            typeof(LinqQueryDocumentationTests.Customer),
+            typeof(LinqQueryDocumentationTests.Order)
         };
 
         var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);

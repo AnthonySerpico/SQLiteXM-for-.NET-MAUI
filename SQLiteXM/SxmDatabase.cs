@@ -40,6 +40,8 @@ namespace SQLiteXM
         // Reads outside the gate are safe because false positives only cause an extra wait.
         private static bool _initialized = false;
 
+        private static bool _linqToDbWarmedUp = false;
+
 #if DEBUG
         /// <summary>
         /// Resets all static initialization state to allow re-initialization.
@@ -172,6 +174,29 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Warms up LinqToDB's data provider, mapping schema, and internal caches by creating
+        /// and disposing a transaction. This eliminates the ~120ms first-transaction penalty
+        /// that would otherwise occur on-demand during the app's first database operation.
+        /// </summary>
+        private static async Task WarmupLinqToDbAsync()
+        {
+            try
+            {
+                await Task.Run(async () =>
+                {
+                    // Create and immediately dispose a transaction.
+                    // This triggers LinqToDB initialization (provider, mappings, caches).
+                    await using var _ = new SxmTransaction();
+                });
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail if warmup fails
+                SxmLogging.Log(ex, "LinqToDB warmup failed during entity registration.");
+            }
+        }
+
+        /// <summary>
         /// Initialize the database using SQL statements parsed from the provided stream.
         /// </summary>
         /// <param name="stream">Open, readable stream containing SQL statement definitions.</param>
@@ -250,6 +275,13 @@ namespace SQLiteXM
             foreach (var type in entityTypes)
             {
                 await SxmSchemaRegistration.RegisterEntitySchemaAsync(type).ConfigureFalse();
+            }
+
+            // Warm up LinqToDB once after first entity registration
+            if (!_linqToDbWarmedUp)
+            {
+                await WarmupLinqToDbAsync().ConfigureFalse();
+                _linqToDbWarmedUp = true;
             }
 
             // Add a check to see if there are any unassigned triggers in the TriggerStatements collection. This would indicate

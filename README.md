@@ -28,7 +28,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 197 tests |
+| Automated Test Coverage | 240 tests |
 
 ---
 
@@ -181,7 +181,7 @@ await using (var ctx = new SxmTransaction())
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **197 tests** (196 passing, 1 intentionally skipped) covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **240 tests** covering real-world scenarios.
 
 ### Test Coverage
 
@@ -194,11 +194,12 @@ SQLiteXM includes a comprehensive test suite with **197 tests** (196 passing, 1 
 | LINQ Queries | 7 tests | ✅ 100% |
 | Advanced LINQ | 12 tests | ✅ 100% |
 | LINQ Transactions | 6 tests | ✅ 100% |
-| Bulk LINQ Operations | 11 tests (1 skipped) | ✅ 100%* |
+| Bulk LINQ Operations | 11 tests | ✅ 100% |
 | Transactions | 7 tests | ✅ 100% |
 | Multi-Database | 11 tests | ✅ 100% |
 | Multi-Database LINQ | 18 tests | ✅ 100% |
 | Multi-Database Performance | 10 tests | ✅ 100% |
+| LINQ documentation tests| 43 tests | ✅ 100% |
 | Drop Table | 22 tests | ✅ 100% |
 | Column Rename | 10 tests | ✅ 100% |
 | Shared Connections | 7 tests | ✅ 100% |
@@ -206,9 +207,7 @@ SQLiteXM includes a comprehensive test suite with **197 tests** (196 passing, 1 
 | Submit Changes | 4 tests | ✅ 100% |
 | Fail-Fast Validation | 5 tests | ✅ 100% |
 | Mixed Operation Transactions | 13 tests | ✅ 100% |
-| **Total** | **197 tests** | **✅ 100%** |
-
-**Note:** 1 test intentionally skipped due to a known LINQ limitation (documented in test comments).
+| **Total** | **240 tests** | **✅ 100%** |
 
 ### Performance Benchmarks (from test suite)
 

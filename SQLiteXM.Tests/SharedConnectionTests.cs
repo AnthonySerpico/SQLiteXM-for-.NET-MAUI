@@ -152,13 +152,12 @@ public class SharedConnectionTests : TestBase
                 // Delete entity
                 await entity.DeleteAsync();
 
-                // Re-create entity (new ID)
+                // Re-create entity (SQLite may reuse the ID - that's normal behavior)
                 entity.id = 0; // Reset ID to force insert
                 entity.Age = 52;
                 await entity.SaveAsync();
 
-                entity.id.Should().BeGreaterThan(0);
-                entity.id.Should().NotBe(savedId, "new insert should get new ID");
+                entity.id.Should().BeGreaterThan(0, "new insert should get valid ID");
 
                 await transaction.CommitTransactionAsync();
             }

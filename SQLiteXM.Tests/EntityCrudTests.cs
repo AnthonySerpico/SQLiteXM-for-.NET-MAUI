@@ -96,10 +96,10 @@ public class EntityCrudTests : TestBase
         // Assert - Verify entity was actually deleted from database
         await VerifyEntityNotInDbAsync<SimpleEntity>(savedId);
 
-        // Verify deletion by creating new entity - it should get a different id
+        // Verify we can create a new entity after deletion (ID may be reused - that's normal SQLite behavior)
         var newEntity = new SimpleEntity { Name = "After Delete" };
         await newEntity.SaveAsync();
-        newEntity.id.Should().NotBe(savedId, "new entity should get different id");
+        newEntity.id.Should().BeGreaterThan(0, "new entity should get a valid ID");
     }
 
     [Fact]
