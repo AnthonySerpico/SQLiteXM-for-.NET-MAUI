@@ -19,12 +19,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Compile Remove="Platforms\**" />
-	  <EmbeddedResource Remove="Platforms\**" />
-	  <None Remove="Platforms\**" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<Compile Remove="SxmDeleteHelpers.cs" />
 		<Compile Remove="SxmInsertHelpers.cs" />
 		<Compile Remove="SxmSqlStatementsUnused.cs" />
@@ -43,8 +37,6 @@
 	<!-- Optional: if you want to ship your example SQL statements as content in the package -->
 	<ItemGroup>
 		<None Include="SqlStatements\ExampleSqlStatements.json" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.json" />
-
-		<None Include="SqlStatements\ExampleSqlStatements.xml" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.xml" />
 
 		<None Include="SxmSqliteMetadataExtractor.cs" />
 	</ItemGroup>

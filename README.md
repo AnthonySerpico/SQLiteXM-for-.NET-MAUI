@@ -281,19 +281,15 @@ dotnet add package SQLiteXM
 
 ---
 
-## 🤝 Contributing
-
-Contributions welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
-
 ## 📄 License
 
-MIT License - see [LICENSE](./LICENSE) for details.
+MIT License - see [LICENSE](./LICENSE.txt) for details.
 
 ## 🙏 Acknowledgments
 
-- Built on [Microsoft.Data.Sqlite]()
-- LINQ support via [LinqToDB]()
-- Inspired by Entity Framework Core, Dapper, and SQLite-net
+- Built on **Microsoft.Data.Sqlite**
+- LINQ support via **LinqToDB**
+- Inspired by **Entity Framework Core**, **Dapper**, and **SQLite-net**
 
 ---
 
