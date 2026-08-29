@@ -24,22 +24,18 @@ namespace SQLiteXM
             }
         }
 
-        public static async Task OnSleepAsync()
+        public static void OnSleep  ()
         {
             if (Interlocked.Exchange(ref _suspended, 1) == 1)
                 return;
-
-            // cancel any prior sleep delay
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
 
             SxmConnection.BlockNewOperations();
 
             try
             {
-                await Task.Delay(_suspendGracePeriod, _cts.Token).ConfigureFalse();
+                Thread.Sleep(_suspendGracePeriod);  // Actually blocks, giving real time
             }
-            catch (OperationCanceledException)
+            catch (ArgumentOutOfRangeException)
             {
                 // resumed before grace period finished
             }
@@ -47,8 +43,6 @@ namespace SQLiteXM
 
         public static void OnResume()
         {
-            _cts?.Cancel();
-
             if (Interlocked.Exchange(ref _suspended, 0) == 0)
                 return;
 

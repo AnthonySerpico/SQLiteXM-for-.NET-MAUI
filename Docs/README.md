@@ -101,7 +101,7 @@ for different types of data.
 
 ---
 
-## 🎨 .NET MAUI UI Integration
+## 🎨 .NET MAUI Integration
 
 ### [INotifyPropertyChanged](inotifypropertychanged.md)
 
@@ -110,6 +110,14 @@ Learn how SQLiteXM entities integrate with .NET MAUI data binding through
 
 **Read this when:** You want SQLiteXM entities to participate directly in
 MAUI UI binding and automatically notify the UI when properties change.
+
+### [Application Lifecycle](application-lifecycle.md)
+
+Learn how SQLiteXM integrates with MAUI's application lifecycle events to manage
+database operations during app suspension and resume.
+
+**Read this when:** You want to add best-effort protection for database operations
+during mobile app backgrounding (optional, recommended for iOS and Android apps).
 
 ---
 
@@ -134,6 +142,7 @@ After the basics, explore the topics relevant to your application:
 - **[Applying Database Options](database-configuration-and-initialization.md)** — when applying options to your database
 - **[SQL Statement File](sql-statement-file.md)** — when configuring `SqlStatements.json`
 - **[INotifyPropertyChanged](inotifypropertychanged.md)** — when binding entities to the MAUI UI
+- **[Application Lifecycle](application-lifecycle.md)** — when building mobile apps (optional)
 
 ### Maintaining an Existing Application
 
@@ -158,6 +167,7 @@ When your application begins evolving:
 | [Schema Evolution](schema-evolution.md) | Database schema changes | When your model evolves |
 | [Multiple Databases](multiple-databases.md) | Multiple SQLite databases | When one database isn't enough |
 | [INotifyPropertyChanged](inotifypropertychanged.md) | MAUI binding integration | When connecting entities to the UI |
+| [Application Lifecycle](application-lifecycle.md) | MAUI lifecycle integration | Optional, for mobile app backgrounding |
 
 ---
 
@@ -175,3 +185,4 @@ If you are not sure where to look:
 - **"What happens when my schema changes?"** → [Schema Evolution](schema-evolution.md)
 - **"How do I use multiple databases?"** → [Multiple Databases](multiple-databases.md)
 - **"How do entities work with MAUI binding?"** → [INotifyPropertyChanged](inotifypropertychanged.md)
+- **"How do I handle app suspension on mobile?"** → [Application Lifecycle](application-lifecycle.md)

@@ -28,6 +28,8 @@
 		<Compile Remove="SxmDeleteHelpers.cs" />
 		<Compile Remove="SxmInsertHelpers.cs" />
 		<Compile Remove="SxmSqlStatementsUnused.cs" />
+		<Compile Remove="SxmStore.cs" />
+		<Compile Remove="SxmStoreEntity.cs" />
 		<Compile Remove="SxmSTransaction.cs" />
 		<Compile Remove="SxmTransactionHelper.cs" />
 		<Compile Remove="SxmUpdateHelpers.cs" />
