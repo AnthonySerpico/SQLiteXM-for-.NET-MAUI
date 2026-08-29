@@ -54,7 +54,15 @@ LINQ, SQL, entity persistence, and transactions.
 
 ### [LINQ Queries](linq-queries.md)
 
-Learn SQLiteXM LINQ extensions and how to use LINQ to query and manipulate data in SQLiteXM, including filtering,
+Learn SQLiteXM LINQ extensions and how to use LINQ to query and manipulate data in SQLiteXM.
+
+### [Concurrency](concurrency.md)
+
+Learn how to safely use SQLiteXM in concurrent scenarios, including which patterns
+are safe, which are unsafe, and how to structure your code for concurrent operations.
+
+**Read this when:** You need to perform database operations concurrently using
+`Task.WhenAll`, parallel tasks, or background threads.
 
 ---
 
@@ -139,6 +147,7 @@ This is enough to get SQLiteXM running and begin building an application.
 After the basics, explore the topics relevant to your application:
 
 - **[Supported Data Types](supported-data-types.md)** — when defining properties
+- **[Concurrency](concurrency.md)** — when performing concurrent operations
 - **[Applying Database Options](database-configuration-and-initialization.md)** — when applying options to your database
 - **[SQL Statement File](sql-statement-file.md)** — when configuring `SqlStatements.json`
 - **[INotifyPropertyChanged](inotifypropertychanged.md)** — when binding entities to the MAUI UI
@@ -161,6 +170,7 @@ When your application begins evolving:
 | [Defining Entities](defining-entities.md) | Entity and schema definition | When designing your data model |
 | [Working with Data](working-with-data.md) | Querying and modifying data | When building data access |
 | [LINQ Queries](linq-queries.md) | LINQ query guide | When using LINQ or bulk operations |
+| [Concurrency](concurrency.md) | Concurrent operations guide | When performing concurrent operations |
 | [Supported Data Types](supported-data-types.md) | C# → SQLite type reference | When choosing entity property types |
 | [Applying Database Options](database-configuration-and-initialization.md) | Database options and configuration | When configuring initialization |
 | [SQL Statement File](sql-statement-file.md) | `SqlStatements.json` reference | When configuring the statement file |
@@ -180,7 +190,8 @@ If you are not sure where to look:
 - **"What data types can I use?"** → [Supported Data Types](supported-data-types.md)
 - **"How do I query or save data?"** → [Working with Data](working-with-data.md)
 - **"How do I use LINQ?"** → [LINQ Queries](linq-queries.md)
-- **"How do I apply database options?"** → [Applying Database Options and Configuration](database-configuration-and-initialization.md)
+- **"How do I perform concurrent operations?"** → [Concurrency](concurrency.md)
+- **"How do I apply database options?"** → [Applying Database Options](database-configuration-and-initialization.md)
 - **"What goes in `SqlStatements.json`?"** → [SQL Statement File](sql-statement-file.md)
 - **"What happens when my schema changes?"** → [Schema Evolution](schema-evolution.md)
 - **"How do I use multiple databases?"** → [Multiple Databases](multiple-databases.md)
