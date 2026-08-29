@@ -658,19 +658,19 @@ var query = customers
 
 ---
 
-## Working with Multiple Databases
+## Working with Multiple SQLite Databases
 
-When your application uses multiple databases, specify which database when creating the transaction:
+When your application uses multiple SQLite databases, specify which database when creating the transaction:
 
 ```csharp
-// Query the default database
+// Query the default SQLite database
 await using (SxmTransaction ctx = new SxmTransaction())
 {
 	SxmTable<Customer> customers = ctx.GetTable<Customer>();
 	List<Customer> all = await customers.ToListAsync();
 }
 
-// Query a specific named database
+// Query a specific named SQLite database
 await using (SxmTransaction ctx = new SxmTransaction("Archive"))
 {
 	SxmTable<Customer> archivedCustomers = ctx.GetTable<Customer>();
@@ -892,7 +892,7 @@ All materialization methods are async and must be awaited:
 - ➡️ [Getting Started](./getting-started.md) - Initialize SQLiteXM and register entities
 - ➡️ [Working with Data](./working-with-data.md) - Entity DML, SQL, and transactions
 - ➡️ [Defining Entities](./defining-entities.md) - Configure entities and indexes
-- ➡️ [Multiple Databases](./multiple-databases.md) - Work with multiple databases
+- ➡️ [Multiple SQLite Databases](./multiple-databases.md) - Work with multiple SQLite databases
 
 ---
 

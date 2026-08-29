@@ -158,7 +158,7 @@ After the basics, explore the topics relevant to your application:
 When your application begins evolving:
 
 - **[Schema Evolution](schema-evolution.md)** — when your data model changes
-- **[Multiple Databases](multiple-databases.md)** — when your application needs separate databases
+- **[Multiple Databases](multiple-databases.md)** — when your application needs separate SQLite databases
 
 ---
 

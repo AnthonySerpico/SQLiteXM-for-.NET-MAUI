@@ -64,9 +64,9 @@ await Task.WhenAll(
 
 ---
 
-### ✅ Concurrent transactions to different databases
+### ✅ Concurrent transactions to different SQLite databases
 
-SQLiteXM supports multiple databases (see [Multi-Database Support](./multi-database.md)). You can safely run concurrent transactions to different databases:
+SQLiteXM supports multiple SQLite databases (see [Multi-Database Support](./multi-database.md)). You can safely run concurrent transactions to different databases:
 
 ```csharp
 // Separate transactions to different databases

@@ -34,7 +34,7 @@ The result is SQLiteXM.
 
 ## 📖 Documentation
 
-See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/README.md#L37)** to find the right guide for where you are in your project.
+See the **[Documentation Guide](Docs/README.md)** to find the right guide for where you are in your project.
 
 ## 🎯 Quick Start (2 Minutes)
 

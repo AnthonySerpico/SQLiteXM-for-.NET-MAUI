@@ -11,7 +11,7 @@ Common scenarios include:
 * Isolating large datasets
 * Organizing data by functional area
 
-This guide explains how to configure and use multiple databases in SQLiteXM.
+This guide explains how to configure and use multiple SQLite databases in SQLiteXM.
 
 ---
 

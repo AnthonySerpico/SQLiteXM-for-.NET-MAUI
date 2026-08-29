@@ -57,8 +57,8 @@ This instructs SQLiteXM to create a SQLite database file named `MainDb` in the a
 - Exactly one database must be marked as the default database
 - You can define as many non-default databases as needed
 
-Most SQLiteXM applications use a single database. However, SQLiteXM also supports applications that need to organize data across 
-multiple databases.
+Most SQLiteXM applications use a single SQLite database. However, SQLiteXM also supports applications that need to organize data across 
+multiple SQLite databases.
 
 For details, see  ➡️ [Multi-Database Configuration](./multiple-databases.md)
 

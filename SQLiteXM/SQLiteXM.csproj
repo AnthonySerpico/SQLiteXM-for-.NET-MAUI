@@ -7,11 +7,19 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
-		<!-- You already had this – keep it if you want to build a NuGet package -->
+		<!-- NuGet Package Metadata -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageId>SQLiteXM</PackageId>
+		<Version>1.0.1</Version>
 		<Authors>Anthony Serpico</Authors>
-		<Title>SQLiteXM - SQLite Database Abstraction Layer</Title>
-		<Description>SQLiteXM makes using SQLite with .NET a snap.</Description>
+		<Title>SQLiteXM - MAUI + SQLite ORM / Database Abstraction Layer</Title>
+		<Description>High-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.</Description>
+		<PackageProjectUrl>https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>sqlite;database;orm;maui;net8;net9;dotnet</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -39,6 +47,9 @@
 		<None Include="SqlStatements\ExampleSqlStatements.json" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.json" />
 
 		<None Include="SxmSqliteMetadataExtractor.cs" />
+
+		<!-- Include README.md in the NuGet package -->
+		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
 	  <PackageReference Include="linq2db" Version="6.3.0" />
