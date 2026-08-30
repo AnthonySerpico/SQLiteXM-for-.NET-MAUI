@@ -1,5 +1,7 @@
 # SQLiteXM for .NET MAUI
 
+[![NuGet](https://img.shields.io/nuget/v/SQLiteXM.svg)](https://www.nuget.org/packages/SQLiteXM/)
+
 SQLiteXM is a high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.
 
 ---
@@ -257,7 +259,7 @@ Basic user registration showing entity definition, save/query, and data binding.
 ### 3. DirectBindingDemo (Simple)
 CollectionView binding with CRUD operations and UI updates.
 
-📂 **[View Direct Binding Demo](Samples/DirectBindingDemo/)**
+📂 **[View Direct Binding Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/DirectBindingDemo)**
 
 
 ---
@@ -265,11 +267,10 @@ CollectionView binding with CRUD operations and UI updates.
 ## 📦 Installation
 
 ```bash
-# Via NuGet (coming soon)
 dotnet add package SQLiteXM
-
-# Or reference the project directly
 ```
+
+Or install via the [NuGet Package Manager](https://www.nuget.org/packages/SQLiteXM/)
 
 ---
 

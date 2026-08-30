@@ -49,10 +49,10 @@
 		<None Include="SxmSqliteMetadataExtractor.cs" />
 
 		<!-- Include README.md in the NuGet package -->
-		<None Include="README.md" Pack="true" PackagePath="\" />
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
 
 		<!-- Include LICENSE.txt in the NuGet package -->
-		<None Include="LICENSE.txt" Pack="true" PackagePath="\" />
+		<None Include="..\LICENSE.txt" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
 	  <PackageReference Include="linq2db" Version="6.3.0" />
