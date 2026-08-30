@@ -1,5 +1,7 @@
 # SQLiteXM for .NET MAUI
 
+[![NuGet](https://img.shields.io/nuget/v/SQLiteXM.svg)](https://www.nuget.org/packages/SQLiteXM/)
+
 SQLiteXM is a high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.
 
 ---
@@ -34,7 +36,7 @@ The result is SQLiteXM.
 
 ## 📖 Documentation
 
-See the **[Documentation Guide](Docs/README.md)** to find the right guide for where you are in your project.
+See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md)** to find the right guide for where you are in your project.
 
 ## 🎯 Quick Start (2 Minutes)
 
@@ -245,19 +247,19 @@ An **interactive query explorer** with 90+ examples.
 - 💾 Data modification 8 - insert, update, delete examples
 </details>
 
-📂 **[View Query Gallery Demo](Samples/QueryGalleryDemo/)**
+📂 **[View Query Gallery Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/QueryGalleryDemo)**
 
 
 
 ### 2. RegistrationDemo (Simple)
 Basic user registration showing entity definition, save/query, and data binding.
 
-📂 **[View Registration Demo](Samples/RegistrationDemo/)**
+📂 **[View Registration Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/RegistrationDemo)**
 
 ### 3. DirectBindingDemo (Simple)
 CollectionView binding with CRUD operations and UI updates.
 
-📂 **[View Direct Binding Demo](Samples/DirectBindingDemo/)**
+📂 **[View Direct Binding Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/DirectBindingDemo)**
 
 
 ---
@@ -265,11 +267,10 @@ CollectionView binding with CRUD operations and UI updates.
 ## 📦 Installation
 
 ```bash
-# Via NuGet (coming soon)
 dotnet add package SQLiteXM
-
-# Or reference the project directly
 ```
+
+Or install via the [NuGet Package Manager](https://www.nuget.org/packages/SQLiteXM/)
 
 ---
 
@@ -283,7 +284,7 @@ dotnet add package SQLiteXM
 
 ## 📄 License
 
-MIT License - see [LICENSE](./LICENSE.txt) for details.
+MIT License - see [LICENSE](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/LICENSE.txt) for details.
 
 ## 🙏 Acknowledgments
 

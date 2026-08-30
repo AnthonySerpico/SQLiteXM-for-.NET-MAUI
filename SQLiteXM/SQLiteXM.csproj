@@ -10,7 +10,7 @@
 		<!-- NuGet Package Metadata -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>SQLiteXM</PackageId>
-		<Version>1.0.1</Version>
+		<Version>1.0.2</Version>
 		<Authors>Anthony Serpico</Authors>
 		<Title>SQLiteXM - MAUI + SQLite ORM / Database Abstraction Layer</Title>
 		<Description>High-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.</Description>
@@ -18,7 +18,7 @@
 		<RepositoryUrl>https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>sqlite;database;orm;maui;net8;net9;dotnet</PackageTags>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
@@ -50,6 +50,9 @@
 
 		<!-- Include README.md in the NuGet package -->
 		<None Include="README.md" Pack="true" PackagePath="\" />
+
+		<!-- Include LICENSE.txt in the NuGet package -->
+		<None Include="LICENSE.txt" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
 	  <PackageReference Include="linq2db" Version="6.3.0" />
