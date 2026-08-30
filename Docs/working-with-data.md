@@ -47,7 +47,7 @@ were called at application startup.
 
 There are only two execution modes to remember.
 
-- **Standalone.** A single call is its own atomic unit of work. In standalone mode, SQLiteXM opens a transaction, runs a statement, and commits (or rolls back on failure) before the call returns. Neither the caller nor any surrounding code sees the transaction. This is the mode used by entity DML — `entity.SaveAsync()` and `entity.DeleteAsync()` — and every overload of the static `SxmSql.RunStatementAsync(...)` method.
+- **Standalone.** A single call is its own atomic unit of work. SQLiteXM opens a transaction, runs the statement, and commits (or rolls back on failure) before returning. The transaction is invisible to your code. This is the mode used by entity DML — `entity.SaveAsync()` and `entity.DeleteAsync()` — and every overload of the static `SxmSql.RunStatementAsync(...)` method.
 <br>&nbsp;</br>
 - **Transactional block.** Many statements — of any kind — are grouped inside `await using var ctx = new SxmTransaction(...);`.  LINQ, entity DML, and SQL inside the block all run on the *same* connection and the *same* transaction, and either all commit together or all roll back together.
 
@@ -64,7 +64,7 @@ Every class that inherits from `SxmEntity` can save and delete itself from the d
 | `SaveAsync()` | Inserts the row if it does not yet exist; updates it in place if it does. |
 | `DeleteAsync()` | Removes the row identified by the entity's primary key. No-op if the row does not exist. |
 
-The entity knows which table and which database it belongs to, so nothing about the entity database or table needs to be passed in.
+The entity knows which table and database it belongs to, so you don't need to specify these.
 
 ```csharp
 // INSERT — id is 0, so SaveAsync performs an insert and populates id.

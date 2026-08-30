@@ -1,6 +1,6 @@
 # Application Lifecycle Integration
 
-SQLiteXM provides **optional** lifecycle hooks to manage database operations when your MAUI application is suspended or resumed by the operating system. These hooks provide an additional layer of protection during app backgrounding, particularly useful for mobile applications.
+SQLiteXM provides **optional** lifecycle hooks to manage database operations when your MAUI application is suspended or resumed. These hooks provide extra protection during app backgrounding, particularly useful for mobile applications.
 
 > 💡 **This feature is completely optional.** SQLiteXM works perfectly fine without lifecycle integration. SQLite's built-in Write-Ahead Logging (WAL) and atomic commits already provide crash resistance. Lifecycle hooks add a best-effort cleanup layer for apps that want extra protection during suspension.
 
@@ -44,7 +44,7 @@ Windows apps face less aggressive suspension:
 
 ## How Lifecycle Hooks Work
 
-SQLiteXM's lifecycle manager provides **best-effort cleanup** during app suspension:
+SQLiteXM's lifecycle manager provides **best-effort protection** during app suspension:
 
 1. **Blocks new database connections** immediately when the app is suspended
 2. **Waits for a grace period (default: 5 seconds)**, giving in-flight database operations an opportunity to complete
@@ -225,7 +225,7 @@ public static TimeSpan SuspendGracePeriod { get; set; }
 - `TimeSpan.FromSeconds(5)` (5 seconds)
 
 **Behavior:**
-- Allows in-flight database operations to complete before full suspension
+- Allows in-flight operations to complete before suspension
 - Longer periods are safer but delay suspension
 - Shorter periods reduce suspension delay but may not give operations enough time
 

@@ -1,16 +1,16 @@
 # Schema Evolution
 
 SQLiteXM creates a corresponding table for an entity the first time the entity is registered via `RegisterEntitiesAsync`.
-During subsequent registrations, SQLiteXM compares the entity to the existing database schema and applies any supported schema changes.
+During subsequent registrations, SQLiteXM compares the entity to the existing table schema and applies any supported schema changes.
 
-As part of this process, SQLiteXM creates and updates supported schema objects, including columns, indexes, foreign keys, etc., to reflect the entity and its applied attributes.
+As part of this process, SQLiteXM creates and updates columns, indexes, foreign keys, etc., to reflect the entity and its applied attributes.
 One of the most common ORM concerns is what happens when an entity changes over time?
 
 SQLiteXM follows a conservative, schema-first approach:
 
-* It adds new columns when new mapped properties are added to an existing entity
+* It adds new columns when new properties are added to an existing entity
 * It renames columns when a property has a matching `[Rename]` history
-* It drops columns when a previously mapped property is removed from an existing entity as long as the column is not used in indexes or triggers
+* It drops columns when a property is removed from an existing entity as long as the column is not used in indexes or triggers
 * It adds, removes, and updates indexes and triggers as these attributes are added, removed, or changed on an existing entity
 
 New tables are created when an entity is registered for the first time. SQLiteXM does not rebuild existing tables when entities change; it 
@@ -44,7 +44,7 @@ During registration, SQLiteXM reads the live table schema from SQLite and compar
 
 The key inputs are:
 
-* The entity's mapped members and attributes. This includes indexes, triggers, foreign keys, and all column mapping attributes.
+* The entity's properties and attributes. This includes indexes, triggers, foreign keys, and all column mapping attributes.
 * The current database table columns reported by SQLite
 * Any `[Rename]` history on properties
 
@@ -55,7 +55,7 @@ the schema to match the new entity model.
 
 Yes.
 
-When a new mapped property appears in the entity and no matching column exists in the database, SQLiteXM adds the column with `ALTER TABLE ... ADD COLUMN`.
+When a new property appears in the entity and no matching column exists in the database, SQLiteXM adds the column with `ALTER TABLE ... ADD COLUMN`.
 
 This is the normal path for expanding a table over time.
 
@@ -65,9 +65,9 @@ Yes.
 
 If a column exists in the database but is no longer included in the entity model, SQLiteXM will drop the column during registration.
 
-⚠️ Important: Removing a mapped property drops its column
+⚠️ Important: Removing a property drops its column
 
-Removing a mapped property from an existing entity is a database schema change, not just a code change. During the next `RegisterEntitiesAsync` call, SQLiteXM will attempt to drop the corresponding column from the database table.
+Removing a property from an existing entity is a database schema change, not just a code change. During the next `RegisterEntitiesAsync` call, SQLiteXM will attempt to drop the corresponding column from the database table.
 
 This permanently deletes any data stored in that column.
 

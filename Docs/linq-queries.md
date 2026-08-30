@@ -1,6 +1,6 @@
 # LINQ Queries in SQLiteXM
 
-SQLiteXM provides comprehensive LINQ support for querying and manipulating data in SQLite databases. LINQ queries execute directly against the database, translating your C# expressions into efficient SQL. This guide explains how to use LINQ with SQLiteXM, from simple queries to complex operations.
+SQLiteXM provides comprehensive LINQ support for querying and manipulating data. LINQ queries execute directly against the database, translating your C# expressions into efficient SQL. This guide explains how to use LINQ with SQLiteXM, from simple queries to complex operations.
 
 ---
 

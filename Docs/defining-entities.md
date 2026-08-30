@@ -333,9 +333,9 @@ During entity registration:
 * Existing triggers are updated when the trigger SQL changes
 * Triggers that are no longer defined on the entity are removed
 
-This allows trigger definitions to evolve alongside your entity classes without requiring manual database migration scripts.
+Trigger definitions evolve alongside your entity classes without requiring manual migration scripts.
 
-SQLiteXM treats trigger definitions as part of the entity schema and keeps the database synchronized with the trigger configuration defined in code.
+SQLiteXM keeps the database synchronized with the trigger configuration in your code.
 
 
 ---
@@ -376,7 +376,7 @@ public class Order : SxmEntity
 
 ### Understanding ForeignKeyDeleteAction
 
-ForeignKeyDeleteAction determines what SQLite should do when a row in the parent table is deleted while related rows still exist in a child table.
+ForeignKeyDeleteAction determines what happens when a parent row is deleted while related child rows still exist.
 
 For example, consider an Order table that references a Customer table through a foreign key. If a customer is deleted, SQLite must decide what happens to the related orders. The selected ForeignKeyDeleteAction controls that behavior.
 

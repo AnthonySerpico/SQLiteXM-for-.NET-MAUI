@@ -10,7 +10,7 @@
 		<!-- NuGet Package Metadata -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>SQLiteXM</PackageId>
-		<Version>1.0.2</Version>
+		<Version>1.0.3</Version>
 		<Authors>Anthony Serpico</Authors>
 		<Title>SQLiteXM - MAUI + SQLite ORM / Database Abstraction Layer</Title>
 		<Description>High-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.</Description>

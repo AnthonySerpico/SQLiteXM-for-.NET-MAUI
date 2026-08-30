@@ -81,8 +81,8 @@ For details, see  ➡️ [Multi-Database Configuration](./multiple-databases.md)
 
 ## 2. Create Your Entities
 
-Entities are C# classes that you define that represents data used by your application. They inherit 
-from SxmEntity. SQLiteXM uses these classes to create and manage the corresponding database tables, 
+Entities are C# classes that represent data your application stores in the database. They inherit 
+from SxmEntity. SQLiteXM uses these classes to create and manage database tables, 
 columns, indexes, triggers, and relationships.
 
 If you are unfamiliar with entities, read the first two sections of  ➡️ **[Defining Entities](./defining-entities.md)**.
@@ -174,8 +174,8 @@ public class PlaylistTrack : SxmEntity
 
 ## 3. Initialization and Registration
 
-Once you have defined a database in the `SqlStatements.json` file and created at least one entity class, 
-you are ready to initialize the database and register your entities.
+Once you've defined a database in `SqlStatements.json` and created at least one entity class, 
+you're ready to initialize the database and register your entities.
 
 Initialization and registration are performed once, typically during application startup.
 
@@ -195,16 +195,16 @@ Initialization and registration together perform several important tasks.
 
 InitializeAsync():
 
-- Reads the database configuration from `SqlStatements.json`
-- Opens/creates the configured databases
-- Applies the database options and PRAGMA settings
+- Reads database configuration from `SqlStatements.json`
+- Opens or creates the databases
+- Applies database options and PRAGMA settings
 - Prepares SQLiteXM
 
 RegisterEntitiesAsync():
 
-- Tells SQLiteXM which entity types belong to the ORM
+- Registers which entity types to use
 - Inspects entity metadata
-- Creates/updates the corresponding database schema
+- Creates or updates the database schema
 
 Registration can be performed with one or more entity types.
 
@@ -212,7 +212,7 @@ Registration can be performed with one or more entity types.
 
 The second parameter of `InitializeAsync()` is an optional `SxmDatabaseOptions` instance used to customize the operation of SQLiteXM and the SQLite database.
 
-This is covered fully in: ➡️ **[Database Configuration and Initialization](./database-configuration-and-initialization.md)**
+This is covered fully in: ➡️ **[Applying Database Options](./database-configuration-options.md)**
 
 ---
 

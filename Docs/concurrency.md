@@ -46,7 +46,7 @@ await Task.WhenAll(
 );
 ```
 
-**Why this works:** Outside of a transaction block, each `SaveAsync()` runs in standalone mode and opens its own connection.
+**Why this works:** Outside a transaction block, each `SaveAsync()` runs in standalone mode and opens its own connection.
 
 ---
 
@@ -66,7 +66,7 @@ await Task.WhenAll(
 
 ### ✅ Concurrent transactions to different SQLite databases
 
-SQLiteXM supports multiple SQLite databases (see [Multi-Database Support](./multi-database.md)). You can safely run concurrent transactions to different databases:
+SQLiteXM supports multiple SQLite databases (see [Multi-Database Support](./multiple-databases.md)). You can safely run concurrent transactions to different databases:
 
 ```csharp
 // Separate transactions to different databases

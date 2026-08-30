@@ -476,4 +476,4 @@ Key points:
 * `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, and `TimeSpan` default to `INTEGER` but can be stored as `TEXT`
 * Nullable versions of supported types are also supported
 
-For entity modeling examples, see [DEFINING_ENTITIES.md](./DEFINING_ENTITIES.md)
+For entity modeling examples, see [Defining Entities](./defining-entities.md)

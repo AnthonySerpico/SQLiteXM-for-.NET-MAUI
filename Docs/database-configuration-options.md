@@ -36,7 +36,7 @@ customize the operation of SQLiteXM and the SQLite database. This will be the fo
 
 
 
-`SxmDatabaseOptions` provides a high-level, type-safe configuration surface for SQLite database initialization in SQLiteXM. This class allows you to configure SQLite PRAGMA settings, connection pooling, lifecycle hooks, and other database behaviors without writing raw SQL commands.
+`SxmDatabaseOptions` provides a type-safe way to configure SQLite database initialization. You can configure PRAGMA settings, connection pooling, lifecycle hooks, and other database behaviors without writing raw SQL.
 
 If no options are supplied, SQLiteXM uses its default configuration and SQLite's built-in defaults where applicable.
 
@@ -224,7 +224,7 @@ Controls how aggressively SQLite syncs data to disk.
 
 **Available Modes:**
 - `SxmSynchronousMode.Off` (0) - No syncing (fastest, risk of corruption)
-- `SxmSynchronousMode.Normal` (1) - Sync at critical moments (recommended with WAL)
+- `SxmSynchronousMode.Normal` (1) - Syncs at critical moments (recommended with WAL)
 - `SxmSynchronousMode.Full` (2) - Sync after every operation (slowest, most durable)
 - `SxmSynchronousMode.Extra` (3) - Extra paranoid mode
 

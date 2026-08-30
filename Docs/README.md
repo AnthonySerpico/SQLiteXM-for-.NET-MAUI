@@ -71,7 +71,7 @@ are safe, which are unsafe, and how to structure your code for concurrent operat
 These guides explain how SQLiteXM databases are configured and initialized.
 You may not need all of them when first getting started.
 
-### [Applying Database Options](database-configuration-and-initialization.md)
+### [Applying Database Options](database-configuration-options.md)
 
 SQLiteXM provides a rich set of configuration options for controlling how SQLite 
 databases are initialized and managed. These include PRAGMA settings, connection pooling,
@@ -148,7 +148,7 @@ After the basics, explore the topics relevant to your application:
 
 - **[Supported Data Types](supported-data-types.md)** — when defining properties
 - **[Concurrency](concurrency.md)** — when performing concurrent operations
-- **[Applying Database Options](database-configuration-and-initialization.md)** — when applying options to your database
+- **[Applying Database Options](database-configuration-options.md)** — when applying options to your database
 - **[SQL Statement File](sql-statement-file.md)** — when configuring `SqlStatements.json`
 - **[INotifyPropertyChanged](inotifypropertychanged.md)** — when binding entities to the MAUI UI
 - **[Application Lifecycle](application-lifecycle.md)** — when building mobile apps (optional)
@@ -172,7 +172,7 @@ When your application begins evolving:
 | [LINQ Queries](linq-queries.md) | LINQ query guide | When using LINQ or bulk operations |
 | [Concurrency](concurrency.md) | Concurrent operations guide | When performing concurrent operations |
 | [Supported Data Types](supported-data-types.md) | C# → SQLite type reference | When choosing entity property types |
-| [Applying Database Options](database-configuration-and-initialization.md) | Database options and configuration | When configuring initialization |
+| [Applying Database Options](database-configuration-options.md) | Database options and configuration | When configuring initialization |
 | [SQL Statement File](sql-statement-file.md) | `SqlStatements.json` reference | When configuring the statement file |
 | [Schema Evolution](schema-evolution.md) | Database schema changes | When your model evolves |
 | [Multiple Databases](multiple-databases.md) | Multiple SQLite databases | When one database isn't enough |
@@ -191,7 +191,7 @@ If you are not sure where to look:
 - **"How do I query or save data?"** → [Working with Data](working-with-data.md)
 - **"How do I use LINQ?"** → [LINQ Queries](linq-queries.md)
 - **"How do I perform concurrent operations?"** → [Concurrency](concurrency.md)
-- **"How do I apply database options?"** → [Applying Database Options](database-configuration-and-initialization.md)
+- **"How do I apply database options?"** → [Applying Database Options](database-configuration-options.md)
 - **"What goes in `SqlStatements.json`?"** → [SQL Statement File](sql-statement-file.md)
 - **"What happens when my schema changes?"** → [Schema Evolution](schema-evolution.md)
 - **"How do I use multiple databases?"** → [Multiple Databases](multiple-databases.md)
