@@ -365,3 +365,6 @@ MigrationBackup/
 *.ps1
 FodyWeavers.xsd
 /Docs/Hidden
+
+# Benchmark projects
+BenchmarkSuite1/
