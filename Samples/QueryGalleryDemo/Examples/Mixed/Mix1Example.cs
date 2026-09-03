@@ -16,7 +16,7 @@ namespace QueryGalleryDemo.Examples.Mixed;
 1. Open an SxmTransaction for the Chinook database
 2. Issue a LINQ query on ctx.GetTable<Genre>()
 3. Call ctx.RunStatementAsync with a named statement
-4. Both share the same underlying connection via the ambient SxmSqlTransaction registered by the context
+4. Both share the same underlying connection via the ambient SxmSqlTransaction registered by the ctx
 
 **Key Concepts:**
 - A single SxmTransaction hosts multiple query styles
@@ -30,7 +30,7 @@ internal sealed class Mix1Example : IQueryExampleRunner
     {
         await using var ctx = new SxmTransaction("Chinook");
 
-        // (1) LINQ read against the context
+        // (1) LINQ read against the ctx
         var genreNames = ctx.GetTable<Genre>()
                             .OrderBy(g => g.Name)
                             .Select(g => g.Name)

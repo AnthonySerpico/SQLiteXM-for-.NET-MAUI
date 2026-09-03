@@ -569,7 +569,7 @@ return results;",
 				Code = """
 await using var ctx = new SxmTransaction("Chinook");
 
-// (1) LINQ read against the context
+// (1) LINQ read against the ctx
 var genreNames = ctx.GetTable<Genre>()
 					.OrderBy(g => g.Name)
 					.Select(g => g.Name)
@@ -592,7 +592,7 @@ return new[]
 1. Open an SxmTransaction for the Chinook database
 2. Issue a LINQ query on ctx.GetTable<Genre>()
 3. Call ctx.RunStatementAsync with a named statement
-4. Both share the same underlying connection via the ambient SxmSqlTransaction registered by the context
+4. Both share the same underlying connection via the ambient SxmSqlTransaction registered by the ctx
 
 **Key Concepts:**
 - A single SxmTransaction hosts multiple query styles
@@ -634,13 +634,13 @@ return new[]
 				Explanation = """
 **How It Works:**
 1. LINQ COUNT gives the starting artist count
-2. new Artist().SaveAsync() enlists on the ambient tx registered by the context
+2. new Artist().SaveAsync() enlists on the ambient tx registered by the ctx
 3. A second LINQ COUNT sees the uncommitted row (read-your-writes)
 4. RollbackTransactionAsync discards everything before dispose
 
 **Key Concepts:**
 - Parameterless SaveAsync() picks up SxmAmbientTransaction.Current
-- LINQ reads see uncommitted writes in the same context
+- LINQ reads see uncommitted writes in the same ctx
 - Explicit rollback keeps the demo DB clean between runs
 """
 			},
@@ -708,7 +708,7 @@ var topGenreNames = popularity
 	.Where(n => n != null)
 	.ToList();
 
-// (2) LINQ - resolve ids, then pull tracks via the same context
+// (2) LINQ - resolve ids, then pull tracks via the same ctx
 var topGenreIds = ctx.GetTable<Genre>()
 					 .Where(g => topGenreNames.Contains(g.Name))
 					 .Select(g => g.id)
@@ -727,10 +727,10 @@ return tracks;
 **How It Works:**
 1. Named SQL returns aggregate data (top genres)
 2. Project the names into a plain List<string>
-3. LINQ resolves genre ids, then pulls tracks from the same context
+3. LINQ resolves genre ids, then pulls tracks from the same ctx
 
 **Key Concepts:**
-- Named SQL and LINQ compose naturally inside one context
+- Named SQL and LINQ compose naturally inside one ctx
 - All statements share the same connection
 - No transaction is opened - both statements are pure reads
 """
@@ -793,8 +793,8 @@ return new[] { new { Error = (string?)null, updated.id, updated.Name, updated.Un
 			new QueryExample
 			{
 				Id = "mix_6",
-				Name = "Explicit Commit mid-context",
-				Description = "Commit early, then continue with a fresh transaction on the same context",
+				Name = "Explicit Commit mid-ctx",
+				Description = "Commit early, then continue with a fresh transaction on the same ctx",
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
@@ -830,7 +830,7 @@ return new[]
 **How It Works:**
 1. SaveAsync writes inside the first auto-started transaction
 2. CommitTransactionAsync ends that tx early
-3. A follow-up LINQ bulk Delete starts a fresh transaction under the same context
+3. A follow-up LINQ bulk Delete starts a fresh transaction under the same ctx
 4. A second CommitTransactionAsync finalizes the cleanup
 
 **Key Concepts:**
@@ -897,7 +897,7 @@ return new[]
 			{
 				Id = "mix_8",
 				Name = "Auto-rollback on exception",
-				Description = "An exception mid-context aborts all mixed work automatically on dispose",
+				Description = "An exception mid-ctx aborts all mixed work automatically on dispose",
 				Category = QueryCategory.MixedContext,
 				Type = QueryType.Mixed,
 				Code = """
@@ -919,7 +919,7 @@ try
 }
 catch (Exception ex)
 {
-	// On dispose, the context detected the error and rolled back.
+	// On dispose, the ctx detected the error and rolled back.
 	await using var probe = new SxmTransaction("Chinook");
 	int survivors = probe.GetTable<Artist>().Count(a => a.Name == marker);
 
@@ -933,15 +933,15 @@ catch (Exception ex)
 """,
 				Explanation = """
 **How It Works:**
-1. Entity DML and Named SQL run under a shared context
-2. An uncaught exception escapes the context body
+1. Entity DML and Named SQL run under a shared ctx
+2. An uncaught exception escapes the ctx body
 3. DisposeAsync detects the failed state and rolls back
-4. A fresh context queries and finds none of the marker rows
+4. A fresh ctx queries and finds none of the marker rows
 
 **Key Concepts:**
 - await using guarantees async disposal even on exception
 - Failure -> rollback; success -> commit
-- Rollback covers every statement executed on the context
+- Rollback covers every statement executed on the ctx
 """
 			},
 			new QueryExample
@@ -976,7 +976,7 @@ return new[]
 """,
 				Explanation = """
 **How It Works:**
-1. LINQ COUNT runs against the context's DataConnection
+1. LINQ COUNT runs against the ctx's DataConnection
 2. Named SQL invokes a JSON-registered statement
 3. Embedded SQL is a literal SELECT passed as text
 
@@ -1019,7 +1019,7 @@ var countRow = await ctx.RunStatementAsync(
 	$"SELECT COUNT(*) AS Cnt FROM Track WHERE AlbumId = {album.id}",
 	new Dictionary<string, object?>());
 
-// (4) Named SQL for context
+// (4) Named SQL for ctx
 var genrePopularity = await ctx.RunStatementAsync(
 	"GetGenrePopularity",
 	new Dictionary<string, object?>());
@@ -1047,7 +1047,7 @@ return new[]
 1. LINQ finds an anchor Artist
 2. Entity SaveAsync creates a scratch Album and Track
 3. Embedded SQL counts tracks on that new album inside the same tx
-4. Named SQL fetches genre popularity for context
+4. Named SQL fetches genre popularity for ctx
 5. A LINQ aggregate sums UnitPrice for the album
 6. RollbackTransactionAsync throws all of it away
 

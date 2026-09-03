@@ -30,10 +30,10 @@ internal sealed class Param1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         string searchTerm = "Love";
         return Task.FromResult<object>(
-            context.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList());
+            ctx.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList());
     }
 }
 
@@ -63,10 +63,10 @@ internal sealed class Param2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         decimal minPrice = 0.99m;
         decimal maxPrice = 1.49m;
-        return Task.FromResult<object>(context.GetTable<Track>()
+        return Task.FromResult<object>(ctx.GetTable<Track>()
             .Where(t => t.UnitPrice >= minPrice && t.UnitPrice <= maxPrice)
             .OrderBy(t => t.UnitPrice).ThenBy(t => t.Name).Take(50)
             .Select(t => new { t.Name, t.UnitPrice, DurationMinutes = t.Milliseconds / 1000.0 / 60.0 })
@@ -94,18 +94,18 @@ internal sealed class Param2Example : IQueryExampleRunner
 - Range filtering with date parameters
 - Safe date comparisons
 - Common for reporting and time-based queries
-- JOIN adds customer context
+- JOIN adds customer ctx
 """)]
 internal sealed class Param3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         var startDate = DateTime.Now.AddYears(-3);
         var endDate = DateTime.Now;
 
-        var results = (from invoice in context.GetTable<Invoice>()
-                       join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+        var results = (from invoice in ctx.GetTable<Invoice>()
+                       join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        where invoice.InvoiceDate.Ticks >= startDate.Ticks
                           && invoice.InvoiceDate.Ticks <= endDate.Ticks
                        orderby invoice.InvoiceDate descending
@@ -147,14 +147,14 @@ internal sealed class Param4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         string artistSearchTerm = "Led";
         int genreId = 1;
         decimal maxPrice = 1.50m;
-        var results = (from track in context.GetTable<Track>()
-                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                       join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                       join genre in context.GetTable<Genre>() on track.GenreId equals genre.id
+        var results = (from track in ctx.GetTable<Track>()
+                       join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
+                       join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
+                       join genre in ctx.GetTable<Genre>() on track.GenreId equals genre.id
                        where artist.Name.Contains(artistSearchTerm) && track.GenreId == genreId && track.UnitPrice <= maxPrice
                        orderby track.Name
                        select new { Track = track.Name, Artist = artist.Name, Genre = genre.Name, Price = track.UnitPrice })
@@ -187,13 +187,13 @@ internal sealed class Param5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         string? artistFilter = "Led";
         decimal? minDuration = 180000;
 
-        var query = context.GetTable<Track>()
-            .Join(context.GetTable<Album>(), t => t.AlbumId, a => a.id, (t, a) => new { Track = t, Album = a })
-            .Join(context.GetTable<Artist>(), ta => ta.Album.ArtistId, ar => ar.id, (ta, ar) => new { ta.Track, ta.Album, Artist = ar });
+        var query = ctx.GetTable<Track>()
+            .Join(ctx.GetTable<Album>(), t => t.AlbumId, a => a.id, (t, a) => new { Track = t, Album = a })
+            .Join(ctx.GetTable<Artist>(), ta => ta.Album.ArtistId, ar => ar.id, (ta, ar) => new { ta.Track, ta.Album, Artist = ar });
 
         if (!string.IsNullOrEmpty(artistFilter))
             query = query.Where(x => x.Artist.Name.Contains(artistFilter));
@@ -232,9 +232,9 @@ internal sealed class Param6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         string pattern = "Track";
-        var results = context.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
+        var results = ctx.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
             .Select(t => new { TrackName = t.Name, t.UnitPrice, DurationSeconds = t.Milliseconds / 1000 })
             .ToList();
         return Task.FromResult<object>(results);

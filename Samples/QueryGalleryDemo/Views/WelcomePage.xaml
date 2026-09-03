@@ -42,22 +42,31 @@
                 <Label TextType="Html">
                     <Label.Text>
                         <![CDATA[
-                        This app demonstrates <b>SQLiteXM</b> query capabilities with a Chinook-style music database containing <b>~25,000 records</b>.<br/><br/>
-
-                        You'll explore:<br/>
-                        • Basic Queries<br/>
-                        • Relationship Queries (Joins)<br/>
-                        • Aggregations (COUNT, SUM, GROUP BY)<br/>
-                        • Advanced LINQ<br/>
-                        • Raw SQL Examples<br/>
-                        • Performance Demos<br/>
-                        • Many-to-Many Relationships<br/>
-                        • Transactions (ACID Operations)<br/>
-                        • Parameterized Queries (Safe SQL)<br/>
-                        • Data Modification (INSERT/UPDATE/DELETE)
+                        This app demonstrates <b>SQLiteXM</b> query capabilities with a Chinook-style music database containing <b>~25,000 records</b><br/><br/>
                         ]]>
                     </Label.Text>
                 </Label>
+
+                <Label Text="You'll explore:"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"/>
+
+                <Grid ColumnSpacing="90" HorizontalOptions="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Column="0" TextType="Html">
+                        <Label.Text>
+                            <![CDATA[• Basic Queries<br/>• Relationship Queries (Joins)<br/>• Aggregations (COUNT, SUM, GROUP BY)<br/>• Advanced LINQ<br/>• Raw SQL Examples<br/>• Performance Demos]]>
+                        </Label.Text>
+                    </Label>
+
+                    <Label Grid.Column="1" TextType="Html">
+                        <Label.Text><![CDATA[• Many-to-Many Relationships<br/>• Transactions (ACID Operations)<br/>• Parameterized Queries (Safe SQL)<br/>• Data Modification (INSERT/UPDATE/DELETE)<br/>• Mixed Transactions (LINQ + SQL + Entity DML)]]></Label.Text>
+                    </Label>
+                </Grid>
             </VerticalStackLayout>
         </Frame>
 

@@ -7,15 +7,15 @@ namespace QueryGalleryDemo.Examples.Mixed;
 
 [QueryExample(
     id: "mix_6",
-    name: "Explicit Commit mid-context",
-    description: "Commit early, then continue with a fresh transaction on the same context",
+    name: "Explicit Commit mid-ctx",
+    description: "Commit early, then continue with a fresh transaction on the same ctx",
     category: QueryCategory.MixedContext,
     type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. SaveAsync writes inside the first auto-started transaction
 2. CommitTransactionAsync ends that tx early
-3. A follow-up LINQ bulk Delete starts a fresh transaction under the same context
+3. A follow-up LINQ bulk Delete starts a fresh transaction under the same ctx
 4. A second CommitTransactionAsync finalizes the cleanup
 
 **Key Concepts:**

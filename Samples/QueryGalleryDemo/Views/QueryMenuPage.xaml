@@ -306,7 +306,7 @@
                                FontSize="18"
                                FontAttributes="Bold"
                                HorizontalOptions="Center"/>
-                        <Label Text="LINQ + Entity DML + Embedded &amp; Named SQL in one context"
+                        <Label Text="LINQ + Entity DML + Embedded &amp; Named SQL in one transaction"
                                FontSize="12"
                                TextColor="{StaticResource Gray600}"
                                HorizontalOptions="Center"

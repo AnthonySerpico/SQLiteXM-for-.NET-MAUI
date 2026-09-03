@@ -106,9 +106,9 @@ internal sealed class Mod3Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var context = new SxmTransaction("Chinook"))
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            var track = context.GetTable<Track>().First();
+            var track = ctx.GetTable<Track>().First();
             var originalPrice = track.UnitPrice;
             track.UnitPrice = 1.99m;
             await track.SaveAsync();
@@ -140,9 +140,9 @@ internal sealed class Mod4Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var context = new SxmTransaction("Chinook"))
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            var cheapTracks = context.GetTable<Track>().Where(t => t.UnitPrice < 1.00m).Take(10).ToList();
+            var cheapTracks = ctx.GetTable<Track>().Where(t => t.UnitPrice < 1.00m).Take(10).ToList();
             var updateCount = 0;
             foreach (var track in cheapTracks)
             {
@@ -177,12 +177,12 @@ internal sealed class Mod5Example : IQueryExampleRunner
 {
     public async Task<object> RunAsync()
     {
-        await using (var context = new SxmTransaction("Chinook"))
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name.Contains("Rock"));
+            var rockGenre = ctx.GetTable<Genre>().FirstOrDefault(g => g.Name.Contains("Rock"));
             if (rockGenre != null)
             {
-                var rockTracks = context.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).Take(20).ToList();
+                var rockTracks = ctx.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).Take(20).ToList();
                 var updateCount = 0;
                 foreach (var track in rockTracks)
                 {
@@ -226,9 +226,9 @@ internal sealed class Mod6Example : IQueryExampleRunner
         await tempPlaylist.SaveAsync();
         var savedId = tempPlaylist.id;
 
-        await using (var context = new SxmTransaction("Chinook"))
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.id == savedId);
+            var playlist = ctx.GetTable<Playlist>().FirstOrDefault(p => p.id == savedId);
             if (playlist != null)
             {
                 var playlistName = playlist.Name;
@@ -275,9 +275,9 @@ internal sealed class Mod7Example : IQueryExampleRunner
 
         try
         {
-            await using (var context = new SxmTransaction("Chinook"))
+            await using (var ctx = new SxmTransaction("Chinook"))
             {
-                var playlistsToDelete = context.GetTable<Playlist>().Where(p => savedIds.Contains(p.id)).ToList();
+                var playlistsToDelete = ctx.GetTable<Playlist>().Where(p => savedIds.Contains(p.id)).ToList();
 
                 var deleteCount = 0;
                 foreach (var playlist in playlistsToDelete)
@@ -286,7 +286,7 @@ internal sealed class Mod7Example : IQueryExampleRunner
                     deleteCount++;
                 }
 
-                await context.CommitTransactionAsync();
+                await ctx.CommitTransactionAsync();
 
                 return new[] { new
                 {
@@ -342,13 +342,13 @@ internal sealed class Mod8Example : IQueryExampleRunner
 
         try
         {
-            await using (var context = new SxmTransaction("Chinook"))
+            await using (var ctx = new SxmTransaction("Chinook"))
             {
-                var playlist = context.GetTable<Playlist>().FirstOrDefault(p => p.id == playlistId);
+                var playlist = ctx.GetTable<Playlist>().FirstOrDefault(p => p.id == playlistId);
 
                 if (playlist != null)
                 {
-                    var playlistTracks = context.GetTable<PlaylistTrack>().Where(pt => pt.PlaylistId == playlist.id).ToList();
+                    var playlistTracks = ctx.GetTable<PlaylistTrack>().Where(pt => pt.PlaylistId == playlist.id).ToList();
 
                     var trackCount = playlistTracks.Count;
                     foreach (var pt in playlistTracks)
@@ -358,7 +358,7 @@ internal sealed class Mod8Example : IQueryExampleRunner
 
                     await playlist.DeleteAsync();
 
-                    await context.CommitTransactionAsync();
+                    await ctx.CommitTransactionAsync();
 
                     return new[] { new
                     {

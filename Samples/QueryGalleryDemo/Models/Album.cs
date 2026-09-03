@@ -11,6 +11,7 @@ namespace QueryGalleryDemo.Models;
 public class Album : SxmEntity
 {
     [Required]
+    [Index]
     public string Title { get; set; } = string.Empty;
 
     [Required]

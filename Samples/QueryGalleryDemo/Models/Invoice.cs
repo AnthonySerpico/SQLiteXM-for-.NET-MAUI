@@ -16,6 +16,7 @@ public class Invoice : SxmEntity
     public long CustomerId { get; set; }
 
     [Required]
+    [Index]
     public DateTime InvoiceDate { get; set; }
 
     public string? BillingAddress { get; set; }

@@ -13,7 +13,7 @@ namespace QueryGalleryDemo.Examples.Mixed;
     type: QueryType.Mixed,
     explanation: """
 **How It Works:**
-1. LINQ COUNT runs against the context's DataConnection
+1. LINQ COUNT runs against the ctx's DataConnection
 2. Named SQL invokes a JSON-registered statement
 3. Embedded SQL is a literal SELECT passed as text
 

@@ -281,14 +281,14 @@ internal sealed class Trans5Example : IQueryExampleRunner
 [QueryExample(
     id: "trans_6",
     name: "Transaction vs No Transaction Performance",
-    description: "Compare performance: transaction vs individual saves",
+    description: "Compare performance: transaction vs individual saves - 250 inserts each",
     category: QueryCategory.Transactions,
     type: QueryType.Linq,
     explanation: """
 **How It Works:**
-1. Method 1: 20 inserts without transaction (20 commits)
+1. Method 1: 250 inserts without transaction (250 commits)
 2. Measure time
-3. Method 2: 20 inserts with transaction (1 commit)
+3. Method 2: 250 inserts with transaction (1 commit)
 4. Measure time
 5. Calculate speedup factor
 6. Return comparison
@@ -307,7 +307,7 @@ internal sealed class Trans6Example : IQueryExampleRunner
         var results = new List<object>();
 
         var start1 = DateTime.Now;
-        for (int i = 1; i <= 20; i++)
+        for (int i = 1; i <= 250; i++)
         {
             var track = new Track { Name = $"No-Transaction Track {i}", AlbumId = 1, MediaTypeId = 1, GenreId = 1, Milliseconds = 180000, UnitPrice = 0.99m };
             await track.SaveAsync();
@@ -317,7 +317,7 @@ internal sealed class Trans6Example : IQueryExampleRunner
         var start2 = DateTime.Now;
         await using (var transaction = new SxmTransaction("Chinook"))
         {
-            for (int i = 1; i <= 20; i++)
+            for (int i = 1; i <= 250; i++)
             {
                 var track = new Track { Name = $"Transaction Track {i}", AlbumId = 1, MediaTypeId = 1, GenreId = 1, Milliseconds = 180000, UnitPrice = 0.99m };
                 await track.SaveAsync();
@@ -326,8 +326,8 @@ internal sealed class Trans6Example : IQueryExampleRunner
         }
         var transTime = (DateTime.Now - start2).TotalMilliseconds;
 
-        results.Add(new { Method = "Without Transaction", Inserts = 20, TimeMs = noTransTime });
-        results.Add(new { Method = "With Transaction", Inserts = 20, TimeMs = transTime, SpeedupFactor = Math.Round(noTransTime / transTime, 2) });
+        results.Add(new { Method = "Without Transaction", Inserts = 250, Time = "Miliseconds " + noTransTime });
+        results.Add(new { Method = "With Transaction", Inserts = 250, Time = "Miliseconds " + transTime, SpeedupFactor = Math.Round(noTransTime / transTime, 2) });
 
         return results;
     }

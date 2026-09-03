@@ -29,9 +29,9 @@ internal sealed class Rel1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from track in context.GetTable<Track>()
-                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from track in ctx.GetTable<Track>()
+                       join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                        orderby track.Name
                        select new { track.Name, AlbumTitle = album.Title, track.Milliseconds })
                       .Take(50)
@@ -62,9 +62,9 @@ internal sealed class Rel2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from album in context.GetTable<Album>()
-                       join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from album in ctx.GetTable<Album>()
+                       join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
                        orderby artist.Name, album.Title
                        select new { album.Title, ArtistName = artist.Name, album.id })
                       .ToList();
@@ -95,11 +95,11 @@ internal sealed class Rel3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from track in context.GetTable<Track>()
-                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                       join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                       join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from track in ctx.GetTable<Track>()
+                       join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
+                       join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
+                       join genre in ctx.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
                        from genre in genreGroup.DefaultIfEmpty()
                        orderby artist.Name, album.Title
                        select new
@@ -139,9 +139,9 @@ internal sealed class Rel4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from customer in context.GetTable<Customer>()
-                       join employee in context.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from customer in ctx.GetTable<Customer>()
+                       join employee in ctx.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
                        from employee in empGroup.DefaultIfEmpty()
                        orderby customer.LastName, customer.FirstName
                        select new
@@ -180,9 +180,9 @@ internal sealed class Rel5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from emp in context.GetTable<Employee>()
-                       join manager in context.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from emp in ctx.GetTable<Employee>()
+                       join manager in ctx.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
                        from manager in mgrGroup.DefaultIfEmpty()
                        orderby emp.LastName, emp.FirstName
                        select new
@@ -220,9 +220,9 @@ internal sealed class Rel6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from invoice in context.GetTable<Invoice>()
-                       join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from invoice in ctx.GetTable<Invoice>()
+                       join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        orderby invoice.InvoiceDate descending
                        select new
                        {
@@ -261,13 +261,13 @@ internal sealed class Rel7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from track in context.GetTable<Track>()
-                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                       join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
-                       join genre in context.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from track in ctx.GetTable<Track>()
+                       join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
+                       join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
+                       join genre in ctx.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
                        from genre in genreGroup.DefaultIfEmpty()
-                       join mediaType in context.GetTable<MediaType>() on track.MediaTypeId equals mediaType.id into mtGroup
+                       join mediaType in ctx.GetTable<MediaType>() on track.MediaTypeId equals mediaType.id into mtGroup
                        from mediaType in mtGroup.DefaultIfEmpty()
                        orderby artist.Name, album.Title, track.TrackNumber
                        select new
@@ -308,8 +308,8 @@ internal sealed class Rel8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from track in context.GetTable<Track>()
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from track in ctx.GetTable<Track>()
                        select new
                        {
                            track.Name,

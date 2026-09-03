@@ -10,5 +10,6 @@ namespace QueryGalleryDemo.Models;
 public class Genre : SxmEntity
 {
     [Required]
+    [Index]
     public string Name { get; set; } = string.Empty;
 }

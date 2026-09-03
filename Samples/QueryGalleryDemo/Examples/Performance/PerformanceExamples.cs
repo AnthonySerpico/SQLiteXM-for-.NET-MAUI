@@ -27,8 +27,8 @@ internal sealed class Perf1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var tracks = context.GetTable<Track>()
+        using var ctx = new SxmTransaction("Chinook");
+        var tracks = ctx.GetTable<Track>()
             .OrderBy(t => t.Name)
             .Take(1000)
             .ToList();
@@ -59,12 +59,12 @@ internal sealed class Perf2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from invoiceLine in context.GetTable<InvoiceLine>()
-                       join invoice in context.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
-                       join customer in context.GetTable<Customer>() on invoice.CustomerId equals customer.id
-                       join track in context.GetTable<Track>() on invoiceLine.TrackId equals track.id
-                       join album in context.GetTable<Album>() on track.AlbumId equals album.id
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from invoiceLine in ctx.GetTable<InvoiceLine>()
+                       join invoice in ctx.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
+                       join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
+                       join track in ctx.GetTable<Track>() on invoiceLine.TrackId equals track.id
+                       join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                        where customer.Country == "USA"
                        select new
                        {
@@ -101,10 +101,10 @@ internal sealed class Perf3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         int pageNumber = 2;
         int pageSize = 20;
-        var page = context.GetTable<Track>()
+        var page = ctx.GetTable<Track>()
             .OrderBy(t => t.id)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
@@ -134,8 +134,8 @@ internal sealed class Perf4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var lightweightTracks = context.GetTable<Track>()
+        using var ctx = new SxmTransaction("Chinook");
+        var lightweightTracks = ctx.GetTable<Track>()
             .Select(t => new { t.id, t.Name, t.UnitPrice })
             .Take(100)
             .ToList();
@@ -164,13 +164,13 @@ internal sealed class Perf5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var expensiveAlbums = context.GetTable<Album>()
+        using var ctx = new SxmTransaction("Chinook");
+        var expensiveAlbums = ctx.GetTable<Album>()
             .Where(a => a.Title.StartsWith("A"))
             .Take(50);
 
         var results = (from album in expensiveAlbums
-                       join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+                       join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
                        select new { album.Title, artist.Name })
                       .ToList();
         return Task.FromResult<object>(results);
@@ -198,9 +198,9 @@ internal sealed class Perf6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var hasExpensiveTracks = context.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
-        var expensiveCount = context.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
+        using var ctx = new SxmTransaction("Chinook");
+        var hasExpensiveTracks = ctx.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
+        var expensiveCount = ctx.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
 
         var result = new List<object>
         {
@@ -231,9 +231,9 @@ internal sealed class Perf7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var tracksWithAlbums = (from track in context.GetTable<Track>()
-                                join album in context.GetTable<Album>() on track.AlbumId equals album.id
+        using var ctx = new SxmTransaction("Chinook");
+        var tracksWithAlbums = (from track in ctx.GetTable<Track>()
+                                join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                                 select new
                                 {
                                     TrackName = track.Name,
@@ -265,8 +265,8 @@ internal sealed class Perf8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var uniqueCountries = context.GetTable<Customer>()
+        using var ctx = new SxmTransaction("Chinook");
+        var uniqueCountries = ctx.GetTable<Customer>()
             .Select(c => c.Country)
             .Distinct()
             .OrderBy(c => c)
@@ -297,11 +297,11 @@ internal sealed class Perf9Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        var tracksForAlbums = (from track in context.GetTable<Track>()
-                               join album in context.GetTable<Album>() on track.AlbumId equals album.id
+        var tracksForAlbums = (from track in ctx.GetTable<Track>()
+                               join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                                where album.Title.StartsWith("A")
                                select new { track.Name, album.Title })
                               .Take(200)

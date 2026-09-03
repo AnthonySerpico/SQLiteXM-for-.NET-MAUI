@@ -29,10 +29,10 @@ internal sealed class M2M1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var tracks = (from playlist in context.GetTable<Playlist>()
-                      join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId
-                      join track in context.GetTable<Track>() on pt.TrackId equals track.id
+        using var ctx = new SxmTransaction("Chinook");
+        var tracks = (from playlist in ctx.GetTable<Playlist>()
+                      join pt in ctx.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId
+                      join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
                       where playlist.Name.Contains("Music")
                       orderby track.Name
                       select track)
@@ -64,10 +64,10 @@ internal sealed class M2M2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var playlists = (from track in context.GetTable<Track>()
-                         join pt in context.GetTable<PlaylistTrack>() on track.id equals pt.TrackId
-                         join playlist in context.GetTable<Playlist>() on pt.PlaylistId equals playlist.id
+        using var ctx = new SxmTransaction("Chinook");
+        var playlists = (from track in ctx.GetTable<Track>()
+                         join pt in ctx.GetTable<PlaylistTrack>() on track.id equals pt.TrackId
+                         join playlist in ctx.GetTable<Playlist>() on pt.PlaylistId equals playlist.id
                          where track.Name.Contains("Track")
                          select playlist)
                         .ToList();
@@ -98,11 +98,11 @@ internal sealed class M2M3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var results = (from playlist in context.GetTable<Playlist>()
-                       join pt in context.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
+        using var ctx = new SxmTransaction("Chinook");
+        var results = (from playlist in ctx.GetTable<Playlist>()
+                       join pt in ctx.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
                        from pt in playlistTracks.DefaultIfEmpty()
-                       join track in context.GetTable<Track>() on pt.TrackId equals track.id into tracks
+                       join track in ctx.GetTable<Track>() on pt.TrackId equals track.id into tracks
                        from track in tracks.DefaultIfEmpty()
                        group track by new { playlist.id, playlist.Name } into g
                        select new
@@ -139,9 +139,9 @@ internal sealed class M2M4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var trackPlaylistGroups = (from pt in context.GetTable<PlaylistTrack>()
-                                   join track in context.GetTable<Track>() on pt.TrackId equals track.id
+        using var ctx = new SxmTransaction("Chinook");
+        var trackPlaylistGroups = (from pt in ctx.GetTable<PlaylistTrack>()
+                                   join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
                                    select new
                                    {
                                        TrackId = track.id,
@@ -185,11 +185,11 @@ internal sealed class M2M5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var trackData = (from pt in context.GetTable<PlaylistTrack>()
-                         join track in context.GetTable<Track>() on pt.TrackId equals track.id
-                         join album in context.GetTable<Album>() on track.AlbumId equals album.id
-                         join artist in context.GetTable<Artist>() on album.ArtistId equals artist.id
+        using var ctx = new SxmTransaction("Chinook");
+        var trackData = (from pt in ctx.GetTable<PlaylistTrack>()
+                         join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
+                         join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
+                         join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
                          select new
                          {
                              TrackId = track.id,
@@ -235,8 +235,8 @@ internal sealed class M2M6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var playlistCounts = (from pt in context.GetTable<PlaylistTrack>()
+        using var ctx = new SxmTransaction("Chinook");
+        var playlistCounts = (from pt in ctx.GetTable<PlaylistTrack>()
                               group pt by pt.PlaylistId into g
                               select new
                               {
@@ -244,7 +244,7 @@ internal sealed class M2M6Example : IQueryExampleRunner
                                   TrackCount = g.Count()
                               }).ToList();
 
-        var playlists = context.GetTable<Playlist>().ToList();
+        var playlists = ctx.GetTable<Playlist>().ToList();
 
         var smallPlaylists = (from pc in playlistCounts
                               join p in playlists on pc.PlaylistId equals p.id
@@ -282,9 +282,9 @@ internal sealed class M2M7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var playlist = context.GetTable<Playlist>().FirstOrDefault();
-        var track = context.GetTable<Track>().FirstOrDefault();
+        using var ctx = new SxmTransaction("Chinook");
+        var playlist = ctx.GetTable<Playlist>().FirstOrDefault();
+        var track = ctx.GetTable<Track>().FirstOrDefault();
 
         object result;
         if (playlist != null && track != null)
@@ -323,12 +323,12 @@ internal sealed class M2M8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var playlistPairs = (from pt1 in context.GetTable<PlaylistTrack>()
-                             join pt2 in context.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
+        using var ctx = new SxmTransaction("Chinook");
+        var playlistPairs = (from pt1 in ctx.GetTable<PlaylistTrack>()
+                             join pt2 in ctx.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
                              where pt1.PlaylistId < pt2.PlaylistId
-                             join p1 in context.GetTable<Playlist>() on pt1.PlaylistId equals p1.id
-                             join p2 in context.GetTable<Playlist>() on pt2.PlaylistId equals p2.id
+                             join p1 in ctx.GetTable<Playlist>() on pt1.PlaylistId equals p1.id
+                             join p2 in ctx.GetTable<Playlist>() on pt2.PlaylistId equals p2.id
                              group pt1 by new { Playlist1Name = p1.Name, Playlist2Name = p2.Name } into g
                              select new
                              {

@@ -7,6 +7,7 @@ namespace QueryGalleryDemo.Models;
 /// Represents an employee
 /// </summary>
 [Table(Database = "Chinook", IsColumnAttributeRequired = false)]
+[Index("LastName", "FirstName")]
 public class Employee : SxmEntity
 {
     [Required]

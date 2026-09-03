@@ -247,9 +247,9 @@ public class DatabaseSeeder
         var genres = new List<Genre>();
 
         // Check if genres already exist
-        await using (var context = new SxmTransaction("Chinook"))
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            var existingGenres = await context.GetTable<Genre>().ToListAsync();
+            var existingGenres = await ctx.GetTable<Genre>().ToListAsync();
             if (existingGenres.Count > 0)
             {
                 progress?.Report($"Genres already exist ({existingGenres.Count}), skipping...");
@@ -271,9 +271,9 @@ public class DatabaseSeeder
         progress?.Report("Seeding media types...");
         var mediaTypes = new List<MediaType>();
 
-        await using (var context = new SxmTransaction("Chinook"))
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            var existingMediaTypes = await context.GetTable<MediaType>().ToListAsync();
+            var existingMediaTypes = await ctx.GetTable<MediaType>().ToListAsync();
             if (existingMediaTypes.Count > 0)
             {
                 progress?.Report($"Media types already exist ({existingMediaTypes.Count}), skipping...");
@@ -297,9 +297,9 @@ public class DatabaseSeeder
         var artists = new List<Artist>();
 
         // Check if artists already exist
-        await using (var context = new SxmTransaction("Chinook"))
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            var existingArtists = await context.GetTable<Artist>().ToListAsync();
+            var existingArtists = await ctx.GetTable<Artist>().ToListAsync();
             if (existingArtists.Count > 0)
             {
                 progress?.Report($"Artists already exist ({existingArtists.Count}), skipping...");

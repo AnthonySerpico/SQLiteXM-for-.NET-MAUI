@@ -15,10 +15,10 @@ namespace QueryGalleryDemo.Examples.Mixed;
 **How It Works:**
 1. Named SQL returns aggregate data (top genres)
 2. Project the names into a plain List<string>
-3. LINQ resolves genre ids, then pulls tracks from the same context
+3. LINQ resolves genre ids, then pulls tracks from the same ctx
 
 **Key Concepts:**
-- Named SQL and LINQ compose naturally inside one context
+- Named SQL and LINQ compose naturally inside one ctx
 - All statements share the same connection
 - No transaction is opened - both statements are pure reads
 """)]
@@ -39,7 +39,7 @@ internal sealed class Mix4Example : IQueryExampleRunner
             .Where(n => n != null)
             .ToList();
 
-        // (2) LINQ - resolve ids, then pull tracks via the same context
+        // (2) LINQ - resolve ids, then pull tracks via the same ctx
         var topGenreIds = ctx.GetTable<Genre>()
                              .Where(g => topGenreNames.Contains(g.Name))
                              .Select(g => g.id)

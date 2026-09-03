@@ -13,7 +13,7 @@ namespace QueryGalleryDemo.Examples.Basic;
     type: QueryType.Linq,
     explanation: """
 **How It Works:**
-1. Create a database context for the 'Chinook' database
+1. Create a database ctx for the 'Chinook' database
 2. Get the Artist table using GetTable<Artist>()
 3. Sort all artists alphabetically by Name using OrderBy()
 4. Execute the query and convert results to a List
@@ -23,14 +23,14 @@ namespace QueryGalleryDemo.Examples.Basic;
 - This is the simplest type of LINQ query - retrieving all records from a single table
 - OrderBy() translates to SQL ORDER BY clause
 - ToList() executes the query and materializes results in memory
-- The using statement ensures the database context is properly disposed
+- The using statement ensures the database ctx is properly disposed
 """)]
 internal sealed class Basic1Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var artists = context.GetTable<Artist>().OrderBy(a => a.Name).ToList();
+        using var ctx = new SxmTransaction("Chinook");
+        var artists = ctx.GetTable<Artist>().OrderBy(a => a.Name).ToList();
         return Task.FromResult<object>(artists);
     }
 }
@@ -43,7 +43,7 @@ internal sealed class Basic1Example : IQueryExampleRunner
     type: QueryType.Linq,
     explanation: """
 **How It Works:**
-1. Create a context connected to the Chinook database
+1. Create a ctx connected to the Chinook database
 2. Access the Genre table via GetTable<Genre>()
 3. Order genres alphabetically by name
 4. Materialize results into a list
@@ -59,8 +59,8 @@ internal sealed class Basic2Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var genres = context.GetTable<Genre>().OrderBy(g => g.Name).ToList();
+        using var ctx = new SxmTransaction("Chinook");
+        var genres = ctx.GetTable<Genre>().OrderBy(g => g.Name).ToList();
         return Task.FromResult<object>(genres);
     }
 }
@@ -88,11 +88,11 @@ internal sealed class Basic3Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var rockGenre = context.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
+        using var ctx = new SxmTransaction("Chinook");
+        var rockGenre = ctx.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
         if (rockGenre == null)
             return Task.FromResult<object>(new List<Track>());
-        var tracks = context.GetTable<Track>()
+        var tracks = ctx.GetTable<Track>()
                             .Where(t => t.GenreId == rockGenre.id)
                             .OrderBy(t => t.Name)
                             .Take(50)
@@ -124,8 +124,8 @@ internal sealed class Basic4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var artists = context.GetTable<Artist>()
+        using var ctx = new SxmTransaction("Chinook");
+        var artists = ctx.GetTable<Artist>()
                              .Where(a => a.Name.Contains("Zeppelin"))
                              .ToList();
         return Task.FromResult<object>(artists);
@@ -155,8 +155,8 @@ internal sealed class Basic5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var tracks = context.GetTable<Track>()
+        using var ctx = new SxmTransaction("Chinook");
+        var tracks = ctx.GetTable<Track>()
                             .Where(t => t.UnitPrice >= 0.99m && t.UnitPrice <= 1.49m)
                             .OrderBy(t => t.UnitPrice)
                             .ThenBy(t => t.Name)
@@ -188,8 +188,8 @@ internal sealed class Basic6Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var tracks = context.GetTable<Track>()
+        using var ctx = new SxmTransaction("Chinook");
+        var tracks = ctx.GetTable<Track>()
                             .OrderByDescending(t => t.UnitPrice)
                             .ThenBy(t => t.Name)
                             .Take(10)
@@ -221,10 +221,10 @@ internal sealed class Basic7Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         int minMs = 3 * 60 * 1000;
         int maxMs = 5 * 60 * 1000;
-        var tracks = context.GetTable<Track>()
+        var tracks = ctx.GetTable<Track>()
                             .Where(t => t.Milliseconds >= minMs && t.Milliseconds <= maxMs)
                             .OrderBy(t => t.Milliseconds)
                             .Take(100)
@@ -256,9 +256,9 @@ internal sealed class Basic8Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
+        using var ctx = new SxmTransaction("Chinook");
         string searchTerm = "led";
-        var artists = context.GetTable<Artist>()
+        var artists = ctx.GetTable<Artist>()
                              .Where(a => a.Name.ToLower().Contains(searchTerm.ToLower()))
                              .OrderBy(a => a.Name)
                              .ToList();
@@ -289,8 +289,8 @@ internal sealed class Basic9Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var tracks = context.GetTable<Track>()
+        using var ctx = new SxmTransaction("Chinook");
+        var tracks = ctx.GetTable<Track>()
                             .Where(t => t.Composer != null && t.Composer != "")
                             .OrderBy(t => t.Composer)
                             .ThenBy(t => t.Name)
@@ -321,8 +321,8 @@ internal sealed class Basic10Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
-        using var context = new SxmTransaction("Chinook");
-        var mediaTypes = context.GetTable<MediaType>().OrderBy(m => m.Name).ToList();
+        using var ctx = new SxmTransaction("Chinook");
+        var mediaTypes = ctx.GetTable<MediaType>().OrderBy(m => m.Name).ToList();
         return Task.FromResult<object>(mediaTypes);
     }
 }

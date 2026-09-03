@@ -16,7 +16,7 @@ namespace QueryGalleryDemo.Examples.Mixed;
 1. LINQ finds an anchor Artist
 2. Entity SaveAsync creates a scratch Album and Track
 3. Embedded SQL counts tracks on that new album inside the same tx
-4. Named SQL fetches genre popularity for context
+4. Named SQL fetches genre popularity for ctx
 5. A LINQ aggregate sums UnitPrice for the album
 6. RollbackTransactionAsync throws all of it away
 
@@ -54,7 +54,7 @@ internal sealed class Mix10Example : IQueryExampleRunner
             $"SELECT COUNT(*) AS Cnt FROM Track WHERE AlbumId = {album.id}",
             new Dictionary<string, object?>());
 
-        // (4) Named SQL for context
+        // (4) Named SQL for ctx
         var genrePopularity = await ctx.RunStatementAsync(
             "GetGenrePopularity",
             new Dictionary<string, object?>());

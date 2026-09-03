@@ -13,6 +13,7 @@ namespace QueryGalleryDemo.Models;
 public class Track : SxmEntity
 {
     [Required]
+    [Index]
     public string Name { get; set; } = string.Empty;
 
     [ForeignKey(foreignTable: nameof(Album))]

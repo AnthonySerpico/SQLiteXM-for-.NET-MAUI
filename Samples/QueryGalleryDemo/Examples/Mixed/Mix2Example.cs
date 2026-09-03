@@ -14,13 +14,13 @@ namespace QueryGalleryDemo.Examples.Mixed;
     explanation: """
 **How It Works:**
 1. LINQ COUNT gives the starting artist count
-2. new Artist().SaveAsync() enlists on the ambient tx registered by the context
+2. new Artist().SaveAsync() enlists on the ambient tx registered by the ctx
 3. A second LINQ COUNT sees the uncommitted row (read-your-writes)
 4. RollbackTransactionAsync discards everything before dispose
 
 **Key Concepts:**
 - Parameterless SaveAsync() picks up SxmAmbientTransaction.Current
-- LINQ reads see uncommitted writes in the same context
+- LINQ reads see uncommitted writes in the same ctx
 - Explicit rollback keeps the demo DB clean between runs
 """)]
 internal sealed class Mix2Example : IQueryExampleRunner
