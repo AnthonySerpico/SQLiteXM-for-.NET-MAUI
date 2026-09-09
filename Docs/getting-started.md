@@ -10,12 +10,11 @@ Most SQLiteXM applications follow the same general lifecycle.
 
 ### Startup (One-Time Initialization)
 
-These steps are performed once typically as part of application startup.
+These steps are typically performed once as part of application startup.
 
 ```text
 Startup
  ├─ Initialize database
- └─ Register entities
 ```
 
 ### Runtime (Normal Application Usage)
@@ -35,9 +34,9 @@ The remainder of this guide explains this workflow.
 
 ---
 
-One-time startup (initialization and registration) depends on two things:
-- Define the database(s) you want created for your application
-- Create the entity classes used by your application. At least one is required.
+Startup initialization requires two things:
+- Define the database(s) used by your application.
+- Define the entity classes used by your application. At least one is required.
 
 
 ## 1. Define Your Database
@@ -88,7 +87,7 @@ columns, indexes, triggers, and relationships.
 If you are unfamiliar with entities, read the first two sections of  ➡️ **[Defining Entities](./defining-entities.md)**.
 
 The example below shows a simple entity class named `User` with three properties: `Name`, `Age`, and `Email`. The `Email` property is indexed to improve query performance.
-During registration, SQLiteXM will create a table named `User` with three columns: `Name`, `Age`, and `Email`. An index will be created on the `Email` column.
+During initialization, SQLiteXM will create a table named `User` with three columns: `Name`, `Age`, and `Email`. An index will be created on the `Email` column.
 
 ```csharp
 using SQLiteXM;
@@ -113,7 +112,7 @@ By inheriting from `SxmEntity`, your class automatically gains:
     1. `SaveAsync()` - Saves the current entity to the database by either inserting it if it is new, or updating it if it already exists.
     2. `DeleteAsync()` - Deletes the current entity from the database if it exists.
 - `INotifyPropertyChanged` support
-- When entities are registered via `RegisterEntitiesAsync`, SQLiteXM compares the entity metadata with the existing database schema and creates or updates the required tables, columns, indexes, triggers, and constraints.
+- During initialization, SQLiteXM compares the entity metadata with the existing database schema and creates or updates the required tables, columns, indexes, triggers, and constraints.
 
 
 ### Entity Attributes
@@ -172,54 +171,85 @@ public class PlaylistTrack : SxmEntity
 
 ---
 
-## 3. Initialization and Registration
+## 3. Database Initialization
 
 Once you've defined a database in `SqlStatements.json` and created at least one entity class, 
-you're ready to initialize the database and register your entities.
+you're ready to initialize the database.
 
-Initialization and registration are performed once, typically during application startup.
+Initialization is performed once, typically during application startup.
 
 ```csharp
-public static async Task InitializeDatabaseAsync()
-{
-    using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+    // Create an array containing all the entities used by your application
+    Type[] applicationEntities = new Type[]
+    {
+        typeof(User), 
+        typeof(Order), 
+        typeof(Product)
+    };
 
-    await SxmDatabase.InitializeAsync(stream, databaseOptions: null);
-    await SxmDatabase.RegisterEntitiesAsync(typeof(User), typeof(Order), typeof(Product));
-}
+    // Open the SqlStatements.json file from the application package
+    Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+
+    // Start database initialization in the background
+    // SQLiteXM takes ownership of 'sqlStatementsStream' and ensures proper disposal.
+    SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
+
+    // Later, when database access is required:
+    await SxmDatabase.EnsureReadyAsync();
 ```
+
+Call `SxmDatabase.StartInitialization(...)` once, normally early in the application startup cycle. A good place is 
+in MauiProgram.cs right after calling `MauiApp.CreateBuilder()`. `StartInitialization` returns immediately 
+without blocking - initialization runs in the background.
+
+You can call `StartInitialization` from anywhere (including headless startup paths like Android `BroadcastReceiver`s or iOS
+background handlers). You do not need to synchronize calls to `StartInitialization` either - SQLiteXM handles this internally. 
+And it is safe to call multiple times and concurrently; only the first call actually performs initialization. 
+Subsequent calls return immediately.    
+
 
 ## What's Happening?
 
-Initialization and registration together perform several important tasks.
+Initialization performs several important tasks.
 
-InitializeAsync():
-
-- Reads database configuration from `SqlStatements.json`
+- Reads the database configuration from `SqlStatements.json`
 - Opens or creates the databases
 - Applies database options and PRAGMA settings
 - Prepares SQLiteXM
-
-RegisterEntitiesAsync():
-
 - Registers which entity types to use
 - Inspects entity metadata
 - Creates or updates the database schema
 
-Registration can be performed with one or more entity types.
-
 ## Database Options
 
-The second parameter of `InitializeAsync()` is an optional `SxmDatabaseOptions` instance used to customize the operation of SQLiteXM and the SQLite database.
+The second parameter of `StartInitialization` is an optional `SxmDatabaseOptions` instance used to customize 
+the operation of SQLiteXM and the SQLite database.
 
 This is covered fully in: ➡️ **[Applying Database Options](./database-configuration-options.md)**
 
 ---
 
-## 4. Start Working With Your Data
+## 4. Verifying Database Initialization Has Completed
 
-Once initialization and entity registration are complete, SQLiteXM is ready
-for normal application use.
+Before the *first* use of the database, anywhere in your app, be sure to call:
+
+```csharp
+await SxmDatabase.EnsureReadyAsync();
+```
+
+`EnsureReadyAsync` only needs to be called once. It waits for the database initialization task started by `StartInitialization` 
+to complete, guaranteeing that the database is fully initialized and ready for use.
+It can be called multiple times and concurrently if needed. Once initialization has completed, subsequent 
+calls return immediately.
+
+`EnsureReadyAsync` is safe to call from UI-thread async code, view models, or background services alike. You
+decide *where* in your app it makes the most sense to await initialization.
+
+---
+
+## 5. Start Working With Your Data
+
+Once initialization is complete, SQLiteXM is ready for normal application use.
 You can create and save entities, query and modify data using LINQ or SQL, and begin using transactions.
 
 This is covered fully in: ➡️ **[Working With Data](./working-with-data.md)**
@@ -254,5 +284,10 @@ await using (var ctx = new SxmTransaction())
 
 } // <-- Automatically commits transaction on dispose if no errors occurred
 ```
+
+SxmTransaction uses a commit-on-success model. If the transaction scope exits normally, 
+the transaction is committed. If a database operation throws an exception, the transaction 
+is rolled back. Manual commit and rollback are also supported. See ➡️ **[Working With Data](./working-with-data.md)** for details.
+
 <br>&nbsp;</b>
 

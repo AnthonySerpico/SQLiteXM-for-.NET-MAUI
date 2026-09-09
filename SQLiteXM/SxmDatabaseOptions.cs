@@ -138,7 +138,26 @@ public sealed class SxmDatabaseOptions
     /// Adds a database name mapping for the provided initialization options.
     /// </summary>
     /// <param name="initOptions">The initialization options to associate.</param>
-    /// <param name="databaseName">The database name used as the key.</param>
+    /// <remarks>
+    /// <para>
+    /// This method registers the provided <paramref name="initOptions"/> for all databases
+    /// currently known to <see cref="SxmProcessSQLStatements.Databases"/>. Each database name
+    /// is mapped to the same options instance, allowing connection-level configuration to be
+    /// retrieved later via <see cref="GetInitOptionsFromDatabaseName"/>.
+    /// </para>
+    /// <para>
+    /// If <paramref name="initOptions"/> is null, the method returns immediately without
+    /// making any changes to the registry.
+    /// </para>
+    /// <para>
+    /// This method is thread-safe and uses a <see cref="ConcurrentDictionary{TKey, TValue}"/>
+    /// to store the mappings. If a database name has already been registered, an
+    /// <see cref="InvalidOperationException"/> is thrown to prevent accidental reconfiguration.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a database name is already registered with different initialization options.
+    /// </exception>
     internal static void AddDatabaseNames(SxmDatabaseOptions? initOptions)
     {
         if (initOptions is null)
@@ -160,6 +179,17 @@ public sealed class SxmDatabaseOptions
     /// </summary>
     /// <param name="databaseName">The database name to look up.</param>
     /// <returns>The initialization options, or null if none are registered.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method performs a thread-safe lookup in the internal database name registry.
+    /// It is used internally by connection lifecycle methods to apply the correct
+    /// configuration settings and invoke the appropriate interceptors.
+    /// </para>
+    /// <para>
+    /// If <paramref name="databaseName"/> is null, empty, or if the internal registry
+    /// has not been initialized, the method returns null immediately.
+    /// </para>
+    /// </remarks>
     private static SxmDatabaseOptions? GetInitOptionsFromDatabaseName(string? databaseName)
     {
         if (string.IsNullOrEmpty(databaseName) || _databaseNames is null)
@@ -172,6 +202,22 @@ public sealed class SxmDatabaseOptions
     /// Adds a handler that is invoked after a connection is opened.
     /// </summary>
     /// <param name="connectionOpenedInterceptor">The handler to register.</param>
+    /// <remarks>
+    /// <para>
+    /// This method allows callers to register custom logic that executes immediately after
+    /// a SQLite connection is opened and after all PRAGMA settings have been applied.
+    /// Multiple handlers can be registered, and they will be invoked in the order they
+    /// were added.
+    /// </para>
+    /// <para>
+    /// The registered handler receives the opened <see cref="SqliteConnection"/> instance,
+    /// allowing for custom initialization, logging, or instrumentation.
+    /// </para>
+    /// <para>
+    /// This method is thread-safe. The handler is stored in an internal collection that
+    /// is protected by a lock.
+    /// </para>
+    /// </remarks>
     public void OnConnectionOpened(ConnectionOpenedInterceptor connectionOpenedInterceptor)
     {
         lock (_interceptorLock)
@@ -185,6 +231,22 @@ public sealed class SxmDatabaseOptions
     /// Adds a handler that is invoked after a connection is closed.
     /// </summary>
     /// <param name="connectionClosedInterceptor">The handler to register.</param>
+    /// <remarks>
+    /// <para>
+    /// This method allows callers to register custom logic that executes after a SQLite
+    /// connection has been closed. Multiple handlers can be registered, and they will be
+    /// invoked in the order they were added.
+    /// </para>
+    /// <para>
+    /// Unlike <see cref="OnConnectionOpened"/>, the closed interceptor does not receive
+    /// a connection parameter since the connection is already closed when the handler runs.
+    /// This is useful for cleanup operations, logging, or resource management.
+    /// </para>
+    /// <para>
+    /// This method is thread-safe. The handler is stored in an internal collection that
+    /// is protected by a lock.
+    /// </para>
+    /// </remarks>
     public void OnConnectionClosed(ConnectionClosedInterceptor connectionClosedInterceptor)
     {
         lock (_interceptorLock)
@@ -213,6 +275,30 @@ public sealed class SxmDatabaseOptions
     /// </summary>
     /// <param name="sqliteConnection">The opened SQLite connection.</param>
     /// <param name="databaseName">The database name associated with the connection.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is called automatically by the SQLiteXM connection infrastructure immediately
+    /// after a physical SQLite connection is opened. It performs two main operations:
+    /// </para>
+    /// <list type="number">
+    /// <item>
+    /// <description>
+    /// Applies all configured PRAGMA settings (journal mode, synchronous mode, foreign keys,
+    /// cache size, etc.) by calling <see cref="RunConnectionPragmas"/>.
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// Invokes all registered connection-opened interceptors in the order they were added.
+    /// </description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// If either <paramref name="sqliteConnection"/> is null or no initialization options
+    /// are found for <paramref name="databaseName"/>, the method returns immediately without
+    /// performing any operations.
+    /// </para>
+    /// </remarks>
     internal static void ConnectionOpened(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection, string? databaseName)
     {
         SxmDatabaseOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
@@ -231,15 +317,41 @@ public sealed class SxmDatabaseOptions
         }
     }
 
+    /// <summary>
+    /// Determines whether connection pooling is enabled.
+    /// </summary>
+    /// <returns>True if connection pooling is enabled; otherwise, false. Defaults to true if not explicitly configured.</returns>
+    /// <remarks>
+    /// This method is used internally by the connection management infrastructure to decide
+    /// whether to reuse existing connections or create new ones. Connection pooling is enabled
+    /// by default to improve performance.
+    /// </remarks>
     internal static bool IsConnectionPoolingEnabled()
     {
         return _enableConnectionPooling ?? true;
     }
 
+    /// <summary>
+    /// Retrieves the configured default timeout in seconds.
+    /// </summary>
+    /// <returns>The default timeout in seconds, or null if not configured.</returns>
+    /// <remarks>
+    /// This method returns the timeout value that should be applied to database commands.
+    /// If no timeout has been explicitly configured, null is returned, allowing the caller
+    /// to apply their own default.
+    /// </remarks>
     internal static int? GetDefaultTimeout()
     {
         return _defaultTimeout;
     }
+    /// <summary>
+    /// Determines whether logging is enabled.
+    /// </summary>
+    /// <returns>True if logging is enabled; otherwise, false. Defaults to false if not explicitly configured.</returns>
+    /// <remarks>
+    /// This method is used by the SQLiteXM infrastructure to determine whether to emit
+    /// diagnostic log messages. Logging is disabled by default to minimize performance overhead.
+    /// </remarks>
     internal static bool IsLoggingEnabled()
     {
         return _enableLogging ?? false;
@@ -249,6 +361,22 @@ public sealed class SxmDatabaseOptions
     /// Invokes any connection-closed interceptors associated with a database name.
     /// </summary>
     /// <param name="databaseName">The database name whose interceptors should run.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is called automatically by the SQLiteXM connection infrastructure after
+    /// a physical SQLite connection has been closed. It invokes all registered connection-closed
+    /// interceptors in the order they were added.
+    /// </para>
+    /// <para>
+    /// If no initialization options are found for <paramref name="databaseName"/>, or if
+    /// no interceptors have been registered, the method returns immediately without performing
+    /// any operations.
+    /// </para>
+    /// <para>
+    /// The interceptors are invoked within a lock to ensure thread-safe access to the
+    /// interceptor collection.
+    /// </para>
+    /// </remarks>
     internal static void ConnectionClosed(string? databaseName)
     {
         SxmDatabaseOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
@@ -270,6 +398,35 @@ public sealed class SxmDatabaseOptions
     /// </summary>
     /// <param name="sqliteConnection">The SQLite connection being closed.</param>
     /// <param name="databaseName">The associated database name.</param>
+    /// <remarks>
+    /// <para>
+    /// This method is called automatically before a SQLite connection is closed. It handles
+    /// WAL (Write-Ahead Logging) checkpoint operations based on the configured
+    /// <see cref="CheckPointConnection"/> option.
+    /// </para>
+    /// <para>
+    /// The method performs the following checkpoint strategies:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>
+    /// If <see cref="CheckPointConnection"/> is <c>OnConnectionClose</c>, a PASSIVE checkpoint
+    /// is executed to attempt transferring WAL data to the main database file without blocking.
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// If <see cref="CheckPointConnection"/> is <c>MaxSize</c> and the WAL file exceeds
+    /// <see cref="CheckPointWalMaxSize"/> (in KB), a TRUNCATE checkpoint is executed to
+    /// reduce the WAL file size.
+    /// </description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// Checkpointing is only performed when the journal mode is WAL. If the database is
+    /// not using WAL mode, the method returns immediately.
+    /// </para>
+    /// </remarks>
     internal static void ConnectionClosing(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection, string? databaseName)
     {
         SxmDatabaseOptions? initOptions = GetInitOptionsFromDatabaseName(databaseName);
@@ -310,6 +467,33 @@ public sealed class SxmDatabaseOptions
     /// </summary>
     /// <param name="sqliteConnection">The SQLite connection to use.</param>
     /// <param name="checkPointType">The checkpoint mode to apply.</param>
+    /// <remarks>
+    /// <para>
+    /// This method executes the SQLite PRAGMA wal_checkpoint command with the specified
+    /// checkpoint type (e.g., "PASSIVE", "FULL", "RESTART", or "TRUNCATE").
+    /// </para>
+    /// <para>
+    /// The checkpoint operation transfers data from the WAL file to the main database file.
+    /// Different checkpoint modes have different behaviors:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>
+    /// PASSIVE: Checkpoint as much as possible without blocking, up to the busy timeout.
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// TRUNCATE: Like FULL, but also truncates the WAL file to zero bytes if successful.
+    /// </description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// The method reads the result from the PRAGMA command, which returns three integers:
+    /// the number of busy pages, the number of log pages, and the number of checkpointed pages.
+    /// These values are currently read but not used by the caller.
+    /// </para>
+    /// </remarks>
     private static void CheckPointWal(Microsoft.Data.Sqlite.SqliteConnection? sqliteConnection, string checkPointType)
     {
         using (var cmd = sqliteConnection!.CreateCommand())
@@ -330,6 +514,32 @@ public sealed class SxmDatabaseOptions
     /// </summary>
     /// <param name="sqliteConnection">The SQLite connection to configure.</param>
     /// <param name="initOptions">The initialization options to apply.</param>
+    /// <remarks>
+    /// <para>
+    /// This method executes synchronously to apply all configured PRAGMA settings immediately
+    /// after a connection is opened. It validates that each PRAGMA was successfully applied
+    /// by reading back the value and comparing it to the requested setting.
+    /// </para>
+    /// <para>
+    /// The following PRAGMA settings are applied if configured in <paramref name="initOptions"/>:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>foreign_keys - Enables or disables foreign key constraint enforcement</description></item>
+    /// <item><description>synchronous - Controls how aggressively SQLite writes data to disk</description></item>
+    /// <item><description>journal_mode - Sets the rollback journal mode (DELETE, WAL, etc.)</description></item>
+    /// <item><description>busy_timeout - Sets the maximum time to wait when the database is locked</description></item>
+    /// <item><description>cache_size - Sets the maximum number of database pages to cache in memory (in KB)</description></item>
+    /// <item><description>wal_autocheckpoint - Sets the WAL auto-checkpoint threshold in pages</description></item>
+    /// <item><description>temp_store - Controls where temporary tables and indices are stored</description></item>
+    /// </list>
+    /// <para>
+    /// If any PRAGMA fails to apply correctly, an <see cref="InvalidOperationException"/> is thrown
+    /// with details about the requested and actual values.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a PRAGMA setting cannot be applied or when the verification fails.
+    /// </exception>
     private static void RunConnectionPragmas(Microsoft.Data.Sqlite.SqliteConnection sqliteConnection, SxmDatabaseOptions initOptions)
     {
         // Execute PRAGMA synchronously (very quick) to avoid sync-over-async in ctor.

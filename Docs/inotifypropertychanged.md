@@ -293,7 +293,7 @@ public class ShoppingCart : SxmEntity
 
 ### CommunityToolkit.Mvvm
 
-SQLiteXM entities work seamlessly with CommunityToolkit.Mvvm. Use entities directly in your ViewModels:
+SQLiteXM entities can be used directly with CommunityToolkit.Mvvm. Use entities directly in your ViewModels:
 
 ```csharp
 using CommunityToolkit.Mvvm.ComponentModel;

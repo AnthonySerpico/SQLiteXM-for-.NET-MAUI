@@ -119,14 +119,23 @@ In this example:
 
 ---
 
-## Registering Entities
+## Database Initialization
 
-Entity registration works exactly the same regardless of how many databases are configured or to which database each entity belongs to.
+SQLiteXM initialization works exactly the same regardless of how many databases are configured or to which database each entity belongs to.
 
 ```csharp
-await SxmDatabase.RegisterEntitiesAsync(
-    typeof(User),
-    typeof(ApplicationLog)
+    // Create an array of all the entities used by your application
+    Type[] applicationEntities = new Type[]
+    {
+        typeof(User), 
+        typeof(ApplicationLog)
+    };
+
+    // Open the SqlStatements.json file from the application package
+    Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+
+    // Start database initialization
+    SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
 );
 ```
 

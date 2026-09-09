@@ -15,10 +15,7 @@ This guide walks that spectrum end to end: from the simplest single-statement ca
 
 > 💡 In this guide, database operation means a statement that modifies data, returns data, or when using a `RETURNING` clause, does both. This includes `SELECT`, `INSERT`, `UPDATE`, and `DELETE`, regardless of whether they're expressed as LINQ, SQL, or entity DML.
 
-> 💡 **Prerequisites.** All examples assume that `SxmDatabase.InitializeAsync(...)` and `SxmDatabase.RegisterEntitiesAsync(...)` 
-were called at application startup. 
-
->  This is covered fully in: ➡️ [Getting Started](./getting-started.md).
+> 💡 **Prerequisites.** All examples assume that the database has been initialized. This is covered fully in: ➡️ [Getting Started](./getting-started.md).
 
 > 💡 **Example entities.** Throughout this guide the examples use two minimal illustrative entities:
 >
@@ -52,6 +49,14 @@ There are only two execution modes to remember.
 - **Transactional block.** Many statements — of any kind — are grouped inside `await using var ctx = new SxmTransaction(...);`.  LINQ, entity DML, and SQL inside the block all run on the *same* connection and the *same* transaction, and either all commit together or all roll back together.
 
 LINQ does not have a standalone execution mode. It is only available inside a transaction block.
+
+| | Standalone | Transaction |
+|---|---|---|
+| Entity DML | ✅ | ✅ |
+| SQL | ✅ | ✅ |
+| LINQ | — | ✅ |
+
+
 
 ---
 

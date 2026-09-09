@@ -43,7 +43,7 @@ internal static class SxmSchemaRegistration
     /// <exception cref="ArgumentNullException">Thrown when entityType is null.</exception>
     /// <exception cref="ArgumentException">Thrown when entityType does not inherit from SxmEntity or is abstract.</exception>
     public static async Task RegisterEntitySchemaAsync(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type entityType, 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type entityType,
         string? databaseName = null)
     {
         if (entityType == null)
@@ -381,8 +381,8 @@ internal static class SxmSchemaRegistration
             string notNull = string.Empty;
             if (requiredNotNull is not null)
             {
-                notNull = requiredNotNull.DefaultValue is not null 
-                    ? $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.DefaultValue)}" 
+                notNull = requiredNotNull.DefaultValue is not null
+                    ? $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.DefaultValue)}"
                     : " not null";
             }
 
@@ -493,28 +493,28 @@ internal static class SxmSchemaRegistration
                clrType == typeof(float) ? "REAL" :
                clrType == typeof(byte[]) ? "BLOB" :
                            null;
-               }
+    }
 
-               /// <summary>
-               /// Converts a ForeignKeyDeleteAction enum value to its SQL representation.
-               /// </summary>
-               /// <param name="action">The foreign key action to convert.</param>
-               /// <returns>The SQL clause for the action (e.g., " ON DELETE CASCADE"), or empty string if None.</returns>
-               private static string GetForeignKeyActionSql(ForeignKeyDeleteAction action)
-               {
-                   return action switch
-                   {
-                       ForeignKeyDeleteAction.Cascade => " ON DELETE CASCADE",
-                       ForeignKeyDeleteAction.SetNull => " ON DELETE SET NULL",
-                       ForeignKeyDeleteAction.SetDefault => " ON DELETE SET DEFAULT",
-                       ForeignKeyDeleteAction.Restrict => " ON DELETE RESTRICT",
-                       ForeignKeyDeleteAction.NoAction => " ON DELETE NO ACTION",
-                       ForeignKeyDeleteAction.None => string.Empty,
-                       _ => string.Empty
-                   };
-               }
+    /// <summary>
+    /// Converts a ForeignKeyDeleteAction enum value to its SQL representation.
+    /// </summary>
+    /// <param name="action">The foreign key action to convert.</param>
+    /// <returns>The SQL clause for the action (e.g., " ON DELETE CASCADE"), or empty string if None.</returns>
+    private static string GetForeignKeyActionSql(ForeignKeyDeleteAction action)
+    {
+        return action switch
+        {
+            ForeignKeyDeleteAction.Cascade => " ON DELETE CASCADE",
+            ForeignKeyDeleteAction.SetNull => " ON DELETE SET NULL",
+            ForeignKeyDeleteAction.SetDefault => " ON DELETE SET DEFAULT",
+            ForeignKeyDeleteAction.Restrict => " ON DELETE RESTRICT",
+            ForeignKeyDeleteAction.NoAction => " ON DELETE NO ACTION",
+            ForeignKeyDeleteAction.None => string.Empty,
+            _ => string.Empty
+        };
+    }
 
-               private static async Task<bool> CreateTableAsync(Type entityType, string databaseName, List<string> ddlStatementsList)
+    private static async Task<bool> CreateTableAsync(Type entityType, string databaseName, List<string> ddlStatementsList)
     {
         bool tableCreated = false;
         string tableName = entityType.Name;
@@ -870,7 +870,7 @@ internal static class SxmSchemaRegistration
         }
     }
 
-    private static bool IsIgnored(string name) => 
+    private static bool IsIgnored(string name) =>
         string.Equals(name, "id", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(name, "synchId", StringComparison.OrdinalIgnoreCase);
 }

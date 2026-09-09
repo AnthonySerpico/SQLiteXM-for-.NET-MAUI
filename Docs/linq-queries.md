@@ -21,13 +21,10 @@ LINQ (Language-Integrated Query) allows you to write strongly-typed database que
 
 ## Prerequisites
 
-All LINQ examples in this guide assume:
+LINQ examples in this guide assume:
 
-- `SxmDatabase.InitializeAsync(...)` has been called at application startup
-- `SxmDatabase.RegisterEntitiesAsync(...)` has registered all entity types
-- You are working inside an `SxmTransaction` block
-
-For details on initialization and registration, see: ➡️ [Getting Started](./getting-started.md).
+- The database has been initialized. For details, see: ➡️ [Getting Started](./getting-started.md).
+- You are executing the LINQ examples inside an `SxmTransaction` block. For details, see: ➡️ [Reading and Writing Data](./working-with-data.md).
 
 ---
 

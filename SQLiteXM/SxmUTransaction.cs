@@ -13,10 +13,29 @@ namespace SQLiteXM
     /// </summary>
     internal class SxmUTransaction : IDisposable, IAsyncDisposable
     {
+        /// <summary>
+        /// Flag indicating whether synchronization should be interrupted.
+        /// </summary>
         private bool _interruptSynchronize = false;
+
+        /// <summary>
+        /// The underlying SxmConnection used by this transaction.
+        /// </summary>
         private SxmConnection? _connection;
+
+        /// <summary>
+        /// Flag indicating whether this transaction instance has been disposed.
+        /// </summary>
         private bool _disposed = false;
+
+        /// <summary>
+        /// Flag indicating whether this transaction owns the async lock on the connection.
+        /// </summary>
         private bool _ownsAsyncLock = false;
+
+        /// <summary>
+        /// Unique identifier for the lock owner, if this transaction owns the connection lock.
+        /// </summary>
         private Guid? _lockOwnerId = null;
 
         /// <summary>

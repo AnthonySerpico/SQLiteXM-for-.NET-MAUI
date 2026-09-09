@@ -1,0 +1,59 @@
+name: Publish QueryGalleryDemo (Windows)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  publish-windows:
+    runs-on: windows-latest
+    env:
+      PROJECT_PATH: Samples/QueryGalleryDemo/QueryGalleryDemo.csproj
+      TFM: net9.0-windows10.0.19041.0
+      RID: win-x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui --skip-sign-check
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT_PATH }} -f ${{ env.TFM }}
+
+      - name: Publish self-contained unpackaged app
+        run: >
+          dotnet publish ${{ env.PROJECT_PATH }}
+          -f ${{ env.TFM }}
+          -c Release
+          -p:RuntimeIdentifier=${{ env.RID }}
+          -p:SelfContained=true
+          -p:WindowsPackageType=None
+          -p:PublishSingleFile=false
+
+      - name: Zip publish output
+        shell: pwsh
+        run: |
+          $publishDir = "Samples/QueryGalleryDemo/bin/Release/${{ env.TFM }}/${{ env.RID }}/publish"
+          $zipPath = "QueryGalleryDemo-win-x64.zip"
+          Compress-Archive -Path "$publishDir/*" -DestinationPath $zipPath -Force
+          echo "ZIP_PATH=$zipPath" >> $env:GITHUB_ENV
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_PATH }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

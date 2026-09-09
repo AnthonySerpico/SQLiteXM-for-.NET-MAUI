@@ -76,11 +76,13 @@ namespace MauiApp1
 
 		protected override void OnSleep()
 		{	
+			// Call lifecycle hook LAST to allow other cleanup first
 			SxmLifecycleManager.OnSleep();
 		}
 
 		protected override void OnResume()
 		{
+			// Call lifecycle hook FIRST to re-enable database before other logic
 			SxmLifecycleManager.OnResume();
 		}
 	}
@@ -237,8 +239,8 @@ public static TimeSpan SuspendGracePeriod { get; set; }
 // Set grace period to 3 seconds (faster suspension, less cleanup time)
 SxmLifecycleManager.SuspendGracePeriod = TimeSpan.FromSeconds(3);
 
-// Set grace period to 10 seconds (more cleanup time, slower suspension)
-SxmLifecycleManager.SuspendGracePeriod = TimeSpan.FromSeconds(10);
+// Set grace period to 8 seconds (more cleanup time, slower suspension)
+SxmLifecycleManager.SuspendGracePeriod = TimeSpan.FromSeconds(8);
 ```
 
 **Recommendations:**

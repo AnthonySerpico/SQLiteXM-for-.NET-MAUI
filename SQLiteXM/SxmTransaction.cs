@@ -38,6 +38,46 @@ namespace SQLiteXM
         private Microsoft.Data.Sqlite.SqliteTransaction? _enlistedTransaction;
         private string? _databaseName;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SxmTransaction"/> class, creating a LINQ-enabled
+        /// transactional context for the specified database.
+        /// </summary>
+        /// <param name="databaseName">Optional database name. If null, uses the default database. If an ambient
+        /// transaction exists, the database name must match or be null.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when an ambient transaction exists for a different database than <paramref name="databaseName"/>.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// This constructor establishes the transactional context that will be used for all LINQ queries
+        /// and entity operations executed through this instance. It follows these rules:
+        /// </para>
+        /// <list type="bullet">
+        /// <item>
+        /// <description>
+        /// If an ambient <see cref="SxmSqlTransaction"/> exists (via <see cref="SxmAmbientTransaction.Current"/>),
+        /// this context joins that transaction. The <paramref name="databaseName"/> must match the ambient
+        /// transaction's database or be null.
+        /// </description>
+        /// </item>
+        /// <item>
+        /// <description>
+        /// If no ambient transaction exists, a new <see cref="SxmSqlTransaction"/> is created and registered
+        /// as ambient. This ensures that entity persistence methods (SaveAsync/DeleteAsync) and named SQL
+        /// statements automatically enlist in the same transaction.
+        /// </description>
+        /// </item>
+        /// <item>
+        /// <description>
+        /// A SQLite transaction is begun lazily on the connection if one is not already active.
+        /// </description>
+        /// </item>
+        /// </list>
+        /// <para>
+        /// Prefer using <c>await using var ctx = new SxmTransaction();</c> to ensure proper asynchronous
+        /// disposal and automatic commit/rollback behavior.
+        /// </para>
+        /// </remarks>
         public SxmTransaction(string? databaseName = null)
         {
             SxmSqlTransaction? ownedTransaction = null;
@@ -45,6 +85,10 @@ namespace SQLiteXM
             {
                 SxmDatabase.EnsureInitialized();
 
+                // Callers are responsible for ensuring SxmDatabase.InitializeAsync(...) and
+                // SxmDatabase.RegisterEntitiesAsync(...) (or StartInitialization) have completed
+                // before constructing an SxmTransaction. Those methods set DbReady on success;
+                // this constructor intentionally does not perform a blocking wait on that signal.
                 SxmSqlTransaction? ambient = SxmAmbientTransaction.Current;
                 if (ambient != null && ambient.Connection != null)
                 {
@@ -296,6 +340,24 @@ namespace SQLiteXM
         }
 
         // LinqToDB table access
+        /// <summary>
+        /// Gets a queryable table accessor for the specified entity type.
+        /// </summary>
+        /// <typeparam name="T">The entity type mapped to a database table. Must be a reference type.</typeparam>
+        /// <returns>An <see cref="SxmTable{T}"/> instance that provides LINQ query capabilities and eager loading support.</returns>
+        /// <exception cref="ObjectDisposedException">Thrown if this <see cref="SxmTransaction"/> has been disposed.</exception>
+        /// <remarks>
+        /// <para>
+        /// This method returns a wrapped table accessor that enables LINQ queries against the database
+        /// within the current transaction. All query operations and bulk modifications (Update/Delete)
+        /// executed through the returned <see cref="SxmTable{T}"/> are transactional and will either
+        /// commit or rollback together when this <see cref="SxmTransaction"/> is disposed.
+        /// </para>
+        /// <para>
+        /// The returned <see cref="SxmTable{T}"/> also exposes the LoadWith method for eager loading
+        /// of related entities without requiring direct LinqToDB references in consuming code.
+        /// </para>
+        /// </remarks>
         public SxmTable<T> GetTable<T>() where T : class
         {
             ThrowIfDisposed();
@@ -590,7 +652,17 @@ namespace SQLiteXM
 
         /************************************************ RunStatementAsync (public forwarders) ************************************************/
 
-
+        /// <summary>
+        /// Executes a SQL statement or named statement with no parameters within this transaction and returns strongly-typed result records.
+        /// </summary>
+        /// <typeparam name="TResult">Type used to map each result record. Must have a parameterless constructor.</typeparam>
+        /// <param name="sqlOrStatementName">Logical name of the SQL statement or direct SQL to execute.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a list of mapped result records of type <typeparamref name="TResult"/>.</returns>
+        /// <remarks>
+        /// This method delegates to the underlying <see cref="SxmSqlTransaction"/> to execute the statement
+        /// within the current transaction scope. The statement executes with no parameters and the results
+        /// are automatically mapped to instances of <typeparamref name="TResult"/>.
+        /// </remarks>
         public Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName) where TResult : class, new()
             => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, new Dictionary<string, object?>());
 
@@ -611,6 +683,16 @@ namespace SQLiteXM
             => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, sqlStatementParameters);
 
 
+        /// <summary>
+        /// Executes a SQL statement or named statement with no parameters within this transaction and returns raw result dictionaries.
+        /// </summary>
+        /// <param name="sqlOrStatementName">Logical name of the SQL statement or direct SQL to execute.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a list of dictionaries, where each dictionary represents a result row with column names as keys and cell values as values.</returns>
+        /// <remarks>
+        /// This method delegates to the underlying <see cref="SxmSqlTransaction"/> to execute the statement
+        /// within the current transaction scope. The statement executes with no parameters and returns
+        /// untyped result dictionaries rather than mapped objects.
+        /// </remarks>
         public Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName) 
             => _sqlTransaction.RunStatementAsync(sqlOrStatementName, new Dictionary<string, object?>());
 

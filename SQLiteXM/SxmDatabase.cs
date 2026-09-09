@@ -11,6 +11,7 @@ using static SxmQueryProcessor;
 
 namespace SQLiteXM
 {
+
     /// <summary>
     /// Provides database initialization helpers used by the SQLiteXM library.
     /// </summary>
@@ -21,6 +22,12 @@ namespace SQLiteXM
     /// </remarks>
     public static class SxmDatabase
     {
+        private static Task? _initializeTask;
+        private static readonly object _lock = new();
+
+        private static TaskCompletionSource DbReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+
         /// <summary>
         /// Cache mapping table name -> (column name -> column type) using thread-safe concurrent dictionaries.
         /// </summary>
@@ -99,6 +106,11 @@ namespace SQLiteXM
 
                 // Note: We don't reset SxmConnectionManager as it manages active connections
                 // Tests should ensure all connections are properly disposed before calling ResetForTestingAsync
+
+                // Reset StartInitialization/EnsureReadyAsync state so tests can exercise fresh
+                // idempotency and failure-propagation behavior.
+                _initializeTask = null;
+                DbReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             }
             finally
             {
@@ -119,6 +131,75 @@ namespace SQLiteXM
             }
         }
 #endif
+
+        /// <summary>
+        /// Starts database initialization and entity registration on a background task.
+        /// </summary>
+        /// <param name="sqlStatementsStream">
+        /// Open, readable stream containing SQL statement definitions. Ownership transfers to this
+        /// method; the stream is disposed once initialization completes (successfully or not).
+        /// </param>
+        /// <param name="databaseOptions">Options for configuring the database.</param>
+        /// <param name="entities">Entity types to register once the schema has been initialized.</param>
+        /// <remarks>
+        /// Call this once, early during application startup (e.g. in <c>MauiProgram.cs</c> or the
+        /// <c>App</c> constructor). This method returns immediately without blocking; initialization
+        /// runs in the background. Callers are responsible for awaiting <see cref="EnsureReadyAsync"/>
+        /// before the first use of the database (e.g. before constructing an <see cref="SxmTransaction"/>
+        /// or accessing any entity).
+        /// </remarks>
+        public static void StartInitialization(Stream sqlStatementsStream, SxmDatabaseOptions databaseOptions, params Type[] entities)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    Task localTask;
+
+                    lock (_lock)
+                    {
+                        _initializeTask ??= InitializeDatabaseAsync(sqlStatementsStream, databaseOptions, entities);
+                        localTask = _initializeTask;
+                    }
+
+                    await localTask;
+                    DbReady.TrySetResult();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"SQLiteXM database initialization failed: {ex}");
+                    DbReady.TrySetException(ex);
+                }
+                finally
+                {
+                    sqlStatementsStream.Dispose();
+                }
+            });
+        }
+
+        private static async Task InitializeDatabaseAsync(Stream sqlStatementsFile, SxmDatabaseOptions databaseOptions, Type[] entities)
+        {
+            await SxmDatabase.InitializeAsync(sqlStatementsFile, databaseOptions);
+            await SxmDatabase.RegisterEntitiesAsync(entities);
+        }
+
+        /// <summary>
+        /// Waits for the database initialization started by <see cref="StartInitialization"/> to complete.
+        /// </summary>
+        /// <returns>
+        /// A task that completes successfully once initialization and entity registration have finished,
+        /// or faults with the exception that caused initialization to fail.
+        /// </returns>
+        /// <remarks>
+        /// Call and await this before the first use of the database (e.g. before constructing an
+        /// <see cref="SxmTransaction"/> or accessing any entity) whenever initialization was started via
+        /// <see cref="StartInitialization"/>. This method never blocks the calling thread; it cooperatively
+        /// awaits the underlying readiness signal, so it is safe to call from UI-thread async code.
+        /// </remarks>
+        public static Task EnsureReadyAsync()
+        {
+            return DbReady.Task;
+        }
 
         /// <summary>
         /// Initialize the database using SQL statements parsed from the specified file.
@@ -234,6 +315,13 @@ namespace SQLiteXM
                 // If any step throws, _initialized remains false so a later call can retry.
                 _initialized = true;
             }
+            catch (Exception ex)
+            {
+                // Ensure DbReady waiters are released with the failure instead of hanging forever.
+                // If InitializeAsync fails, RegisterEntitiesAsync will never run to signal DbReady itself.
+                DbReady.TrySetException(ex);
+                throw;
+            }
             finally
             {
                 _initGate.Release();
@@ -266,40 +354,57 @@ namespace SQLiteXM
         /// <exception cref="ArgumentException">Thrown if any type does not derive from <see cref="SxmEntity"/> or is abstract.</exception>
         public static async Task RegisterEntitiesAsync([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] params Type[] entityTypes)
         {
-            EnsureInitialized();
-
-            if (entityTypes == null || entityTypes.Length == 0)
-                return;
-
-            // Register all of the entities.
-            foreach (var type in entityTypes)
+            try
             {
-                await SxmSchemaRegistration.RegisterEntitySchemaAsync(type).ConfigureFalse();
+                EnsureInitialized();
+
+                if (entityTypes == null || entityTypes.Length == 0)
+                {
+                    // Schema initialization already succeeded (EnsureInitialized passed above),
+                    // so the database is still usable even with no entities to register here.
+                    DbReady.TrySetResult();
+                    return;
+                }
+
+                // Register all of the entities.
+                foreach (var type in entityTypes)
+                {
+                    await SxmSchemaRegistration.RegisterEntitySchemaAsync(type).ConfigureFalse();
+                }
+
+                // Warm up LinqToDB once after first entity registration
+                if (!_linqToDbWarmedUp)
+                {
+                    await WarmupLinqToDbAsync().ConfigureFalse();
+                    _linqToDbWarmedUp = true;
+                }
+
+                // Add a check to see if there are any unassigned triggers in the TriggerStatements collection. This would indicate
+                // that there are triggers defined in the SQL statements file that were not applied to any registered entities, which could
+                // be a configuration error worth warning about.
+                if (SxmSqlStatements.TriggerStatements.Count > 0 && SxmSqlStatements.TriggerStatements.Any(kvp => kvp.Value.Count > 0))
+                {
+                    IEnumerable<string?> unassignedTriggers = SxmSqlStatements.TriggerStatements
+                        .SelectMany((KeyValuePair<string, List<TriggerDefinition>> kvp) => kvp.Value.Select((triggerDefinition, index) => new
+                        {
+                            Database = kvp.Key,
+                            TriggerDefinition = triggerDefinition,
+                            Index = index
+                        }))
+                        .Select((item, i) => $"  [{i + 1}] Unknown Table Name: '{item.TriggerDefinition.TableName}'{Environment.NewLine}      Database: '{item.Database}'{Environment.NewLine}      Trigger SQL: {item.TriggerDefinition.TriggerSQL}");
+
+                    string message = $"Check that trigger source table names match registered entity table names.{Environment.NewLine}" + string.Join(Environment.NewLine, unassignedTriggers);
+                    SxmLogging.Log(new SxmWarning(message), "Warning: Unassigned trigger(s) detected", nameof(RegisterEntitiesAsync));
+                }
+
+                // Registration is the final step of the initialization pipeline; only now is the
+                // database truly ready for use by any caller awaiting EnsureReadyAsync()/DbReady.Task.
+                DbReady.TrySetResult();
             }
-
-            // Warm up LinqToDB once after first entity registration
-            if (!_linqToDbWarmedUp)
+            catch (Exception ex)
             {
-                await WarmupLinqToDbAsync().ConfigureFalse();
-                _linqToDbWarmedUp = true;
-            }
-
-            // Add a check to see if there are any unassigned triggers in the TriggerStatements collection. This would indicate
-            // that there are triggers defined in the SQL statements file that were not applied to any registered entities, which could
-            // be a configuration error worth warning about.
-            if (SxmSqlStatements.TriggerStatements.Count > 0 && SxmSqlStatements.TriggerStatements.Any(kvp => kvp.Value.Count > 0))
-            {
-                IEnumerable<string?> unassignedTriggers = SxmSqlStatements.TriggerStatements
-                    .SelectMany((KeyValuePair<string, List<TriggerDefinition>> kvp) => kvp.Value.Select((triggerDefinition, index) => new
-                    {
-                        Database = kvp.Key,
-                        TriggerDefinition = triggerDefinition,
-                        Index = index
-                    }))
-                    .Select((item, i) => $"  [{i + 1}] Unknown Table Name: '{item.TriggerDefinition.TableName}'{Environment.NewLine}      Database: '{item.Database}'{Environment.NewLine}      Trigger SQL: {item.TriggerDefinition.TriggerSQL}");
-
-                string message = $"Check that trigger source table names match registered entity table names.{Environment.NewLine}" + string.Join(Environment.NewLine, unassignedTriggers);
-                SxmLogging.Log(new SxmWarning(message), "Warning: Unassigned trigger(s) detected", nameof(RegisterEntitiesAsync));
+                DbReady.TrySetException(ex);
+                throw;
             }
         }
 

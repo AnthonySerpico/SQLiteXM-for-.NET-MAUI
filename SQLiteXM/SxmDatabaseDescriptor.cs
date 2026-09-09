@@ -10,8 +10,18 @@ namespace SQLiteXM
     /// </summary>
     internal class SxmDatabaseDescriptor
     {
+        /// <summary>
+        /// Thread-safe collection of all registered database names.
+        /// </summary>
         private static ConcurrentBag<string> _dbDescriptors = new();
 
+        /// <summary>
+        /// Gets the name of the default database.
+        /// </summary>
+        /// <value>The default database name as configured in <see cref="SxmProcessSQLStatements.DefaultDatabaseName"/>.</value>
+        /// <remarks>
+        /// The default database is used when no explicit database name is specified in database operations.
+        /// </remarks>
         public static string? DefaultDatabase
         {
             get { return SxmProcessSQLStatements.DefaultDatabaseName; }
@@ -124,6 +134,25 @@ namespace SQLiteXM
             SxmLogging.SxmLoggingFactory(logFileName, logFilePath, defaultMaxLogSize);
         }
 
+        /// <summary>
+        /// Creates the physical database file on disk if it does not already exist.
+        /// </summary>
+        /// <param name="databaseName">The name of the database file to create.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the database folder path has not been configured.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// This method performs the following steps:
+        /// </para>
+        /// <list type="number">
+        /// <item><description>Ensures the database folder exists, creating it if necessary</description></item>
+        /// <item><description>Creates an empty database file if one does not already exist at the target path</description></item>
+        /// </list>
+        /// <para>
+        /// This is typically called during database initialization before any connections are opened.
+        /// </para>
+        /// </remarks>
         private void CreateDB(string databaseName)
         {
             string? databaseFolderString = SxmDatabaseDescriptor.DatabaseFolder;
@@ -161,6 +190,15 @@ namespace SQLiteXM
             return fileInfo.Length;
         }
 
+        /// <summary>
+        /// Determines whether a database with the specified name has been registered.
+        /// </summary>
+        /// <param name="databaseName">The database name to check.</param>
+        /// <returns>True if the database is registered; otherwise, false.</returns>
+        /// <remarks>
+        /// This method performs a case-sensitive lookup in the internal database descriptor collection.
+        /// A database is considered "defined" if it has been registered via <see cref="SxmDatabase.InitializeAsync"/>.
+        /// </remarks>
         internal static bool IsDatabaseDefined(string databaseName)
         {
             return _dbDescriptors.Contains(databaseName);

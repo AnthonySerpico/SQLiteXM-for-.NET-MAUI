@@ -657,8 +657,11 @@ Ensure the file is configured as a `MauiAsset`.
 ### Loading from Raw Assets
 
 ```csharp
-using Stream stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
-await SxmDatabase.InitializeAsync(stream, databaseOptions);
+    // Open the SqlStatements.json file from the application package
+    Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+
+    // SQLiteXM takes ownership of 'sqlStatementsStream' and ensures proper disposal.
+    SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, typeof(YourApplicationEntity));
 ```
 
 ### Summary

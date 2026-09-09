@@ -127,6 +127,17 @@ database operations during app suspension and resume.
 **Read this when:** You want to add best-effort protection for database operations
 during mobile app backgrounding (optional, recommended for iOS and Android apps).
 
+### [Advanced Initialization Patterns](advanced-initialization-patterns.md)
+
+Learn how to build a single, thread-safe "database ready" signal for apps with
+multiple startup entry points, and how to guarantee the database is ready
+before your first page (or a headless background entry point) uses it.
+
+**Read this when:** Your app needs to initialize the database from more than
+one entry point (app launch, Android `BroadcastReceiver`s, iOS background
+tasks) or needs a hard guarantee the database is ready before the first page
+renders.
+
 ---
 
 ## 📚 Recommended Reading Paths
@@ -152,6 +163,7 @@ After the basics, explore the topics relevant to your application:
 - **[SQL Statement File](sql-statement-file.md)** — when configuring `SqlStatements.json`
 - **[INotifyPropertyChanged](inotifypropertychanged.md)** — when binding entities to the MAUI UI
 - **[Application Lifecycle](application-lifecycle.md)** — when building mobile apps (optional)
+- **[Advanced Initialization Patterns](advanced-initialization-patterns.md)** — when you have multiple startup entry points
 
 ### Maintaining an Existing Application
 
@@ -178,6 +190,7 @@ When your application begins evolving:
 | [Multiple Databases](multiple-databases.md) | Multiple SQLite databases | When one database isn't enough |
 | [INotifyPropertyChanged](inotifypropertychanged.md) | MAUI binding integration | When connecting entities to the UI |
 | [Application Lifecycle](application-lifecycle.md) | MAUI lifecycle integration | Optional, for mobile app backgrounding |
+| [Advanced Initialization Patterns](advanced-initialization-patterns.md) | Multi-entry-point database readiness | When using BroadcastReceivers/background tasks or needing a hard startup guarantee |
 
 ---
 
@@ -196,4 +209,5 @@ If you are not sure where to look:
 - **"What happens when my schema changes?"** → [Schema Evolution](schema-evolution.md)
 - **"How do I use multiple databases?"** → [Multiple Databases](multiple-databases.md)
 - **"How do entities work with MAUI binding?"** → [INotifyPropertyChanged](inotifypropertychanged.md)
+- **"How do I initialize the database for a BroadcastReceiver or background task?"** → [Advanced Initialization Patterns](advanced-initialization-patterns.md)
 - **"How do I handle app suspension on mobile?"** → [Application Lifecycle](application-lifecycle.md)

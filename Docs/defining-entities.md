@@ -5,8 +5,8 @@
 If you are new to SQLiteXM or ORMs, the word entity may be unfamiliar. An entity is simply a C# class
 that represents data your application wants to store in the database.
 
-In SQLiteXM, an entity is a C# class that inherits from `SxmEntity` and is registered with
-`SxmDatabase.RegisterEntitiesAsync(...)`.
+In SQLiteXM, an entity is a C# class that inherits from `SxmEntity` entities are registered during initialization with
+`SxmDatabase.StartInitialization(...)`.
 
 For example, an application might need to store customers. A customer has information such as a name and email address. 
 In SQLiteXM, you define a Customer entity as a C# class:
@@ -44,7 +44,7 @@ In this example:
 - `Name` and `Email` become database columns in the `Customer` table.
 - A `Customer` object represents one row of that table.
 
-SQLiteXM creates or updates the corresponding table when the entity is registered with `SxmDatabase.RegisterEntitiesAsync(...)`.
+SQLiteXM creates or updates the corresponding table during initialization with `SxmDatabase.StartInitialization(...)`.
 
 This means you work with ordinary C# objects in your application, while SQLiteXM handles creating and managing the 
 corresponding database tables and columns for you.
@@ -401,17 +401,26 @@ For example, consider an Order table that references a Customer table through a 
 
 ### Entity Registration
 
-Defining entities is only the first step. SQLiteXM must also register them before use.
+Defining entities is only the first step. SQLiteXM must also register them before use. This is done by `SxmDatabase.StartInitialization(...)`.
 
 ```csharp
-await SxmDatabase.RegisterEntitiesAsync(
-	typeof(Customer),
-	typeof(Order),
-	typeof(OrderLine)
+    // Create an array of all the entities used by your application
+    Type[] applicationEntities = new Type[]
+    {
+        typeof(User), 
+        typeof(Order), 
+        typeof(Product)
+    };
+
+    // Open the SqlStatements.json file from the application package
+    Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+
+    // Start database initialization
+    SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
 );
 ```
 
-During registration, SQLiteXM creates or updates the schema for each entity and applies indexes, triggers, and foreign keys where appropriate.
+During initialization, SQLiteXM creates or updates the schema for each entity and applies indexes, triggers, and foreign keys where appropriate.
 
 ---
 
@@ -574,7 +583,8 @@ Key points:
 * Use `[Index]` and `[UniqueIndex]` to improve query performance and enforce uniqueness
 * Use `[ForeignKey]` for relationships
 * Use `[Trigger]` for custom database behavior
-* Register entity types with `SxmDatabase.RegisterEntitiesAsync(...)`
+
+Entities are registered during initialization by `SxmDatabase.StartInitialization(...)`
 
 For a basic workflow overview, see **GettingStarted.md**.
 For multi-database setup, see **MULTI_DATABASES.md**.

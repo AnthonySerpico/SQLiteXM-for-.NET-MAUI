@@ -54,6 +54,24 @@ namespace SQLiteXM
 
         /************************************************************************* RETURN TResult ********************************************************************/
 
+        /// <summary>
+        /// Executes a SQL statement or named statement with no parameters and returns strongly-typed result records.
+        /// </summary>
+        /// <typeparam name="TResult">Type used to map each result record. Must have a parameterless constructor.</typeparam>
+        /// <param name="sqlOrStatementName">Logical name of the SQL statement or direct SQL to execute.</param>
+        /// <param name="databaseName">Optional database name override; uses the default database if null.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a list of mapped result records of type <typeparamref name="TResult"/>.</returns>
+        /// <remarks>
+        /// <para>
+        /// This is a convenience overload that invokes <see cref="RunStatementAsync(string, Dictionary{string, object?}, string?)"/>
+        /// with an empty parameter dictionary, then maps the raw dictionaries to <typeparamref name="TResult"/> using
+        /// <see cref="SxmHelpers.PopulateUserRecord{TResult}(List{Dictionary{string, object?}})"/>.
+        /// </para>
+        /// <para>
+        /// Use this method when executing parameterless queries or when the statement definition does not
+        /// require any input parameters.
+        /// </para>
+        /// </remarks>
         public static async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, string? databaseName = default(string)) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, new Dictionary<string, object?>(), databaseName).ConfigureFalse();
@@ -73,7 +91,7 @@ namespace SQLiteXM
         /// <exception cref="ArgumentException">If the statement is a direct SQL variant that requires a dictionary or list of parameters.</exception>
         public static async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters, string? databaseName = default) where TResult : class, new()
         {
-                SqlStatementDetails statementDetails = new();
+            SqlStatementDetails statementDetails = new();
 
                 statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
                 if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
@@ -121,6 +139,23 @@ namespace SQLiteXM
 
         /************************************************************************* RETURN Dictionary ********************************************************************/
 
+        /// <summary>
+        /// Executes a SQL statement or named statement with no parameters and returns raw result dictionaries.
+        /// </summary>
+        /// <param name="sqlOrStatementName">Logical name of the SQL statement or direct SQL to execute.</param>
+        /// <param name="databaseName">Optional database name override; uses the default database if null.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a list of dictionaries, where each dictionary represents a result row with column names as keys and cell values as values.</returns>
+        /// <remarks>
+        /// <para>
+        /// This is a convenience overload that invokes <see cref="RunStatementAsync(string, Dictionary{string, object?}, string?)"/>
+        /// with an empty parameter dictionary. The result rows are returned as untyped dictionaries rather than
+        /// being mapped to a specific type.
+        /// </para>
+        /// <para>
+        /// Use this method when you need the raw query results without type mapping, or when the result
+        /// schema is dynamic and does not correspond to a predefined class.
+        /// </para>
+        /// </remarks>
         public static async Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrStatementName, string? databaseName = default(string))
         {
             return await RunStatementAsync(sqlOrStatementName, new Dictionary<string, object?>(), databaseName).ConfigureFalse();

@@ -20,18 +20,22 @@ As we learned in the [`Getting Started Guide`](./getting-started.md), initializa
 The following example shows a typical initialization sequence for SQLiteXM.
 
 
-
 ```csharp
-public static async Task InitializeDatabaseAsync()
-{
-    using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+    // Create an array of all the entities used by your application
+    Type[] applicationEntities = new Type[]
+    {
+        typeof(User), 
+        typeof(Order)
+    };
 
-    await SxmDatabase.InitializeAsync(stream, databaseOptions: null);
-    await SxmDatabase.RegisterEntitiesAsync(typeof(User));
-}
+    // Open the SqlStatements.json file from the application package
+    Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+
+    // Start database initialization in the background
+    SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
 ```
 
-The second parameter of `InitializeAsync()` is an optional `SxmDatabaseOptions` instance used to 
+The second parameter of `StartInitialization()` is an optional `SxmDatabaseOptions` instance used to 
 customize the operation of SQLiteXM and the SQLite database. This will be the focus of the remainder of this guide.
 
 
@@ -151,7 +155,6 @@ It is provided as a reference and is not intended as a recommended configuration
     {
     });
 
-    await SxmDatabase.InitializeAsync(stream, databaseOptions);
 ```
 
 ---

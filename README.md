@@ -19,6 +19,7 @@ The result is SQLiteXM.
 | Designed specifically for .NET MAUI + SQLite | ✅ |
 | Entity-first architecture with built-in persistence methods | ✅ |
 | AOT & IL Trimming Safe — no manual linker configuration needed | ✅ |
+| Mobile-optimized database initialization — idempotent, concurrency-safe startup from any entry point | ✅ |
 | LINQ query support | ✅ |
 | Raw SQL Support | ✅ |
 | Automatic entity-to-table mapping | ✅ |
@@ -30,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 240 tests |
+| Automated Test Coverage | 250+ tests |
 
 ---
 
@@ -38,7 +39,29 @@ The result is SQLiteXM.
 
 See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md#L37)** to find the right guide for where you are in your project.
 
-## 🎯 Quick Start (2 Minutes)
+---
+
+## 🎮 Try SQLiteXM with the Query Gallery Demo
+
+**Want to see SQLiteXM in action?** Download the pre-built **Query Gallery Demo** application:
+
+This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 10 categories. 
+
+**[📥 Download QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)**  
+
+**Features:**
+- ✅ 100+ working query examples (LINQ and SQL) across 10 categories
+- ✅ Live code execution with performance metrics
+- ✅ Realistic music database (~25,000 records)
+- ✅ Self-contained - just extract and run!
+
+Extract the ZIP and run `QueryGalleryDemo.exe` to explore LINQ queries, joins, aggregations, transactions, and more.
+
+Want more details? See the [Query Gallery Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/querygallery-demo.md)
+
+---
+
+## 🎯 SQLiteXM Quick Start (3 Minutes)
 
 ### 1. Define Your Entities
 
@@ -78,7 +101,8 @@ public class Post : SxmEntity
 * `[Table]` defines schema behavior for the entity
 * `[Index]` declares a database index on the property
 * `[ForeignKey]` defines relational constraints between entities
-* Schema is materialized when entities are registered via `RegisterEntitiesAsync`
+
+The schema is created when the database is initialized with `StartInitialization(...)` (step 3).
 
 ---
 
@@ -108,34 +132,46 @@ Place this file in `Resources/Raw` (Build Action: `MauiAsset`):
 
 ### 3. Initialize SQLiteXM
 
-Once your entities and configuration are defined, initialize SQLiteXM in your application startup code.
+Once your entities and database configuration are defined, you're ready to initialize the database. 
 
 ```csharp
-public static async Task InitializeDatabaseAsync()
-{
-    using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+    // Create an array containing all the entities used by your application
+    Type[] applicationEntities = new Type[]
+    {
+        typeof(User), 
+        typeof(Post)
+    };
 
-    await SxmDatabase.InitializeAsync(stream);
+    // Open the SqlStatements.json configuration file from the application package
+    Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 
-    await SxmDatabase.RegisterEntitiesAsync(
-        typeof(User),
-        typeof(Post));
-}
+    // Start database initialization in the background
+    // SQLiteXM takes ownership of 'sqlStatementsStream' and ensures proper disposal.
+    SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
 ```
 
-#### What's happening?
-
-* `OpenAppPackageFileAsync()` loads configuration from the application package
-* `InitializeAsync()` creates and configures the database environment
-* `RegisterEntitiesAsync()` registers entity types and creates or migrates tables as needed
-
-Call `InitializeDatabaseAsync()` once during application startup before performing database operations
+Call `SxmDatabase.StartInitialization(...)` once during application startup. A good place is 
+in MauiProgram.cs right after calling `MauiApp.CreateBuilder()`. `StartInitialization` returns immediately 
+without blocking - initialization runs in the background.
 
 ---
 
-### 4. Start Reading and Writing Data
+### 4. Verifying Database Initialization Has Completed
 
-Once initialization and entity registration are complete, SQLiteXM is ready for normal 
+Before the *first* use of the database, anywhere in your app, call:
+
+```csharp
+await SxmDatabase.EnsureReadyAsync();
+```
+
+`EnsureReadyAsync` only needs to be called once. It waits for the database initialization task started by 
+`StartInitialization` to complete, guaranteeing that the database is fully initialized and ready for use.
+
+---
+
+### 5. Start Reading and Writing Data
+
+Once initialization is complete, SQLiteXM is ready for normal 
 application use. You can create and save entities, query and modify data using LINQ or 
 SQL, and begin using transactions.
 
@@ -183,7 +219,18 @@ await using (var ctx = new SxmTransaction())
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **240 tests** covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **250+ tests** covering real-world scenarios.
+
+### Performance Benchmarks (from test suite)
+
+| Operation | Time | Details |
+|-----------|------|---------|
+| 10,000 row insert (transacted) | 0.45s | Using explicit transaction |
+| 50,000 row query | 14ms | With index |
+| Complex LINQ (20K rows) | 12ms | Joins + filters |
+| 100 concurrent writes | 1.2s | Thread-safe operations |
+
+Benchmark results are environment-dependent and are provided as indicative results from the project's test suite rather than universal performance guarantees.
 
 ### Test Coverage
 
@@ -193,6 +240,7 @@ SQLiteXM includes a comprehensive test suite with **240 tests** covering real-wo
 | Entity Initialization | 13 tests | ✅ 100% |
 | Entity Migration | 18 tests | ✅ 100% |
 | Entity Mapping | 4 tests | ✅ 100% |
+| Initialization Stress Tests (Idempotency and Concurrency) | 11 tests | ✅ 100% |
 | LINQ Queries | 7 tests | ✅ 100% |
 | Advanced LINQ | 12 tests | ✅ 100% |
 | LINQ Transactions | 6 tests | ✅ 100% |
@@ -209,18 +257,7 @@ SQLiteXM includes a comprehensive test suite with **240 tests** covering real-wo
 | Submit Changes | 4 tests | ✅ 100% |
 | Fail-Fast Validation | 5 tests | ✅ 100% |
 | Mixed Operation Transactions | 13 tests | ✅ 100% |
-| **Total** | **240 tests** | **✅ 100%** |
-
-### Performance Benchmarks (from test suite)
-
-| Operation | Time | Details |
-|-----------|------|---------|
-| 10,000 row insert (transacted) | 0.45s | Using explicit transaction |
-| 50,000 row query | 14ms | With index |
-| Complex LINQ (20K rows) | 12ms | Joins + filters |
-| 100 concurrent writes | 1.2s | Thread-safe operations |
-
-Benchmark results are environment-dependent and are provided as indicative results from the project's test suite rather than universal performance guarantees.
+| **Total** | **250+ tests** | **✅ 100%** |
 
 ---
 
@@ -229,7 +266,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 SQLiteXM includes **three sample applications** to help you learn:
 
 ### 1. QueryGalleryDemo (Comprehensive) ⭐
-An **interactive query explorer** with 90+ examples. 
+An **interactive query explorer** with 100+ examples. 
 **Features**: Syntax highlighting, runnable examples, execution timing, result visualization. 
 
 <details>
@@ -248,7 +285,6 @@ An **interactive query explorer** with 90+ examples.
 </details>
 
 📂 **[View Query Gallery Demo](Samples/QueryGalleryDemo/)**
-
 
 
 ### 2. RegistrationDemo (Simple)
@@ -286,11 +322,14 @@ Or install via the [NuGet Package Manager](https://www.nuget.org/packages/SQLite
 
 MIT License - see [LICENSE](./LICENSE.txt) for details.
 
+---
+
 ## 🙏 Acknowledgments
 
-- Built on **Microsoft.Data.Sqlite**
-- LINQ support via **LinqToDB**
-- Inspired by **Entity Framework Core**, **Dapper**, and **SQLite-net**
+- SQLite provider via **[Microsoft.Data.Sqlite](https://github.com/dotnet/efcore)** (MIT License)
+- LINQ support via **[LinqToDB](https://github.com/linq2db/linq2db)** (MIT License)
+
+Inspired by **Entity Framework Core**, **Dapper**, and **SQLite-net**
 
 ---
 

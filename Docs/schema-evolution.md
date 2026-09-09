@@ -1,7 +1,7 @@
 # Schema Evolution
 
-SQLiteXM creates a corresponding table for an entity the first time the entity is registered via `RegisterEntitiesAsync`.
-During subsequent registrations, SQLiteXM compares the entity to the existing table schema and applies any supported schema changes.
+SQLiteXM creates a corresponding table for an entity the first time the entity is registered during `SxmDatabase.StartInitialization(...)`.
+During subsequent initializations, SQLiteXM compares the entity to the existing table schema and applies any supported schema changes.
 
 As part of this process, SQLiteXM creates and updates columns, indexes, foreign keys, etc., to reflect the entity and its applied attributes.
 One of the most common ORM concerns is what happens when an entity changes over time?
@@ -67,7 +67,8 @@ If a column exists in the database but is no longer included in the entity model
 
 ⚠️ Important: Removing a property drops its column
 
-Removing a property from an existing entity is a database schema change, not just a code change. During the next `RegisterEntitiesAsync` call, SQLiteXM will attempt to drop the corresponding column from the database table.
+Removing a property from an existing entity is a database schema change, not just a code change. During the next initialization with 
+`SxmDatabase.StartInitialization(...)`, SQLiteXM will attempt to drop the corresponding column from the database table.
 
 This permanently deletes any data stored in that column.
 
