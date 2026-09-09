@@ -18,7 +18,7 @@ This guide documents the pattern used by SQLiteXM for solving this problem: a si
 
 > 💡 If you only ever access the database from
 > the normal UI launch path, the simple
-> guidance in [Getting Started](getting-started.md) is enough. Read this guide
+> guidance in [Basic Initialization](./basic-initialization.md) is enough. Read this guide
 > if your app has multiple startup entry points (headless background work,
 > `BroadcastReceiver`s, background services, etc.).
 
@@ -43,7 +43,7 @@ The solution is a static, process-wide `TaskCompletionSource` that represents su
 
 SQLiteXM's built-in database initialization is performed by calling `SxmDatabase.StartInitialization(...)`.
 `StartInitialization` returns immediately without blocking. Initialization runs in the background and
-implements *“The Solution”* listed above. Its usage is detailed in [Getting Started](./getting-started.md).
+implements *“The Solution”* listed above. Its usage is detailed in the [Basic Initialization](./basic-initialization.md) guide.
 
 Below is a brief recap of the usage pattern:
 
@@ -99,7 +99,6 @@ You decide *where* in your app it makes the most sense to await initialization.
 `EnsureReadyAsync` is safe to call from UI-thread async code, view models, or background services alike 
 and is safe to call multiple times and concurrently. Once initialization has completed, subsequent 
 calls return immediately. 
-
 
 ---
 

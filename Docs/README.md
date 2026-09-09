@@ -20,6 +20,18 @@ basic database operations.
 
 **Recommended first read.**
 
+### [Basic Initialization](basic-initialization.md)
+
+Getting Started shows you how to call `StartInitialization` and `EnsureReadyAsync`,
+but leaves it up to you to decide *where* in your app to call them. This guide
+answers that question — covering where to start initialization, where to confirm
+the database is ready, and how to structure that depending on how early your app
+needs database access.
+
+**Read this when:** You've finished Getting Started and are ready to wire up
+database initialization for real (`MauiProgram`, `App.OnStart()`, or before
+`AppShell` is constructed).
+
 ---
 
 ## 🧱 Build Your Data Model
@@ -131,12 +143,11 @@ during mobile app backgrounding (optional, recommended for iOS and Android apps)
 
 Learn how to build a single, thread-safe "database ready" signal for apps with
 multiple startup entry points, and how to guarantee the database is ready
-before your first page (or a headless background entry point) uses it.
+before a headless background entry point uses it.
 
 **Read this when:** Your app needs to initialize the database from more than
 one entry point (app launch, Android `BroadcastReceiver`s, iOS background
-tasks) or needs a hard guarantee the database is ready before the first page
-renders.
+tasks, etc).
 
 ---
 
@@ -147,9 +158,10 @@ renders.
 Follow this path:
 
 1. **[Getting Started](getting-started.md)**
-2. **[Defining Entities](defining-entities.md)**
-3. **[Working with Data](working-with-data.md)**
-4. **[LINQ Queries](linq-queries.md)** — when you want to use type-safe queries
+2. **[Basic Initialization](basic-initialization.md)**
+3. **[Defining Entities](defining-entities.md)**
+4. **[Working with Data](working-with-data.md)**
+5. **[LINQ Queries](linq-queries.md)**
 
 This is enough to get SQLiteXM running and begin building an application.
 
@@ -179,6 +191,7 @@ When your application begins evolving:
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
 | [Getting Started](getting-started.md) | Complete first-use walkthrough | **Start here** |
+| [Basic Initialization](basic-initialization.md) | Database startup for the normal UI launch path | Right after Getting Started, before building your app |
 | [Defining Entities](defining-entities.md) | Entity and schema definition | When designing your data model |
 | [Working with Data](working-with-data.md) | Querying and modifying data | When building data access |
 | [LINQ Queries](linq-queries.md) | LINQ query guide | When using LINQ or bulk operations |
@@ -199,6 +212,7 @@ When your application begins evolving:
 If you are not sure where to look:
 
 - **"How do I get started?"** → [Getting Started](getting-started.md)
+- **"Where do I put my initialization calls?"** → [Basic Initialization](basic-initialization.md)
 - **"How do I define my entity?"** → [Defining Entities](defining-entities.md)
 - **"What data types can I use?"** → [Supported Data Types](supported-data-types.md)
 - **"How do I query or save data?"** → [Working with Data](working-with-data.md)
