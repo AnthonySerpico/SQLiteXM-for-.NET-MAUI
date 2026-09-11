@@ -205,8 +205,9 @@ without blocking - initialization runs in the background.
 You can call `StartInitialization` from anywhere (including headless startup paths like Android `BroadcastReceiver`s or iOS
 background handlers). You do not need to synchronize calls to `StartInitialization` either - SQLiteXM handles this internally. 
 And it is safe to call multiple times and concurrently; only the first call actually performs initialization. 
-Subsequent calls return immediately.    
+Subsequent calls return immediately.
 
+See the **[Basic Initialization](./basic-initialization.md)** guide for details.
 
 ## What's Happening?
 

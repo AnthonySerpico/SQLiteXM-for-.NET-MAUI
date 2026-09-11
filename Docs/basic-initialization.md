@@ -1,6 +1,6 @@
 ## Basic Database Initialization
 
-This guide shows options for initializing the database from the normal UI launch path. 
+This guide shows how to initialize the database from the normal UI launch path. 
 This is when a user launches the application normally, and the normal MAUI startup path 
 is executed.
 
