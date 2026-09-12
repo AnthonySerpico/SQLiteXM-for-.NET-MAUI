@@ -18,8 +18,7 @@ The result is SQLiteXM.
 | Capability | SQLiteXM |
 |------------|----------|
 | Designed specifically for .NET MAUI + SQLite | ✅ |
-| Entity-first architecture with built-in persistence methods | ✅ |
-| AOT/IL Trimming Safe — works with MAUI's default Release trimming, no linker configuration needed ([details](#%EF%B8%8F-aot-and-il-trimming-safe--out-of-the-box)) | ✅ |
+| AOT/IL Trimming Safe — works with MAUI's default Release trimming, no linker configuration needed ([details](#aot-trimming)) | ✅ |
 | Mobile-optimized database initialization — idempotent, concurrency-safe startup from any entry point | ✅ |
 | LINQ query support | ✅ |
 | Raw SQL Support | ✅ |
@@ -318,6 +317,7 @@ Or install via the [NuGet Package Manager](https://www.nuget.org/packages/SQLite
 
 ---
 
+<a id="aot-trimming"></a>
 ## ✂️ AOT and IL Trimming Safe — Out of the Box
 
 .NET MAUI trims your app in Release builds, and AOT-compiles it on iOS and Mac Catalyst. Reflection-based ORMs 
