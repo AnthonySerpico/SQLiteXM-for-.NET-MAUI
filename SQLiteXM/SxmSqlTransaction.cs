@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using static SQLiteXM.SxmDefines;
 using static SxmQueryProcessor;
 
@@ -279,7 +280,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and map results to <typeparamref name="TResult"/>. Supports entity mapping. Return a List of entity objects.
         /// </summary>
-        internal async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, T userObjectParameters) where TResult : class, new()
         {
             SqlStatementDetails statementDetails = new();
 
@@ -299,7 +300,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: execute with dictionary parameters and map results to <typeparamref name="TResult"/>. Supports dictionary of named parameters. Return a List of entity objects.
         /// </summary>
-        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, sqlStatementParameters).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
@@ -308,7 +309,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: map a user object into statement parameters, execute and return list of dictionary rows. Supports entity mapping. Return list of dictionary rows.
         /// </summary>
-        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters)
+        internal async Task<List<Dictionary<string, object?>>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(string sqlOrStatementName, T userObjectParameters)
         {
             SqlStatementDetails statementDetails = new();
 
@@ -335,7 +336,7 @@ namespace SQLiteXM
         /// <summary>
         /// Generic runner: execute with a list of parameter objects and map results to <typeparamref name="TResult"/>. Supports List of positional parameters. Return a List of entity objects.
         /// </summary>
-        internal async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters) where TResult : class, new()
+        internal async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, List<object> sqlStatementParameters) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, sqlStatementParameters).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);

@@ -1,7 +1,6 @@
 ﻿using LinqToDB.Mapping;
 using System.Collections.Concurrent;
-using System.Data.Common;
-using System.Linq.Expressions;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace SQLiteXM
@@ -91,7 +90,8 @@ namespace SQLiteXM
         /// - Opens an <see cref="SxmConnection"/> for <paramref name="databaseName"/>.
         /// - Reads all user table names via <see cref="SxmHelpers.GetAllUserTableNamesAsync"/>.
         /// - For each table, runs <c>PRAGMA foreign_key_list(table)</c> to discover foreign keys.
-        /// - Locates the CLR source type by table name (types deriving from <see cref="SxmEntity"/>)
+        /// - Locates the CLR source type by table name from the set of entity types registered via
+        ///   <see cref="SxmSchemaRegistration.RegisterEntitySchemaAsync"/> (no runtime assembly scanning)
         ///   and calls <see cref="SxmHelpers.CreateAssociation(Type, string, string)"/> to register the
         ///   association in memory.
         /// 
@@ -134,8 +134,6 @@ namespace SQLiteXM
                                 // The rule: Assign unique names to classes that inherit from SxmEntity, even if they are in different namespaces.
                                 // The rule: Composite foreign keys are not supported. They may create incorrect single key mappings when the composite FK is mapped to the primary 'id' field of the foreign table.
 
-                                //Type baseType = typeof(SxmEntity);
-                                //Type? sourceType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).Where(x => x.Name == tableName && x.Namespace?.Equals("SQLiteXM", StringComparison.Ordinal) != true && baseType.IsAssignableFrom(x) && x != baseType).FirstOrDefault();
                                 Type? sourceType = FindSourceTypeByTableName(tableName);
                                 currentSourceType = sourceType?.FullName ?? "null";
 
@@ -153,7 +151,7 @@ namespace SQLiteXM
                                 {
                                     lock (_schemaLock)
                                     {
-                                        SxmHelpers.CreateAssociation(sourceType, sourceKey!, targetTableName!);
+                                        CreateAssociationForRegisteredType(sourceType, sourceKey!, targetTableName!);
                                     }
                                 }
                             }
@@ -181,51 +179,23 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Find a loadable CLR type whose simple name matches the table name and derives from <see cref="SxmEntity"/>.
-        /// Uses a safe assembly enumeration (handles ReflectionTypeLoadException) and skips assemblies that cannot be inspected.
+        /// Find the registered CLR entity type whose simple name matches the table name.
+        /// Only types registered through <see cref="SxmSchemaRegistration.RegisterEntitySchemaAsync"/> are considered,
+        /// which keeps this lookup trimming/AOT safe (no <c>AppDomain.GetAssemblies()</c> / <c>Assembly.GetTypes()</c>).
         /// </summary>
         /// <param name="tableName">CLR type simple name to find.</param>
-        /// <returns>Matching <see cref="Type"/> or null when not found.</returns>
+        /// <returns>Matching <see cref="Type"/> or null when not registered.</returns>
         private static Type? FindSourceTypeByTableName(string tableName)
         {
-            if (string.IsNullOrWhiteSpace(tableName))
+            Type? t = SxmSchemaRegistration.FindRegisteredEntityType(tableName);
+            if (t == null || t == typeof(SxmEntity) || !typeof(SxmEntity).IsAssignableFrom(t))
                 return null;
-
-            Type baseType = typeof(SxmEntity);
-
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                Type[] asmTypes;
-                try
-                {
-                    asmTypes = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException rtlEx)
-                {
-                    asmTypes = rtlEx.Types?.Where(t => t != null).Cast<Type>().ToArray() ?? Array.Empty<Type>();
-                }
-                catch
-                {
-                    // Unable to inspect this assembly — skip it.
-                    continue;
-                }
-
-                foreach (var t in asmTypes)
-                {
-                    if (t == null) continue;
-
-                    if (t.Name == tableName
-                        && t.Namespace?.Equals("SQLiteXM", StringComparison.Ordinal) != true
-                        && baseType.IsAssignableFrom(t)
-                        && t != baseType)
-                    {
-                        return t;
-                    }
-                }
-            }
-
-            return null;
+            return t;
         }
+
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Types returned by SxmSchemaRegistration.FindRegisteredEntityType were registered through RegisterEntitySchemaAsync, whose Type parameter is annotated with DynamicallyAccessedMemberTypes.All; their public properties are therefore preserved.")]
+        private static void CreateAssociationForRegisteredType(Type sourceType, string sourceKey, string targetTableName)
+            => SxmHelpers.CreateAssociation(sourceType, sourceKey, targetTableName);
 
         /// <summary>
         /// Configure a LinqToDB association mapping for a navigation property at runtime.
@@ -237,20 +207,20 @@ namespace SQLiteXM
         /// <exception cref="ArgumentNullException"><paramref name="sourceType"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when required parameters are missing or the types do not derive from <see cref="SxmEntity"/>.</exception>
         /// <remarks>
-        /// This method attempts to register an association using LinqToDB's fluent API:
-        /// 1. It first builds an expression for the navigation property: <c>(TSource s) => s.Navigation</c>.
-        /// 2. It tries to use the <c>Property(...).HasAttribute(AssociationAttribute)</c> route when available.
-        /// 3. If that path is not available it falls back to calling <c>Association(navigation, keyExpression, [canBeNull])</c>
-        ///    where <c>(TSource s, TTarget t) => s.thisKey == t.id</c> is the equality expression.
+        /// This method registers the association using LinqToDB's non-generic fluent API:
+        /// <c>FluentMappingBuilder.HasAttribute(MemberInfo, MappingAttribute)</c> with an
+        /// <see cref="AssociationAttribute"/> describing <c>ThisKey = thisKey</c> and <c>OtherKey = id</c>.
+        /// No generic method construction, expression compilation, or reflection over LinqToDB internals is
+        /// performed, which keeps this path trimming/AOT safe.
         /// 
         /// The method finalizes the registration by calling <c>builder.Build()</c> so subsequent contexts see the mapping.
         ///
-        /// Note: This method uses reflection and mutates the shared <see cref="_schema"/> via <see cref="FluentMappingBuilder.Build"/>.
+        /// Note: This method mutates the shared <see cref="_schema"/> via <see cref="FluentMappingBuilder.Build"/>.
         /// Calling this concurrently from multiple threads may lead to races in mapping registration. Prefer invoking
         /// during application initialization or synchronize externally.
         /// </remarks>
         internal static void ConfigureAssociation(
-            Type sourceType,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type sourceType,
             string navigationPropertyName,
             string thisKey,
             bool canBeNull = true)
@@ -262,126 +232,29 @@ namespace SQLiteXM
                 throw new ArgumentException("sourceType must derive from SxmEntity.", nameof(sourceType));
 
             // Find navigation property and target type
-            var navProp = sourceType.GetProperty(navigationPropertyName, BindingFlags.Public | BindingFlags.Instance)
+            PropertyInfo navProp = sourceType.GetProperty(navigationPropertyName, BindingFlags.Public | BindingFlags.Instance)
                          ?? throw new ArgumentException($"Property '{navigationPropertyName}' not found on {sourceType.Name}.");
-            var targetType = navProp.PropertyType;
+            Type targetType = navProp.PropertyType;
             if (!typeof(SxmEntity).IsAssignableFrom(targetType))
                 throw new ArgumentException($"Navigation property '{navigationPropertyName}' must derive from SxmEntity.");
 
-            // Build (TSource s) => s.Navigation
-            var sNav = Expression.Parameter(sourceType, "s");
-            var navBody = Expression.Property(sNav, navProp);
-            var navLambda = Expression.Lambda(typeof(Func<,>).MakeGenericType(sourceType, targetType), navBody, sNav);
+            // Validate the FK property exists on the source type so misconfiguration fails fast.
+            if (sourceType.GetProperty(thisKey, BindingFlags.Public | BindingFlags.Instance) == null)
+                throw new ArgumentException($"FK column '{thisKey}' not found on {sourceType.Name}.");
 
-            var assocAttr = new AssociationAttribute
+            AssociationAttribute assocAttr = new AssociationAttribute
             {
                 ThisKey = thisKey,
                 OtherKey = nameof(SxmEntity.id),
                 CanBeNull = canBeNull
             };
 
-            var builder = new FluentMappingBuilder(_schema);
-
-            // -------- Entity<TSource>() (handle overload differences) ----------
-            var entityGen = typeof(FluentMappingBuilder)
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == "Entity" && m.IsGenericMethodDefinition)
-                .OrderBy(m => m.GetParameters().Length)
-                .FirstOrDefault()
-                ?? throw new InvalidOperationException("FluentMappingBuilder.Entity<T>(...) overload not found.");
-
-            var entityParams = entityGen.GetParameters();
-            object?[] entityArgs = entityParams.Length == 0
-                ? Array.Empty<object?>()
-                : entityParams.Select(p =>
-                      p.HasDefaultValue ? p.DefaultValue :
-                      p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType) : null).ToArray();
-
-            var entityBuilder = entityGen.MakeGenericMethod(sourceType).Invoke(builder, entityArgs)
-                ?? throw new InvalidOperationException("Failed to invoke FluentMappingBuilder.Entity<T>().");
-
-            // Try the Property<TProp>(...) + HasAttribute(...) path first
-            var propertyGen = entityBuilder.GetType()
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == "Property" && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
-                .FirstOrDefault();
-
-            if (propertyGen != null)
+            lock (_schemaLock)
             {
-                var propertyMethod = propertyGen.MakeGenericMethod(targetType);
-                var propertyBuilder = propertyMethod.Invoke(entityBuilder, new object[] { navLambda })!;
-
-                var hasAttr = propertyBuilder.GetType()
-                    .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                    .FirstOrDefault(m => m.Name == "HasAttribute"
-                                         && m.GetParameters().Length == 1
-                                         && typeof(Attribute).IsAssignableFrom(m.GetParameters()[0].ParameterType));
-                if (hasAttr != null)
-                {
-                    hasAttr.Invoke(propertyBuilder, new object[] { assocAttr });
-                    // Finalize mapping so descriptors (and new contexts) see the association
-                    lock (_schemaLock) { builder.Build(); }
-                    return;
-                }
-            }
-
-            // Fallback to Association(...) builder if Property/HasAttribute not available
-            // Build (TSource s, TTarget t) => s.thisKey == t.id
-            var leftProp = sourceType.GetProperty(thisKey, BindingFlags.Public | BindingFlags.Instance)
-                          ?? throw new ArgumentException($"FK column '{thisKey}' not found on {sourceType.Name}.");
-            var idProp = targetType.GetProperty(nameof(SxmEntity.id), BindingFlags.Public | BindingFlags.Instance)
-                        ?? throw new ArgumentException($"Primary key 'id' not found on {targetType.Name}.");
-
-            var s = Expression.Parameter(sourceType, "s");
-            var t = Expression.Parameter(targetType, "t");
-            Expression left = Expression.Property(s, leftProp);
-            Expression right = Expression.Property(t, idProp);
-
-            // Coerce FK/PK to a common type if needed (e.g., int -> long)
-            if (left.Type != right.Type)
-            {
-                try
-                {
-                    if (!right.Type.IsAssignableFrom(left.Type))
-                        left = Expression.Convert(left, right.Type);
-                }
-                catch
-                {
-                    // Last resort: compare as strings
-                    left = Expression.Call(left, nameof(object.ToString), Type.EmptyTypes);
-                    right = Expression.Call(right, nameof(object.ToString), Type.EmptyTypes);
-                }
-            }
-
-            var eqBody = Expression.Equal(left, right);
-            var keyLambda = Expression.Lambda(
-                typeof(Func<,,>).MakeGenericType(sourceType, targetType, typeof(bool)),
-                eqBody, s, t);
-
-            // Find Association<TProp>(..., ..., bool?) overload
-            var assocGen = entityBuilder.GetType()
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == "Association" && m.IsGenericMethodDefinition)
-                .OrderByDescending(m => m.GetParameters().Length) // prefer overloads with canBeNull
-                .FirstOrDefault();
-
-            if (assocGen != null)
-            {
-                var assocMethod = assocGen.MakeGenericMethod(targetType);
-                var assocParams = assocMethod.GetParameters();
-
-                if (assocParams.Length == 2)
-                    assocMethod.Invoke(entityBuilder, new object[] { navLambda, keyLambda });
-                else if (assocParams.Length == 3 && assocParams[2].ParameterType == typeof(bool))
-                    assocMethod.Invoke(entityBuilder, new object[] { navLambda, keyLambda, canBeNull });
-
-                // Finalize mapping
-                lock (_schemaLock) { builder.Build(); }
-            }
-            else
-            {
-                // Nothing applied; still finalize builder to keep state consistent
-                lock (_schemaLock) { builder.Build(); }
+                FluentMappingBuilder builder = new FluentMappingBuilder(_schema);
+                builder.HasAttribute(navProp, assocAttr);
+                // Finalize mapping so descriptors (and new contexts) see the association
+                builder.Build();
             }
         }
     }

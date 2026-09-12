@@ -48,7 +48,7 @@ public class BulkLinqOperationsTests : TestBase
 
         results.Should().HaveCount(3);
         results.Where(e => e.Age == 99).Should().HaveCount(2, "two entities had Age < 25");
-        results.Single(e => e.Name!.Contains("_3")).Age.Should().Be(30, "should not be updated");
+        results.Single(e => e.Name!.EndsWith("_3")).Age.Should().Be(30, "should not be updated");
 
         // Cleanup
         foreach (var entity in results)

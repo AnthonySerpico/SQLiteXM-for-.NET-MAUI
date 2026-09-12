@@ -21,7 +21,7 @@ public class MultiDatabaseTests : IDisposable
     static MultiDatabaseTests()
     {
         // Create a separate test folder for multi-database tests to avoid conflicts
-        MultiDbTestFolder = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "MultiDatabase");
+        MultiDbTestFolder = Path.Combine(TestBase.TestRootFolder, "MultiDatabase");
         Directory.CreateDirectory(MultiDbTestFolder);
     }
 
@@ -81,7 +81,7 @@ public class MultiDatabaseTests : IDisposable
             // Re-initialize with the standard test configuration from TestBase
             var initOptions = new SxmDatabaseOptions
             {
-                DatabaseFolderOverride = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "test_database")
+                DatabaseFolderOverride = Path.Combine(TestBase.TestRootFolder, "test_database")
             };
             var testStatementsPath = Path.Combine(initOptions.DatabaseFolderOverride, "statements.json");
             using var stream = File.OpenRead(testStatementsPath);

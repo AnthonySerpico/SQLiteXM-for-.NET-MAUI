@@ -1,6 +1,4 @@
 ﻿using System.Text.Json;
-using System.Xml.Linq;
-using System.Xml.Serialization;
 using static SQLiteXM.SxmSerialization;
 
 namespace SQLiteXM
@@ -67,8 +65,8 @@ namespace SQLiteXM
         /// <remarks>
         /// Implementation notes:
         /// - The method reads the stream into a string once so both parsers can be attempted safely (avoids stream-position/EOF issues).
-        /// - JSON deserialization is performed with case-insensitive property name matching to be more tolerant of input.
-        /// - XML deserialization uses an <see cref="System.Xml.XmlReader"/> with DTD processing prohibited to reduce attack surface (XXE).
+        /// - JSON deserialization uses a source-generated <see cref="System.Text.Json.Serialization.JsonSerializerContext"/> with case-insensitive property name matching.
+        /// - XML deserialization uses LINQ to XML over an <see cref="System.Xml.XmlReader"/> with DTD processing prohibited to reduce attack surface (XXE).
         /// - If the caller supplies an explicit format (json or xml) only that parser is attempted and its exception is propagated.
         /// - When <see cref="SxmDefines.SqlStatementsFileType.Unknown"/> a small heuristic (first non-whitespace character)
         ///   is used to prefer XML ('&lt;') or JSON ('{' or '[') before falling back to the other parser.
@@ -89,11 +87,6 @@ namespace SQLiteXM
                 content = reader.ReadToEnd();
             }
 
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
             Exception? jsonEx = null;
             Exception? xmlEx = null;
 
@@ -101,7 +94,7 @@ namespace SQLiteXM
             {
                 try
                 {
-                    RootJson? rootJson = JsonSerializer.Deserialize<RootJson>(content, jsonOptions);
+                    RootJson? rootJson = JsonSerializer.Deserialize(content, SxmSqlStatementsJsonContext.Default.RootJson);
                     if (rootJson == null)
                     {
                         jsonEx = new ArgumentException("JSON content for SQL statements file deserialized to null.");
@@ -121,7 +114,6 @@ namespace SQLiteXM
             {
                 try
                 {
-                    var serializer = new XmlSerializer(typeof(RootXml));
                     var settings = new System.Xml.XmlReaderSettings
                     {
                         DtdProcessing = System.Xml.DtdProcessing.Prohibit
@@ -130,7 +122,7 @@ namespace SQLiteXM
                     using (var sr = new System.IO.StringReader(content))
                     using (var xr = System.Xml.XmlReader.Create(sr, settings))
                     {
-                        RootXml? rootXml = (RootXml?)serializer.Deserialize(xr);
+                        RootXml? rootXml = RootXml.ReadFrom(xr);
                         if (rootXml == null)
                         {
                             xmlEx = new ArgumentException("XML content for SQL statements file deserialized to null.");

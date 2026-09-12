@@ -45,17 +45,10 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 	</PropertyGroup>
 
-	<!-- iOS AOT/Trimming Configuration -->
-	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios'">
-		<PublishAot>true</PublishAot>
-		<PublishTrimmed>true</PublishTrimmed>
-		<TrimMode>partial</TrimMode>
-	</PropertyGroup>
-
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-ios'">
-		<TrimmerRootAssembly Include="linq2db" />
-		<TrimmerRootAssembly Include="RegistrationDemo" />
-	</ItemGroup>
+	<!--
+	No trimming or AOT overrides. This sample intentionally runs on .NET MAUI's default
+	Release trimming settings to demonstrate that SQLiteXM requires no linker configuration.
+	-->
 
 	<ItemGroup>
 		<!-- App Icon -->
@@ -79,7 +72,10 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="SQLiteXM" Version="1.0.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\SQLiteXM\SQLiteXM.csproj" />
 	</ItemGroup>
 
 </Project>

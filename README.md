@@ -1,6 +1,7 @@
 # SQLiteXM for .NET MAUI
 
-[![NuGet](https://img.shields.io/nuget/v/SQLiteXM.svg)](https://www.nuget.org/packages/SQLiteXM/)
+[![NuGet](https://img.shields.io/nuget/v/SQLiteXM.svg)](https://www.nuget.org/packages/SQLiteXM/)   [![Documentation](https://img.shields.io/badge/Documentation-Guide-blue)](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md)
+
 
 SQLiteXM is a high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.
 
@@ -18,7 +19,7 @@ The result is SQLiteXM.
 |------------|----------|
 | Designed specifically for .NET MAUI + SQLite | ✅ |
 | Entity-first architecture with built-in persistence methods | ✅ |
-| AOT & IL Trimming Safe — no manual linker configuration needed | ✅ |
+| AOT/IL Trimming Safe — works with MAUI's default Release trimming, no linker configuration needed ([details](#%EF%B8%8F-aot-and-il-trimming-safe--out-of-the-box)) | ✅ |
 | Mobile-optimized database initialization — idempotent, concurrency-safe startup from any entry point | ✅ |
 | LINQ query support | ✅ |
 | Raw SQL Support | ✅ |
@@ -37,7 +38,7 @@ The result is SQLiteXM.
 
 ## 📖 Documentation
 
-See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md#L37)** to find the right guide for where you are in your project.
+See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md)** to find the right guide for where you are in your project.
 
 ---
 
@@ -47,15 +48,14 @@ See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.
 
 This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 10 categories. 
 
+
 **[📥 Download QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)**  
+This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe` to explore LINQ queries, joins, aggregations, transactions, and more.
 
 **Features:**
 - ✅ 100+ working query examples (LINQ and SQL) across 10 categories
 - ✅ Live code execution with performance metrics
 - ✅ Realistic music database (~25,000 records)
-- ✅ Self-contained - just extract and run!
-
-Extract the ZIP and run `QueryGalleryDemo.exe` to explore LINQ queries, joins, aggregations, transactions, and more.
 
 Want more details? See the [Query Gallery Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/querygallery-demo.md)
 
@@ -315,6 +315,28 @@ Or install via the [NuGet Package Manager](https://www.nuget.org/packages/SQLite
 - .NET MAUI Project
 
 **Platforms:** iOS, Android, macOS, Windows (any .NET MAUI supported platform)
+
+---
+
+## ✂️ AOT and IL Trimming Safe — Out of the Box
+
+.NET MAUI trims your app in Release builds, and AOT-compiles it on iOS and Mac Catalyst. Reflection-based ORMs 
+often break here: entity properties are trimmed away and mappings fail at runtime — but only on a device, never 
+in Debug. The usual fix is to sprinkle `[Preserve]` or `[DynamicDependency]` attributes on your entities, add a 
+`TrimmerRootDescriptor.xml`, or turn trimming off. That work lands on you.
+
+SQLiteXM removes that burden:
+
+- **Zero trim/AOT analyzer warnings.** SQLiteXM is built with `IsTrimmable` and `IsAotCompatible` and compiles 
+  cleanly under the .NET trim and AOT analyzers.
+- **Your entities are preserved automatically.** Every SQLiteXM API that accepts an entity type is annotated with 
+  `DynamicallyAccessedMembers`, so the trimmer keeps your entity classes intact without any attributes, linker 
+  files, or project changes on your side.
+- **Works with MAUI's defaults.** Create a MAUI project, add SQLiteXM, define your entities, build in Release. 
+  Nothing to configure. Verified against MAUI's default Release trimming on .NET 8 and .NET 9.
+
+As with any MAUI project, run your Release build on a device or emulator before shipping — Debug builds do not 
+trim, so that is the only place trimming behavior can be observed.
 
 ---
 

@@ -20,7 +20,7 @@ public class MultiDatabaseLinqTests : IDisposable
 
     static MultiDatabaseLinqTests()
     {
-        TestFolder = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "MultiDatabaseLinq");
+        TestFolder = Path.Combine(TestBase.TestRootFolder, "MultiDatabaseLinq");
         Directory.CreateDirectory(TestFolder);
     }
 
@@ -68,7 +68,7 @@ public class MultiDatabaseLinqTests : IDisposable
             // Re-initialize with the standard test configuration from TestBase
             var initOptions = new SxmDatabaseOptions
             {
-                DatabaseFolderOverride = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "test_database")
+                DatabaseFolderOverride = Path.Combine(TestBase.TestRootFolder, "test_database")
             };
             var testStatementsPath = Path.Combine(initOptions.DatabaseFolderOverride, "statements.json");
             using var stream = File.OpenRead(testStatementsPath);

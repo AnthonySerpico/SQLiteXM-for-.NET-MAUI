@@ -88,6 +88,27 @@ internal static class SxmSchemaRegistration
         return _registeredSchemas.ContainsKey(entityType);
     }
 
+    /// <summary>
+    /// Find a registered entity type whose simple CLR name matches <paramref name="tableName"/>.
+    /// Only types previously registered via <see cref="RegisterEntitySchemaAsync"/> are considered;
+    /// this avoids runtime assembly scanning, which is not trimming/AOT safe.
+    /// </summary>
+    /// <param name="tableName">Table (CLR type simple name) to look up.</param>
+    /// <returns>The registered <see cref="Type"/> or <c>null</c> when not registered.</returns>
+    internal static Type? FindRegisteredEntityType(string tableName)
+    {
+        if (string.IsNullOrWhiteSpace(tableName))
+            return null;
+
+        foreach (Type registered in _registeredSchemas.Keys)
+        {
+            if (string.Equals(registered.Name, tableName, StringComparison.Ordinal))
+                return registered;
+        }
+
+        return null;
+    }
+
 #if DEBUG
     /// <summary>
     /// Resets all static schema registration state for testing.
@@ -144,7 +165,7 @@ internal static class SxmSchemaRegistration
     /// <summary>
     /// Initialize schema for an entity type (mirrors SxmEntity.Initialize logic).
     /// </summary>
-    private static async Task InitializeSchemaAsync(Type entityType, string databaseName)
+    private static async Task InitializeSchemaAsync([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType, string databaseName)
     {
         string tableName = entityType.Name;
         string typeIdentity = entityType.AssemblyQualifiedName ?? entityType.FullName ?? entityType.Name;
@@ -252,7 +273,7 @@ internal static class SxmSchemaRegistration
         }
     }
 
-    private static List<MemberInfoWithAlias> GetEntityProperties(Type entityType)
+    private static List<MemberInfoWithAlias> GetEntityProperties([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType)
     {
         List<MemberInfoWithAlias> propertyInfoWithAliases = new List<MemberInfoWithAlias>();
 
@@ -335,7 +356,7 @@ internal static class SxmSchemaRegistration
         }
     }
 
-    private static void GetColumnNamesAndDataTypes(Type entityType, List<MemberInfoWithAlias> propertyInfoWithAliases, string databaseName)
+    private static void GetColumnNamesAndDataTypes([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType, List<MemberInfoWithAlias> propertyInfoWithAliases, string databaseName)
     {
         if (propertyInfoWithAliases == null || propertyInfoWithAliases.Count == 0)
             return;
@@ -567,7 +588,7 @@ internal static class SxmSchemaRegistration
         return tableCreated;
     }
 
-    private static async Task AddColumnsAsync(Type entityType, string databaseName, List<string> ddlStatementsList)
+    private static async Task AddColumnsAsync([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType, string databaseName, List<string> ddlStatementsList)
     {
         string tableName = entityType.Name;
         string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
@@ -626,7 +647,7 @@ internal static class SxmSchemaRegistration
     ///   <item><description><strong>Partial History Missing:</strong> Only some historical names exist → first match is renamed.</description></item>
     /// </list>
     /// </remarks>
-    private static async Task ProcessColumnRenamesAsync(Type entityType, string databaseName, Dictionary<string, string> dbTableColumnNameAndType, List<string> ddlStatementsList)
+    private static async Task ProcessColumnRenamesAsync([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type entityType, string databaseName, Dictionary<string, string> dbTableColumnNameAndType, List<string> ddlStatementsList)
     {
         string tableName = entityType.Name;
         string quotedTable = SxmHelpers.QuoteIdentifier(tableName);

@@ -3,6 +3,7 @@ using LinqToDB.Data;
 using LinqToDB.DataProvider.SQLite;
 using Microsoft.Data.Sqlite;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 
 namespace SQLiteXM
@@ -307,32 +308,27 @@ namespace SQLiteXM
             if (query is SxmTable<T> sxmTable)
                 return sxmTable.DataContext;
 
-            // Slower path: try to extract DataConnection from LinqToDB's query provider
-            // LinqToDB's ITable<T> and query chains use IQueryProvider that holds the DataConnection
+            // Slower path: extract the DataConnection from LinqToDB's query provider.
+            // LinqToDB's ExpressionQuery<T> implements the public IExpressionQuery interface
+            // which exposes the IDataContext directly, so no reflection is needed.
             try
             {
                 var provider = query.Provider;
                 if (provider == null) return null;
 
-                // LinqToDB's ExpressionQueryImpl<T> has a DataContext property of type IDataContext
-                // which is actually the DataConnection
-                var dataContextProperty = provider.GetType().GetProperty("DataContext");
-                if (dataContextProperty != null)
+                if (provider is LinqToDB.Internal.Linq.IExpressionQuery expressionQuery
+                    && expressionQuery.DataContext is DataConnection dc)
                 {
-                    var dataContext = dataContextProperty.GetValue(provider);
-                    if (dataContext is DataConnection dc)
+                    // Look up our context from the registry
+                    if (_contextRegistry.TryGetValue(dc, out var weakRef) && weakRef.TryGetTarget(out var ctx))
                     {
-                        // Look up our context from the registry
-                        if (_contextRegistry.TryGetValue(dc, out var weakRef) && weakRef.TryGetTarget(out var ctx))
-                        {
-                            return ctx;
-                        }
+                        return ctx;
                     }
                 }
             }
             catch
             {
-                // If reflection fails or LinqToDB internals change, fall back to null
+                // If LinqToDB internals change, fall back to null
                 // This is a best-effort recovery mechanism
             }
 
@@ -663,7 +659,7 @@ namespace SQLiteXM
         /// within the current transaction scope. The statement executes with no parameters and the results
         /// are automatically mapped to instances of <typeparamref name="TResult"/>.
         /// </remarks>
-        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName) where TResult : class, new()
+        public Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName) where TResult : class, new()
             => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, new Dictionary<string, object?>());
 
         /// <summary>
@@ -671,7 +667,7 @@ namespace SQLiteXM
         /// parameters and projecting results into a list of <typeparamref name="TResult"/> entities.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters) where TResult : class, new()
+        public Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, T userObjectParameters) where TResult : class, new()
             => _sqlTransaction.RunStatementAsync<T, TResult>(sqlOrStatementName, userObjectParameters);
 
         /// <summary>
@@ -679,7 +675,7 @@ namespace SQLiteXM
         /// into a list of <typeparamref name="TResult"/> entities.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
+        public Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters) where TResult : class, new()
             => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, sqlStatementParameters);
 
 
@@ -701,7 +697,7 @@ namespace SQLiteXM
         /// parameters and returns raw rows as dictionaries.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters)
+        public Task<List<Dictionary<string, object?>>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(string sqlOrStatementName, T userObjectParameters)
             => _sqlTransaction.RunStatementAsync<T>(sqlOrStatementName, userObjectParameters);
 
         /// <summary>
@@ -716,7 +712,7 @@ namespace SQLiteXM
         /// into a list of <typeparamref name="TResult"/> entities.
         /// </summary>
         /// <seealso cref="SxmSqlTransaction"/>
-        public Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters) where TResult : class, new()
+        public Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, List<object> sqlStatementParameters) where TResult : class, new()
             => _sqlTransaction.RunStatementAsync<TResult>(sqlOrStatementName, sqlStatementParameters);
 
         /// <summary>

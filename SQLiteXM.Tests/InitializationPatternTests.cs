@@ -24,7 +24,7 @@ public class InitializationPatternTests : IDisposable
 
     static InitializationPatternTests()
     {
-        InitPatternTestFolder = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "InitializationPattern");
+        InitPatternTestFolder = Path.Combine(TestBase.TestRootFolder, "InitializationPattern");
         Directory.CreateDirectory(InitPatternTestFolder);
     }
 
@@ -55,7 +55,7 @@ public class InitializationPatternTests : IDisposable
 #endif
         var initOptions = new SxmDatabaseOptions
         {
-            DatabaseFolderOverride = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", "test_database")
+            DatabaseFolderOverride = Path.Combine(TestBase.TestRootFolder, "test_database")
         };
         Directory.CreateDirectory(initOptions.DatabaseFolderOverride);
         var testStatementsPath = Path.Combine(initOptions.DatabaseFolderOverride, "statements.json");

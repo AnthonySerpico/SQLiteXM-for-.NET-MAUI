@@ -148,6 +148,7 @@ namespace SQLiteXM
     /// </remarks>
 
     [Table(IsColumnAttributeRequired = false)]
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)]
     public abstract class SxmEntity : INotifyPropertyChanged
     {
         #region INotifyPropertyChanged Implementation
@@ -836,6 +837,7 @@ namespace SQLiteXM
         /// Useful for mapping values from DTOs or other objects and saving in a single operation.
         /// </summary>
         /// <param name="mapSource">Source object to map values from.</param>
+        [RequiresUnreferencedCode("MapAndSaveAsync reflects over the public properties of an arbitrary source object, which cannot be statically analyzed.")]
         internal async Task MapAndSaveAsync(object mapSource)
         {
             MapProperties(mapSource);
@@ -850,6 +852,7 @@ namespace SQLiteXM
         /// Indexer properties are ignored. Both properties must be public instance properties and the destination property must be writable.
         /// </summary>
         /// <param name="source">Source object to copy values from.</param>
+        [RequiresUnreferencedCode("MapProperties reflects over the public properties of an arbitrary source object, which cannot be statically analyzed.")]
         internal void MapProperties(object source)
         {
             if (source == null)

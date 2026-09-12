@@ -337,6 +337,11 @@ namespace SQLiteXM
         /// Dump candidate static LinqToDB helper methods with the given name to Debug output.
         /// Use this to diagnose why reflection resolution fails (for example "Set").
         /// </summary>
+        /// <remarks>
+        /// This is a development-time diagnostic that enumerates all loaded LinqToDB assembly types.
+        /// It is not trimming/AOT safe and should not be called from production code paths.
+        /// </remarks>
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("DumpProviderCandidates enumerates all types and static methods in loaded LinqToDB assemblies via reflection. It is a development-time diagnostic only and is not compatible with trimming.")]
         public static void DumpProviderCandidates(string methodName)
         {
             if (string.IsNullOrEmpty(methodName)) throw new ArgumentNullException(nameof(methodName));

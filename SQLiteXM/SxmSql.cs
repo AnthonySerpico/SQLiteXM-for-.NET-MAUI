@@ -1,5 +1,6 @@
 ﻿using LinqToDB.SqlQuery;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using static SQLiteXM.SxmDefines;
 using static SxmQueryProcessor;
@@ -72,7 +73,7 @@ namespace SQLiteXM
         /// require any input parameters.
         /// </para>
         /// </remarks>
-        public static async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, string? databaseName = default(string)) where TResult : class, new()
+        public static async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, string? databaseName = default(string)) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, new Dictionary<string, object?>(), databaseName).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
@@ -89,7 +90,7 @@ namespace SQLiteXM
         /// <param name="databaseName">Optional database name override.</param>
         /// <returns>List of mapped result records.</returns>
         /// <exception cref="ArgumentException">If the statement is a direct SQL variant that requires a dictionary or list of parameters.</exception>
-        public static async Task<List<TResult>> RunStatementAsync<T, TResult>(string sqlOrStatementName, T userObjectParameters, string? databaseName = default) where TResult : class, new()
+        public static async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, T userObjectParameters, string? databaseName = default) where TResult : class, new()
         {
             SqlStatementDetails statementDetails = new();
 
@@ -116,7 +117,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">Dictionary of parameter name -> value to use for the statement.</param>
         /// <param name="databaseName">Optional database name override.</param>
         /// <returns>List of mapped records of type <typeparamref name="TResult"/>.</returns>
-        public static async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = default(string)) where TResult : class, new()
+        public static async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, Dictionary<string, object?> sqlStatementParameters, string? databaseName = default(string)) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
@@ -130,7 +131,7 @@ namespace SQLiteXM
         /// <param name="sqlStatementParameters">List of parameter values (ordered) to use for the statement.</param>
         /// <param name="databaseName">Optional database name override.</param>
         /// <returns>List of mapped records of type <typeparamref name="TResult"/>.</returns>
-        public static async Task<List<TResult>> RunStatementAsync<TResult>(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = default(string)) where TResult : class, new()
+        public static async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, List<object> sqlStatementParameters, string? databaseName = default(string)) where TResult : class, new()
         {
             List<Dictionary<string, object?>> runSqlStatementResponse = await RunStatementAsync(sqlOrStatementName, sqlStatementParameters, databaseName).ConfigureFalse();
             return SxmHelpers.PopulateUserRecord<TResult>(runSqlStatementResponse);
@@ -171,7 +172,7 @@ namespace SQLiteXM
         /// <param name="databaseName">Optional database name override.</param>
         /// <returns>List of dictionaries representing result rows.</returns>
         /// <exception cref="ArgumentException">If the statement is a direct SQL variant that requires a dictionary or list of parameters.</exception>
-        public static async Task<List<Dictionary<string, object?>>> RunStatementAsync<T>(string sqlOrStatementName, T userObjectParameters, string? databaseName = default)
+        public static async Task<List<Dictionary<string, object?>>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(string sqlOrStatementName, T userObjectParameters, string? databaseName = default)
         {
             SqlStatementDetails statementDetails = new();
 

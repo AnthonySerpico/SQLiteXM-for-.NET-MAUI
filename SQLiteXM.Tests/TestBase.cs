@@ -11,6 +11,16 @@ public abstract class TestBase : IDisposable
 {
     // Shared database name for ALL tests (SQLiteXM initializes only once per process)
     protected static readonly string TestDatabaseName = "test_database";
+
+    /// <summary>
+    /// Root temp folder for all test artifacts. Scoped per target framework so that multi-TFM
+    /// test runs (net8.0 + net9.0), which dotnet test executes concurrently, never share SQLite files.
+    /// </summary>
+    internal static readonly string TestRootFolder = Path.Combine(
+        Path.GetTempPath(),
+        "SQLiteXM.Tests",
+        System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription.Replace(" ", "_").Replace(".", "_"));
+
     protected static readonly string TestDatabaseFolder;
     protected static readonly string TestSqlStatementsPath;
 
@@ -27,7 +37,7 @@ public abstract class TestBase : IDisposable
             "Please switch to Debug configuration and try again.");
 #endif
         // Initialize shared paths once for all tests
-        TestDatabaseFolder = Path.Combine(Path.GetTempPath(), "SQLiteXM.Tests", TestDatabaseName);
+        TestDatabaseFolder = Path.Combine(TestRootFolder, TestDatabaseName);
         Directory.CreateDirectory(TestDatabaseFolder);
 
         TestSqlStatementsPath = Path.Combine(TestDatabaseFolder, "statements.json");

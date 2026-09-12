@@ -48,44 +48,10 @@
 		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
 	</PropertyGroup>
 
-	<!-- iOS AOT/Trimming Configuration for Release builds -->
-	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios' and '$(Configuration)' == 'Release'">
-	  <PublishTrimmed>True</PublishTrimmed>
-	  <PublishAot>True</PublishAot>
-	  <TrimMode>partial</TrimMode>
-	</PropertyGroup>
-
-	<!-- iOS Debug Configuration - Disable AOT/Trimming -->
-	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-ios' and '$(Configuration)' == 'Debug'">
-	  <PublishAot>False</PublishAot>
-	  <PublishTrimmed>False</PublishTrimmed>
-	</PropertyGroup>
-
-	<!-- Android Configuration - Disable trimming and AOT for Debug -->
-	<PropertyGroup Condition="$(TargetFramework.Contains('android')) and '$(Configuration)' == 'Debug'">
-	  <PublishTrimmed>False</PublishTrimmed>
-	  <PublishAot>False</PublishAot>
-	</PropertyGroup>
-
-	<!-- Android Linker Configuration for Release builds -->
-	<PropertyGroup Condition="$(TargetFramework.Contains('android')) and '$(Configuration)' == 'Release'">
-	  <AndroidLinkMode>SdkOnly</AndroidLinkMode>
-	  <PublishTrimmed>True</PublishTrimmed>
-	  <TrimMode>partial</TrimMode>
-	</PropertyGroup>
-
-	<!-- MacCatalyst Configuration - Disable AOT/Trimming -->
-	<PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-maccatalyst'">
-	  <PublishAot>False</PublishAot>
-	  <PublishTrimmed>False</PublishTrimmed>
-	</PropertyGroup>
-
-	<!-- Windows Configuration - Disable trimming -->
-	<PropertyGroup Condition="$(TargetFramework.Contains('windows'))">
-	  <PublishTrimmed>False</PublishTrimmed>
-	</PropertyGroup>
-
-
+	<!--
+	No trimming or AOT overrides. This sample intentionally runs on .NET MAUI's default
+	Release trimming settings to demonstrate that SQLiteXM requires no linker configuration.
+	-->
 
 	<ItemGroup>
 		<!-- App Icon -->
@@ -110,7 +76,6 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.0" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
-		<PackageReference Include="SQLiteXM" Version="1.0.3" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -118,14 +83,8 @@
 	  <Folder Include="Services\" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-ios'">
-		<TrimmerRootAssembly Include="linq2db" />
-		<TrimmerRootAssembly Include="DirectBindingDemo" />
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android'">
-		<TrimmerRootAssembly Include="linq2db" RootMode="library" />
-		<TrimmerRootAssembly Include="DirectBindingDemo" RootMode="library" />
+	<ItemGroup>
+	  <ProjectReference Include="..\..\SQLiteXM\SQLiteXM.csproj" />
 	</ItemGroup>
 
 </Project>

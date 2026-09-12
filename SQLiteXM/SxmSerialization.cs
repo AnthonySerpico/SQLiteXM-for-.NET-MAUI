@@ -2,12 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Serialization;
 
 namespace SQLiteXM
 {
-    internal class SxmSerialization
+    internal partial class SxmSerialization
     {
         // using System.Xml.Serialization;
         // XmlSerializer serializer = new XmlSerializer(typeof(Root));
@@ -215,6 +218,85 @@ namespace SQLiteXM
             /// </summary>
             [XmlElement(ElementName = "trigger")]
             public List<Trigger>? Trigger { get; set; }
+
+            /// <summary>
+            /// Reads a <see cref="RootXml"/> from an <see cref="XmlReader"/> using LINQ to XML.
+            /// This mirrors the element mapping declared by the <see cref="XmlElementAttribute"/>s above
+            /// without using <see cref="XmlSerializer"/>, which is not trimming/AOT safe.
+            /// </summary>
+            /// <param name="reader">Reader positioned at the start of the document.</param>
+            /// <returns>The populated <see cref="RootXml"/>.</returns>
+            /// <exception cref="InvalidOperationException">The document root element is not <c>rootxml</c>.</exception>
+            internal static RootXml ReadFrom(XmlReader reader)
+            {
+                XDocument doc = XDocument.Load(reader);
+                XElement root = doc.Root ?? throw new InvalidOperationException("XML document has no root element.");
+
+                if (!string.Equals(root.Name.LocalName, "rootxml", StringComparison.Ordinal))
+                    throw new InvalidOperationException($"<{root.Name.LocalName} xmlns=''> was not expected. Expected root element 'rootxml'.");
+
+                RootXml result = new RootXml();
+
+                XElement? versionElement = root.Element("version");
+                if (versionElement != null)
+                    result.Version = XmlConvert.ToInt64(versionElement.Value.Trim());
+
+                result.Databases = ReadList(root, "Database", e => new Database
+                {
+                    database = e.Element("database")?.Value,
+                    isDefault = ReadBool(e.Element("isDefault"))
+                });
+
+                result.Insert = ReadList(root, "insert", e => new Insert
+                {
+                    StatementName = e.Element("StatementName")?.Value,
+                    TableName = e.Element("TableName")?.Value,
+                    Statement = e.Element("Statement")?.Value
+                });
+
+                result.Select = ReadList(root, "select", e => new Select
+                {
+                    StatementName = e.Element("StatementName")?.Value,
+                    TableName = e.Element("TableName")?.Value,
+                    Statement = e.Element("Statement")?.Value
+                });
+
+                result.Update = ReadList(root, "update", e => new Update
+                {
+                    StatementName = e.Element("StatementName")?.Value,
+                    TableName = e.Element("TableName")?.Value,
+                    Statement = e.Element("Statement")?.Value
+                });
+
+                result.Delete = ReadList(root, "delete", e => new Delete
+                {
+                    StatementName = e.Element("StatementName")?.Value,
+                    TableName = e.Element("TableName")?.Value,
+                    Statement = e.Element("Statement")?.Value
+                });
+
+                result.Trigger = ReadList(root, "trigger", e => new Trigger
+                {
+                    Database = e.Element("Database")?.Value,
+                    TableName = e.Element("TableName")?.Value,
+                    Statement = e.Element("Statement")?.Value
+                });
+
+                return result;
+            }
+
+            private static List<T>? ReadList<T>(XElement root, string elementName, Func<XElement, T> map)
+            {
+                List<T> items = root.Elements(elementName).Select(map).ToList();
+                return items.Count == 0 ? null : items;
+            }
+
+            private static bool ReadBool(XElement? element)
+            {
+                if (element == null)
+                    return false;
+                return XmlConvert.ToBoolean(element.Value.Trim());
+            }
         }
 
         // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
@@ -243,6 +325,16 @@ namespace SQLiteXM
             public List<Dictionary<string, string>>? Update { get; set; }
             public List<Dictionary<string, string>>? Delete { get; set; }
             public List<Dictionary<string, string>>? Trigger { get; set; }
+        }
+
+        /// <summary>
+        /// System.Text.Json source-generated context for the SQL statements file model.
+        /// Using a generated context avoids reflection-based serialization, which is not trimming/AOT safe.
+        /// </summary>
+        [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
+        [JsonSerializable(typeof(RootJson))]
+        internal partial class SxmSqlStatementsJsonContext : JsonSerializerContext
+        {
         }
 
     }

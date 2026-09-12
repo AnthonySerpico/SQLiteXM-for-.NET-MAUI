@@ -321,25 +321,12 @@ namespace SQLiteXM
                 }
                 else
                 {
-                    // Structured frames (file/line require PDBs)
+                    // Structured frames (file/line require PDBs). StackTrace.ToString() is trimming/AOT safe,
+                    // unlike StackFrame.GetMethod() which requires unreferenced code.
                     var st = new System.Diagnostics.StackTrace(cur, true);
-                    var frames = st.GetFrames();
-                    if (frames != null)
-                    {
-                        foreach (var f in frames)
-                        {
-                            var m = f.GetMethod();
-                            sb.Append("   at ");
-                            sb.Append(m?.DeclaringType?.FullName ?? "<unknown>");
-                            sb.Append(".");
-                            sb.Append(m?.Name ?? "<unknown>");
-                            sb.Append(" in ");
-                            sb.Append(f.GetFileName() ?? "<unknown file>");
-                            sb.Append(":line ");
-                            sb.Append(f.GetFileLineNumber());
-                            sb.AppendLine();
-                        }
-                    }
+                    string stackText = st.ToString();
+                    if (!string.IsNullOrWhiteSpace(stackText))
+                        sb.Append(stackText);
                 }
 
                 cur = cur.InnerException;

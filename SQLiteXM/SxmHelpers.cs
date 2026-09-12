@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -212,7 +213,7 @@ namespace SQLiteXM
         /// <param name="sourceType">Type that contains the foreign key/navigation property.</param>
         /// <param name="sourceKey">Name of the FK column on the source type.</param>
         /// <param name="targetTableName">Name of the target CLR type (table) to match against.</param>
-        internal static void CreateAssociation(Type sourceType, string sourceKey, string targetTableName)
+        internal static void CreateAssociation([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type sourceType, string sourceKey, string targetTableName)
         {
 
             // Attempt to wire an association if a navigation property exists.
@@ -320,14 +321,14 @@ namespace SQLiteXM
         /// <typeparam name="TResult">User entity type with a public parameterless constructor.</typeparam>
         /// <param name="databaseRowsList">List of dictionary rows where keys are column/property names.</param>
         /// <returns>List of populated user objects.</returns>
-        internal static List<TResult> PopulateUserRecord<TResult>(List<Dictionary<string, object?>> databaseRowsList) where TResult : class, new()
+        internal static List<TResult> PopulateUserRecord<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(List<Dictionary<string, object?>> databaseRowsList) where TResult : class, new()
         {
             List<TResult> userObjectList = new List<TResult>();
 
             foreach (Dictionary<string, object?> databaseRecord in databaseRowsList)  // Process each entry (record) in the List.
             {
                 TResult userObject = new TResult();
-                LoadDbValues(databaseRecord, userObject);
+                LoadDbValues(databaseRecord, userObject, typeof(TResult));
                 userObjectList.Add(userObject);
             }
 
@@ -359,15 +360,21 @@ namespace SQLiteXM
         /// - Nullables, numeric ranges, dates, times, GUIDs, and boolean conversions are handled exactly as before.
         /// - Thread-safe caching ensures performance improvements without altering correctness.
         /// </remarks>
-        internal static void LoadDbValues(Dictionary<string, object?> databaseRecord, object userObject)
+        internal static void LoadDbValues(Dictionary<string, object?> databaseRecord, SxmEntity entity)
+        {
+            if (entity == null)
+                throw new ArgumentNullException(nameof(entity));
+
+            LoadDbValues(databaseRecord, entity, entity.GetType());
+        }
+
+        internal static void LoadDbValues(Dictionary<string, object?> databaseRecord, object userObject, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type objectType)
         {
             if (userObject == null)
                 throw new ArgumentNullException(nameof(userObject));
 
             if (databaseRecord == null)
                 throw new ArgumentNullException(nameof(databaseRecord));
-
-            Type objectType = userObject.GetType();
 
             IReadOnlyDictionary<string, PropertyInfo> properties = GetCachedProperties(objectType);
 
@@ -438,14 +445,20 @@ namespace SQLiteXM
         /// - The returned dictionary is read-only to prevent accidental modification of cached metadata.
         /// - Property name lookups are case-sensitive and use ordinal string comparison to maintain consistency with database keys.
         /// </remarks>
-        private static IReadOnlyDictionary<string, PropertyInfo> GetCachedProperties(Type objectType)
+        private static IReadOnlyDictionary<string, PropertyInfo> GetCachedProperties(SxmEntity entity)
+            => GetCachedProperties(entity.GetType());
+
+        private static IReadOnlyDictionary<string, PropertyInfo> GetCachedProperties([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type objectType)
         {
-            return _typePropertyCache.GetOrAdd(
-                objectType,
-                type => type
-                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => p.CanWrite)
-                    .ToDictionary(p => p.Name, StringComparer.Ordinal));
+            if (_typePropertyCache.TryGetValue(objectType, out IReadOnlyDictionary<string, PropertyInfo>? cached))
+                return cached;
+
+            IReadOnlyDictionary<string, PropertyInfo> properties = objectType
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanWrite)
+                .ToDictionary(p => p.Name, StringComparer.Ordinal);
+
+            return _typePropertyCache.GetOrAdd(objectType, properties);
         }
 
         /// <summary>
@@ -868,7 +881,7 @@ namespace SQLiteXM
         /// <exception cref="ArgumentException">
         /// Thrown when property access, conversion, or storage-type mapping fails.
         /// </exception>
-        internal static Dictionary<string, object?> LoadParameterValues(Dictionary<string, string> columnsToInclude, object entity)
+        internal static Dictionary<string, object?> LoadParameterValues<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(Dictionary<string, string> columnsToInclude, T entity)
         {
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
@@ -876,8 +889,11 @@ namespace SQLiteXM
             if (columnsToInclude == null)
                 throw new ArgumentNullException(nameof(columnsToInclude));
 
-            Type objectType = entity.GetType();
-            IReadOnlyDictionary<string, PropertyInfo> properties = GetCachedProperties(objectType);
+            SxmEntity? sxmEntity = entity as SxmEntity;
+            Type objectType = sxmEntity?.GetType() ?? typeof(T);
+            IReadOnlyDictionary<string, PropertyInfo> properties = sxmEntity != null
+                ? GetCachedProperties(sxmEntity)
+                : GetCachedProperties(typeof(T));
 
             Dictionary<string, object?> returnDictionary = new Dictionary<string, object?>();
 
