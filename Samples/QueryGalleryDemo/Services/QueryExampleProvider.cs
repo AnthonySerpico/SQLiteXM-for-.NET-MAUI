@@ -96,7 +96,7 @@ public static class QueryExampleProvider
                 Description = "Execute raw SQL from SqlStatements.json",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetAllArtistsRaw"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetAllArtistsRaw"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAllArtistsRaw"),
                 Explanation = @"**How It Works:**
@@ -119,7 +119,7 @@ return results;",
                 Description = "Complex JOIN query from SqlStatements.json",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetTracksWithArtistAlbum"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetTracksWithArtistAlbum"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithArtistAlbum"),
                 Explanation = @"**How It Works:**
@@ -142,7 +142,7 @@ return results;",
                 Description = "Aggregation query with sales data from JSON",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetTopSellingTracks"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetTopSellingTracks"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopSellingTracks"),
                 Explanation = @"**How It Works:**
@@ -166,7 +166,7 @@ return results;",
                 Description = "LEFT JOIN with aggregations for customer analysis",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetCustomerPurchaseStats"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetCustomerPurchaseStats"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomerPurchaseStats"),
                 Explanation = @"**How It Works:**
@@ -190,7 +190,7 @@ return results;",
                 Description = "GROUP BY with calculated fields",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetGenrePopularity"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetGenrePopularity"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetGenrePopularity"),
                 Explanation = @"**How It Works:**
@@ -214,7 +214,7 @@ return results;",
                 Description = "Multiple LEFT JOINs with SUM aggregation",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetPlaylistDetails"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetPlaylistDetails"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistDetails"),
                 Explanation = @"**How It Works:**
@@ -238,7 +238,7 @@ return results;",
                 Description = "Complex multi-table JOIN with COALESCE",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetArtistRevenue"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetArtistRevenue"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetArtistRevenue"),
                 Explanation = @"**How It Works:**
@@ -262,7 +262,7 @@ return results;",
                 Description = "WHERE clause with subquery for average comparison",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetExpensiveTracksByGenre"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetExpensiveTracksByGenre"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetExpensiveTracksByGenre"),
                 Explanation = @"**How It Works:**
@@ -285,7 +285,7 @@ return results;",
                 Description = "Subquery in FROM clause with multiple aggregations",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetCustomersByCountryWithStats"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetCustomersByCountryWithStats"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetCustomersByCountryWithStats"),
                 Explanation = @"**How It Works:**
@@ -309,7 +309,7 @@ return results;",
                 Description = "Date functions with GROUP BY for time series analysis",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetMonthlyRevenueTrend"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetMonthlyRevenueTrend"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetMonthlyRevenueTrend"),
                 Explanation = @"**How It Works:**
@@ -333,7 +333,7 @@ return results;",
                 Description = "String concatenation, HAVING clause, multiple aggregates",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetTopCustomersWithDetails"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetTopCustomersWithDetails"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTopCustomersWithDetails"),
                 Explanation = @"**How It Works:**
@@ -357,7 +357,7 @@ return results;",
                 Description = "CASE expression for conditional categorization",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetTracksWithPriceTier"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetTracksWithPriceTier"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetTracksWithPriceTier"),
                 Explanation = @"**How It Works:**
@@ -381,7 +381,7 @@ return results;",
                 Description = "Complex aggregation with HAVING filter",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetAlbumCompletion"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetAlbumCompletion"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetAlbumCompletion"),
                 Explanation = @"**How It Works:**
@@ -405,7 +405,7 @@ return results;",
                 Description = "Self-join with multiple aggregations",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetEmployeePerformance"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetEmployeePerformance"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetEmployeePerformance"),
                 Explanation = @"**How It Works:**
@@ -429,7 +429,7 @@ return results;",
                 Description = "Multiple DISTINCT aggregations for variety analysis",
                 Category = QueryCategory.RawSql,
                 Type = QueryType.RawSql,
-                Code = @"var results = await SxmSql.RunStatementAsync(""GetPlaylistPopularity"", new Dictionary<string, object?>());
+                Code = @"var results = await SxmSql.RunStatementAsync(""GetPlaylistPopularity"");
 return results;",
                 ActualSqlStatement = sqlStatements.GetValueOrDefault("GetPlaylistPopularity"),
                 Explanation = @"**How It Works:**
@@ -578,8 +578,7 @@ var genreNames = ctx.GetTable<Genre>()
 // (2) Named SQL from SqlStatements.json - enlists in the same ambient
 //     transaction registered by the SxmTransaction ctor.
 var popularity = await ctx.RunStatementAsync(
-	"GetGenrePopularity",
-	new Dictionary<string, object?>());
+	"GetGenrePopularity");
 
 return new[]
 {
@@ -664,8 +663,7 @@ await album.SaveAsync();
 
 // (3) Embedded SQL - literal text passed to RunStatementAsync
 var rows = await ctx.RunStatementAsync(
-	$"SELECT COUNT(*) AS ArtistMatches FROM Artist WHERE id = {artist.id}",
-	new Dictionary<string, object?>());
+	$"SELECT COUNT(*) AS ArtistMatches FROM Artist WHERE id = {artist.id}");
 
 await ctx.RollbackTransactionAsync();
 
@@ -699,8 +697,7 @@ await using var ctx = new SxmTransaction("Chinook");
 
 // (1) Named SQL - top genres by popularity
 var popularity = await ctx.RunStatementAsync(
-	"GetGenrePopularity",
-	new Dictionary<string, object?>());
+	"GetGenrePopularity");
 
 var topGenreNames = popularity
 	.Take(3)
@@ -763,8 +760,7 @@ await track.SaveAsync();
 
 // (3) Embedded SQL - UPDATE the price
 await ctx.RunStatementAsync(
-	$"UPDATE Track SET UnitPrice = 2.99 WHERE id = {track.id}",
-	new Dictionary<string, object?>());
+	$"UPDATE Track SET UnitPrice = 2.99 WHERE id = {track.id}");
 
 // (4) LINQ verify the update
 var updated = ctx.GetTable<Track>()
@@ -863,8 +859,7 @@ int renamed = ctx.GetTable<Artist>()
 
 // (3) Named SQL runs in the same tx
 var popularity = await ctx.RunStatementAsync(
-	"GetGenrePopularity",
-	new Dictionary<string, object?>());
+	"GetGenrePopularity");
 
 // (4) Roll everything back
 await ctx.RollbackTransactionAsync();
@@ -911,8 +906,7 @@ try
 
 	// Named SQL
 	_ = await ctx.RunStatementAsync(
-		"GetGenrePopularity",
-		new Dictionary<string, object?>());
+		"GetGenrePopularity");
 
 	// Force a failure BEFORE any commit
 	throw new InvalidOperationException("Simulated failure - triggers auto-rollback on dispose");
@@ -959,13 +953,11 @@ int albumCount = ctx.GetTable<Album>().Count();
 
 // (2) Named SQL
 var artistRevenue = await ctx.RunStatementAsync(
-	"GetArtistRevenue",
-	new Dictionary<string, object?>());
+	"GetArtistRevenue");
 
 // (3) Embedded SQL
 var trackRow = await ctx.RunStatementAsync(
-	"SELECT COUNT(*) AS TrackCount FROM Track",
-	new Dictionary<string, object?>());
+	"SELECT COUNT(*) AS TrackCount FROM Track");
 
 return new[]
 {
@@ -1016,13 +1008,11 @@ await track.SaveAsync();
 
 // (3) Embedded SQL - count tracks on this new album (sees uncommitted rows)
 var countRow = await ctx.RunStatementAsync(
-	$"SELECT COUNT(*) AS Cnt FROM Track WHERE AlbumId = {album.id}",
-	new Dictionary<string, object?>());
+	$"SELECT COUNT(*) AS Cnt FROM Track WHERE AlbumId = {album.id}");
 
 // (4) Named SQL for ctx
 var genrePopularity = await ctx.RunStatementAsync(
-	"GetGenrePopularity",
-	new Dictionary<string, object?>());
+	"GetGenrePopularity");
 
 // (5) LINQ aggregate - confirm from a different angle
 decimal totalPrice = ctx.GetTable<Track>()

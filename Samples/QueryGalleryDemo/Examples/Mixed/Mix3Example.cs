@@ -38,8 +38,7 @@ internal sealed class Mix3Example : IQueryExampleRunner
 
         // (3) Embedded SQL - literal text passed to RunStatementAsync
         var rows = await ctx.RunStatementAsync(
-            $"SELECT COUNT(*) AS ArtistMatches FROM Artist WHERE id = {artist.id}",
-            new Dictionary<string, object?>());
+            $"SELECT COUNT(*) AS ArtistMatches FROM Artist WHERE id = {artist.id}");
 
         await ctx.RollbackTransactionAsync();
 

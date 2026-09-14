@@ -45,8 +45,7 @@ internal sealed class Mix7Example : IQueryExampleRunner
 
         // (3) Named SQL runs in the same tx
         var popularity = await ctx.RunStatementAsync(
-            "GetGenrePopularity",
-            new Dictionary<string, object?>());
+            "GetGenrePopularity");
 
         // (4) Roll everything back
         await ctx.RollbackTransactionAsync();

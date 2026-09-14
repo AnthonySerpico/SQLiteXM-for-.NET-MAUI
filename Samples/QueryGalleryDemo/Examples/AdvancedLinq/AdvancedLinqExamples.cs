@@ -73,6 +73,7 @@ internal sealed class Adv2Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -80,6 +81,7 @@ internal sealed class Adv2Example : IQueryExampleRunner
                        select new { artist.Name, album.Title, track.TrackNumber, TrackName = track.Name })
                       .Take(100)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -110,12 +112,14 @@ internal sealed class Adv3Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = ctx.GetTable<Track>()
             .Where(t => (t.UnitPrice >= 1.0m && t.Milliseconds >= 180000) ||
                         (t.UnitPrice < 1.0m && t.Milliseconds < 180000))
             .OrderBy(t => t.UnitPrice)
             .Take(50)
             .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }
@@ -188,6 +192,7 @@ internal sealed class Adv5Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var customerInvoiceCounts = (from customer in ctx.GetTable<Customer>()
                                      let invoiceCount = (from invoice in ctx.GetTable<Invoice>()
                                                          where invoice.CustomerId == customer.id
@@ -201,6 +206,7 @@ internal sealed class Adv5Example : IQueryExampleRunner
                                      })
                                     .Take(50)
                                     .ToList();
+
         return Task.FromResult<object>(customerInvoiceCounts);
     }
 }
@@ -227,6 +233,7 @@ internal sealed class Adv6Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from album in ctx.GetTable<Album>()
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
                        group album by new { artist.id, artist.Name } into g
@@ -238,6 +245,7 @@ internal sealed class Adv6Example : IQueryExampleRunner
                        })
                       .Take(50)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -264,6 +272,7 @@ internal sealed class Adv7Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = ctx.GetTable<Track>().ToList();
         var priceAnalysis = new
         {
@@ -274,6 +283,7 @@ internal sealed class Adv7Example : IQueryExampleRunner
             MaxPrice = tracks.Max(t => t.UnitPrice),
             MinPrice = tracks.Min(t => t.UnitPrice)
         };
+
         return Task.FromResult<object>(new[] { priceAnalysis });
     }
 }
@@ -300,6 +310,7 @@ internal sealed class Adv8Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         // SQLite doesn't support CROSS/OUTER APPLY, so materialize first
         var tracksWithGenre = (from track in ctx.GetTable<Track>()
                                join genre in ctx.GetTable<Genre>() on track.GenreId equals genre.id
@@ -323,6 +334,7 @@ internal sealed class Adv8Example : IQueryExampleRunner
             .OrderBy(x => x.Genre)
             .ThenByDescending(x => x.DurationMinutes)
             .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -349,6 +361,7 @@ internal sealed class Adv9Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var recentInvoices = (from invoice in ctx.GetTable<Invoice>()
                               join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
                               orderby invoice.InvoiceDate descending
@@ -361,6 +374,7 @@ internal sealed class Adv9Example : IQueryExampleRunner
                               })
                              .Take(100)
                              .ToList();
+
         return Task.FromResult<object>(recentInvoices);
     }
 }
@@ -387,6 +401,7 @@ internal sealed class Adv10Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var artists = ctx.GetTable<Artist>()
             .Select(a => new
             {
@@ -399,6 +414,7 @@ internal sealed class Adv10Example : IQueryExampleRunner
             .OrderBy(a => a.OriginalName)
             .Take(20)
             .ToList();
+
         return Task.FromResult<object>(artists);
     }
 }
@@ -425,6 +441,7 @@ internal sealed class Adv11Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var artistNames = ctx.GetTable<Artist>()
             .Select(a => new { Name = a.Name, Type = "Artist" })
             .Take(10);
@@ -437,6 +454,7 @@ internal sealed class Adv11Example : IQueryExampleRunner
             .OrderBy(x => x.Type)
             .ThenBy(x => x.Name)
             .ToList();
+
         return Task.FromResult<object>(combined);
     }
 }

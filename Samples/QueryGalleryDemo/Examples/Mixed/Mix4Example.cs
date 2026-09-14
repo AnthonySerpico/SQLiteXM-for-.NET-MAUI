@@ -30,8 +30,7 @@ internal sealed class Mix4Example : IQueryExampleRunner
 
         // (1) Named SQL - top genres by popularity
         var popularity = await ctx.RunStatementAsync(
-            "GetGenrePopularity",
-            new Dictionary<string, object?>());
+            "GetGenrePopularity");
 
         var topGenreNames = popularity
             .Take(3)

@@ -265,7 +265,7 @@
                 </Frame>
 
                 <!-- Data Modification -->
-                <Frame Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                <Frame Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="1"
                        Padding="0"
                        BorderColor="{StaticResource Primary}"
                        BackgroundColor="Transparent">
@@ -290,7 +290,7 @@
                 </Frame>
 
                 <!-- Mixed SxmTransaction -->
-                <Frame Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2"
+                <Frame Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="1"
                        Padding="0"
                        BorderColor="{StaticResource Primary}"
                        BackgroundColor="Transparent">

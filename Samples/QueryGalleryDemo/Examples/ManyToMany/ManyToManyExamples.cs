@@ -30,6 +30,7 @@ internal sealed class M2M1Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = (from playlist in ctx.GetTable<Playlist>()
                       join pt in ctx.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId
                       join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
@@ -38,6 +39,7 @@ internal sealed class M2M1Example : IQueryExampleRunner
                       select track)
                      .Take(50)
                      .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }
@@ -65,12 +67,14 @@ internal sealed class M2M2Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var playlists = (from track in ctx.GetTable<Track>()
                          join pt in ctx.GetTable<PlaylistTrack>() on track.id equals pt.TrackId
                          join playlist in ctx.GetTable<Playlist>() on pt.PlaylistId equals playlist.id
                          where track.Name.Contains("Track")
                          select playlist)
                         .ToList();
+
         return Task.FromResult<object>(playlists);
     }
 }
@@ -99,6 +103,7 @@ internal sealed class M2M3Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from playlist in ctx.GetTable<Playlist>()
                        join pt in ctx.GetTable<PlaylistTrack>() on playlist.id equals pt.PlaylistId into playlistTracks
                        from pt in playlistTracks.DefaultIfEmpty()
@@ -113,6 +118,7 @@ internal sealed class M2M3Example : IQueryExampleRunner
                        })
                       .OrderByDescending(x => x.TrackCount)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -120,46 +126,41 @@ internal sealed class M2M3Example : IQueryExampleRunner
 [QueryExample(
     id: "m2m_4",
     name: "Tracks Shared Between Playlists",
-    description: "Find tracks that appear in multiple playlists (SQLite-compatible)",
+    description: "Find tracks that appear in multiple playlists (server-side GROUP BY)",
     category: QueryCategory.ManyToMany,
     type: QueryType.Linq,
     explanation: """
 **How It Works:**
-1. Fetch track-playlist pairs from junction
-2. Materialize to memory (SQLite limitation)
-3. GROUP BY track
-4. COUNT distinct playlists per track
-5. Filter tracks in 2+ playlists
+1. JOIN PlaylistTrack -> Track
+2. GROUP BY track in SQLite
+3. COUNT DISTINCT playlists per track
+4. HAVING count > 1 (via Where on the group)
+5. ORDER BY count, take 30
 
 **Key Concepts:**
-- Two-phase query for SQLite compatibility
-- Distinct().Count() done in memory
+- Entire aggregation runs inside SQLite - only 30 rows cross to .NET
+- Distinct().Count() on a group translates to COUNT(DISTINCT ...)
+- Where after GroupBy/Select becomes a HAVING clause
 """)]
 internal sealed class M2M4Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
-        var trackPlaylistGroups = (from pt in ctx.GetTable<PlaylistTrack>()
-                                   join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
-                                   select new
-                                   {
-                                       TrackId = track.id,
-                                       TrackName = track.Name,
-                                       PlaylistId = pt.PlaylistId
-                                   }).ToList();
 
-        var sharedTracks = trackPlaylistGroups
-            .GroupBy(x => new { x.TrackId, x.TrackName })
-            .Select(g => new
-            {
-                TrackName = g.Key.TrackName,
-                PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-            })
+        var sharedTracks = (from pt in ctx.GetTable<PlaylistTrack>()
+                            join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
+                            group pt by new { track.id, track.Name } into g
+                            select new
+                            {
+                                TrackName = g.Key.Name,
+                                PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                            })
             .Where(x => x.PlaylistCount > 1)
             .OrderByDescending(x => x.PlaylistCount)
             .Take(30)
             .ToList();
+
         return Task.FromResult<object>(sharedTracks);
     }
 }
@@ -173,42 +174,35 @@ internal sealed class M2M4Example : IQueryExampleRunner
     explanation: """
 **How It Works:**
 1. JOIN PlaylistTrack -> Track -> Album -> Artist
-2. Fetch all relationships to memory
-3. GROUP BY track and artist
-4. COUNT distinct playlists per track
+2. GROUP BY track and artist in SQLite
+3. COUNT DISTINCT playlists per track
+4. ORDER BY count, take 20
 
 **Key Concepts:**
 - Multi-table join through M:N relationship
-- Two-phase for SQLite performance
+- Aggregation pushed to SQLite - no intermediate materialization
 """)]
 internal sealed class M2M5Example : IQueryExampleRunner
 {
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
-        var trackData = (from pt in ctx.GetTable<PlaylistTrack>()
-                         join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
-                         join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
-                         join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
-                         select new
-                         {
-                             TrackId = track.id,
-                             TrackName = track.Name,
-                             ArtistName = artist.Name,
-                             PlaylistId = pt.PlaylistId
-                         }).ToList();
 
-        var popularTracks = trackData
-            .GroupBy(x => new { x.TrackId, x.TrackName, x.ArtistName })
-            .Select(g => new
-            {
-                TrackName = g.Key.TrackName,
-                ArtistName = g.Key.ArtistName,
-                PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
-            })
+        var popularTracks = (from pt in ctx.GetTable<PlaylistTrack>()
+                             join track in ctx.GetTable<Track>() on pt.TrackId equals track.id
+                             join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
+                             join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
+                             group pt by new { TrackId = track.id, TrackName = track.Name, ArtistName = artist.Name } into g
+                             select new
+                             {
+                                 g.Key.TrackName,
+                                 g.Key.ArtistName,
+                                 PlaylistCount = g.Select(x => x.PlaylistId).Distinct().Count()
+                             })
             .OrderByDescending(x => x.PlaylistCount)
             .Take(20)
             .ToList();
+
         return Task.FromResult<object>(popularTracks);
     }
 }
@@ -236,6 +230,7 @@ internal sealed class M2M6Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var playlistCounts = (from pt in ctx.GetTable<PlaylistTrack>()
                               group pt by pt.PlaylistId into g
                               select new
@@ -257,6 +252,7 @@ internal sealed class M2M6Example : IQueryExampleRunner
                               })
                              .Take(20)
                              .ToList();
+
         return Task.FromResult<object>(smallPlaylists);
     }
 }
@@ -283,6 +279,7 @@ internal sealed class M2M7Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var playlist = ctx.GetTable<Playlist>().FirstOrDefault();
         var track = ctx.GetTable<Track>().FirstOrDefault();
 
@@ -297,6 +294,7 @@ internal sealed class M2M7Example : IQueryExampleRunner
         {
             result = new[] { new { Message = "No data to demo with" } };
         }
+
         return Task.FromResult<object>(result);
     }
 }
@@ -324,6 +322,7 @@ internal sealed class M2M8Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var playlistPairs = (from pt1 in ctx.GetTable<PlaylistTrack>()
                              join pt2 in ctx.GetTable<PlaylistTrack>() on pt1.TrackId equals pt2.TrackId
                              where pt1.PlaylistId < pt2.PlaylistId
@@ -339,6 +338,7 @@ internal sealed class M2M8Example : IQueryExampleRunner
                             .OrderByDescending(x => x.SharedTracks)
                             .Take(10)
                             .ToList();
+
         return Task.FromResult<object>(playlistPairs);
     }
 }

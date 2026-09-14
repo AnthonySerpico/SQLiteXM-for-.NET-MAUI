@@ -28,10 +28,12 @@ internal sealed class Perf1Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = ctx.GetTable<Track>()
             .OrderBy(t => t.Name)
             .Take(1000)
             .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }
@@ -60,6 +62,7 @@ internal sealed class Perf2Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from invoiceLine in ctx.GetTable<InvoiceLine>()
                        join invoice in ctx.GetTable<Invoice>() on invoiceLine.InvoiceId equals invoice.id
                        join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
@@ -76,6 +79,7 @@ internal sealed class Perf2Example : IQueryExampleRunner
                        })
                       .Take(500)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -102,6 +106,7 @@ internal sealed class Perf3Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         int pageNumber = 2;
         int pageSize = 20;
         var page = ctx.GetTable<Track>()
@@ -109,6 +114,7 @@ internal sealed class Perf3Example : IQueryExampleRunner
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToList();
+
         return Task.FromResult<object>(page);
     }
 }
@@ -135,10 +141,12 @@ internal sealed class Perf4Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var lightweightTracks = ctx.GetTable<Track>()
             .Select(t => new { t.id, t.Name, t.UnitPrice })
             .Take(100)
             .ToList();
+
         return Task.FromResult<object>(lightweightTracks);
     }
 }
@@ -165,6 +173,7 @@ internal sealed class Perf5Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var expensiveAlbums = ctx.GetTable<Album>()
             .Where(a => a.Title.StartsWith("A"))
             .Take(50);
@@ -173,6 +182,7 @@ internal sealed class Perf5Example : IQueryExampleRunner
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
                        select new { album.Title, artist.Name })
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -199,6 +209,7 @@ internal sealed class Perf6Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var hasExpensiveTracks = ctx.GetTable<Track>().Any(t => t.UnitPrice > 1.50m);
         var expensiveCount = ctx.GetTable<Track>().Count(t => t.UnitPrice > 1.50m);
 
@@ -206,6 +217,7 @@ internal sealed class Perf6Example : IQueryExampleRunner
         {
             new { HasExpensiveTracks = hasExpensiveTracks, Count = expensiveCount }
         };
+
         return Task.FromResult<object>(result);
     }
 }
@@ -232,6 +244,7 @@ internal sealed class Perf7Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracksWithAlbums = (from track in ctx.GetTable<Track>()
                                 join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                                 select new
@@ -241,6 +254,7 @@ internal sealed class Perf7Example : IQueryExampleRunner
                                 })
                                .Take(100)
                                .ToList();
+
         return Task.FromResult<object>(tracksWithAlbums);
     }
 }
@@ -266,11 +280,13 @@ internal sealed class Perf8Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var uniqueCountries = ctx.GetTable<Customer>()
             .Select(c => c.Country)
             .Distinct()
             .OrderBy(c => c)
             .ToList();
+
         return Task.FromResult<object>(uniqueCountries);
     }
 }
@@ -298,6 +314,7 @@ internal sealed class Perf9Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         var tracksForAlbums = (from track in ctx.GetTable<Track>()
@@ -319,6 +336,7 @@ internal sealed class Perf9Example : IQueryExampleRunner
                 Message = $"Query completed in {elapsedMs}ms using indexed foreign key"
             }
         };
+
         return Task.FromResult<object>(result);
     }
 }

@@ -10,7 +10,7 @@ namespace QueryGalleryDemo.Examples.DataModification;
     name: "Insert New Track",
     description: "Add a single new track to the database",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Entity_DML,
     explanation: """
 **How It Works:**
 1. Create new Track instance
@@ -52,7 +52,7 @@ internal sealed class Mod1Example : IQueryExampleRunner
     name: "Insert and Get Generated ID",
     description: "Insert related records and retrieve auto-generated IDs",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Entity_DML,
     explanation: """
 **How It Works:**
 1. Insert Artist, get auto-generated ID
@@ -86,7 +86,7 @@ internal sealed class Mod2Example : IQueryExampleRunner
     name: "Update Track Price",
     description: "Modify a single field on existing record",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. Load existing track entity
@@ -112,6 +112,7 @@ internal sealed class Mod3Example : IQueryExampleRunner
             var originalPrice = track.UnitPrice;
             track.UnitPrice = 1.99m;
             await track.SaveAsync();
+
             return new[] { new { TrackId = track.id, TrackName = track.Name, OriginalPrice = originalPrice, NewPrice = track.UnitPrice, Message = "Price updated successfully" } };
         }
     }
@@ -122,7 +123,7 @@ internal sealed class Mod3Example : IQueryExampleRunner
     name: "Conditional Update",
     description: "Update records matching specific criteria",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. Query records matching criteria
@@ -150,6 +151,7 @@ internal sealed class Mod4Example : IQueryExampleRunner
                 await track.SaveAsync();
                 updateCount++;
             }
+
             return new[] { new { TracksUpdated = updateCount, NewPrice = 1.29m, Message = $"Updated {updateCount} tracks to new price" } };
         }
     }
@@ -160,7 +162,7 @@ internal sealed class Mod4Example : IQueryExampleRunner
     name: "Update With Related Data",
     description: "Update entities filtered via a related lookup",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. Look up related entity (Genre)
@@ -184,14 +186,17 @@ internal sealed class Mod5Example : IQueryExampleRunner
             {
                 var rockTracks = ctx.GetTable<Track>().Where(t => t.GenreId == rockGenre.id).Take(20).ToList();
                 var updateCount = 0;
+
                 foreach (var track in rockTracks)
                 {
                     track.UnitPrice = track.UnitPrice * 1.10m;
                     await track.SaveAsync();
                     updateCount++;
                 }
+
                 return new[] { new { Genre = rockGenre.Name, TracksUpdated = updateCount, PriceIncrease = "10%", Message = $"Updated {updateCount} rock tracks" } };
             }
+
             return new[] { new { Message = "Rock genre not found" } };
         }
     }
@@ -202,7 +207,7 @@ internal sealed class Mod5Example : IQueryExampleRunner
     name: "Delete Single Record",
     description: "Remove a single playlist from the database",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. Create temporary playlist for demo
@@ -246,7 +251,7 @@ internal sealed class Mod6Example : IQueryExampleRunner
     name: "Conditional Delete",
     description: "Delete multiple records matching criteria using transaction",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. Create temporary test playlists
@@ -309,7 +314,7 @@ internal sealed class Mod7Example : IQueryExampleRunner
     name: "Delete with Related Records",
     description: "Delete playlist and its junction records atomically",
     category: QueryCategory.DataModification,
-    type: QueryType.Linq,
+    type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. Create temporary playlist with tracks
@@ -369,6 +374,7 @@ internal sealed class Mod8Example : IQueryExampleRunner
                     } };
                 }
             }
+
             return new[] { new { Success = false, Message = "Playlist not found after creation" } };
         }
         catch (Exception ex)

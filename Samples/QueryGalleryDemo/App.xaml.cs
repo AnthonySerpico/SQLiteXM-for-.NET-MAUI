@@ -74,6 +74,10 @@ public partial class App : Application
     {
         try
         {
+            // The demo rebuilds its database from scratch on every launch so users always start
+            // from the same known dataset, regardless of what the write examples did last time.
+            DeleteDemoDatabase();
+
             // Load the SqlStatements.json file from Resources/Raw
             using var stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 
@@ -88,6 +92,30 @@ public partial class App : Application
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error initializing SQLiteXM: {ex.Message}");
+        }
+    }
+
+    private static void DeleteDemoDatabase()
+    {
+        var dbFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SQLiteXM");
+        if (!Directory.Exists(dbFolder))
+        {
+            return;
+        }
+
+        // SQLiteXM names the file exactly after the database name ("Chinook", no extension).
+        // Remove it plus any SQLite side files (Chinook-wal, Chinook-shm, Chinook-journal).
+        foreach (var file in Directory.EnumerateFiles(dbFolder, "Chinook*"))
+        {
+            try
+            {
+                File.Delete(file);
+                System.Diagnostics.Debug.WriteLine($"Deleted demo database file: {file}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Could not delete {file}: {ex.Message}");
+            }
         }
     }
 

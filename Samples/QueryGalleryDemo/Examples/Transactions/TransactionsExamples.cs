@@ -10,7 +10,7 @@ namespace QueryGalleryDemo.Examples.Transactions;
     name: "Basic Transaction - Insert Invoice with Lines",
     description: "Insert invoice + invoice lines atomically",
     category: QueryCategory.Transactions,
-    type: QueryType.Linq,
+    type: QueryType.Entity_DML,
     explanation: """
 **How It Works:**
 1. Create SxmTransaction (await using for auto-dispose)
@@ -67,7 +67,7 @@ internal sealed class Trans1Example : IQueryExampleRunner
     name: "Transaction Rollback on Error",
     description: "Demonstrate automatic rollback when error occurs",
     category: QueryCategory.Transactions,
-    type: QueryType.Linq,
+    type: QueryType.Entity_DML,
     explanation: """
 **How It Works:**
 1. Begin transaction
@@ -117,7 +117,7 @@ internal sealed class Trans2Example : IQueryExampleRunner
     name: "Batch Insert with Transaction",
     description: "Efficiently insert multiple tracks in one transaction",
     category: QueryCategory.Transactions,
-    type: QueryType.Linq,
+    type: QueryType.Entity_DML,
     explanation: """
 **How It Works:**
 1. Begin transaction
@@ -177,7 +177,7 @@ internal sealed class Trans3Example : IQueryExampleRunner
     name: "Update Multiple Tables in Transaction",
     description: "Update artist and all their albums atomically",
     category: QueryCategory.Transactions,
-    type: QueryType.Linq,
+    type: QueryType.Entity_DML,
     explanation: """
 **How It Works:**
 1. Begin transaction
@@ -230,7 +230,7 @@ internal sealed class Trans4Example : IQueryExampleRunner
     name: "Complex Multi-Table Transaction",
     description: "Create playlist, add tracks, update statistics",
     category: QueryCategory.Transactions,
-    type: QueryType.Linq,
+    type: QueryType.Mixed,
     explanation: """
 **How It Works:**
 1. Begin transaction
@@ -283,7 +283,7 @@ internal sealed class Trans5Example : IQueryExampleRunner
     name: "Transaction vs No Transaction Performance",
     description: "Compare performance: transaction vs individual saves - 250 inserts each",
     category: QueryCategory.Transactions,
-    type: QueryType.Linq,
+    type: QueryType.Entity_DML,
     explanation: """
 **How It Works:**
 1. Method 1: 250 inserts without transaction (250 commits)
@@ -324,6 +324,7 @@ internal sealed class Trans6Example : IQueryExampleRunner
             }
             await transaction.CommitTransactionAsync();
         }
+
         var transTime = (DateTime.Now - start2).TotalMilliseconds;
 
         results.Add(new { Method = "Without Transaction", Inserts = 250, Time = "Miliseconds " + noTransTime });

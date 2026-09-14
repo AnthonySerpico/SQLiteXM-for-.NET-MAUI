@@ -48,8 +48,7 @@ internal sealed class Mix5Example : IQueryExampleRunner
 
         // (3) Embedded SQL - UPDATE the price
         await ctx.RunStatementAsync(
-            $"UPDATE Track SET UnitPrice = 2.99 WHERE id = {track.id}",
-            new Dictionary<string, object?>());
+            $"UPDATE Track SET UnitPrice = 2.99 WHERE id = {track.id}");
 
         // (4) LINQ verify the update
         var updated = ctx.GetTable<Track>()

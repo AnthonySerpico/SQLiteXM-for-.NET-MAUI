@@ -36,13 +36,11 @@ internal sealed class Mix9Example : IQueryExampleRunner
 
         // (2) Named SQL
         var artistRevenue = await ctx.RunStatementAsync(
-            "GetArtistRevenue",
-            new Dictionary<string, object?>());
+            "GetArtistRevenue");
 
         // (3) Embedded SQL
         var trackRow = await ctx.RunStatementAsync(
-            "SELECT COUNT(*) AS TrackCount FROM Track",
-            new Dictionary<string, object?>());
+            "SELECT COUNT(*) AS TrackCount FROM Track");
 
         return new[]
         {

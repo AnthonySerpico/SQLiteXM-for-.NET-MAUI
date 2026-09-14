@@ -37,8 +37,7 @@ internal sealed class Mix8Example : IQueryExampleRunner
 
             // Named SQL
             _ = await ctx.RunStatementAsync(
-                "GetGenrePopularity",
-                new Dictionary<string, object?>());
+                "GetGenrePopularity");
 
             // Force a failure BEFORE any commit
             throw new InvalidOperationException("Simulated failure - triggers auto-rollback on dispose");

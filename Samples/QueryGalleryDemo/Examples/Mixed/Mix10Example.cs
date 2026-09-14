@@ -51,13 +51,11 @@ internal sealed class Mix10Example : IQueryExampleRunner
 
         // (3) Embedded SQL - count tracks on this new album (sees uncommitted rows)
         var countRow = await ctx.RunStatementAsync(
-            $"SELECT COUNT(*) AS Cnt FROM Track WHERE AlbumId = {album.id}",
-            new Dictionary<string, object?>());
+            $"SELECT COUNT(*) AS Cnt FROM Track WHERE AlbumId = {album.id}");
 
         // (4) Named SQL for ctx
         var genrePopularity = await ctx.RunStatementAsync(
-            "GetGenrePopularity",
-            new Dictionary<string, object?>());
+            "GetGenrePopularity");
 
         // (5) LINQ aggregate - confirm from a different angle
         decimal totalPrice = ctx.GetTable<Track>()

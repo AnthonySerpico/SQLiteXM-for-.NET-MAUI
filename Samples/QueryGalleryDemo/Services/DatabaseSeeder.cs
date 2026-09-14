@@ -9,8 +9,7 @@ namespace QueryGalleryDemo.Services;
 /// </summary>
 public class DatabaseSeeder
 {
-    private readonly Random _random = new();
-    private const string SEED_KEY = "DatabaseSeeded";
+    private readonly Random _random = new(20240601);
 
     // Sample data arrays
     private readonly string[] _genreNames = new[]
@@ -84,60 +83,38 @@ public class DatabaseSeeder
         "Tunnel of Love", "One Step Up", "Streets of Philadelphia", "The Ghost of Tom Joad"
     };
 
-    public async Task<bool> IsDatabaseSeededAsync()
-    {
-        return Preferences.Get(SEED_KEY, false);
-    }
-
     /// <summary>
-    /// Checks if seeding is needed by verifying both the preference flag and actual data existence.
-    /// This handles cases where the database file was manually deleted but the preference wasn't cleared.
+    /// Checks if seeding is needed by looking at actual data in the database.
+    /// The app deletes the database on every launch, so this normally returns true; the check
+    /// is a safety net in case the file could not be deleted (e.g. locked by another process).
     /// </summary>
-    public Task<bool> CheckIfSeedingNeededAsync()
+    public async Task<bool> CheckIfSeedingNeededAsync()
     {
         System.Diagnostics.Debug.WriteLine("DatabaseSeeder: CheckIfSeedingNeededAsync START");
 
-        // First check the preference flag
-        var isSeededPref = Preferences.Get(SEED_KEY, false);
-        System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Preference flag is {isSeededPref}");
-
-        if (!isSeededPref)
-        {
-            // Preference says not seeded, so we need seeding
-            System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Preference says not seeded, needs seeding");
-            return Task.FromResult(true);
-        }
-
-        // Preference says it's seeded, verify the database file actually exists
         try
         {
-            System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Checking if database file exists...");
+            await RegisterEntitiesAsync();
+            await using var ctx = new SxmTransaction("Chinook");
 
-            // Get the database file path
-            var dbFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SQLiteXM");
-            var dbPath = Path.Combine(dbFolder, "Chinook.db");
+            var trackCount = await ctx.GetTable<Track>().CountAsync();
+            var playlistTrackCount = await ctx.GetTable<PlaylistTrack>().CountAsync();
+            System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Existing data - Tracks={trackCount}, PlaylistTracks={playlistTrackCount}");
 
-            System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Checking path: {dbPath}");
-
-            if (!File.Exists(dbPath))
+            if (trackCount > 0 && playlistTrackCount > 0)
             {
-                // Database file doesn't exist but preference says it's seeded - clear stale preference
-                System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Database file not found, clearing preference and needs seeding");
-                Preferences.Remove(SEED_KEY);
-                return Task.FromResult(true);
+                System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Database already contains data, no seeding needed");
+                return false;
             }
-
-            // File exists and preference is set, assume database is good
-            System.Diagnostics.Debug.WriteLine("DatabaseSeeder: Database file exists and preference is set, no seeding needed");
-            return Task.FromResult(false);
         }
         catch (Exception ex)
         {
-            // Error checking file - assume we need seeding to be safe
-            System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Exception checking database file: {ex.Message}");
-            Preferences.Remove(SEED_KEY);
-            return Task.FromResult(true);
+            // Tables may not exist yet on a brand-new database
+            System.Diagnostics.Debug.WriteLine($"DatabaseSeeder: Could not query existing data ({ex.Message}), will seed");
         }
+
+        System.Diagnostics.Debug.WriteLine("DatabaseSeeder: No data found, needs seeding");
+        return true;
     }
 
     /// <summary>
@@ -229,9 +206,6 @@ public class DatabaseSeeder
             await ReportProgressAsync("Seeding invoice lines...");
             await SeedInvoiceLinesAsync(invoices, tracks, null);
 
-            // Mark as seeded
-            Preferences.Set(SEED_KEY, true);
-
             progress?.Invoke(("Database seeding completed successfully!", 1.0));
         }
         catch (Exception ex)
@@ -263,6 +237,7 @@ public class DatabaseSeeder
                 genres.Add(genre);
             }
         }
+
         return genres;
     }
 
@@ -322,6 +297,7 @@ public class DatabaseSeeder
                 artists.Add(artist);
             }
         }
+
         return artists;
     }
 

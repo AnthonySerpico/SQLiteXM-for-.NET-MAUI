@@ -30,5 +30,6 @@ public enum QueryType
 {
     Linq,
     RawSql,
+    Entity_DML,
     Mixed
 }

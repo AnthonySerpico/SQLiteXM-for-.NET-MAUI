@@ -39,8 +39,7 @@ internal sealed class Mix1Example : IQueryExampleRunner
         // (2) Named SQL from SqlStatements.json - enlists in the same ambient
         //     transaction registered by the SxmTransaction ctor.
         var popularity = await ctx.RunStatementAsync(
-            "GetGenrePopularity",
-            new Dictionary<string, object?>());
+            "GetGenrePopularity");
 
         return new[]
         {

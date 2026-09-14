@@ -89,14 +89,17 @@ internal sealed class Basic3Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var rockGenre = ctx.GetTable<Genre>().FirstOrDefault(g => g.Name == "Rock");
         if (rockGenre == null)
             return Task.FromResult<object>(new List<Track>());
+
         var tracks = ctx.GetTable<Track>()
                             .Where(t => t.GenreId == rockGenre.id)
                             .OrderBy(t => t.Name)
                             .Take(50)
                             .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }
@@ -125,9 +128,11 @@ internal sealed class Basic4Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var artists = ctx.GetTable<Artist>()
                              .Where(a => a.Name.Contains("Zeppelin"))
                              .ToList();
+
         return Task.FromResult<object>(artists);
     }
 }
@@ -156,12 +161,14 @@ internal sealed class Basic5Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = ctx.GetTable<Track>()
                             .Where(t => t.UnitPrice >= 0.99m && t.UnitPrice <= 1.49m)
                             .OrderBy(t => t.UnitPrice)
                             .ThenBy(t => t.Name)
                             .Take(100)
                             .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }
@@ -189,11 +196,13 @@ internal sealed class Basic6Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = ctx.GetTable<Track>()
                             .OrderByDescending(t => t.UnitPrice)
                             .ThenBy(t => t.Name)
                             .Take(10)
                             .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }
@@ -222,6 +231,7 @@ internal sealed class Basic7Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         int minMs = 3 * 60 * 1000;
         int maxMs = 5 * 60 * 1000;
         var tracks = ctx.GetTable<Track>()
@@ -229,6 +239,7 @@ internal sealed class Basic7Example : IQueryExampleRunner
                             .OrderBy(t => t.Milliseconds)
                             .Take(100)
                             .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }
@@ -257,11 +268,13 @@ internal sealed class Basic8Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         string searchTerm = "led";
         var artists = ctx.GetTable<Artist>()
                              .Where(a => a.Name.ToLower().Contains(searchTerm.ToLower()))
                              .OrderBy(a => a.Name)
                              .ToList();
+
         return Task.FromResult<object>(artists);
     }
 }
@@ -290,12 +303,14 @@ internal sealed class Basic9Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = ctx.GetTable<Track>()
                             .Where(t => t.Composer != null && t.Composer != "")
                             .OrderBy(t => t.Composer)
                             .ThenBy(t => t.Name)
                             .Take(100)
                             .ToList();
+
         return Task.FromResult<object>(tracks);
     }
 }

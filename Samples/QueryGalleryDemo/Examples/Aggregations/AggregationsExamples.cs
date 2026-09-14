@@ -30,6 +30,7 @@ internal sealed class Agg1Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        join genre in ctx.GetTable<Genre>() on track.GenreId equals genre.id into genreGroup
                        from genre in genreGroup.DefaultIfEmpty()
@@ -42,6 +43,7 @@ internal sealed class Agg1Example : IQueryExampleRunner
                        })
                       .OrderByDescending(x => x.TrackCount)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -70,6 +72,7 @@ internal sealed class Agg2Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from album in ctx.GetTable<Album>()
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
                        group album by new { artist.id, artist.Name } into g
@@ -81,6 +84,7 @@ internal sealed class Agg2Example : IQueryExampleRunner
                       .OrderByDescending(x => x.AlbumCount)
                       .Take(20)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -109,6 +113,7 @@ internal sealed class Agg3Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        join genre in ctx.GetTable<Genre>() on track.GenreId equals genre.id
                        group track by new { genre.id, genre.Name } into g
@@ -120,6 +125,7 @@ internal sealed class Agg3Example : IQueryExampleRunner
                        })
                       .OrderByDescending(x => x.AvgDurationMinutes)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -148,6 +154,7 @@ internal sealed class Agg4Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from invoice in ctx.GetTable<Invoice>()
                        join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        group invoice by new { customer.id, CustomerName = customer.FirstName + " " + customer.LastName, customer.Country } into g
@@ -161,6 +168,7 @@ internal sealed class Agg4Example : IQueryExampleRunner
                       .OrderByDescending(x => x.TotalSpent)
                       .Take(20)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -189,6 +197,7 @@ internal sealed class Agg5Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from invoiceLine in ctx.GetTable<InvoiceLine>()
                        join track in ctx.GetTable<Track>() on invoiceLine.TrackId equals track.id
                        join genre in ctx.GetTable<Genre>() on track.GenreId equals genre.id
@@ -201,6 +210,7 @@ internal sealed class Agg5Example : IQueryExampleRunner
                        })
                       .OrderByDescending(x => x.TotalRevenue)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -229,6 +239,7 @@ internal sealed class Agg6Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from invoice in ctx.GetTable<Invoice>()
                        join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        group invoice by customer.Country into g
@@ -241,6 +252,7 @@ internal sealed class Agg6Example : IQueryExampleRunner
                        })
                       .OrderByDescending(x => x.TotalRevenue)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -269,6 +281,7 @@ internal sealed class Agg7Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var tracks = ctx.GetTable<Track>().ToList();
         var summary = new
         {
@@ -277,6 +290,7 @@ internal sealed class Agg7Example : IQueryExampleRunner
             AvgPrice = tracks.Average(t => t.UnitPrice),
             TotalTracks = tracks.Count
         };
+
         return Task.FromResult<object>(new[] { summary });
     }
 }
@@ -305,6 +319,7 @@ internal sealed class Agg8Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var customerStats = (from invoice in ctx.GetTable<Invoice>()
                              group invoice by invoice.CustomerId into g
                              select new
@@ -330,6 +345,7 @@ internal sealed class Agg8Example : IQueryExampleRunner
                       .OrderByDescending(x => x.TotalSpent)
                       .Take(30)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -358,6 +374,7 @@ internal sealed class Agg9Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -373,6 +390,7 @@ internal sealed class Agg9Example : IQueryExampleRunner
                       .OrderByDescending(x => x.TrackCount)
                       .Take(30)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -401,6 +419,7 @@ internal sealed class Agg10Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from invoiceLine in ctx.GetTable<InvoiceLine>()
                        join track in ctx.GetTable<Track>() on invoiceLine.TrackId equals track.id
                        join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
@@ -415,6 +434,7 @@ internal sealed class Agg10Example : IQueryExampleRunner
                       .OrderByDescending(x => x.TotalRevenue)
                       .Take(20)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }

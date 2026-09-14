@@ -30,12 +30,14 @@ internal sealed class Rel1Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                        orderby track.Name
                        select new { track.Name, AlbumTitle = album.Title, track.Milliseconds })
                       .Take(50)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -63,11 +65,13 @@ internal sealed class Rel2Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from album in ctx.GetTable<Album>()
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
                        orderby artist.Name, album.Title
                        select new { album.Title, ArtistName = artist.Name, album.id })
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -96,6 +100,7 @@ internal sealed class Rel3Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -112,6 +117,7 @@ internal sealed class Rel3Example : IQueryExampleRunner
                        })
                       .Take(100)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -140,6 +146,7 @@ internal sealed class Rel4Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from customer in ctx.GetTable<Customer>()
                        join employee in ctx.GetTable<Employee>() on customer.SupportRepId equals employee.id into empGroup
                        from employee in empGroup.DefaultIfEmpty()
@@ -153,6 +160,7 @@ internal sealed class Rel4Example : IQueryExampleRunner
                        })
                       .Take(50)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -181,6 +189,7 @@ internal sealed class Rel5Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from emp in ctx.GetTable<Employee>()
                        join manager in ctx.GetTable<Employee>() on emp.ReportsTo equals manager.id into mgrGroup
                        from manager in mgrGroup.DefaultIfEmpty()
@@ -193,6 +202,7 @@ internal sealed class Rel5Example : IQueryExampleRunner
                            ManagerTitle = manager != null ? manager.Title : ""
                        })
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -221,6 +231,7 @@ internal sealed class Rel6Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from invoice in ctx.GetTable<Invoice>()
                        join customer in ctx.GetTable<Customer>() on invoice.CustomerId equals customer.id
                        orderby invoice.InvoiceDate descending
@@ -234,6 +245,7 @@ internal sealed class Rel6Example : IQueryExampleRunner
                        })
                       .Take(100)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -262,6 +274,7 @@ internal sealed class Rel7Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        join album in ctx.GetTable<Album>() on track.AlbumId equals album.id
                        join artist in ctx.GetTable<Artist>() on album.ArtistId equals artist.id
@@ -282,6 +295,7 @@ internal sealed class Rel7Example : IQueryExampleRunner
                        })
                       .Take(50)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -309,6 +323,7 @@ internal sealed class Rel8Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var results = (from track in ctx.GetTable<Track>()
                        select new
                        {
@@ -317,6 +332,7 @@ internal sealed class Rel8Example : IQueryExampleRunner
                        })
                       .Take(50)
                       .ToList();
+
         return Task.FromResult<object>(results);
     }
 }

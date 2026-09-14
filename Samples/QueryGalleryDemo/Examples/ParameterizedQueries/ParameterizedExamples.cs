@@ -31,7 +31,9 @@ internal sealed class Param1Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         string searchTerm = "Love";
+
         return Task.FromResult<object>(
             ctx.GetTable<Track>().Where(t => t.Name.Contains(searchTerm)).OrderBy(t => t.Name).Take(20).ToList());
     }
@@ -64,8 +66,10 @@ internal sealed class Param2Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         decimal minPrice = 0.99m;
         decimal maxPrice = 1.49m;
+
         return Task.FromResult<object>(ctx.GetTable<Track>()
             .Where(t => t.UnitPrice >= minPrice && t.UnitPrice <= maxPrice)
             .OrderBy(t => t.UnitPrice).ThenBy(t => t.Name).Take(50)
@@ -101,6 +105,7 @@ internal sealed class Param3Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         var startDate = DateTime.Now.AddYears(-3);
         var endDate = DateTime.Now;
 
@@ -148,6 +153,7 @@ internal sealed class Param4Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         string artistSearchTerm = "Led";
         int genreId = 1;
         decimal maxPrice = 1.50m;
@@ -159,6 +165,7 @@ internal sealed class Param4Example : IQueryExampleRunner
                        orderby track.Name
                        select new { Track = track.Name, Artist = artist.Name, Genre = genre.Name, Price = track.UnitPrice })
                       .Take(30).ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -188,6 +195,7 @@ internal sealed class Param5Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         string? artistFilter = "Led";
         decimal? minDuration = 180000;
 
@@ -203,6 +211,7 @@ internal sealed class Param5Example : IQueryExampleRunner
         var results = query.OrderBy(x => x.Track.Name).Take(30)
             .Select(x => new { Track = x.Track.Name, Artist = x.Artist.Name, DurationMinutes = x.Track.Milliseconds / 1000.0 / 60.0 })
             .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
@@ -233,10 +242,12 @@ internal sealed class Param6Example : IQueryExampleRunner
     public Task<object> RunAsync()
     {
         using var ctx = new SxmTransaction("Chinook");
+
         string pattern = "Track";
         var results = ctx.GetTable<Track>().Where(t => t.Name.Contains(pattern)).OrderBy(t => t.Name).Take(30)
             .Select(t => new { TrackName = t.Name, t.UnitPrice, DurationSeconds = t.Milliseconds / 1000 })
             .ToList();
+
         return Task.FromResult<object>(results);
     }
 }
