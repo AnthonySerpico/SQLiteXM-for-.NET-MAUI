@@ -15,5 +15,6 @@ public enum QueryCategory
     Transactions,
     ParameterizedQueries,
     DataModification,
-    MixedContext
+    MixedContext,
+    Benchmarks
 }

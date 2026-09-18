@@ -76,6 +76,7 @@ public partial class QueryCategoryViewModel : BaseViewModel
             QueryCategory.ParameterizedQueries => "Parameterized Queries",
             QueryCategory.DataModification => "Data Modification",
             QueryCategory.MixedContext => "Mixed SxmTransaction",
+            QueryCategory.Benchmarks => "Benchmarks",
             _ => "Queries"
         };
     }

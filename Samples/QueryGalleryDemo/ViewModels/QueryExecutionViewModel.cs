@@ -1,10 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using QueryGalleryDemo.Examples.Benchmarks;
 using QueryGalleryDemo.Models;
 using QueryGalleryDemo.Services;
 using SQLiteXM;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace QueryGalleryDemo.ViewModels;
 
@@ -31,6 +34,9 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
     [ObservableProperty]
     private int recordCount;
+
+    [ObservableProperty]
+    private bool recordCountVisibility;
 
     [ObservableProperty]
     private long executionTimeMs;
@@ -140,6 +146,7 @@ public partial class QueryExecutionViewModel : BaseViewModel
 
         try
         {
+            RecordCountVisibility = true;
             var stopwatch = Stopwatch.StartNew();
 
             // Execute the query based on type. Generator-emitted runners (single source of
@@ -174,7 +181,13 @@ public partial class QueryExecutionViewModel : BaseViewModel
                     count++;
                     if (count <= 50) // Only format first 50 for display
                     {
-                        sb.AppendLine($"------ Record {count} ------");
+                        bool exists = item.GetType().GetProperty("HideRecordCount") != null;
+
+                        if (item is BenchRow)
+                            RecordCountVisibility = false;
+
+                        if(RecordCountVisibility)
+                            sb.AppendLine($"------ Record {count} ------");
 
                         // Debug output
                         System.Diagnostics.Debug.WriteLine($"Item {count} type: {item?.GetType().FullName}");

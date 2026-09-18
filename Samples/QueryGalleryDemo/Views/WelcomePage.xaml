@@ -59,12 +59,12 @@
 
                     <Label Grid.Column="0" TextType="Html">
                         <Label.Text>
-                            <![CDATA[• Basic Queries<br/>• Relationship Queries (Joins)<br/>• Aggregations (COUNT, SUM, GROUP BY)<br/>• Advanced LINQ<br/>• Raw SQL Examples<br/>• Performance Demos]]>
+                            <![CDATA[• Basic Queries<br/>• Relationship Queries (Joins)<br/>• Aggregations (COUNT, SUM, GROUP BY)<br/>• Benchmarks (Head-to-head timings: transactions, indexing, paging, etc.)<br/>• Raw SQL Examples<br/>• Performance Demos]]>
                         </Label.Text>
                     </Label>
 
                     <Label Grid.Column="1" TextType="Html">
-                        <Label.Text><![CDATA[• Many-to-Many Relationships<br/>• Transactions (ACID Operations)<br/>• Parameterized Queries (Safe SQL)<br/>• Data Modification (INSERT/UPDATE/DELETE)<br/>• Mixed Transactions (LINQ + SQL + Entity DML)]]></Label.Text>
+                        <Label.Text><![CDATA[• Many-to-Many Relationships<br/>• Transactions (ACID Operations)<br/>• Advanced LINQ<br/>• Parameterized Queries (Safe SQL)<br/>• Data Modification (INSERT/UPDATE/DELETE)<br/>• Mixed Transactions (LINQ + SQL + Entity DML)]]></Label.Text>
                     </Label>
                 </Grid>
             </VerticalStackLayout>
