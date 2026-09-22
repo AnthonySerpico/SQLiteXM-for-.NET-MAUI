@@ -46,22 +46,28 @@ internal static class Bench
 
 [QueryExample(
     id: "bench_1",
-    name: "Insert: Auto-commit vs. Single Transaction",
-    description: "500 SaveAsync calls with a commit each vs. the same 200 inside one SxmTransaction",
+    name: "Insert: Single Transaction vs. Individual Inserts vs. BulkInsertAsync",
+    description: "500 inserts inside one SxmTransaction. The same 500 inserts with NO transaction - a commit for each insert. The same 500 inserts via the LINQ BulkInsertAsync and via SxmSql.BulkInsertAsync.",
     category: QueryCategory.Benchmarks,
     type: QueryType.Mixed,
     explanation: """
 **How It Works:**
-1. Warm up with a couple of inserts so JIT and connection costs are excluded
-2. Scenario A: 500 SaveAsync calls inside one SxmTransaction - auto-commit
-3. Scenario B: 500 SaveAsync calls with NO ambient transaction - each one auto-commits
-4. Both scenarios are timed with Stopwatch and compared
+Warm up with a couple of inserts so JIT and connection costs are excluded
+
+Scenario A: 500 SaveAsync calls inside one SxmTransaction - auto-commit
+Scenario B: 500 SaveAsync calls with NO transaction - each insert auto-commits
+Scenario C: 500 entities passed to ctx.GetTable<Track>().BulkInsertAsync inside one SxmTransaction
+Scenario D: 500 entities passed to SxmSql.BulkInsertAsync, which opens and commits its own transaction
+
+All scenarios are timed with Stopwatch and compared
 
 **Key Concepts:**
 - Every SQLite commit is an fsync - it dominates the cost of a small insert
 - Batching writes in one transaction is the single biggest SQLite optimization
 - Expect a 10x-100x difference depending on storage
 - SaveAsync enlists automatically in the ambient SxmTransaction
+- Both BulkInsertAsync variants issue multi-row INSERT ... RETURNING statements and still populate id/synchId on every entity
+- Use the LINQ variant to take part in a larger SxmTransaction; use SxmSql.BulkInsertAsync for a standalone insert
 """)]
 internal sealed class Bench1Example : IQueryExampleRunner
 {
@@ -79,23 +85,60 @@ internal sealed class Bench1Example : IQueryExampleRunner
         // Warm-up (auto-commit path)
         await NewTrack("_warm").SaveAsync();
 
-        // Scenario A: one transaction with auto-commit
+        // Scenario A: one transaction + one commit for all inserts
         long singleTxMs;
         var sw = Stopwatch.StartNew();
+
         await using (var ctx = new SxmTransaction("Chinook"))
         {
             for (int i = 0; i < Count; i++)
                 await NewTrack($"_A{i}").SaveAsync();
         }
+
         sw.Stop();
         singleTxMs = sw.ElapsedMilliseconds;
 
-        // Scenario B: auto-commit per row (no ambient transaction)
+        // Scenario B: no transaction + one commit for each insert (auto-commit)
         sw.Restart();
+
         for (int i = 0; i < Count; i++)
             await NewTrack($"_B{i}").SaveAsync();
+
         sw.Stop();
         long autoCommitMs = sw.ElapsedMilliseconds;
+
+        // Scenario C: one transaction, multi-row INSERT ... RETURNING via BulkInsertAsync.
+        // Swept over batch sizes to expose per-statement vs. per-parameter costs.
+        async Task<(long ms, int inserted, long firstId)> RunBulkAsync(int batchRows, string tag)
+        {
+            var bsw = Stopwatch.StartNew();
+            int inserted;
+            long firstId;
+            await using (var ctx = new SxmTransaction("Chinook"))
+            {
+                var tracks = new List<Track>(Count);
+                for (int i = 0; i < Count; i++)
+                    tracks.Add(NewTrack($"_{tag}{i}"));
+
+                inserted = await ctx.GetTable<Track>().BulkInsertAsync(tracks, batchRows);
+                firstId = tracks[0].id;   // populated by BulkInsertAsync, same as SaveAsync
+            }
+            bsw.Stop();
+            return (bsw.ElapsedMilliseconds, inserted, firstId);
+        }
+
+        var bulk15  = await RunBulkAsync(15,  "C15_");
+
+        // Scenario D: SxmSql.BulkInsertAsync - standalone, opens and commits its own transaction.
+        var tracksD = new List<Track>(Count);
+        for (int i = 0; i < Count; i++)
+            tracksD.Add(NewTrack($"_D{i}"));
+
+        sw.Restart();
+        int insertedD = await SxmSql.BulkInsertAsync(tracksD, 15);
+        sw.Stop();
+        long sxmSqlBulkMs = sw.ElapsedMilliseconds;
+        long firstIdD = tracksD[0].id;   // populated by SxmSql.BulkInsertAsync
 
         // Cleanup Scenario A + warm-up rows
         int deleted;
@@ -107,8 +150,10 @@ internal sealed class Bench1Example : IQueryExampleRunner
 
         return new List<BenchRow>
         {
-            Bench.Row("Single SxmTransaction",     Count, singleTxMs,   0, "One fsync total"),
-            Bench.Row("Auto-commit per SaveAsync", Count, autoCommitMs, singleTxMs, "One fsync per row"),
+            Bench.Row("Single SxmTransaction",     Count, singleTxMs,   0, $"{Count} 'NewTrack.SaveAsync(...)' inside transaction"),
+            Bench.Row("Auto-commit per SaveAsync", Count, autoCommitMs, singleTxMs, $"{Count} 'NewTrack.SaveAsync(...)' not in a transaction"),
+            Bench.Row("LINQ BulkInsertAsync, 15 rows/stmt",  bulk15.inserted,  bulk15.ms,  singleTxMs, $"One transaction. {Count} rows inserted. 15 rows inserted per statement"),
+            Bench.Row("SxmSql.BulkInsertAsync, 15 rows/stmt", insertedD, sxmSqlBulkMs, singleTxMs, $"One transaction. {Count} rows inserted. 15 rows inserted per statement"),
             //new BenchRow("Cleanup", deleted, 0, 0, "-", $"Deleted {deleted} marker rows"),
             //Bench.Environment()
         };
@@ -257,61 +302,115 @@ internal sealed class Bench3Example : IQueryExampleRunner
 [QueryExample(
     id: "bench_4",
     name: "Filter: Indexed vs. Non-Indexed Column",
-    description: "WHERE on Track.GenreId (indexed) vs. Track.Composer (no index), 50 iterations",
+    description: "COUNT with WHERE on Track.GenreId (indexed) vs. Track.Composer (no index), on the stock ~3,500-row table and again after bulk inserting 100,000 rows. 50 iterations each.",
     category: QueryCategory.Benchmarks,
     type: QueryType.Mixed,
     explanation: """
 **How It Works:**
-1. Track.GenreId carries [Index]; Track.Composer has none
-2. Both filters are chosen to return a similar, small number of rows
-3. Each query runs 50 times after a warm-up pass
-4. A third scenario hits the compound index (GenreId, UnitPrice) declared on Track
+1. Track.GenreId carries [Index]; Track.Composer has none; (GenreId, UnitPrice) is a compound index
+2. Every query is a COUNT so SQLite does all the work - no entities are materialized, only lookup cost is timed
+3. Pass 1 runs the three filters 50 times each against the stock table (~3,500 rows)
+4. 100,000 marker tracks are then bulk inserted; 500 of them share one GenreId and one Composer so the indexed and scanned filters return the same number of rows
+5. Pass 2 repeats the same three filters against ~103,500 rows
+6. The marker rows are deleted; the database contents are unchanged (the file keeps its freed pages until a VACUUM)
 
 **Key Concepts:**
 - An indexed equality filter is a B-tree seek; a non-indexed one is a full table scan
-- On 3,500 rows the difference is measurable; on 350,000 it is decisive
-- Compound indexes serve queries that filter on their leading columns
+- On 3,500 rows the whole table fits in a few pages, so a scan is nearly free and the two look alike
+- On 100,000 rows the seek cost barely moves while the scan cost grows with the table - that is the decisive difference
+- The compound index answers GenreId && UnitPrice entirely from the index without touching the table
 - The [Index] attributes on the models are what make this work
 """)]
 internal sealed class Bench4Example : IQueryExampleRunner
 {
-    public Task<object> RunAsync()
+    public async Task<object> RunAsync()
     {
         const int Iterations = 50;
-        using var ctx = new SxmTransaction("Chinook");
+        const int MarkerRows = 100_000;
+        const int MatchingRows = 500;
+        var marker = $"_Bench4_{Guid.NewGuid():N}";
+        var composer = marker + "_composer";
 
-        var genreId = ctx.GetTable<Genre>().OrderBy(g => g.id).Select(g => g.id).First();
-        var composer = ctx.GetTable<Track>().Where(t => t.Composer != null).Select(t => t.Composer).First()!;
-
-        int Indexed()    => ctx.GetTable<Track>().Where(t => t.GenreId == genreId).ToList().Count;
-        int NonIndexed() => ctx.GetTable<Track>().Where(t => t.Composer == composer).ToList().Count;
-        int Compound()   => ctx.GetTable<Track>().Where(t => t.GenreId == genreId && t.UnitPrice > 0.5m).ToList().Count;
-
-        // Warm-up
-        Indexed(); NonIndexed(); Compound();
-
-        var sw = Stopwatch.StartNew();
-        int idxRows = 0;
-        for (int i = 0; i < Iterations; i++) idxRows = Indexed();
-        long idxMs = sw.ElapsedMilliseconds;
-
-        sw.Restart();
-        int scanRows = 0;
-        for (int i = 0; i < Iterations; i++) scanRows = NonIndexed();
-        long scanMs = sw.ElapsedMilliseconds;
-
-        sw.Restart();
-        int compRows = 0;
-        for (int i = 0; i < Iterations; i++) compRows = Compound();
-        long compMs = sw.ElapsedMilliseconds;
-
-        return Task.FromResult<object>(new List<BenchRow>
+        // Use the genre with the fewest existing tracks so both filters return ~MatchingRows in pass 2.
+        long genreId;
+        long otherGenreId;
+        await using (var ctx = new SxmTransaction("Chinook"))
         {
-            Bench.Row("GenreId == x (indexed)",             Iterations, idxMs,  0,     $"{idxRows} rows"),
-            Bench.Row("Composer == y (no index, scan)",     Iterations, scanMs, idxMs, $"{scanRows} rows"),
-            Bench.Row("GenreId && UnitPrice (compound idx)", Iterations, compMs, idxMs, $"{compRows} rows"),
+            var genreIds = ctx.GetTable<Genre>().OrderByDescending(g => g.id).Select(g => g.id).Take(2).ToList();
+            genreId = genreIds[0];
+            otherGenreId = genreIds[1];
+        }
+
+        async Task<(long idxMs, int idxRows, long scanMs, int scanRows, long compMs, int compRows)> RunPassAsync()
+        {
+            await using var ctx = new SxmTransaction("Chinook");
+            var tracks = ctx.GetTable<Track>();
+
+            Task<int> Indexed()    => tracks.Where(t => t.GenreId == genreId).CountAsync();
+            Task<int> NonIndexed() => tracks.Where(t => t.Composer == composer).CountAsync();
+            Task<int> Compound()   => tracks.Where(t => t.GenreId == genreId && t.UnitPrice > 0.5m).CountAsync();
+
+            // Warm-up
+            await Indexed(); await NonIndexed(); await Compound();
+
+            var sw = Stopwatch.StartNew();
+            int idxRows = 0;
+            for (int i = 0; i < Iterations; i++) idxRows = await Indexed();
+            long idxMs = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+            int scanRows = 0;
+            for (int i = 0; i < Iterations; i++) scanRows = await NonIndexed();
+            long scanMs = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+            int compRows = 0;
+            for (int i = 0; i < Iterations; i++) compRows = await Compound();
+            long compMs = sw.ElapsedMilliseconds;
+
+            return (idxMs, idxRows, scanMs, scanRows, compMs, compRows);
+        }
+
+        // Pass 1: stock table (~3,500 rows)
+        var small = await RunPassAsync();
+
+        // Grow the table. The first MatchingRows share genreId + composer (half priced above 0.5);
+        // the rest use a different genre and composer so they only add scan volume.
+        var markers = new List<Track>(MarkerRows);
+        for (int i = 0; i < MarkerRows; i++)
+        {
+            bool match = i < MatchingRows;
+            markers.Add(new Track
+            {
+                Name = $"{marker}_{i}", AlbumId = 1, MediaTypeId = 1,
+                GenreId = match ? genreId : otherGenreId,
+                Composer = match ? composer : marker + "_other",
+                Milliseconds = 180000,
+                UnitPrice = (i % 2 == 0) ? 0.99m : 0.49m
+            });
+        }
+        await SxmSql.BulkInsertAsync(markers, 50);
+
+        // Pass 2: ~103,500 rows
+        var large = await RunPassAsync();
+
+        // Cleanup
+        await using (var cleanup = new SxmTransaction("Chinook"))
+        {
+            cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).Delete();
+            await cleanup.CommitTransactionAsync();
+        }
+
+        return new List<BenchRow>
+        {
+            Bench.Row("3.5K rows: GenreId == x (indexed)",              Iterations, small.idxMs,  0,           $"{small.idxRows} rows"),
+            Bench.Row("3.5K rows: Composer == y (no index, scan)",      Iterations, small.scanMs, small.idxMs, $"{small.scanRows} rows"),
+            Bench.Row("3.5K rows: GenreId && UnitPrice (compound idx)", Iterations, small.compMs, small.idxMs, $"{small.compRows} rows"),
+            Bench.Row("100K rows: GenreId == x (indexed)",              Iterations, large.idxMs,  0,           $"{large.idxRows} rows"),
+            Bench.Row("100K rows: Composer == y (no index, scan)",      Iterations, large.scanMs, large.idxMs, $"{large.scanRows} rows"),
+            Bench.Row("100K rows: GenreId && UnitPrice (compound idx)", Iterations, large.compMs, large.idxMs, $"{large.compRows} rows"),
             //Bench.Environment()
-        });
+        };
     }
 }
 
@@ -710,5 +809,117 @@ internal sealed class Bench10Example : IQueryExampleRunner
             Bench.Row("New SxmTransaction per query",   WarmIterations, churnMs, coldMs, "Connection open/close cost per iteration"),
             //Bench.Environment()
         });
+    }
+}
+
+[QueryExample(
+    id: "bench_11",
+    name: "Insert at Scale: SaveAsync Loop vs. LINQ BulkInsertAsync vs. SxmSql.BulkInsertAsync (100,000 rows)",
+    description: "100,000 inserts via SaveAsync inside one SxmTransaction vs. the same 100,000 via the LINQ BulkInsertAsync and via SxmSql.BulkInsertAsync. All rows are deleted afterwards.",
+    category: QueryCategory.Benchmarks,
+    type: QueryType.Mixed,
+    explanation: """
+**How It Works:**
+Warm up with a single insert so JIT and connection costs are excluded
+
+1. Scenario A: 100,000 SaveAsync calls inside one SxmTransaction
+2. Scenario B: 100,000 entities passed to ctx.GetTable<Track>().BulkInsertAsync inside one SxmTransaction
+3. Scenario C: 100,000 entities passed to SxmSql.BulkInsertAsync, which opens and commits its own transaction
+
+Delete every inserted row so repeated runs do not grow the table
+Entities are constructed before the Stopwatch starts, so only database work is timed
+
+**Key Concepts:**
+- At a few hundred rows the paths are indistinguishable; fixed costs (connection, BEGIN, commit fsync) dominate
+- At 100,000 rows both BulkInsertAsync variants run in ~58% of the SaveAsync loop's time (e.g. 1.96 s vs 3.37 s)
+- The saving is per-row overhead (prepare, last_insert_rowid, synchId UPDATE) - the B-tree/index work is identical
+- Each bulk path reuses one prepared statement across batches; only parameter values are rebound
+- Default is 20 rows per statement - smaller batches bind faster in Microsoft.Data.Sqlite once prepare is amortized
+- All paths leave id and synchId populated on every entity
+- Use the LINQ variant to take part in a larger SxmTransaction; use SxmSql.BulkInsertAsync for a standalone insert
+""")]
+internal sealed class Bench11Example : IQueryExampleRunner
+{
+    public async Task<object> RunAsync()
+    {
+        const int Count = 100_000;
+        var marker = $"_Bench11_{Guid.NewGuid():N}";
+
+        Track NewTrack(string suffix) => new()
+        {
+            Name = marker + suffix, AlbumId = 1, MediaTypeId = 1, GenreId = 1,
+            Milliseconds = 180000, UnitPrice = 0.99m
+        };
+
+        // Warm-up
+        await NewTrack("_warm").SaveAsync();
+
+        List<Track> BuildTracks(string tag)
+        {
+            var tracks = new List<Track>(Count);
+            for (int i = 0; i < Count; i++)
+                tracks.Add(NewTrack($"_{tag}{i}"));
+            return tracks;
+        }
+
+        // Scenario A: SaveAsync per row, one transaction
+        async Task<long> RunSaveAsync(string tag)
+        {
+            var tracks = BuildTracks(tag);
+
+            var sw = Stopwatch.StartNew();
+            await using (var ctx = new SxmTransaction("Chinook"))
+            {
+                foreach (var track in tracks)
+                    await track.SaveAsync();
+            }
+            sw.Stop();
+            return sw.ElapsedMilliseconds;
+        }
+
+        // Scenario B: BulkInsertAsync, one transaction
+        async Task<long> RunBulkAsync(string tag)
+        {
+            var tracks = BuildTracks(tag);
+
+            var sw = Stopwatch.StartNew();
+            await using (var ctx = new SxmTransaction("Chinook"))
+            {
+                await ctx.GetTable<Track>().BulkInsertAsync(tracks, 20);
+            }
+            sw.Stop();
+            return sw.ElapsedMilliseconds;
+        }
+
+        // Scenario C: SxmSql.BulkInsertAsync - standalone, opens and commits its own transaction
+        async Task<long> RunSxmSqlBulkAsync(string tag)
+        {
+            var tracks = BuildTracks(tag);
+
+            var sw = Stopwatch.StartNew();
+            await SxmSql.BulkInsertAsync(tracks, 20);
+            sw.Stop();
+            return sw.ElapsedMilliseconds;
+        }
+
+        long saveMs1 = await RunSaveAsync("A1_");
+        long bulkMs1 = await RunBulkAsync("B1_");
+        long sxmSqlBulkMs1 = await RunSxmSqlBulkAsync("C1_");
+
+        // Cleanup: remove all rows from all scenarios plus the warm-up row
+        int deleted;
+        await using (var cleanup = new SxmTransaction("Chinook"))
+        {
+            deleted = cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).Delete();
+            await cleanup.CommitTransactionAsync();
+        }
+
+        return new List<BenchRow>
+        {
+            Bench.Row("SaveAsync loop, one SxmTransaction", Count, saveMs1, 0, $"{Count} 'NewTrack.SaveAsync(...)' inside transaction"),
+            Bench.Row("LINQ BulkInsertAsync, one SxmTransaction", Count, bulkMs1, saveMs1, $"One transaction. {Count} rows inserted. 20 rows inserted per statement"),
+            Bench.Row("SxmSql.BulkInsertAsync, one SxmTransaction", Count, sxmSqlBulkMs1, saveMs1, $"One transaction. {Count} rows inserted. 20 rows inserted per statement"),
+            //new BenchRow("Cleanup", deleted, 0, 0, "-", $"Deleted {deleted} marker rows"),
+        };
     }
 }

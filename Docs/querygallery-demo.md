@@ -8,7 +8,7 @@
 
 ## 📦 What's Included
 
-This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM through 100+ working query examples organized into 10 categories. No build tools or development environment required!
+This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM through 100+ working query examples organized into 12 categories. No build tools or development environment required!
 
 ## 🎯 What You'll See
 
@@ -22,14 +22,16 @@ This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM thro
 | **Advanced LINQ** | LINQ | Pagination, complex sorting, compound filters
 | **Raw SQL** | SQL | Custom SQL statements loaded from configuration
 | **Performance** | LINQ | Large datasets and benchmarks
+| **Parameterized Queries** | LINQ | Queries with parameters to prevent SQL injection
 | **Many-to-Many** | LINQ | Junction table queries and bidirectional navigation
 | **Transactions** | LINQ | Atomic operations with commit/rollback patterns
 | **Data Modification** | LINQ | INSERT, UPDATE, DELETE with bulk operations
+| **Benchmarks** | LINQ + SQL | Head-to-head timings: transactions, indexes, bulk inserts, and more
 | **Mixed Transactions** | LINQ + SQL + Entity DML | LINQ + Entity DML + Raw SQL in a single transaction
 
 Result set, execution time, and record counts for every query.
 
-**Realistic Data Set** - ~25,000 records across 11 related tables (Chinook-style music database)
+**Realistic Data Set** - ~25,000 records across 12 related tables (Chinook-style music database)
 
 ## 🚀 How to Run
 
@@ -40,7 +42,7 @@ Result set, execution time, and record counts for every query.
 ## 💻 System Requirements
 
 - **Operating System**: Windows 10+
-- **No .NET installation required** - .NET 9 Runtime is included!
+- **No .NET installation required** - .NET 9 Runtime is included
 
 ## 🔧 Troubleshooting
 

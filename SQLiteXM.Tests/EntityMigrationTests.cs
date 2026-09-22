@@ -20,8 +20,10 @@ public class EntityMigrationTests : TestBase
         await InitializeSqliteXMAsync();
 
         // Phase 1: Simulate table creation with initial schema by manually creating table
+        await DropTableDirectlyAsync("AddColumnEvolution");
+        ResetSchemaRegistrationFor(typeof(AddColumnEvolution));
         await ExecuteNonQueryAsync(
-            "CREATE TABLE IF NOT EXISTS AddColumnEvolution (" +
+            "CREATE TABLE AddColumnEvolution (" +
             "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
             "synchId BLOB, " +
             "Name TEXT" +
@@ -32,12 +34,14 @@ public class EntityMigrationTests : TestBase
             "INSERT INTO AddColumnEvolution (synchId, Name) VALUES (randomblob(16), 'ExistingRecord')");
         long existingId = await ExecuteScalarAsync<long>("SELECT last_insert_rowid()");
 
-        // Phase 2: Instantiate entity with new Age property - should trigger AddColumnsAsync
+        // Phase 2: Register entity with new Age property - should trigger AddColumnsAsync
+        await SxmDatabase.RegisterEntitiesAsync(typeof(AddColumnEvolution));
         var evolved = new AddColumnEvolution { Name = "NewRecord", Age = 25 };
         await evolved.SaveAsync();
 
         evolved.id.Should().BeGreaterThan(0);
         evolved.Age.Should().Be(25);
+        (await ColumnExistsAsync("AddColumnEvolution", "Age")).Should().BeTrue("the new column must be added to the existing table");
 
         // Phase 3: Verify existing record still exists
         var existingRecordCount = await ExecuteScalarAsync<long>(
@@ -135,8 +139,10 @@ public class EntityMigrationTests : TestBase
         await InitializeSqliteXMAsync();
 
         // Phase 1: Create table with ObsoleteField using raw SQL (simulating old schema)
+        await DropTableDirectlyAsync("DropColumnEvolution");
+        ResetSchemaRegistrationFor(typeof(DropColumnEvolution));
         await ExecuteNonQueryAsync(
-            "CREATE TABLE IF NOT EXISTS DropColumnEvolution (" +
+            "CREATE TABLE DropColumnEvolution (" +
             "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
             "synchId BLOB, " +
             "Name TEXT, " +
@@ -147,13 +153,15 @@ public class EntityMigrationTests : TestBase
             "INSERT INTO DropColumnEvolution (Name, ObsoleteField) VALUES ('OldRecord', 'ObsoleteValue')");
         long oldId = await ExecuteScalarAsync<long>("SELECT last_insert_rowid()");
 
-        // Phase 2: Initialize entity without ObsoleteField (current schema has removed it)
+        // Phase 2: Register entity without ObsoleteField (current schema has removed it)
         // This should trigger column drop via DropColumnsAsync
+        await SxmDatabase.RegisterEntitiesAsync(typeof(DropColumnEvolution));
         var evolved = new DropColumnEvolution { Name = "NewRecord" };
         await evolved.SaveAsync();
 
         evolved.id.Should().BeGreaterThan(0);
         evolved.Name.Should().Be("NewRecord");
+        (await ColumnExistsAsync("DropColumnEvolution", "ObsoleteField")).Should().BeFalse("the obsolete column must be dropped");
 
         // Phase 3: Verify old record still exists (column drop shouldn't delete data)
         var oldRecordExists = await ExecuteScalarAsync<long>(
@@ -232,12 +240,9 @@ public class EntityMigrationTests : TestBase
 
         entity.id.Should().BeGreaterThan(0);
 
-        // TODO: Verify index was created in sqlite_master
-        // Current behavior: Property-level [Index] attributes are registered in _standardIndexDict
-        // but indexes may not be created in the database automatically.
-        // Investigation needed: Check ProcessIndexStatementsAsync execution and index creation SQL.
-
-        entity.Email.Should().Be("test@example.com");
+        var indexes = await GetIndexesAsync(nameof(IndexMigrationEntity));
+        indexes.Should().ContainSingle(i => i.Name == "IDX_IndexMigrationEntity_Email" && !i.Unique);
+        (await GetIndexColumnsAsync("IDX_IndexMigrationEntity_Email")).Should().Equal("Email");
     }
 
     [Fact]
@@ -254,12 +259,12 @@ public class EntityMigrationTests : TestBase
         await entity1.SaveAsync();
         entity1.id.Should().BeGreaterThan(0);
 
-        // TODO: Verify unique index was created and enforces uniqueness
-        // Current behavior: Property-level [UniqueIndex] attributes are registered in _uniqueIndexDict
-        // but unique indexes may not be created in the database automatically.
-        // Investigation needed: Check ProcessIndexStatementsAsync execution and unique index creation SQL.
+        (await GetIndexesAsync(nameof(UniqueIndexMigrationEntity)))
+            .Should().ContainSingle(i => i.Name == "IDX_UniqueIndexMigrationEntity_Email" && i.Unique);
 
-        entity1.Email.Should().Contain("@example.com");
+        var duplicate = new UniqueIndexMigrationEntity { Username = "other", Email = entity1.Email };
+        Func<Task> act = () => duplicate.SaveAsync();
+        await act.Should().ThrowAsync<Exception>("the unique index must reject a duplicate Email");
     }
 
     [Fact]
@@ -271,42 +276,18 @@ public class EntityMigrationTests : TestBase
         var auditEntity = new AuditLogEntity { Action = "Bootstrap", EntityName = "System" };
         await auditEntity.SaveAsync();
 
-        // Create entity with [CreateTrigger] attribute that should log inserts
+        long before = await ExecuteScalarAsync<long>(
+            "SELECT COUNT(*) FROM AuditLogEntity WHERE EntityName = 'TriggerMigrationEntity' AND Action = 'INSERT'");
+
         var entity = new TriggerMigrationEntity { Name = "Test", Description = "Testing trigger" };
         await entity.SaveAsync();
 
         entity.id.Should().BeGreaterThan(0);
+        (await TriggerExistsAsync("trg_AuditInsert_TriggerMigrationEntity")).Should().BeTrue();
 
-        // Note: Trigger creation via [CreateTrigger] attribute is supported by SQLiteXM
-        // This test validates that entities with trigger attributes can be created and saved successfully
-        // Actual trigger execution depends on SQLiteXM's ProcessTriggerAttributesAsync implementation
-        entity.Name.Should().Be("Test");
-    }
-
-    [Fact]
-    public async Task TriggerMigration_RemoveTrigger_ShouldDeleteTrigger()
-    {
-        await InitializeSqliteXMAsync();
-
-        // This test documents the expected behavior for trigger removal:
-        // When a [CreateTrigger] attribute is removed from an entity class,
-        // the trigger should be dropped from the database on next initialization.
-
-        // Create entity with [CreateTrigger] attribute
-        var entity1 = new TriggerMigrationEntity { Name = "WithTrigger", Description = "Test" };
-        await entity1.SaveAsync();
-
-        entity1.id.Should().BeGreaterThan(0);
-
-        // Note: To test trigger removal, one would:
-        // 1. Create an entity WITH [CreateTrigger] attribute
-        // 2. Remove the [CreateTrigger] attribute from the class
-        // 3. Re-initialize the database schema
-        // 4. Verify the trigger no longer exists in sqlite_master
-        //
-        // This test validates that entities with [CreateTrigger] can be created successfully.
-        // Actual trigger lifecycle depends on SQLiteXM's ProcessTriggerAttributesAsync implementation.
-        entity1.Name.Should().Be("WithTrigger");
+        long after = await ExecuteScalarAsync<long>(
+            "SELECT COUNT(*) FROM AuditLogEntity WHERE EntityName = 'TriggerMigrationEntity' AND Action = 'INSERT'");
+        after.Should().Be(before + 1, "the AFTER INSERT trigger must write one audit row");
     }
 
     [Fact]
@@ -723,45 +704,6 @@ public class EntityMigrationTests : TestBase
 
         [Index]
         public string? Email { get; set; }
-    }
-
-    #endregion
-
-    #region Helper Methods
-
-    private async Task ExecuteNonQueryAsync(string sql)
-    {
-        var dbPath = Path.Combine(TestDatabaseFolder, $"{TestDatabaseName}.db");
-        await using var connection = new SqliteConnection($"Data Source={dbPath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        await command.ExecuteNonQueryAsync();
-    }
-
-    private async Task<string> GetColumnTypeAsync(string tableName, string columnName)
-    {
-        var result = await ExecuteScalarAsync<string>(
-            $"SELECT type FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'");
-        return result ?? string.Empty;
-    }
-
-    private async Task<bool> ColumnExistsAsync(string tableName, string columnName)
-    {
-        var count = await ExecuteScalarAsync<long>(
-            $"SELECT COUNT(*) FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'");
-        return count > 0;
-    }
-
-    private async Task<T> ExecuteScalarAsync<T>(string sql)
-    {
-        var dbPath = Path.Combine(TestDatabaseFolder, $"{TestDatabaseName}.db");
-        await using var connection = new SqliteConnection($"Data Source={dbPath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        var result = await command.ExecuteScalarAsync();
-        return result == null || result is DBNull ? default! : (T)Convert.ChangeType(result, typeof(T));
     }
 
     #endregion

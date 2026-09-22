@@ -388,6 +388,114 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 ---
 
+## Bulk Insert Operations
+
+SQLiteXM supports bulk inserts using LINQ. Instead of calling `SaveAsync()` once per entity, `BulkInsertAsync` writes many new entities using multi-row INSERT statements, which is far more efficient for large batches.
+
+### Basic Bulk Insert
+
+Build a list of new entities and insert them in one call:
+
+```csharp
+await using (SxmTransaction ctx = new SxmTransaction())
+{
+	SxmTable<Customer> customers = ctx.GetTable<Customer>();
+
+	// Build the entities to insert (id must not be set)
+	List<Customer> newCustomers = new List<Customer>();
+	for (int i = 0; i < 1000; i++)
+	{
+		newCustomers.Add(new Customer
+		{
+			Name = $"Customer {i}",
+			Email = $"customer{i}@example.com"
+		});
+	}
+
+	// Insert all entities inside the transaction
+	int rowsInserted = await customers.BulkInsertAsync(newCustomers);
+
+	Console.WriteLine($"Inserted {rowsInserted} customers");
+}
+```
+
+After the call every entity has its `id` populated from the database and its `synchId` assigned, exactly as if each had been saved with `SaveAsync()`:
+
+```csharp
+await using (SxmTransaction ctx = new SxmTransaction())
+{
+	SxmTable<Order> orders = ctx.GetTable<Order>();
+
+	List<Order> newOrders = new List<Order>
+	{
+		new Order { CustomerId = 42, Product = "Widget", Amount = 19.99m },
+		new Order { CustomerId = 42, Product = "Gadget", Amount = 49.50m },
+		new Order { CustomerId = 42, Product = "Gizmo",  Amount = 7.25m }
+	};
+
+	await orders.BulkInsertAsync(newOrders);
+
+	// Ids are available immediately
+	foreach (Order order in newOrders)
+		Console.WriteLine($"Order {order.id}: {order.Product}");
+}
+```
+
+### Controlling Batch Size
+
+Rows are grouped into multi-row statements. The default of 20 rows per statement is a good balance for most workloads; you can override it with the `batchRows` parameter:
+
+```csharp
+await using (SxmTransaction ctx = new SxmTransaction())
+{
+	SxmTable<Customer> customers = ctx.GetTable<Customer>();
+
+	// Use 50 rows per INSERT statement
+	int rowsInserted = await customers.BulkInsertAsync(newCustomers, batchRows: 50);
+}
+```
+
+SQLiteXM automatically caps the batch so that no single statement binds more than 1000 parameters, regardless of the value you pass.
+
+### Bulk Insert Alongside Other Operations
+
+Because `BulkInsertAsync` runs inside the transaction, it participates in the same commit or rollback as LINQ queries, entity DML, and SQL statements:
+
+```csharp
+await using (SxmTransaction ctx = new SxmTransaction())
+{
+	SxmTable<Customer> customers = ctx.GetTable<Customer>();
+	SxmTable<Order> orders = ctx.GetTable<Order>();
+
+	// Entity DML
+	Customer customer = new Customer { Name = "Ada Lovelace", Email = "ada@example.com" };
+	await customer.SaveAsync();
+
+	// Bulk insert using the id assigned above
+	List<Order> initialOrders = new List<Order>
+	{
+		new Order { CustomerId = customer.id, Product = "Starter Kit", Amount = 99m },
+		new Order { CustomerId = customer.id, Product = "Manual",      Amount = 15m }
+	};
+	await orders.BulkInsertAsync(initialOrders);
+
+	// LINQ query sees the inserted rows within the same transaction
+	int orderCount = await orders
+		.Where(o => o.CustomerId == customer.id)
+		.CountAsync();
+
+	// If anything above throws, the customer and all orders are rolled back together
+}
+```
+
+> ⚠️ **New entities only:** `BulkInsertAsync` accepts only entities whose `id` has not been set. If any entity already has an `id`, an `InvalidOperationException` is thrown before any row is written. Use `SaveAsync()` to update existing rows.
+
+> ⚠️ **No self-inserting triggers:** `BulkInsertAsync` is not supported on tables with INSERT triggers that add rows back into the same table. Use `SaveAsync()` for those entities instead.
+
+> 💡 **Standalone alternative:** When you do not need to combine bulk insert with other operations, `SxmSql.BulkInsertAsync` provides the same functionality outside an `SxmTransaction` block, managing its own transaction.
+
+---
+
 ## Bulk Update Operations
 
 SQLiteXM supports bulk updates using LINQ. These operations update multiple rows in a single database statement, which is much more efficient than loading entities, modifying them, and saving them one by one.
@@ -877,6 +985,7 @@ All materialization methods are async and must be awaited:
 
 | Method | Parameters | Description |
 |--------|------------|-------------|
+| `BulkInsertAsync()` | `(entities, batchRows?, CancellationToken?)` | Insert many new entities using multi-row INSERT statements |
 | `Set()` | `(property, value)` | Set property to constant value |
 | `Set()` | `(property, expression)` | Set property using expression |
 | `UpdateAsync()` | `CancellationToken?` | Execute the bulk update |

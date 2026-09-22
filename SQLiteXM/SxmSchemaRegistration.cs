@@ -76,8 +76,16 @@ internal static class SxmSchemaRegistration
         // Validate database name
         ValidateDatabaseName(ref resolvedDbName);
 
-        // Initialize schema
-        await InitializeSchemaAsync(entityType, resolvedDbName!).ConfigureFalse();
+        // Initialize schema. On failure, unmark so the caller can fix the cause and retry.
+        try
+        {
+            await InitializeSchemaAsync(entityType, resolvedDbName!).ConfigureFalse();
+        }
+        catch
+        {
+            _registeredSchemas.TryRemove(entityType, out _);
+            throw;
+        }
     }
 
     /// <summary>
@@ -123,6 +131,7 @@ internal static class SxmSchemaRegistration
         _initTasks.Clear();
         _uniqueIndexDict.Clear();
         _standardIndexDict.Clear();
+        _foreignKeyCache.Clear();
     }
 #endif
 
@@ -222,8 +231,7 @@ internal static class SxmSchemaRegistration
                     var uniq = new List<string>();
                     await GetIndexTableStatementsAsync(entityType, databaseName, std, uniq).ConfigureFalse();
 
-                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Standard, std, ddlStatementsList).ConfigureFalse();
-                    await ProcessIndexStatementsAsync(entityType, databaseName, IndexType.Unique, uniq, ddlStatementsList).ConfigureFalse();
+                    await ProcessIndexStatementsAsync(entityType, databaseName, std, uniq, ddlStatementsList).ConfigureFalse();
                     await ProcessTriggerAttributesAsync(entityType, databaseName, ddlStatementsList).ConfigureFalse();
 
                     if (!newTable)
@@ -263,6 +271,14 @@ internal static class SxmSchemaRegistration
                         _entityDatabaseMap.TryRemove(tableName, out _);
                     }
                 }
+
+                // Per-table caches populated by GetColumnNamesAndDataTypes must be cleared so a
+                // retry rebuilds them instead of failing with "column map already initialized".
+                SxmEntity._columnNameAndTypeDict.TryRemove(tableName, out _);
+                _standardIndexDict.TryRemove(tableName, out _);
+                _uniqueIndexDict.TryRemove(tableName, out _);
+                _foreignKeyCache.TryRemove(tableName, out _);
+                SxmDatabase.ClearColumnCacheForTable(tableName);
             }
             catch
             {
@@ -758,74 +774,74 @@ internal static class SxmSchemaRegistration
         }
     }
 
-    private static async Task ProcessIndexStatementsAsync(Type entityType, string databaseName, IndexType indexType, List<string> existingIndexes, List<string> ddlStatementsList)
+    private static List<IIndexProperties> CollectDeclaredIndexes(Type entityType, IndexType indexType)
     {
-        List<string> indexSqlStatements = new List<string>();
-
-        string index = "INDEX";
         string tableName = entityType.Name;
-        string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
 
-        IIndexProperties[]? firstArray;
-        IIndexProperties[]? secondArray;
+        IIndexProperties[] firstArray;
+        IIndexProperties[] secondArray;
 
         if (indexType == IndexType.Standard)
         {
             firstArray = (IndexAttribute[])entityType.GetCustomAttributes(typeof(IndexAttribute), true);
             secondArray = _standardIndexDict.TryGetValue(tableName, out var stdBag) ? stdBag.ToArray() : Array.Empty<IIndexProperties>();
         }
-        else if (indexType == IndexType.Unique)
+        else
         {
             firstArray = (UniqueIndexAttribute[])entityType.GetCustomAttributes(typeof(UniqueIndexAttribute), true);
             secondArray = _uniqueIndexDict.TryGetValue(tableName, out var uniqBag) ? uniqBag.ToArray() : Array.Empty<IIndexProperties>();
-            index = "UNIQUE INDEX";
         }
-        else
-        {
-            return;
-        }
-
-        firstArray ??= Array.Empty<IIndexProperties>();
-        secondArray ??= Array.Empty<IIndexProperties>();
 
         List<IIndexProperties> customAttributes = new List<IIndexProperties>(firstArray.Length + secondArray.Length);
         customAttributes.AddRange(firstArray);
         customAttributes.AddRange(secondArray);
 
         AssignIndexNames(customAttributes, tableName);
+        return customAttributes;
+    }
 
-        foreach (var myAttribute in customAttributes)
+    /// <summary>
+    /// Synchronize the table's indexes with the entity's [Index]/[UniqueIndex] declarations.
+    /// Both index kinds are handled in a single pass so that an index changing uniqueness
+    /// (same name, different kind) is dropped before it is recreated. All DROPs run before all CREATEs.
+    /// </summary>
+    private static async Task ProcessIndexStatementsAsync(Type entityType, string databaseName, List<string> existingStandardIndexes, List<string> existingUniqueIndexes, List<string> ddlStatementsList)
+    {
+        string tableName = entityType.Name;
+        string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
+
+        List<IIndexProperties> declaredStandard = CollectDeclaredIndexes(entityType, IndexType.Standard);
+        List<IIndexProperties> declaredUnique = CollectDeclaredIndexes(entityType, IndexType.Unique);
+
+        List<string> dropStatements = new List<string>();
+        List<string> createStatements = new List<string>();
+
+        void Reconcile(List<string> existing, List<IIndexProperties> declared, string indexKeyword)
         {
-            if (!existingIndexes.Contains(myAttribute.IndexName))
+            foreach (IIndexProperties attribute in declared)
             {
-                string indexFields = string.Join(", ", myAttribute.IndexFields.Select(f => SxmHelpers.QuoteIdentifier(f)));
-                string createIndexSql = $"CREATE {index} {SxmHelpers.QuoteIdentifier(myAttribute.IndexName)} ON {quotedTable} ({indexFields})";
-                indexSqlStatements.Add(createIndexSql);
-            }
-        }
-
-        foreach (string indexName in existingIndexes)
-        {
-            bool found = false;
-
-            foreach (IIndexProperties customAttribute in customAttributes)
-            {
-                if (customAttribute.IndexName.Equals(indexName))
+                if (!existing.Contains(attribute.IndexName))
                 {
-                    found = true;
-                    break;
+                    string indexFields = string.Join(", ", attribute.IndexFields.Select(f => SxmHelpers.QuoteIdentifier(f)));
+                    createStatements.Add($"CREATE {indexKeyword} {SxmHelpers.QuoteIdentifier(attribute.IndexName)} ON {quotedTable} ({indexFields})");
                 }
             }
 
-            if (!found)
-                indexSqlStatements.Add($"DROP INDEX {SxmHelpers.QuoteIdentifier(indexName)}");
+            foreach (string indexName in existing)
+            {
+                if (!declared.Any(a => a.IndexName.Equals(indexName)))
+                    dropStatements.Add($"DROP INDEX {SxmHelpers.QuoteIdentifier(indexName)}");
+            }
         }
 
-        if (indexSqlStatements.Count > 0)
+        Reconcile(existingStandardIndexes, declaredStandard, "INDEX");
+        Reconcile(existingUniqueIndexes, declaredUnique, "UNIQUE INDEX");
+
+        if (dropStatements.Count > 0 || createStatements.Count > 0)
         {
             await using (SxmUTransaction sxmTransaction1 = await SxmUTransaction.CreateAsync(new SxmConnection(databaseName)).ConfigureFalse())
             {
-                foreach (string indexStatement in indexSqlStatements)
+                foreach (string indexStatement in dropStatements.Concat(createStatements))
                 {
                     ddlStatementsList.Add(indexStatement);
                     await sxmTransaction1.ExecuteIndexAsync(indexStatement).ConfigureFalse();
@@ -835,10 +851,8 @@ internal static class SxmSchemaRegistration
             }
         }
 
-        if (indexType == IndexType.Standard)
-            _standardIndexDict.TryRemove(tableName, out _);
-        else if (indexType == IndexType.Unique)
-            _uniqueIndexDict.TryRemove(tableName, out _);
+        _standardIndexDict.TryRemove(tableName, out _);
+        _uniqueIndexDict.TryRemove(tableName, out _);
     }
 
     private static void AssignIndexNames(List<IIndexProperties> indexArray, string tableName)

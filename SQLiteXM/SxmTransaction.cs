@@ -426,6 +426,65 @@ namespace SQLiteXM
             return ExecuteWriteAsync(() => _linqToDbDataConnection.InsertOrReplaceAsync(entity, token: cancellationToken));
         }
 
+        /// <summary>
+        /// Inserts many new entities using multi-row <c>INSERT ... VALUES (...), (...) RETURNING id</c>
+        /// statements, executed immediately inside this context's transaction alongside LINQ, entity
+        /// DML and <see cref="RunStatementAsync{TResult}(string)"/>. The transaction auto-commits when the
+        /// context is disposed without errors.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is the bulk counterpart of <see cref="SxmEntity.SaveAsync()"/> for inserts. After the call every entity
+        /// has its <c>id</c> populated from the database and its <c>synchId</c> assigned, the same post-insert state
+        /// <see cref="SxmEntity.SaveAsync()"/> leaves behind. Values changed by AFTER INSERT triggers are not read back.
+        /// BulkInsertAsync is not supported on tables with triggers that insert additional rows back into the same table;
+        /// such inserts may fail with <see cref="InvalidOperationException"/>. Use <see cref="SxmEntity.SaveAsync()"/> for those entities instead.
+        /// </para>
+        /// <para>
+        /// All entities must be new (<c>id == 0</c>) and of runtime type
+        /// validated before any row is written. Rows are grouped <paramref name="statementCount"/> per INSERT statement,
+        /// capped so no statement binds more than 1000 parameters. One prepared statement is reused across batches.
+        /// </para>
+        /// <para>
+        /// Equivalent to <c>GetTable&lt;T&gt;().BulkInsertAsync(...)</c>. For a standalone insert that manages its
+        /// own transaction use <see cref="SxmSql.BulkInsertAsync{T}"/>.
+        /// </para>
+        /// </remarks>
+        /// <typeparam name="T">Entity type; must derive from <see cref="SxmEntity"/>.</typeparam>
+        /// <param name="entities">New entities to insert.</param>
+        /// <param name="statementCount">Rows per INSERT statement. Defaults to 20.</param>
+        /// <param name="cancellationToken">Cancellation token checked between statements.</param>
+        /// <returns>The number of rows inserted (0 when the context is faulted and the operation was skipped).</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="entities"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the list contains a null element or an entity of a different runtime type.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="statementCount"/> is less than 1.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when an entity already has an id or the entity type's schema is not registered.</exception>
+        public Task<int> BulkInsertAsync<T>(IReadOnlyList<T> entities, int statementCount = SxmBulkInsertHelpers.DefaultBatchRows, CancellationToken cancellationToken = default)
+            where T : SxmEntity
+        {
+            ThrowIfDisposed();
+            if (statementCount < 1) throw new ArgumentOutOfRangeException(nameof(statementCount), "statementCount must be at least 1.");
+            SxmBulkInsertHelpers.ValidateNewEntities(entities, nameof(entities));
+
+            if (entities.Count == 0)
+                return Task.FromResult(0);
+
+            Type entityType = typeof(T);
+            for (int i = 0; i < entities.Count; i++)
+            {
+                if (entities[i].GetType() != entityType)
+                    throw new ArgumentException(
+                        $"BulkInsertAsync requires all entities to be of type '{entityType.Name}'. Entity at index {i} is '{entities[i].GetType().Name}'.",
+                        nameof(entities));
+            }
+
+            return ExecuteWriteAsync(async () =>
+            {
+                using var executor = CreateBulkQueryExecutor();
+                return await SxmBulkInsertHelpers.InsertAsync(executor.ExecuteAsync, entities, statementCount, cancellationToken).ConfigureFalse();
+            });
+        }
+
         // ---------- Transaction management ------------------
 
         /// <summary>
@@ -568,6 +627,77 @@ namespace SQLiteXM
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Creates a reusable executor for a series of row-returning write statements (e.g. batched
+        /// <c>INSERT ... RETURNING id</c>). A single <see cref="SqliteCommand"/> is reused across calls so
+        /// Microsoft.Data.Sqlite keeps the prepared statement when the SQL text repeats; only the
+        /// parameter values are rebound. Dispose the returned object when the series is complete.
+        /// </summary>
+        internal BulkQueryExecutor CreateBulkQueryExecutor()
+        {
+            ThrowIfDisposed();
+
+            SqliteConnection sqliteConnection = _sxmConnection.UnderlyingConnection
+                ?? throw new InvalidOperationException("SQLite connection is not available.");
+
+            return new BulkQueryExecutor(sqliteConnection, _sxmConnection.CurrentTransaction as SqliteTransaction);
+        }
+
+        /// <summary>
+        /// Reuses one <see cref="SqliteCommand"/> for repeated row-returning statements.
+        /// </summary>
+        internal sealed class BulkQueryExecutor : IDisposable
+        {
+            private readonly SqliteCommand _cmd;
+            private string? _lastSql;
+
+            internal BulkQueryExecutor(SqliteConnection connection, SqliteTransaction? transaction)
+            {
+                _cmd = connection.CreateCommand();
+                if (transaction != null)
+                    _cmd.Transaction = transaction;
+            }
+
+            /// <summary>
+            /// Executes <paramref name="sql"/> with positional parameters <c>@p0..@pN</c> and returns all rows.
+            /// </summary>
+            internal async Task<List<Dictionary<string, object?>>> ExecuteAsync(string sql, object?[] parameters)
+            {
+                if (!string.Equals(sql, _lastSql, StringComparison.Ordinal))
+                {
+                    _cmd.CommandText = sql;
+                    _lastSql = sql;
+
+                    _cmd.Parameters.Clear();
+                    for (int i = 0; i < parameters.Length; i++)
+                        _cmd.Parameters.Add(new SqliteParameter($"@p{i}", DBNull.Value));
+                }
+
+                for (int i = 0; i < parameters.Length; i++)
+                    _cmd.Parameters[i].Value = parameters[i] ?? DBNull.Value;
+
+                var results = new List<Dictionary<string, object?>>(parameters.Length == 0 ? 1 : 64);
+
+                using SqliteDataReader reader = await _cmd.ExecuteReaderAsync().ConfigureFalse();
+                int fieldCount = reader.FieldCount;
+                string[] names = new string[fieldCount];
+                for (int i = 0; i < fieldCount; i++)
+                    names[i] = reader.GetName(i);
+
+                while (reader.Read())
+                {
+                    var row = new Dictionary<string, object?>(fieldCount, StringComparer.Ordinal);
+                    for (int i = 0; i < fieldCount; i++)
+                        row[names[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    results.Add(row);
+                }
+
+                return results;
+            }
+
+            public void Dispose() => _cmd.Dispose();
         }
 
         // ---------- Dispose ------------------------------

@@ -53,6 +53,83 @@ namespace SQLiteXM
         }
 
 
+        /************************************************************************* BULK INSERT ********************************************************************/
+
+        /// <summary>
+        /// Inserts many new entities of one type using multi-row <c>INSERT ... VALUES (...), (...) RETURNING id</c>
+        /// statements inside a single, self-contained transaction that is committed on success and rolled back on failure.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is the bulk counterpart of <see cref="SxmEntity.SaveAsync()"/> for inserts. After the call every entity
+        /// has its <c>id</c> populated from the database and its <c>synchId</c> assigned, the same post-insert state
+        /// <see cref="SxmEntity.SaveAsync()"/> leaves behind. Values changed by AFTER INSERT triggers are not read back.
+        /// BulkInsertAsync is not supported on tables with triggers that insert additional rows back into the same table;
+        /// such inserts may fail with <see cref="InvalidOperationException"/>. Use <see cref="SxmEntity.SaveAsync()"/> for those entities instead.
+        /// </para>
+        /// <para>
+        /// The method always opens its own transaction;
+        /// To bulk insert as part of a larger unit of work use <see cref="SxmLinqExtensions.BulkInsertAsync{T}"/> on
+        /// <c>ctx.GetTable&lt;T&gt;()</c> instead.
+        /// </para>
+        /// <para>
+        /// All entities must be new (<c>id == 0</c>) and of the same runtime type <typeparamref name="T"/>; the list
+        /// is validated before any row is written. Rows are grouped <paramref name="statementCount"/> per INSERT
+        /// statement, capped so no statement binds more than 1000 parameters (larger statements bind measurably
+        /// slower in Microsoft.Data.Sqlite).
+        /// </para>
+        /// </remarks>
+        /// <typeparam name="T">Entity type; must derive from <see cref="SxmEntity"/>.</typeparam>
+        /// <param name="entities">New entities to insert. All must be exactly of type <typeparamref name="T"/>.</param>
+        /// <param name="statementCount">Rows per INSERT statement. Defaults to 20.</param>
+        /// <param name="databaseName">Optional database name override; when null the entity type's database is used.</param>
+        /// <param name="cancellationToken">Cancellation token checked between statements.</param>
+        /// <returns>The number of rows inserted.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="entities"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the list contains a null element or an entity of a different runtime type.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="statementCount"/> is less than 1.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when an entity already has an id or the entity type's schema is not registered.</exception>
+        public static async Task<int> BulkInsertAsync<T>(List<T> entities, int statementCount = SxmBulkInsertHelpers.DefaultBatchRows, string? databaseName = default, CancellationToken cancellationToken = default)
+            where T : SxmEntity
+        {
+            if (statementCount < 1) throw new ArgumentOutOfRangeException(nameof(statementCount), "statementCount must be at least 1.");
+            SxmBulkInsertHelpers.ValidateNewEntities(entities, nameof(entities));
+
+            if (entities.Count == 0)
+                return 0;
+
+            Type entityType = typeof(T);
+            for (int i = 0; i < entities.Count; i++)
+            {
+                if (entities[i].GetType() != entityType)
+                    throw new ArgumentException(
+                        $"BulkInsertAsync requires all entities to be of type '{entityType.Name}'. Entity at index {i} is '{entities[i].GetType().Name}'.",
+                        nameof(entities));
+            }
+
+            databaseName ??= entities[0].DatabaseName;
+
+            await using (SxmUTransaction sxmTransaction = SxmUTransaction.Create(databaseName))
+            {
+                int inserted;
+                try
+                {
+                    inserted = await SxmBulkInsertHelpers.InsertAsync(
+                        (sql, parameters) => sxmTransaction.ExecuteWriteReturningAsync(sql, new List<object>(parameters!), cancellationToken),
+                        entities, statementCount, cancellationToken).ConfigureFalse();
+                }
+                catch
+                {
+                    await sxmTransaction.RollbackTransactionAsync(cancellationToken).ConfigureFalse();
+                    throw;
+                }
+
+                await sxmTransaction.CommitTransactionAsync(cancellationToken).ConfigureFalse();
+                return inserted;
+            }
+        }
+
+
         /************************************************************************* RETURN TResult ********************************************************************/
 
         /// <summary>

@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 250+ tests |
+| Automated Test Coverage | 345 tests |
 
 ---
 
@@ -45,14 +45,14 @@ See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.
 
 **Want to see SQLiteXM in action?** Download the pre-built **Query Gallery Demo** application:
 
-This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 10 categories. 
+This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 12 categories. 
 
 
 **[📥 Download QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)**  
 This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe` to explore LINQ queries, joins, aggregations, transactions, and more.
 
 **Features:**
-- ✅ 100+ working query examples (LINQ and SQL) across 10 categories
+- ✅ 110+ working query examples across 12 categories - LINQ, SQL, Bulk Insert, and Benchmarks
 - ✅ Live code execution with performance metrics
 - ✅ Realistic music database (~25,000 records)
 
@@ -60,7 +60,7 @@ Want more details? See the [Query Gallery Demo](https://github.com/AnthonySerpic
 
 ---
 
-## 🎯 SQLiteXM Quick Start (3 Minutes)
+## 🎯 SQLiteXM Quick Start (4 Minutes)
 
 ### 1. Define Your Entities
 
@@ -218,13 +218,14 @@ await using (var ctx = new SxmTransaction())
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **250+ tests** covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **300+ tests** covering real-world scenarios.
 
 ### Performance Benchmarks (from test suite)
 
 | Operation | Time | Details |
 |-----------|------|---------|
 | 10,000 row insert (transacted) | 0.45s | Using explicit transaction |
+| 10,000 row bulk insert | 0.25s | Transacted bulk insert |
 | 50,000 row query | 14ms | With index |
 | Complex LINQ (20K rows) | 12ms | Joins + filters |
 | 100 concurrent writes | 1.2s | Thread-safe operations |
@@ -233,30 +234,35 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-| Category | Tests | Status |
-|----------|-------|--------|
-| Entity CRUD | 11 tests | ✅ 100% |
-| Entity Initialization | 13 tests | ✅ 100% |
-| Entity Migration | 18 tests | ✅ 100% |
-| Entity Mapping | 4 tests | ✅ 100% |
-| Initialization Stress Tests (Idempotency and Concurrency) | 11 tests | ✅ 100% |
-| LINQ Queries | 7 tests | ✅ 100% |
-| Advanced LINQ | 12 tests | ✅ 100% |
-| LINQ Transactions | 6 tests | ✅ 100% |
-| Bulk LINQ Operations | 11 tests | ✅ 100% |
-| Transactions | 7 tests | ✅ 100% |
-| Multi-Database | 11 tests | ✅ 100% |
-| Multi-Database LINQ | 18 tests | ✅ 100% |
-| Multi-Database Performance | 10 tests | ✅ 100% |
-| LINQ documentation tests| 43 tests | ✅ 100% |
-| Drop Table | 22 tests | ✅ 100% |
-| Column Rename | 10 tests | ✅ 100% |
-| Shared Connections | 7 tests | ✅ 100% |
-| Connection Workers | 7 tests | ✅ 100% |
-| Submit Changes | 4 tests | ✅ 100% |
-| Fail-Fast Validation | 5 tests | ✅ 100% |
-| Mixed Operation Transactions | 13 tests | ✅ 100% |
-| **Total** | **250+ tests** | **✅ 100%** |
+The `SQLiteXM.Tests` project contains **345 tests**, run against both **.NET 8** and **.NET 9** (690 test executions), all passing.
+
+| Area | What is covered | Test class | Tests |
+|------|-----------------|------------|------:|
+| **Schema & Initialization** | Entity registration, table creation, `[Table]` / `[Column]` options | `EntityInitializationTests` | 13 |
+| | Property-to-column mapping and type handling | `EntityMappingTests` | 4 |
+| | Fail-fast validation of invalid entity definitions | `FailFastTests` | 5 |
+| | `StartInitialization` / `EnsureReadyAsync` idempotency, concurrency, and failure propagation | `InitializationPatternTests` | 11 |
+| | Initialization of a 75-table × 50-column schema (timing) | `LargeSchemaInitializationBenchmarkTests` | 1 |
+| **Schema Evolution** | Add column, index and trigger creation, foreign keys, system columns | `EntityMigrationTests` | 17 |
+| | Single- and multi-step `[Rename]` column renames | `ColumnRenameTests` | 10 |
+| | Drop column; add / remove / modify indexes and triggers; combined changes; unsupported changes; failed-migration state and retry | `SchemaEvolutionTests` | 24 |
+| | `[DropTable]` / explicit table drops | `DropTableTests` | 22 |
+| **Entity DML & Bulk Insert** | `SaveAsync` / `DeleteAsync` insert, update, delete | `EntityCrudTests` | 9 |
+| | `SxmSql.BulkInsertAsync`, `SxmTransaction.BulkInsertAsync`, and LINQ `BulkInsertAsync` — id/synchId population, batch sizes, validation, rollback, unique-index violations | `BulkInsertTests` | 70 |
+| **LINQ** | `GetTable<T>()`, `Where`, `OrderBy`, `Select`, `First`, `Count` | `LinqContextTests` | 7 |
+| | Joins, grouping, aggregation, paging, async materialization | `AdvancedLinqTests` | 12 |
+| | LINQ inside `SxmTransaction` — commit and rollback | `LinqTransactionTests` | 6 |
+| | Bulk `Set(...).UpdateAsync()` and `DeleteAsync()` | `BulkLinqOperationsTests` | 12 |
+| | Every example in [LINQ Queries](./Docs/linq-queries.md), executed as a test | `LinqQueryDocumentationTests` | 43 |
+| **Transactions** | Commit, rollback, atomicity, ambient transaction enlistment and nesting | `TransactionTests` | 7 |
+| | Mixed LINQ + entity DML + SQL in one transaction; fault behavior; recovery; multiple commits | `TransactionPatternTests` | 14 |
+| | Mixed unit-of-work commit / rollback and faulted-context write skipping | `MixedUnitOfWorkTests` | 5 |
+| **Multi-Database** | Entities and SQL across multiple named databases | `MultiDatabaseTests` | 11 |
+| | LINQ across multiple named databases | `MultiDatabaseLinqTests` | 18 |
+| | Cross-database performance and isolation | `MultiDatabasePerformanceTests` | 10 |
+| **Connections & Concurrency** | Shared-connection locking, contention, and timeouts | `SharedConnectionTests` | 7 |
+| | `RunWorkersAsync` concurrent connection workers | `ConnectionManagerWorkerTests` | 7 |
+| | **Total** | | **345** |
 
 ---
 

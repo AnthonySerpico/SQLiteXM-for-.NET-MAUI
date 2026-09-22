@@ -333,6 +333,23 @@ public abstract class TestBase : IDisposable
     }
 
     /// <summary>
+    /// Simulates an application restart: shuts down connections, resets all SQLiteXM static state, and
+    /// re-runs initialization against the EXISTING database file. Unlike CleanupTestDataAsync the data is kept.
+    /// </summary>
+    protected async Task RestartSqliteXMAsync()
+    {
+#if DEBUG
+        await SxmConnectionManager.Instance.ShutdownAsync(TestDatabaseName);
+        await SxmDatabase.ResetForTestingAsync();
+        Interlocked.Exchange(ref _initCounter, 0);
+        await InitializeSqliteXMAsync();
+#else
+        await Task.CompletedTask;
+        throw new InvalidOperationException("RestartSqliteXMAsync is only available in DEBUG builds.");
+#endif
+    }
+
+    /// <summary>
     /// Cleans all data from test tables without dropping them or resetting static state.
     /// Use this for test isolation when you need a clean slate but don't need full re-initialization.
     /// This is safer and faster than CleanupTestDataAsync and works in all build configurations.
@@ -454,7 +471,7 @@ public abstract class TestBase : IDisposable
     {
         try
         {
-            var dbPath = Path.Combine(TestDatabaseFolder, $"{TestDatabaseName}.db");
+            var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
             if (File.Exists(dbPath))
             {
                 // Close any open connections first by forcing GC
@@ -592,6 +609,110 @@ public abstract class TestBase : IDisposable
         var result = await ExecuteScalarAsync<string>(
             $"SELECT type FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'");
         return result ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Returns whether a column is declared NOT NULL.
+    /// </summary>
+    protected async Task<bool> IsColumnNotNullAsync(string tableName, string columnName)
+    {
+        var result = await ExecuteScalarAsync<long>(
+            $"SELECT \"notnull\" FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'");
+        return result == 1;
+    }
+
+    /// <summary>
+    /// Returns (name, unique) for every index on a table, excluding SQLite auto-indexes.
+    /// </summary>
+    protected async Task<List<(string Name, bool Unique)>> GetIndexesAsync(string tableName)
+    {
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT name, \"unique\" FROM pragma_index_list('{tableName}') WHERE origin = 'c'";
+        var list = new List<(string, bool)>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            list.Add((reader.GetString(0), reader.GetInt64(1) == 1));
+        return list;
+    }
+
+    /// <summary>
+    /// Returns the column names of an index, in index order.
+    /// </summary>
+    protected async Task<List<string>> GetIndexColumnsAsync(string indexName)
+    {
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT name FROM pragma_index_info('{indexName}') ORDER BY seqno";
+        var list = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            list.Add(reader.GetString(0));
+        return list;
+    }
+
+    /// <summary>
+    /// Checks whether a trigger exists in sqlite_master.
+    /// </summary>
+    protected async Task<bool> TriggerExistsAsync(string triggerName)
+    {
+        var count = await ExecuteScalarAsync<long>(
+            $"SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = '{triggerName}'");
+        return count > 0;
+    }
+
+    /// <summary>
+    /// Returns the stored CREATE TRIGGER SQL for a trigger, or null if it does not exist.
+    /// </summary>
+    protected async Task<string?> GetTriggerSqlAsync(string triggerName)
+    {
+        return await ExecuteScalarAsync<string?>(
+            $"SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = '{triggerName}'");
+    }
+
+    /// <summary>
+    /// Drops a table (and its indexes/triggers) directly, bypassing SQLiteXM.
+    /// </summary>
+    protected async Task DropTableDirectlyAsync(string tableName)
+    {
+        await ExecuteNonQueryAsync($"DROP TABLE IF EXISTS \"{tableName}\"");
+    }
+
+    /// <summary>
+    /// Removes registration/caching state for the given entity types so they can be re-registered
+    /// against a table whose schema was changed out-of-band. Does not touch other entities.
+    /// </summary>
+    protected static void ResetSchemaRegistrationFor(params Type[] entityTypes)
+    {
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
+
+        var schemaRegType = typeof(SxmEntity).Assembly.GetType("SQLiteXM.SxmSchemaRegistration")!;
+        var registeredSchemas = schemaRegType.GetField("_registeredSchemas", flags)?.GetValue(null) as System.Collections.IDictionary;
+        var initTasks = schemaRegType.GetField("_initTasks", flags)?.GetValue(null) as System.Collections.IDictionary;
+        var entityTypeMap = schemaRegType.GetField("_entityTypeMap", flags)?.GetValue(null) as System.Collections.IDictionary;
+        var entityDatabaseMap = schemaRegType.GetField("_entityDatabaseMap", flags)?.GetValue(null) as System.Collections.IDictionary;
+        var stdIndexDict = schemaRegType.GetField("_standardIndexDict", flags)?.GetValue(null) as System.Collections.IDictionary;
+        var uniqIndexDict = schemaRegType.GetField("_uniqueIndexDict", flags)?.GetValue(null) as System.Collections.IDictionary;
+        var fkCache = schemaRegType.GetField("_foreignKeyCache", flags)?.GetValue(null) as System.Collections.IDictionary;
+        var columnDict = typeof(SxmEntity).GetField("_columnNameAndTypeDict", flags)?.GetValue(null) as System.Collections.IDictionary;
+
+        foreach (var type in entityTypes)
+        {
+            string tableName = type.Name;
+            registeredSchemas?.Remove(type);
+            initTasks?.Remove(tableName);
+            entityTypeMap?.Remove(tableName);
+            entityDatabaseMap?.Remove(tableName);
+            stdIndexDict?.Remove(tableName);
+            uniqIndexDict?.Remove(tableName);
+            fkCache?.Remove(tableName);
+            columnDict?.Remove(tableName);
+            SxmDatabase.ClearColumnCacheForTable(tableName);
+        }
     }
 
     /// <summary>

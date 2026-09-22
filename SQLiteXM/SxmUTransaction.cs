@@ -516,6 +516,33 @@ namespace SQLiteXM
         }
 
         /// <summary>
+        /// Execute an ad-hoc row-returning statement (e.g. <c>INSERT ... RETURNING</c>) inside the transaction
+        /// and materialize all rows. Marks the transaction as modified.
+        /// </summary>
+        /// <param name="sqlStatement">SQL statement to execute.</param>
+        /// <param name="parameterValues">Positional parameter values bound as @p0, @p1, ...</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>All rows returned by the statement.</returns>
+        internal async Task<List<Dictionary<string, object?>>> ExecuteWriteReturningAsync(string sqlStatement, List<object>? parameterValues, CancellationToken cancellationToken = default)
+        {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"ExecuteWriteReturningAsync failure. SxmConnection '_connection' is null.");
+            }
+
+            _connection.BeginTransaction();
+            await _connection.ExecuteQueryAsync(sqlStatement, parameterValues, cancellationToken).ConfigureFalse();
+            _interruptSynchronize = true;
+
+            var rows = new List<Dictionary<string, object?>>();
+            Dictionary<string, object?>? row;
+            while ((row = _connection.GetNextRow<Dictionary<string, object?>>()) != null)
+                rows.Add(row);
+
+            return rows;
+        }
+
+        /// <summary>
         /// Execute an ad-hoc non-query (update) directly inside a transaction.
         /// This method marks the transaction as modified to interrupt synchronization if needed.
         /// </summary>

@@ -44,15 +44,16 @@ This guide walks that spectrum end to end: from the simplest single-statement ca
 
 There are only two execution modes to remember.
 
-- **Standalone.** A single call is its own atomic unit of work. SQLiteXM opens a transaction, runs the statement, and commits (or rolls back on failure) before returning. The transaction is invisible to your code. This is the mode used by entity DML — `entity.SaveAsync()` and `entity.DeleteAsync()` — and every overload of the static `SxmSql.RunStatementAsync(...)` method.
+- **Standalone -** A single call is its own atomic unit of work. SQLiteXM opens a transaction, runs the statement, and commits (or rolls back on failure) before returning. The transaction is invisible to your code. This is the mode used by entity DML — `entity.SaveAsync()`,`entity.DeleteAsync()` and the static `SxmSql.BulkInsertAsync(...)` — and every overload of the static `SxmSql.RunStatementAsync(...)` method.
 <br>&nbsp;</br>
-- **Transactional block.** Many statements — of any kind — are grouped inside `await using var ctx = new SxmTransaction(...);`.  LINQ, entity DML, and SQL inside the block all run on the *same* connection and the *same* transaction, and either all commit together or all roll back together.
+- **Transactional block -** Many statements — of any kind — are grouped inside `await using var ctx = new SxmTransaction(...);`.  LINQ, entity DML, and SQL inside the block all run on the *same* connection and the *same* transaction, and either all commit together or all roll back together.
 
 LINQ does not have a standalone execution mode. It is only available inside a transaction block.
 
 | | Standalone | Transaction |
 |---|---|---|
 | Entity DML | ✅ | ✅ |
+| Bulk Insert | ✅ | ✅ |
 | SQL | ✅ | ✅ |
 | LINQ | — | ✅ |
 
@@ -86,9 +87,40 @@ await customer.DeleteAsync();
 
 Each call is atomic on its own. It commits if the statement succeeds and rolls back if it throws, without any commit or rollback calls in the caller's code.
 
-> 💡 There is intentionally no `InsertAsync` or `UpdateAsync` on the public entity surface. `SaveAsync` covers both cases so call sites do not need to know or care which one happens.
+> 💡 There is intentionally no `InsertAsync` or `UpdateAsync` on the public entity surface. `SaveAsync` covers both cases so call sites do not need to know or care which one happens. The one exception is inserting *many* new entities at once, which is what `SxmSql.BulkInsertAsync` (below) is for.
 
 > 💡 When updating, `SaveAsync` performs an in-place `UPDATE`, not `INSERT OR REPLACE`. Triggers, foreign keys, and the entity's existing `id` are preserved when a row is updated.
+
+## Standalone Bulk Inserts — `SxmSql.BulkInsertAsync`
+
+When you have many new entities to insert, calling `SaveAsync()` once per entity works but issues one `INSERT` per row. 
+The static method `SxmSql.BulkInsertAsync` is the bulk counterpart: it writes the entities using multi-row INSERT statements inside a single, self-contained transaction that commits on success and rolls back on failure.
+
+```csharp
+Task<int> BulkInsertAsync<T>(List<T> entities, int statementCount = 20, string? databaseName = null, CancellationToken cancellationToken = default)
+    where T : SxmEntity;
+```
+
+```csharp
+List<Customer> newCustomers = new List<Customer>();
+for (int i = 0; i < 1000; i++)
+    newCustomers.Add(new Customer { Name = $"Customer {i}", Email = $"customer{i}@example.com" });
+
+int rowsInserted = await SxmSql.BulkInsertAsync(newCustomers);
+
+// Every entity now has its id populated, exactly as after SaveAsync()
+Console.WriteLine($"Inserted {rowsInserted} customers; first id = {newCustomers[0].id}");
+```
+
+Key points:
+
+- **New entities only.** Every entity must have an unset `id`. If any entity already has an `id`, an `InvalidOperationException` is thrown *before* any row is written. Use `SaveAsync()` to update existing rows.
+- **One type per call.** All entities must be of exactly type `T`; a mixed list throws `ArgumentException` before any write.
+- **Same post-insert state as `SaveAsync`.** After the call each entity's `id` and `synchId` are populated from the database. Values changed by `AFTER INSERT` triggers are not read back.
+- **No self-inserting triggers.** `BulkInsertAsync` is not supported on tables with INSERT triggers that add rows back into the same table. Use `SaveAsync()` for those entities instead.
+- **`statementCount`** controls
+- **Its own transaction, always.** `SxmSql.BulkInsertAsync` never joins an ambient `SxmTransaction`. To bulk insert as part of a larger unit of work, use the transactional form described in [Bulk inserts inside a transaction](#bulk-inserts-inside-a-transaction).
+- **`databaseName`** is optional; when omitted, the default database is used.
 
 ---
 
@@ -345,6 +377,38 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 > 💡 The same line of code that saves an entity standalone — `await customer.SaveAsync();` — participates in an `SxmTransaction` transaction automatically when written inside one. Nothing at the call site changes. The choice between standalone and transactional is made once, at the surrounding scope, not repeated at every call.
 
+### Bulk inserts inside a transaction
+
+`SxmTransaction` exposes its own `BulkInsertAsync` that mirrors `SxmSql.BulkInsertAsync`, with the same two differences as the SQL overloads: there is no `databaseName` parameter (the database is fixed by the transaction), and the rows are written inside the transaction rather than in one of their own.
+
+```csharp
+Task<int> BulkInsertAsync<T>(IReadOnlyList<T> entities, int statementCount = 20, CancellationToken cancellationToken = default)
+    where T : SxmEntity;
+```
+
+Because it runs inside the block, the bulk insert commits or rolls back together with everything else in it:
+
+```csharp
+await using (SxmTransaction ctx = new SxmTransaction())
+{
+    Customer customer = new Customer { Name = "Grace Hopper" };
+    await customer.SaveAsync();                          // entity DML
+
+    List<Order> orders = new List<Order>
+    {
+        new Order { CustomerId = customer.id, Product = "Compiler",  Amount = 42m },
+        new Order { CustomerId = customer.id, Product = "Debugger",  Amount = 17m },
+        new Order { CustomerId = customer.id, Product = "Assembler", Amount = 9m }
+    };
+    int rowsInserted = await ctx.BulkInsertAsync(orders); // same transaction
+
+}   // customer and all orders commit together — or none of them do
+```
+
+The rules are the same as the standalone form: new entities only, one type per call, and every entity's `id` and `synchId` are populated afterward. If the transaction is already faulted, the call is skipped and returns 0, consistent with the other write paths inside a faulted block.
+
+`ctx.BulkInsertAsync(entities)` is equivalent to `ctx.GetTable<T>().BulkInsertAsync(entities)`; the LINQ form is covered in [LINQ Queries — Bulk Insert Operations](./linq-queries.md#bulk-insert-operations).
+
 
 ### SQL inside a transaction— `RunStatementAsync`
 
@@ -543,6 +607,8 @@ final commit. The point of using `Task.Run` here is not to reduce that
 execution time, but to prevent the approximately 0.5 seconds of database work
 from occupying the UI thread.
 
+> 💡 For a large number of *new* rows, `SxmSql.BulkInsertAsync` or `ctx.BulkInsertAsync` is faster still, because it issues one multi-row `INSERT` per 20 rows instead of one per row. See [Bulk inserts — `SxmSql.BulkInsertAsync`](#bulk-inserts--sxmsqlbulkinsertasync).
+
 **Another consideration:**
 
 A long-running `OnConnectionOpened` callback can also cause noticeable delays when creating a transaction on the UI 
@@ -614,6 +680,7 @@ Statement-level failures (constraint violations, syntax errors, and so on) surfa
 | Situation | Recommended API | Why |
 |---|---|---|
 | Insert, update, or delete a single entity. | `entity.SaveAsync()` / `entity.DeleteAsync()` | Smallest possible surface. The entity already knows its table and database. |
+| Insert many new entities of one type. | `SxmSql.BulkInsertAsync(...)` standalone, or `ctx.BulkInsertAsync(...)` inside a block | Multi-row `INSERT` statements; far fewer round trips than one `SaveAsync()` per row. |
 | Run one named or embedded SQL statement and get results back. | `SxmSql.RunStatementAsync(...)` | Single-statement work with auto-commit. Accepts an optional `databaseName`. |
 | When you want to execute LINQ statements. | `SxmTransaction` block | LINQ must run inside an `SxmTransaction`. |
 | Two or more statements that must succeed or fail together. | `SxmTransaction` block | Auto-commit on clean dispose, auto-rollback on exception. |

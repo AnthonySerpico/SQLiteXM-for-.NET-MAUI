@@ -141,7 +141,6 @@ public partial class QueryExecutionViewModel : BaseViewModel
         if (QueryExample == null) return;
 
         ClearError();
-        IsBusy = true;
         HasResults = false;
 
         try
@@ -154,13 +153,17 @@ public partial class QueryExecutionViewModel : BaseViewModel
             object? results;
             if (QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.Runners.TryGetValue(QueryExample.Id, out var runnerFactory))
             {
+                if (QueryExample.Id.Equals("bench_1") || QueryExample.Id.Equals("bench_2") || QueryExample.Id.Equals("bench_4") || QueryExample.Id.Equals("bench_11"))
+                {
+                    IsBusy = true;
+                    await Task.Delay(10);
+                }
+
                 results = await runnerFactory().RunAsync();
             }
             else
             {
-                results = QueryExample.Type == QueryType.RawSql
-                    ? await ExecuteRawSqlQueryAsync()
-                    : await ExecuteLinqQueryAsync();
+                results = QueryExample.Type == QueryType.RawSql ? await ExecuteRawSqlQueryAsync() : await ExecuteLinqQueryAsync();
             }
 
             stopwatch.Stop();

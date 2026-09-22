@@ -876,10 +876,9 @@ namespace SQLiteXM
             }
         }
 
-#if DEBUG
         /// <summary>
         /// Clear the cached column name/type mapping for a specific table.
-        /// **WARNING:** This is intended ONLY for testing scenarios.
+        /// Used when a schema registration fails part-way so a retry re-reads the live schema.
         /// </summary>
         /// <param name="tableName">Table name whose column cache should be cleared.</param>
         internal static void ClearColumnCacheForTable(string tableName)
@@ -889,7 +888,6 @@ namespace SQLiteXM
 
             _columnNameTypes.TryRemove(tableName, out _);
         }
-#endif
 
         /// <summary>
         /// Retrieve column name/type mapping for a table. Results are cached for subsequent calls.

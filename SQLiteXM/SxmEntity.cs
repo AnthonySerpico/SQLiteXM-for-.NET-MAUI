@@ -402,6 +402,12 @@ namespace SQLiteXM
         private string? _databaseName;
 
         /// <summary>
+        /// Name of the database this entity's table lives in (resolved from <c>[Table(Database=...)]</c>
+        /// or the configured default database).
+        /// </summary>
+        internal string? DatabaseName => _databaseName;
+
+        /// <summary>
         /// Primary key column. Mapped to the SQLite INTEGER PRIMARY KEY column named "id".
         /// </summary>
         /// <remarks>

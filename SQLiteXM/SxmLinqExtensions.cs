@@ -160,7 +160,48 @@ namespace SQLiteXM
             return new SxmUpdateSet<T>((IUpdatable<T>)updatable!, context);
         }
 
+        /// <summary>
+        /// Inserts many new entities using multi-row <c>INSERT ... VALUES (...), (...) RETURNING id</c>
+        /// statements, executed immediately inside the owning <see cref="SxmTransaction"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is the bulk counterpart of <see cref="SxmEntity.SaveAsync()"/> for inserts. After the call every entity
+        /// has its <c>id</c> populated from the database and its <c>synchId</c> assigned, the same post-insert state
+        /// <see cref="SxmEntity.SaveAsync()"/> leaves behind. Values changed by AFTER INSERT triggers are not read back.
+        /// BulkInsertAsync is not supported on tables with triggers that insert additional rows back into the same table;
+        /// such inserts may fail with <see cref="InvalidOperationException"/>. Use <see cref="SxmEntity.SaveAsync()"/> for those entities instead.
+        /// </para>
+        /// <para>
+        /// Only new entities are accepted:
+        /// before any row is written. Use <see cref="SxmEntity.SaveAsync()"/> to update existing rows.
+        /// </para>
+        /// <para>
+        /// Rows are grouped <paramref name="batchRows"/> per statement, capped so no statement binds more than
+        /// 1000 parameters (larger statements bind measurably slower in Microsoft.Data.Sqlite);
+        /// all batches run in the same transaction. For a standalone version that manages its own
+        /// transaction see <see cref="SxmSql.BulkInsertAsync{T}"/>.
+        /// </para>
+        /// </remarks>
+        /// <param name="table">Context-aware table obtained from <see cref="SxmTransaction.GetTable{T}"/>.</param>
+        /// <param name="entities">New entities to insert.</param>
+        /// <param name="batchRows">Rows per INSERT statement. Defaults to 20.</param>
+        /// <param name="cancellationToken">Cancellation token checked between batches.</param>
+        /// <returns>The number of rows inserted (0 when the context is faulted and the operation was skipped).</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the table was not obtained from an <see cref="SxmTransaction"/> or an entity already has an id.</exception>
+        public static Task<int> BulkInsertAsync<T>(this SxmTable<T> table, IReadOnlyList<T> entities, int batchRows = SxmBulkInsertHelpers.DefaultBatchRows, CancellationToken cancellationToken = default)
+            where T : SxmEntity
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
 
+            var context = table.DataContext
+                ?? throw new InvalidOperationException(
+                    "Bulk insert operations require a SxmTransaction. " +
+                    "Use ctx.GetTable<T>() to obtain a context-aware table, then call BulkInsertAsync(). " +
+                    "Bulk inserts execute within the context transaction.");
+
+            return context.BulkInsertAsync(entities, batchRows, cancellationToken);
+        }
 
         /// <summary>
         /// Asynchronously materializes the rows from the provided <see cref="SxmTable{T}"/> to a list.

@@ -76,6 +76,8 @@ For example, if you remove `EmailAddress` from an existing `Customer` entity, SQ
 
 Note: Columns that are still referenced by indexes or triggers or are still required by other schema objects or otherwise violate SQLite's requirements for `DROP COLUMN` cannot be dropped.
 
+⚠️ Important: Before removing a property, make sure its corresponding column is not referenced anywhere else, for example inside a `[Trigger]`. Update or remove any SQL that references the column in the same release that removes the property.
+
 ## Can SQLiteXM Add New Indexes?
 
 Yes.
