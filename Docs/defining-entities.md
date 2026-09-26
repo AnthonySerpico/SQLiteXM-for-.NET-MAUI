@@ -348,7 +348,7 @@ Use `[RequiredNotNull]` when a property must not be null and should have a non-n
 [Table(IsColumnAttributeRequired = false)]
 public class Settings : SxmEntity
 {
-	[RequiredNotNull(DefaultValue = "Not Set")]
+	[RequiredNotNull(defaultValue: "Not Set")]
 	public string Theme { get; set; } = string.Empty;
 }
 ```
@@ -369,7 +369,7 @@ Use `[ForeignKey]` to declare a relationship to another table.
 [Table(IsColumnAttributeRequired = false)]
 public class Order : SxmEntity
 {
-	[ForeignKey(ForeignTable = nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
+	[ForeignKey(foreignTable: nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
 	public long CustomerId { get; set; }
 }
 ```
