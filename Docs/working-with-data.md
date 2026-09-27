@@ -474,7 +474,7 @@ LINQ is only available inside an `SxmTransaction`. There is no standalone LINQ e
 ```csharp
 await using (SxmTransaction ctx = new SxmTransaction())
 {
-    List<Customer> vips = ctx.GetTable<Customer>().Where(c => c.Email!.EndsWith("@vip.com")).ToList();
+    List<Customer> vips = await ctx.GetTable<Customer>().Where(c => c.Email!.EndsWith("@vip.com")).ToListAsync();
 }
 ```
 

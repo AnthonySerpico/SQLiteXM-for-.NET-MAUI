@@ -47,7 +47,7 @@ In practice, this means:
 * `string` maps to `TEXT`
 * `byte[]` maps to `BLOB`
 * `Guid` defaults to `BLOB` but can be stored as `TEXT`
-* Specialized types such as `DateTime`, `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset`, use specific storage strategies
+* Specialized types such as `DateTime`, `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset`, defaults to `INTEGER` (ticks) but can be stored as `TEXT`.
 
 SQLite `INTEGER` is a 64-bit signed value and maps to C# `long`. Smaller integral types such as `int`, `short`, and `byte` are also stored using `INTEGER`.
 

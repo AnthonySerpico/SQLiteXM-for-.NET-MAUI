@@ -71,10 +71,10 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="SQLiteXM" Version="1.3.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\SQLiteXM\SQLiteXM.csproj" />
 		<ProjectReference Include="..\QueryGalleryDemo.SourceGenerators\QueryGalleryDemo.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 

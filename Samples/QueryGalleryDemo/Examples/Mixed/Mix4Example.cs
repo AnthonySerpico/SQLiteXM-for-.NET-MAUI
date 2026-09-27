@@ -1,5 +1,4 @@
-using LinqToDB;
-using QueryGalleryDemo.Examples;
+﻿using QueryGalleryDemo.Examples;
 using QueryGalleryDemo.Models;
 using SQLiteXM;
 

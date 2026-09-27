@@ -1,5 +1,4 @@
-using LinqToDB;
-using QueryGalleryDemo.Examples;
+﻿using QueryGalleryDemo.Examples;
 using QueryGalleryDemo.Models;
 using SQLiteXM;
 
@@ -42,9 +41,9 @@ internal sealed class Mix6Example : IQueryExampleRunner
         bool visible = ctx.GetTable<Artist>().Any(a => a.Name == uniqueName);
 
         // (4) LINQ bulk DELETE removes the row in the new tx
-        int deleted = ctx.GetTable<Artist>()
-                         .Where(a => a.Name == uniqueName)
-                         .Delete();
+        int deleted = await ctx.GetTable<Artist>()
+                               .Where(a => a.Name == uniqueName)
+                               .DeleteAsync();
 
         // (5) Commit the cleanup
         await ctx.CommitTransactionAsync();

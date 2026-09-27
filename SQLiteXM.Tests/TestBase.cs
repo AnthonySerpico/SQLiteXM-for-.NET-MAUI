@@ -96,6 +96,8 @@ public abstract class TestBase : IDisposable
             typeof(ChildEntity),
             typeof(TriggerEntity),
             typeof(RequiredFieldEntity),
+            // Null handling test entity (from NullHandlingTests.cs)
+            typeof(NullTestEntity),
             // Migration test entities (from EntityMigrationTests.cs)
             typeof(EntityMigrationTests.MigrationTestV1),
             typeof(EntityMigrationTests.MigrationTestV2),
@@ -214,6 +216,8 @@ public abstract class TestBase : IDisposable
             typeof(ChildEntity),
             typeof(TriggerEntity),
             typeof(RequiredFieldEntity),
+            // Null handling test entity (from NullHandlingTests.cs)
+            typeof(NullTestEntity),
             // Migration test entities (from EntityMigrationTests.cs)
             typeof(EntityMigrationTests.MigrationTestV1),
             typeof(EntityMigrationTests.MigrationTestV2),
@@ -376,6 +380,8 @@ public abstract class TestBase : IDisposable
             typeof(ChildEntity),
             typeof(TriggerEntity),
             typeof(RequiredFieldEntity),
+            // Null handling test entity
+            typeof(NullTestEntity),
             // Migration test entities
             typeof(EntityMigrationTests.MigrationTestV1),
             typeof(EntityMigrationTests.MigrationTestV2),

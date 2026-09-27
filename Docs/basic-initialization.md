@@ -22,11 +22,12 @@ Below is a basic database initialization wrapped in an `async` static method.
             typeof(Post)
         };
 
-        // Open the SqlStatements.json file from the application package
+        // Open the SqlStatements.json file located in in the 
+        // `Resources/Raw` folder of the application package.
         Stream stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 
-        // Start database initialization in the background
-        // SQLiteXM takes ownership of 'stream' and ensures proper disposal
+        // Start database initialization in the background. SQLiteXM 
+        // takes ownership of 'stream' and ensures proper disposal
         SxmDatabase.StartInitialization(stream, databaseOptions : null, entityTypes);
     }
 ```
@@ -53,8 +54,8 @@ completed, it returns immediately. It is not necessary to call `EnsureReadyAsync
 `StartInitialization`. All that is required is that you call it at least once before accessing the database.
 
 > ⚠️ If `StartInitialization` fails (for example, the SQL statements file can't be parsed, or the database can't be 
-> created/opened), `EnsureReadyAsync` will throw the exception that caused the failure. Every call site shown below 
-> should account for this.
+> created/opened), `EnsureReadyAsync` will throw the exception that caused the failure. You should wrap your call to 
+`EnsureReadyAsync` in a try/catch block and handle exceptions appropriately.
 
 All that's left is to decide where to make the call. The general guidance is to 
 call `EnsureReadyAsync` as late as possible, just before you need to access the database. Let's assume you need the 
@@ -92,8 +93,7 @@ like this: `_ = InitializeShellAfterDbReadyAsync(window)`
                 }
             });
 
-            // Kick off DB initialization only now that the window exists, so the 
-            // continuation below can never race ahead of window creation.
+            // Start waiting for the database in the background.
             _ = InitializeShellAfterDbReadyAsync(window);
 
             return window;

@@ -1,6 +1,5 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using LinqToDB;
 using QueryGalleryDemo.Examples;
 using QueryGalleryDemo.Models;
 using SQLiteXM;
@@ -144,7 +143,7 @@ internal sealed class Bench1Example : IQueryExampleRunner
         int deleted;
         await using (var cleanup = new SxmTransaction("Chinook"))
         {
-            deleted = cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).Delete();
+            deleted = await cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).DeleteAsync();
             await cleanup.CommitTransactionAsync();
         }
 
@@ -397,7 +396,7 @@ internal sealed class Bench4Example : IQueryExampleRunner
         // Cleanup
         await using (var cleanup = new SxmTransaction("Chinook"))
         {
-            cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).Delete();
+            await cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).DeleteAsync();
             await cleanup.CommitTransactionAsync();
         }
 
@@ -910,7 +909,7 @@ internal sealed class Bench11Example : IQueryExampleRunner
         int deleted;
         await using (var cleanup = new SxmTransaction("Chinook"))
         {
-            deleted = cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).Delete();
+            deleted = await cleanup.GetTable<Track>().Where(t => t.Name.StartsWith(marker)).DeleteAsync();
             await cleanup.CommitTransactionAsync();
         }
 

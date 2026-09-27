@@ -39,7 +39,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	SxmTable<Customer> customers = ctx.GetTable<Customer>();
 
 	// Now you can query the table using LINQ
-	var results = customers.Where(c => c.Name == "Ada Lovelace").ToList();
+	var results = await customers.Where(c => c.Name == "Ada Lovelace").ToListAsync();
 }
 ```
 

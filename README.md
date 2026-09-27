@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 345 tests |
+| Automated Test Coverage | 373 tests |
 
 ---
 
@@ -234,7 +234,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-The `SQLiteXM.Tests` project contains **345 tests**, run against both **.NET 8** and **.NET 9** (690 test executions), all passing.
+The `SQLiteXM.Tests` project contains **373 tests**, run against both **.NET 8** and **.NET 9** (746 test executions), all passing.
 
 | Area | What is covered | Test class | Tests |
 |------|-----------------|------------|------:|
@@ -249,6 +249,7 @@ The `SQLiteXM.Tests` project contains **345 tests**, run against both **.NET 8**
 | | `[DropTable]` / explicit table drops | `DropTableTests` | 22 |
 | **Entity DML & Bulk Insert** | `SaveAsync` / `DeleteAsync` insert, update, delete | `EntityCrudTests` | 9 |
 | | `SxmSql.BulkInsertAsync`, `SxmTransaction.BulkInsertAsync`, and LINQ `BulkInsertAsync` — id/synchId population, batch sizes, validation, rollback, unique-index violations | `BulkInsertTests` | 70 |
+| **Null Handling** | Null properties stored as SQL `NULL` (verified with raw SQL) across insert, update, bulk insert, bulk LINQ update, and read-back; null vs. empty string / empty blob / default value; LINQ null filtering; `[RequiredNotNull]` schema and constraint behavior | `NullHandlingTests` | 28 |
 | **LINQ** | `GetTable<T>()`, `Where`, `OrderBy`, `Select`, `First`, `Count` | `LinqContextTests` | 7 |
 | | Joins, grouping, aggregation, paging, async materialization | `AdvancedLinqTests` | 12 |
 | | LINQ inside `SxmTransaction` — commit and rollback | `LinqTransactionTests` | 6 |
@@ -262,7 +263,7 @@ The `SQLiteXM.Tests` project contains **345 tests**, run against both **.NET 8**
 | | Cross-database performance and isolation | `MultiDatabasePerformanceTests` | 10 |
 | **Connections & Concurrency** | Shared-connection locking, contention, and timeouts | `SharedConnectionTests` | 7 |
 | | `RunWorkersAsync` concurrent connection workers | `ConnectionManagerWorkerTests` | 7 |
-| | **Total** | | **345** |
+| | **Total** | | **373** |
 
 ---
 

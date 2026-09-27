@@ -359,6 +359,31 @@ public class Settings : SxmEntity
 * The default value cannot be null
 * It is intended for values that must always be present
 
+`[RequiredNotNull]` is applied to the table definition itself. The column above is created as
+`Theme TEXT not null default 'Not Set'`, which is what gives you both guarantees: the column rejects
+`NULL`, and it has a value to fall back on.
+
+### When the Default Value Is Used
+
+Following standard SQLite behavior, the default value is only applied when an `INSERT` statement
+**leaves the column out entirely**. If a statement includes the column, the value you supply is the
+value used, however, supplying `null` is rejected with a `NOT NULL constraint failed` error.
+
+This distinction matters because SQLiteXM's own write operations always include every mapped column:
+
+* `SaveAsync()`, and bulk inserts through `SxmSql.BulkInsertAsync(...)` or `SxmTransaction.BulkInsertAsync(...)`,
+  write all columns. The default value is never used by these calls. If a required property is `null`
+  when you save, the insert fails rather than falling back to the default.
+
+So the default value only comes into play when you write an `INSERT` statement yourself and omit the column. 
+For example, when writing:
+
+* A direct SQL INSERT statement, such as one run through `SxmSql.RunStatementAsync(...)`
+* A custom LINQ insert that does not set the column
+
+> ✏️ **Note:** Think of the default value as a safety net for hand-written inserts, not as an automatic
+> substitute for `null`. Assign a real value to the property before saving an entity.
+
 ---
 
 ## ForeignKey Attribute
@@ -376,15 +401,18 @@ public class Order : SxmEntity
 
 ### Understanding ForeignKeyDeleteAction
 
-ForeignKeyDeleteAction determines what happens when a parent row is deleted while related child rows still exist.
+ The optional `OnDelete` property specifies a `ForeignKeyDeleteAction` and determines what 
+ happens when a parent row is deleted while related child rows still exist.
 
-For example, consider an Order table that references a Customer table through a foreign key. If a customer is deleted, SQLite must decide what happens to the related orders. The selected ForeignKeyDeleteAction controls that behavior.
+For example, consider an Order table that references a Customer table through a foreign key. 
+If a customer is deleted, SQLite must decide what happens to the related orders. The selected 
+`ForeignKeyDeleteAction` controls that behavior.
 
 ### ForeignKeyDeleteAction Values
 
 | Value | Meaning |
 |---|---|
-| `None` | No explicit delete action |
+| `None` or when omitted| No explicit delete action |
 | `Cascade` | Delete child rows when the parent is deleted |
 | `SetNull` | Set the foreign key column to `NULL` |
 | `SetDefault` | Set the foreign key column to its default value |

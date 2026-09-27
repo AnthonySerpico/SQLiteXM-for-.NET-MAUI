@@ -148,21 +148,21 @@ SQLiteXM automatically creates or updates tables in the correct database based o
 When using `SxmTransaction`, specify the database you want to query when creating the transaction.
 
 ```csharp
-using var appTransaction = new SxmTransaction("MainDatabase");
+await using var appTransaction = new SxmTransaction("MainDatabase");
 
-using var logTransaction = new SxmTransaction("Logging");
+await using var logTransaction = new SxmTransaction("Logging");
 ```
 
 Each transaction operates against the specified database.
 
 ```csharp
-var users = appTransaction
+var users = await appTransaction
     .GetTable<User>()
-    .ToList();
+    .ToListAsync();
 
-var logs = logTransaction
+var logs = await logTransaction
     .GetTable<ApplicationLog>()
-    .ToList();
+    .ToListAsync();
 ```
 
 ---

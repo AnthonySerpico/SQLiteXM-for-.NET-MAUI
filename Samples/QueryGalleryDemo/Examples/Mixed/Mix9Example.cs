@@ -1,5 +1,4 @@
-using LinqToDB;
-using QueryGalleryDemo.Examples;
+﻿using QueryGalleryDemo.Examples;
 using QueryGalleryDemo.Models;
 using SQLiteXM;
 
@@ -23,7 +22,7 @@ namespace QueryGalleryDemo.Examples.Mixed;
 - Illustrates the three read paths side by side
 
 **Why This Example Runs Slower (1 - 2+ second):**
-The named `GetArtistRevenue` statement is intentionally heavy — it joins **Artist -> Album -> Track -> InvoiceLine** (three chained LEFT JOINs) across the full Chinook dataset (~211 artists, ~17.6K albums, ~154K tracks, ~352K invoice lines). SQLite then builds **two temporary B-trees** for the `COUNT(DISTINCT al.id)` and `COUNT(DISTINCT t.id)` aggregates, and a **third temp B-tree** for `ORDER BY TotalRevenue`. Even with every foreign key indexed, that's roughly **~500K index probes plus ~500K B-tree insertions** — pure SQLite execution cost. The SQLiteXM framework overhead for the same call measures ~25 ms in isolation; the rest is the query doing legitimate work on a large dataset.
+The named `GetArtistRevenue` statement is intentionally heavy â€” it joins **Artist -> Album -> Track -> InvoiceLine** (three chained LEFT JOINs) across the full Chinook dataset (~211 artists, ~17.6K albums, ~154K tracks, ~352K invoice lines). SQLite then builds **two temporary B-trees** for the `COUNT(DISTINCT al.id)` and `COUNT(DISTINCT t.id)` aggregates, and a **third temp B-tree** for `ORDER BY TotalRevenue`. Even with every foreign key indexed, that's roughly **~500K index probes plus ~500K B-tree insertions** â€” pure SQLite execution cost. The SQLiteXM framework overhead for the same call measures ~25 ms in isolation; the rest is the query doing legitimate work on a large dataset.
 """)]
 internal sealed class Mix9Example : IQueryExampleRunner
 {
