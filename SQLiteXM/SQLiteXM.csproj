@@ -34,15 +34,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Compile Remove="SxmDeleteHelpers.cs" />
-		<Compile Remove="SxmInitializationHelper.cs" />
-		<Compile Remove="SxmInsertHelpers.cs" />
-		<Compile Remove="SxmSqlStatementsUnused.cs" />
 		<Compile Remove="SxmStore.cs" />
 		<Compile Remove="SxmStoreEntity.cs" />
-		<Compile Remove="SxmSTransaction.cs" />
-		<Compile Remove="SxmTransactionHelper.cs" />
-		<Compile Remove="SxmUpdateHelpers.cs" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -53,8 +46,6 @@
 	<!-- Optional: if you want to ship your example SQL statements as content in the package -->
 	<ItemGroup>
 		<None Include="SqlStatements\ExampleSqlStatements.json" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.json" />
-
-		<None Include="SxmSqliteMetadataExtractor.cs" />
 
 		<!-- Include README.md in the NuGet package -->
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
