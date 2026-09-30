@@ -1,6 +1,6 @@
 # SQLiteXM for .NET MAUI
 
-[![NuGet](https://img.shields.io/nuget/v/SQLiteXM.svg)](https://www.nuget.org/packages/SQLiteXM/)   [![Documentation](https://img.shields.io/badge/Documentation-Guide-blue)](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md)
+[![NuGet](https://img.shields.io/nuget/v/SQLiteXM.svg)](https://www.nuget.org/packages/SQLiteXM/)   [![Documentation](https://img.shields.io/badge/Documentation-Guide-blue)](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md)   [![Release Notes](https://img.shields.io/badge/Release%20Notes-Changelog-green)](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/releases)
 
 
 SQLiteXM is a high-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.

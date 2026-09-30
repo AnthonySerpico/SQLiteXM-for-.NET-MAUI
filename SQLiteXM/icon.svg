@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Dark Technical Blue Background -->
+  <rect width="128" height="128" rx="28" ry="28" fill="#050F1A" />
+
+  <!-- Geometric ORM Bridge / Bold "S" Track Layer (Nudged down slightly for better balance) -->
+  <g transform="translate(64, 41)">
+	<!-- Relational Nodes (Objects/Database) connected by the S -->
+	<circle cx="18" cy="-18" r="8" fill="#00E5C1" />
+	<circle cx="-18" cy="18" r="8" fill="#133D70" />
+
+	<!-- Bold Geometric "S" Shape Track -->
+	<path d="M 18,-18
+			 L -10,-18
+			 A 10,10 0 0 0 -20,-8
+			 L -20,-5
+			 A 10,10 0 0 0 -10,5
+			 L 10,5
+			 A 10,10 0 0 1 20,15
+			 L 20,18
+			 A 10,10 0 0 1 10,28
+			 L -18,28"
+		  fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Typography: 'SQLiteXM' Brand Text -->
+  <text x="64" y="112"
+		font-family="ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, 'Liberation Mono', monospace"
+		font-weight="900"
+		font-size="22"
+		fill="#FFFFFF"
+		text-anchor="middle"
+		letter-spacing="-1.5">SQLite<tspan fill="#00E5C1">XM</tspan></text>
+</svg>
