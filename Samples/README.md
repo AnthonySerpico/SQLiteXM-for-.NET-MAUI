@@ -10,10 +10,11 @@ This directory contains three sample applications demonstrating different aspect
 
 **🎯 Purpose:** Comprehensive demonstration of SQLiteXM's query capabilities
 
-**📦 Pre-Built Version Available:** ✅ [Download Windows ZIP](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/releases/latest)
+**[📥 Download QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)**  
+This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe`.
 
 **What it demonstrates:**
-- 50+ working query examples across 10 categories
+- 112 working query examples across 12 categories
 - Basic queries (SELECT, WHERE, ORDER BY, LIKE)
 - Joins and table relationships (INNER, LEFT JOIN)
 - Aggregations (COUNT, SUM, AVG, GROUP BY)
@@ -22,6 +23,8 @@ This directory contains three sample applications demonstrating different aspect
 - Transaction patterns (commit, rollback, atomic operations)
 - Data modification (INSERT, UPDATE, DELETE, bulk operations)
 - Raw SQL execution from configuration files
+- Mixed-context work combining LINQ, raw SQL and entity DML in one transaction
+- Benchmarks comparing competing data-access strategies
 - Performance metrics and optimization techniques
 - Realistic data: ~25,000 records in Chinook-style music database
 
@@ -30,10 +33,6 @@ This directory contains three sample applications demonstrating different aspect
 - Learning query patterns and best practices
 - Understanding LINQ-to-SQL translation
 - Seeing working examples of every feature
-
-**How to use:**
-- **Download & Run:** Extract the [pre-built Windows ZIP](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/releases/latest) and launch the app
-- **Build from Source:** Open solution, set QueryGalleryDemo as startup project, run on any platform
 
 ---
 
@@ -113,10 +112,10 @@ This directory contains three sample applications demonstrating different aspect
 
 ### Option 1: Run QueryGalleryDemo Immediately (No Build Required)
 
-1. **Download:** [Latest Release ZIP](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/releases/latest)
+1. **Download:** [QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)
 2. **Extract** the ZIP to any folder
-3. **Run** `QueryGalleryDemo.exe` (Windows 10+ with .NET 9 Runtime)
-4. Browse 50+ query examples with live execution and performance metrics
+3. **Run** `QueryGalleryDemo.exe` - the demo runs completely self-contained on Windows 10+
+4. Browse 112 query examples with live execution and performance metrics
 
 ### Option 2: Build from Source (All Samples)
 
@@ -150,7 +149,7 @@ This directory contains three sample applications demonstrating different aspect
 
 **Running Pre-Built (QueryGalleryDemo only):**
 - Windows 10 version 17763 or higher
-- .NET 9 Desktop Runtime
+- No .NET runtime install required (published self-contained)
 
 ---
 
@@ -215,10 +214,10 @@ To build QueryGalleryDemo for distribution:
 
 ```powershell
 # From solution root
-.\Build-QueryGalleryDemo.ps1
+.\Samples\QueryGalleryDemo\publish-windows.ps1
 ```
 
-This creates a ready-to-distribute ZIP in `QueryGalleryDemo-Distribution/`.
+This creates a ready-to-distribute `QueryGalleryDemo-win-x64.zip` in the repository root.
 
 ---
 

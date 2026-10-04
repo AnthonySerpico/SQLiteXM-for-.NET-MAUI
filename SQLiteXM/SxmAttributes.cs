@@ -73,14 +73,18 @@ namespace SQLiteXM
                 }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
-                    SxmLogging.Log(ex, $"Data type mapping failure. DataType '{base.DataType.ToString()}'.");
+                    // Pass-through: the original exception's message cannot be changed, so Data is the
+                    // only place this operation detail can reach the caller.
+                    string context = $"Data type mapping failure. DataType '{base.DataType.ToString()}'.";
+                    ExceptionHelper.AddContext(ex, context);
+                    SxmLogging.Log(ex, context);
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     throw;
                 }
                 catch (System.Exception ex)
                 {
                     SxmLogging.Log(ex);
-                    throw ExceptionHelper.Wrap(ex, $"Data type mapping failure. DataType '{base.DataType.ToString()}'.");
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.MappingFailure, $"Data type mapping failure. DataType '{base.DataType.ToString()}'.");
                 }
                 return DataType.Default;
             }
@@ -100,14 +104,18 @@ namespace SQLiteXM
                 }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
-                    SxmLogging.Log(ex, $"Data type mapping failed for datatype '{typeof(LinqToDB.DataType)}'.");
+                    // Pass-through: the original exception's message cannot be changed, so Data is the
+                    // only place this operation detail can reach the caller.
+                    string context = $"Data type mapping failed for datatype '{typeof(LinqToDB.DataType)}'.";
+                    ExceptionHelper.AddContext(ex, context);
+                    SxmLogging.Log(ex, context);
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     throw;
                 }
                 catch (System.Exception ex)
                 {
                     SxmLogging.Log(ex);
-                    throw ExceptionHelper.Wrap(ex, $"Data type mapping failed for datatype '{typeof(LinqToDB.DataType)}'.");
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.MappingFailure, $"Data type mapping failed for datatype '{typeof(LinqToDB.DataType)}'.");
                 }
             }
         }

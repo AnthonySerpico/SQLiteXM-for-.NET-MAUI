@@ -20,14 +20,26 @@ namespace SQLiteXM
 
         /************************************************************************* DDL ********************************************************************/
         /// <summary>
-        /// Asynchronously drops the specified table if it exists within a transaction.
-        /// If <paramref name="force"/> is true, foreign key enforcement is deferred to prevent 
-        /// the drop from being blocked by active constraints.
+        /// Asynchronously drops the specified table if it exists, within a transaction.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If any other table references <paramref name="tableName"/> with a foreign key, the drop is
+        /// refused and an <see cref="SxmException"/> with
+        /// <see cref="SxmDefines.SxmErrorCode.TableHasDependents"/> is thrown before any change is made.
+        /// SQLite cannot remove a foreign key clause from an existing table, so dropping a referenced
+        /// table would leave its dependents pointing at a table that no longer exists and their later
+        /// writes would fail. Drop the referencing tables first, innermost dependents before their parents.
+        /// </para>
+        /// <para>
+        /// A table that references only itself is not considered a dependent, since the self-reference
+        /// disappears along with the table.
+        /// </para>
+        /// </remarks>
         /// <param name="tableName">Name of the table to drop.</param>
         /// <param name="dbName">Optional database name override; uses the default database if null.</param>
-        /// <param name="force">If true, executes 'PRAGMA defer_foreign_keys = ON' to allow dropping constrained tables within the transaction.</param>
-        public static async Task DropTableAsync(string tableName, string? dbName = default, bool force = false)
+        /// <exception cref="SxmException">The table is referenced by one or more other tables.</exception>
+        public static async Task DropTableAsync(string tableName, string? dbName = default)
         {
             // QuoteIdentifier performs validation and correct quoting per project guidelines.
             string quotedTable = SxmHelpers.QuoteIdentifier(tableName);
@@ -36,20 +48,65 @@ namespace SQLiteXM
             {
                 dbName = sxmTransaction.Connection?.DatabaseName;
 
-                if (force)
+                List<string> dependents = await FindDependentTablesAsync(tableName, sxmTransaction).ConfigureFalse();
+
+                if (dependents.Count > 0)
                 {
-                    // Within a transaction, defer_foreign_keys allows for schema changes that would 
-                    // otherwise be blocked by foreign key constraints.
-                    string fkDdl = $"PRAGMA defer_foreign_keys = ON";
-                    await SxmDdlHelpers.PerformTableStatementAsync(fkDdl, dbName, sxmTransaction).ConfigureFalse();
+                    throw new SxmException(new ErrorMessage(SxmErrorCode.TableHasDependents,
+                        tableName, string.Join(", ", dependents)));
                 }
 
                 string dtDdl = $"DROP TABLE IF EXISTS {quotedTable}";
                 await SxmDdlHelpers.PerformTableStatementAsync(dtDdl, dbName, sxmTransaction).ConfigureFalse();
 
-                // If force was used, SQLite validates all deferred foreign key constraints at this point.
                 await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
             }
+        }
+
+        /// <summary>
+        /// Finds every table, other than <paramref name="tableName"/> itself, that declares a foreign key
+        /// referencing <paramref name="tableName"/>.
+        /// </summary>
+        /// <param name="tableName">The table being checked for inbound references.</param>
+        /// <param name="sxmTransaction">The transaction used to read the schema.</param>
+        /// <returns>The names of the referencing tables, ordered by name. Empty if there are none.</returns>
+        private static async Task<List<string>> FindDependentTablesAsync(string tableName, SxmUTransaction sxmTransaction)
+        {
+            var dependents = new List<string>();
+
+            // sqlite_master holds one row per table; internal sqlite_* tables are excluded.
+            var tableRows = await sxmTransaction.ExecuteReadReturningAsync(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'", null).ConfigureFalse();
+
+            foreach (var tableRow in tableRows)
+            {
+                if (tableRow.TryGetValue("name", out object? nameValue) is false || nameValue is not string candidate)
+                    continue;
+
+                // A table's reference to itself vanishes with the table, so it is not a blocking dependent.
+                if (string.Equals(candidate, tableName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // PRAGMA arguments cannot be parameterized, so the identifier is quoted instead.
+                string quotedCandidate = SxmHelpers.QuoteIdentifier(candidate);
+                var fkRows = await sxmTransaction.ExecuteReadReturningAsync(
+                    $"PRAGMA foreign_key_list({quotedCandidate})", null).ConfigureFalse();
+
+                foreach (var fkRow in fkRows)
+                {
+                    if (fkRow.TryGetValue("table", out object? targetValue) is false || targetValue is not string target)
+                        continue;
+
+                    if (string.Equals(target, tableName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        dependents.Add(candidate);
+                        break;
+                    }
+                }
+            }
+
+            dependents.Sort(StringComparer.OrdinalIgnoreCase);
+            return dependents;
         }
 
 
@@ -335,7 +392,11 @@ namespace SQLiteXM
                 }
 
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"RunStatementAsync failure. {statementName} Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"RunStatementAsync failure. {statementName} Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
@@ -352,9 +413,9 @@ namespace SQLiteXM
                     statementName = $"SQL statement: '{sqlOrStatementName}'.";
                 }
 
-                string errStr = $"RunStatementAsync failure. {statementName} Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"RunStatementAsync failure. {statementName} Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
 
             recordData ??= new List<Dictionary<string, object?>>();

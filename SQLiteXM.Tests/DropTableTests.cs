@@ -10,7 +10,7 @@ namespace SQLiteXM.Tests;
 
 /// <summary>
 /// Tests for SxmSql.DropTableAsync public API.
-/// Validates table dropping behavior including force flag and foreign key handling.
+/// Validates table dropping behavior including foreign key dependency refusal.
 /// </summary>
 [Collection("Sequential")]
 public class DropTableTests : TestBase
@@ -59,21 +59,41 @@ public class DropTableTests : TestBase
         var child = new DropTestChildEntity3 { ChildName = "Child1", ParentId = parent.id };
         await child.SaveAsync();
 
-        // Attempting to drop parent table without force=true should throw due to FK constraint
+        // Dropping a table that other tables reference is refused up front.
         Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestParentEntity3));
-        await act.Should().ThrowAsync<SqliteException>()
-            .WithMessage("*FOREIGN KEY constraint failed*");
+        await act.Should().ThrowAsync<SxmException>()
+            .WithMessage("*cannot be dropped because the following tables reference it*");
     }
 
     [Fact]
-    public async Task DropTableAsync_ParentTableWithForeignKey_ForceTrue_ShouldSucceed()
+    public async Task DropTableAsync_ParentTableWithForeignKey_ShouldThrowAndNameDependents()
     {
         await InitializeSqliteXMAsync();
         var parent = new DropTestParentEntity4 { ParentName = "Parent2" };
         await parent.SaveAsync();
         var child = new DropTestChildEntity4 { ChildName = "Child2", ParentId = parent.id };
         await child.SaveAsync();
-        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestParentEntity4), dbName: null, force: true);
+
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestParentEntity4), dbName: null);
+
+        // The message must name the blocking table so the caller knows what to drop first.
+        await act.Should().ThrowAsync<SxmException>()
+            .WithMessage($"*{nameof(DropTestChildEntity4)}*");
+    }
+
+    [Fact]
+    public async Task DropTableAsync_ParentTable_AfterDroppingChild_ShouldSucceed()
+    {
+        await InitializeSqliteXMAsync();
+        var parent = new DropTestParentEntity23 { ParentName = "Parent23" };
+        await parent.SaveAsync();
+        var child = new DropTestChildEntity23 { ChildName = "Child23", ParentId = parent.id };
+        await child.SaveAsync();
+
+        // Dropping the dependent first removes the reference, so the parent can then be dropped.
+        await SxmSql.DropTableAsync(nameof(DropTestChildEntity23));
+
+        Func<Task> act = async () => await SxmSql.DropTableAsync(nameof(DropTestParentEntity23));
         await act.Should().NotThrowAsync();
     }
 
@@ -173,7 +193,7 @@ public class DropTableTests : TestBase
     }
 
     [Fact]
-    public async Task DropTableAsync_ForceFalse_WithChildTable_ShouldThrow()
+    public async Task DropTableAsync_WithChildTable_ShouldThrow()
     {
         await InitializeSqliteXMAsync();
 
@@ -182,14 +202,12 @@ public class DropTableTests : TestBase
         var child = new DropTestChildEntity14 { ChildName = "Child", ParentId = parent.id };
         await child.SaveAsync();
 
-        // Explicitly setting force=false should throw when child records exist
         Func<Task> act = async () => await SxmSql.DropTableAsync(
-            nameof(DropTestParentEntity14), 
-            dbName: null, 
-            force: false);
+            nameof(DropTestParentEntity14),
+            dbName: null);
 
-        await act.Should().ThrowAsync<SqliteException>()
-            .WithMessage("*FOREIGN KEY constraint failed*");
+        await act.Should().ThrowAsync<SxmException>()
+            .WithMessage("*cannot be dropped because the following tables reference it*");
     }
 
     [Fact]
@@ -208,7 +226,7 @@ public class DropTableTests : TestBase
     }
 
     [Fact]
-    public async Task DropTableAsync_ComplexForeignKeyChain_WithForce_ShouldSucceed()
+    public async Task DropTableAsync_ComplexForeignKeyChain_MiddleTable_ShouldThrow()
     {
         await InitializeSqliteXMAsync();
 
@@ -222,10 +240,35 @@ public class DropTableTests : TestBase
         var child = new DropTestChildEntity16 { Name = "Child", ParentId = parent.id };
         await child.SaveAsync();
 
-        // Drop the middle table with force
+        // The middle table is referenced by the child, so it cannot be dropped first.
         Func<Task> act = async () => await SxmSql.DropTableAsync(
-            nameof(DropTestParentEntity16), 
-            force: true);
+            nameof(DropTestParentEntity16));
+
+        await act.Should().ThrowAsync<SxmException>()
+            .WithMessage($"*{nameof(DropTestChildEntity16)}*");
+    }
+
+    [Fact]
+    public async Task DropTableAsync_ComplexForeignKeyChain_InDependencyOrder_ShouldSucceed()
+    {
+        await InitializeSqliteXMAsync();
+
+        var grandParent = new DropTestGrandParentEntity24 { Name = "GrandParent" };
+        await grandParent.SaveAsync();
+
+        var parent = new DropTestParentEntity24 { Name = "Parent", GrandParentId = grandParent.id };
+        await parent.SaveAsync();
+
+        var child = new DropTestChildEntity24 { Name = "Child", ParentId = parent.id };
+        await child.SaveAsync();
+
+        // Innermost dependents first, then their parents.
+        Func<Task> act = async () =>
+        {
+            await SxmSql.DropTableAsync(nameof(DropTestChildEntity24));
+            await SxmSql.DropTableAsync(nameof(DropTestParentEntity24));
+            await SxmSql.DropTableAsync(nameof(DropTestGrandParentEntity24));
+        };
 
         await act.Should().NotThrowAsync();
     }
@@ -277,7 +320,7 @@ public class DropTableTests : TestBase
     }
 
     [Fact]
-    public async Task DropTableAsync_MultipleChildTables_WithForce_ShouldSucceed()
+    public async Task DropTableAsync_MultipleChildTables_ShouldThrowAndNameAllDependents()
     {
         await InitializeSqliteXMAsync();
 
@@ -290,12 +333,13 @@ public class DropTableTests : TestBase
         await child1.SaveAsync();
         await child2.SaveAsync();
 
-        // Drop parent table with multiple children
         Func<Task> act = async () => await SxmSql.DropTableAsync(
-            nameof(DropTestParentEntity20), 
-            force: true);
+            nameof(DropTestParentEntity20));
 
-        await act.Should().NotThrowAsync();
+        // Every blocking table should be listed, not just the first one found.
+        (await act.Should().ThrowAsync<SxmException>())
+            .WithMessage($"*{nameof(DropTestChildEntity20A)}*")
+            .WithMessage($"*{nameof(DropTestChildEntity20B)}*");
     }
 
     [Fact]
@@ -506,6 +550,41 @@ public class DropTableTests : TestBase
     { 
         public string? Name { get; set; }
         public int Value { get; set; }
+    }
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    [Table(IsColumnAttributeRequired = false)]
+    public class DropTestParentEntity23 : SxmEntity { public string? ParentName { get; set; } }
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    [Table(IsColumnAttributeRequired = false)]
+    public class DropTestChildEntity23 : SxmEntity
+    {
+        public string? ChildName { get; set; }
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity23))]
+        public long ParentId { get; set; }
+    }
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    [Table(IsColumnAttributeRequired = false)]
+    public class DropTestGrandParentEntity24 : SxmEntity { public string? Name { get; set; } }
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    [Table(IsColumnAttributeRequired = false)]
+    public class DropTestParentEntity24 : SxmEntity
+    {
+        public string? Name { get; set; }
+        [ForeignKey(foreignTable: nameof(DropTestGrandParentEntity24))]
+        public long GrandParentId { get; set; }
+    }
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    [Table(IsColumnAttributeRequired = false)]
+    public class DropTestChildEntity24 : SxmEntity
+    {
+        public string? Name { get; set; }
+        [ForeignKey(foreignTable: nameof(DropTestParentEntity24))]
+        public long ParentId { get; set; }
     }
 
     #endregion

@@ -392,16 +392,6 @@
         public enum SxmErrorCode
         {
             /// <summary>
-            /// SQLite exception occurred.
-            /// </summary>
-            SqliteException,
-
-            /// <summary>
-            /// Inner exception occurred.
-            /// </summary>
-            InnerException,
-
-            /// <summary>
             /// Missing SQL.
             /// </summary>
             MissingSQL,
@@ -412,59 +402,14 @@
             LockDb,
 
             /// <summary>
-            /// Database descriptor already exists.
-            /// </summary>
-            DbDescriptorExists,
-
-            /// <summary>
-            /// No database descriptor exists.
-            /// </summary>
-            NoDbDescriptorExists,
-
-            /// <summary>
-            /// Invalid table name.
-            /// </summary>
-            InvalidTableName,
-
-            /// <summary>
             /// No database exists.
             /// </summary>
             NoDatabaseExists,
 
             /// <summary>
-            /// Missing SQL statement header.
-            /// </summary>
-            MissingSQLStatementHeader,
-
-            /// <summary>
-            /// Unknown SQL statement header.
-            /// </summary>
-            UnknownSqlStatementHeader,
-
-            /// <summary>
-            /// Invalid SQL statement file.
-            /// </summary>
-            InvalidSqlStatementFile,
-
-            /// <summary>
             /// Unknown synchronization command.
             /// </summary>
             UnknownSynchCommand,
-
-            /// <summary>
-            /// Invalid SQL statement definition.
-            /// </summary>
-            InvalidSqlStatementDefinition,
-
-            /// <summary>
-            /// No implicit database descriptor exists.
-            /// </summary>
-            NoImplicitDbDescriptorExists,
-
-            /// <summary>
-            /// Unknown error name.
-            /// </summary>
-            UnknownErrorName,
 
             /// <summary>
             /// Unknown SQL statement.
@@ -477,29 +422,9 @@
             InvalidDBName,
 
             /// <summary>
-            /// User defined error.
-            /// </summary>
-            UserDefined,
-
-            /// <summary>
-            /// Thread lock error.
-            /// </summary>
-            ThreadLockError,
-
-            /// <summary>
-            /// Transaction timeout occurred.
-            /// </summary>
-            SxmSTransactionTimeout,
-
-            /// <summary>
             /// Database version format error.
             /// </summary>
             DbVersionFormatError,
-
-            /// <summary>
-            /// Missing database name.
-            /// </summary>
-            MissingDatabaseName,
 
             /// <summary>
             /// Cannot acquire lease on shared connection.
@@ -509,7 +434,50 @@
             /// <summary>
             /// Connection creation blocked: application is backgrounded.
             /// </summary>
-            ConnectionBlockedBackgrounded
+            ConnectionBlockedBackgrounded,
+
+            /// <summary>
+            /// The table cannot be dropped because other tables reference it with foreign keys.
+            /// </summary>
+            TableHasDependents,
+
+            /// <summary>
+            /// A connection could not be created, released, or committed. Inspect the inner exception for the root cause.
+            /// </summary>
+            ConnectionFailure,
+
+            /// <summary>
+            /// An unexpected failure occurred while acquiring or releasing a connection lock.
+            /// Inspect the inner exception for the root cause.
+            /// </summary>
+            LockFailure,
+
+            /// <summary>
+            /// A query or statement failed to execute. Inspect the inner exception for the root cause.
+            /// </summary>
+            QueryFailure,
+
+            /// <summary>
+            /// A schema operation failed, such as building the schema, creating a table, or reading the database version.
+            /// Inspect the inner exception for the root cause.
+            /// </summary>
+            SchemaFailure,
+
+            /// <summary>
+            /// A database value could not be read or converted to the expected type. This usually indicates a
+            /// mismatch between the entity model and the stored schema. Inspect the inner exception for the root cause.
+            /// </summary>
+            DataConversionFailure,
+
+            /// <summary>
+            /// An entity, column, or association could not be mapped. Inspect the inner exception for the root cause.
+            /// </summary>
+            MappingFailure,
+
+            /// <summary>
+            /// A transaction could not be created or finalized. Inspect the inner exception for the root cause.
+            /// </summary>
+            TransactionFailure
         };
     }
 }

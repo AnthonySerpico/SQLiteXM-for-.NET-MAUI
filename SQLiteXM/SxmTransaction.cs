@@ -1,4 +1,4 @@
-using LinqToDB;
+﻿using LinqToDB;
 using LinqToDB.Data;
 using LinqToDB.DataProvider.SQLite;
 using Microsoft.Data.Sqlite;
@@ -128,16 +128,20 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 if (ownedTransaction != null) { try { ownedTransaction.Dispose(); } catch { /* best effort */ } }
-                SxmLogging.Log(ex, $"SxmTransaction ctor failure. Database: '{databaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"SxmTransaction ctor failure. Database: '{databaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 // Cancellation/fatal - rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
                 if (ownedTransaction != null) { try { ownedTransaction.Dispose(); } catch { /* best effort */ } }
-                string errStr = $"SxmTransaction ctor failure. Database: '{databaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"SxmTransaction ctor failure. Database: '{databaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.TransactionFailure, context);
             }
         }
 
@@ -199,7 +203,11 @@ namespace SQLiteXM
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
                     sqlTransaction.CleanupFailedCreate();
-                    SxmLogging.Log(ex, $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.");
+                    // Pass-through: the original exception's message cannot be changed, so Data is the
+                    // only place this operation detail can reach the caller.
+                    string context = $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.";
+                    ExceptionHelper.AddContext(ex, context);
+                    SxmLogging.Log(ex, context);
                     // Cancellation/fatal - rethrow unchanged so callers/runtime can handle appropriately.
                     throw;
                 }
@@ -207,9 +215,9 @@ namespace SQLiteXM
                 {
                     // Ctor failed: release the ambient transaction so it does not leak.
                     sqlTransaction.CleanupFailedCreate();
-                    string errStr = $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.";
-                    SxmLogging.Log(ex, errStr);
-                    throw ExceptionHelper.Wrap(ex, errStr);
+                    string context = $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.";
+                    SxmLogging.Log(ex, context);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.TransactionFailure, context);
                 }
             }
 
@@ -232,7 +240,11 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 if (sqlTransaction != null) { try { await sqlTransaction.DisposeAsync().ConfigureFalse(); } catch { /* best effort */ } }
-                SxmLogging.Log(ex, $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 // Cancellation/fatal - rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
@@ -240,9 +252,9 @@ namespace SQLiteXM
             {
                 // Ctor failed after lock acquisition: release lease/ambient so it does not leak.
                 if (sqlTransaction != null) { try { await sqlTransaction.DisposeAsync().ConfigureFalse(); } catch { /* best effort */ } }
-                string errStr = $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"SxmTransaction.CreateAsync failure. Database: '{conn.DatabaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.TransactionFailure, context);
             }
         }
 
@@ -540,11 +552,7 @@ namespace SQLiteXM
 
             if (_sxmConnection.CurrentTransaction == null) return;
 
-            SQLiteErrorCode errorCode = await _sxmConnection.FinishTransactionAsync(SxmDefines.CommitTransaction).ConfigureFalse();
-            if (errorCode != SQLiteErrorCode.Ok)
-            {
-                throw new InvalidOperationException($"Commit failed with SQLite error code '{errorCode}'. Database: '{_databaseName}'.");
-            }
+            await _sxmConnection.FinishTransactionAsync(SxmDefines.CommitTransaction).ConfigureFalse();
         }
 
         /// <summary>
@@ -719,13 +727,15 @@ namespace SQLiteXM
                 {
                     if (!_sqlTransaction.EncounteredError)
                     {
-                        SQLiteErrorCode errorCode = await _sxmConnection.FinishTransactionAsync(SxmDefines.CommitTransaction).ConfigureFalse();
-                        if (errorCode != SQLiteErrorCode.Ok)
+                        try
                         {
-                            var commitEx = new InvalidOperationException($"Auto-commit failed with SQLite error code '{errorCode}'. Database: '{_databaseName}'.");
-                            SxmLogging.Log(commitEx, $"SxmTransaction auto-commit failure on dispose. Database: '{_databaseName}'.");
+                            await _sxmConnection.FinishTransactionAsync(SxmDefines.CommitTransaction).ConfigureFalse();
+                        }
+                        catch (System.Exception ex)
+                        {
+                            SxmLogging.Log(ex, $"SxmTransaction auto-commit failure on dispose. Database: '{_databaseName}'.");
                             try { await _sxmConnection.FinishTransactionAsync(SxmDefines.RollbackTransaction).ConfigureFalse(); } catch { /* best effort */ }
-                            throw commitEx;
+                            throw;
                         }
                     }
                     else

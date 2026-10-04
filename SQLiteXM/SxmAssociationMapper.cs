@@ -162,15 +162,19 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 string errorMessage = $"AttachAssociationAsync failed for database '{databaseName}', table '{currentTableName}', source key '{currentSourceKey ?? "null"}', target table '{currentTargetTableName ?? "null"}' source type '{currentSourceType ?? "null"}'.";
-                SxmLogging.Log(ex, errorMessage);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = errorMessage;
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errorMessage = $"AttachAssociationAsync failed for database '{databaseName}', table '{currentTableName}', source key '{currentSourceKey ?? "null"}', target table '{currentTargetTableName ?? "null"}' source type '{currentSourceType ?? "null"}'.";
+                string context = $"AttachAssociationAsync failed for database '{databaseName}', table '{currentTableName}', source key '{currentSourceKey ?? "null"}', target table '{currentTargetTableName ?? "null"}' source type '{currentSourceType ?? "null"}'.";
                 SxmLogging.Log(ex);
-                throw ExceptionHelper.Wrap(ex, errorMessage);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.MappingFailure, context);
             }
             finally
             {

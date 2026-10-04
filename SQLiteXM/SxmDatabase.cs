@@ -576,14 +576,18 @@ namespace SQLiteXM
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                    SxmLogging.Log(ex, $"InitializeAsync failure. Database: '{databaseName}'.");
+                    // Pass-through: the original exception's message cannot be changed, so Data is the
+                    // only place this operation detail can reach the caller.
+                    string context = $"InitializeAsync failure. Database: '{databaseName}'.";
+                    ExceptionHelper.AddContext(ex, context);
+                    SxmLogging.Log(ex, context);
                     throw;
                 }
                 catch (System.Exception ex)
                 {
-                    string errStr = $"InitializeAsync failure. Database: '{databaseName}'.";
-                    SxmLogging.Log(ex, errStr);
-                    throw ExceptionHelper.Wrap(ex, errStr);
+                    string context = $"InitializeAsync failure. Database: '{databaseName}'.";
+                    SxmLogging.Log(ex, context);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.SchemaFailure, context);
                 }
                 finally
                 {
@@ -635,14 +639,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"GetDbVersionNumberAsync failure. Database: '{databaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"GetDbVersionNumberAsync failure. Database: '{databaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"GetDbVersionNumberAsync failure. Database: '{databaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"GetDbVersionNumberAsync failure. Database: '{databaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.SchemaFailure, context);
             }
 
             return versionNumber;
@@ -670,14 +678,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DeleteDbVersionNumberAsync failure. Database: '{databaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"DeleteDbVersionNumberAsync failure. Database: '{databaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"DeleteDbVersionNumberAsync failure. Database: '{databaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"DeleteDbVersionNumberAsync failure. Database: '{databaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.SchemaFailure, context);
             }
         }
 
@@ -705,14 +717,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"StoreDbVersionNumberAsync failure. Database: '{databaseName}'. Version number: '{versionNumber}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"StoreDbVersionNumberAsync failure. Database: '{databaseName}'. Version number: '{versionNumber}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"StoreDbVersionNumberAsync failure. Database: '{databaseName}'. Version number: '{versionNumber}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"StoreDbVersionNumberAsync failure. Database: '{databaseName}'. Version number: '{versionNumber}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.SchemaFailure, context);
             }
         }
 
@@ -751,14 +767,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"CreateTableAsync failure. Database: '{databaseName}'. Table: '{tableName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"CreateTableAsync failure. Database: '{databaseName}'. Table: '{tableName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"CreateTableAsync failure. Database: '{databaseName}'. Table: '{tableName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"CreateTableAsync failure. Database: '{databaseName}'. Table: '{tableName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.SchemaFailure, context);
             }
         }
 
@@ -779,14 +799,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"DoesTableExistAsync failure for table '{tableName}'. Database '{sxmConnection.DatabaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"DoesTableExistAsync failure for table '{tableName}'. Database '{sxmConnection.DatabaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"DoesTableExistAsync failure for table '{tableName}'. Database '{sxmConnection.DatabaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"DoesTableExistAsync failure for table '{tableName}'. Database '{sxmConnection.DatabaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.SchemaFailure, context);
             }
             finally
             {

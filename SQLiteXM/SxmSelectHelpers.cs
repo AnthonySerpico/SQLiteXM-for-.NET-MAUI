@@ -57,15 +57,19 @@ namespace SQLiteXM
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
-                SxmLogging.Log(ex, $"PerformSelectAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"PerformSelectAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
                 SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
-                string errStr = $"PerformSelectAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"PerformSelectAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
 
             return await Task.FromResult(selectedRows).ConfigureFalse();
@@ -102,15 +106,19 @@ namespace SQLiteXM
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
-                SxmLogging.Log(ex, $"PerformSelectTransAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"PerformSelectTransAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
                 SxmSqlStatements.SelectStatements.TryGetValue(sqlOrStatementName, out SelectDefinition? selectDefinition);
-                string errStr = $"PerformSelectTransAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"PerformSelectTransAsync failure. SQL statement: '{sqlOrStatementName}'. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {selectDefinition?.SelectSQL}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
 
             return await Task.FromResult(selectedRows).ConfigureFalse();
@@ -154,14 +162,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformSelectDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"PerformSelectDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformSelectDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"PerformSelectDirectAsync failure. Database: '{databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
 
             return await Task.FromResult(selectedRows).ConfigureFalse();
@@ -197,14 +209,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"PerformSelectDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"PerformSelectDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"PerformSelectDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"PerformSelectDirectTransAsync failure. Database: '{sxmTransaction?.Connection?.DatabaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {sqlStatement}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
 
             return await Task.FromResult(selectedRows).ConfigureFalse();

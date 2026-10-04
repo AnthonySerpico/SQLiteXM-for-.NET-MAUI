@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 373 tests |
+| Automated Test Coverage | 386 tests |
 
 ---
 
@@ -218,7 +218,7 @@ await using (var ctx = new SxmTransaction())
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **300+ tests** covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **386 tests** covering real-world scenarios.
 
 ### Performance Benchmarks (from test suite)
 
@@ -234,7 +234,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-The `SQLiteXM.Tests` project contains **373 tests**, run against both **.NET 8** and **.NET 9** (746 test executions), all passing.
+The `SQLiteXM.Tests` project contains **386 tests**, run against both **.NET 8** and **.NET 9** (772 test executions), all passing.
 
 | Area | What is covered | Test class | Tests |
 |------|-----------------|------------|------:|
@@ -246,7 +246,7 @@ The `SQLiteXM.Tests` project contains **373 tests**, run against both **.NET 8**
 | **Schema Evolution** | Add column, index and trigger creation, foreign keys, system columns | `EntityMigrationTests` | 17 |
 | | Single- and multi-step `[Rename]` column renames | `ColumnRenameTests` | 10 |
 | | Drop column; add / remove / modify indexes and triggers; combined changes; unsupported changes; failed-migration state and retry | `SchemaEvolutionTests` | 24 |
-| | `[DropTable]` / explicit table drops | `DropTableTests` | 22 |
+| | `[DropTable]` / explicit table drops | `DropTableTests` | 24 |
 | **Entity DML & Bulk Insert** | `SaveAsync` / `DeleteAsync` insert, update, delete | `EntityCrudTests` | 9 |
 | | `SxmSql.BulkInsertAsync`, `SxmTransaction.BulkInsertAsync`, and LINQ `BulkInsertAsync` — id/synchId population, batch sizes, validation, rollback, unique-index violations | `BulkInsertTests` | 70 |
 | **Null Handling** | Null properties stored as SQL `NULL` (verified with raw SQL) across insert, update, bulk insert, bulk LINQ update, and read-back; null vs. empty string / empty blob / default value; LINQ null filtering; `[RequiredNotNull]` schema and constraint behavior | `NullHandlingTests` | 28 |
@@ -260,10 +260,11 @@ The `SQLiteXM.Tests` project contains **373 tests**, run against both **.NET 8**
 | | Mixed unit-of-work commit / rollback and faulted-context write skipping | `MixedUnitOfWorkTests` | 5 |
 | **Multi-Database** | Entities and SQL across multiple named databases | `MultiDatabaseTests` | 11 |
 | | LINQ across multiple named databases | `MultiDatabaseLinqTests` | 18 |
-| | Cross-database performance and isolation | `MultiDatabasePerformanceTests` | 10 |
+| | Cross-database performance and isolation; update-path correctness, transaction-batching speedup, and throughput reporting | `MultiDatabasePerformanceTests` | 12 |
 | **Connections & Concurrency** | Shared-connection locking, contention, and timeouts | `SharedConnectionTests` | 7 |
 | | `RunWorkersAsync` concurrent connection workers | `ConnectionManagerWorkerTests` | 7 |
-| | **Total** | | **373** |
+| **Error Handling** | `SxmException` contract — `ErrorCode`, `Data["sxmErrorCode"]`, `Context`, exception filters, wrapped vs. direct throws | `SxmExceptionContractTests` | 9 |
+| | **Total** | | **386** |
 
 ---
 
@@ -272,8 +273,8 @@ The `SQLiteXM.Tests` project contains **373 tests**, run against both **.NET 8**
 SQLiteXM includes **three sample applications** to help you learn:
 
 ### 1. QueryGalleryDemo (Comprehensive) ⭐
-An **interactive query explorer** with 100+ examples. 
-**Features**: Syntax highlighting, runnable examples, execution timing, result visualization. 
+An **interactive query explorer** with 112 examples across 12 categories. 
+**Features**: Runnable examples, per-example explanations, execution timing, result visualization. Example code is extracted from the executing methods by a source generator, so what you see is exactly what runs. 
 
 <details>
 <summary>📖 Query Gallery Details</summary>
@@ -288,15 +289,17 @@ An **interactive query explorer** with 100+ examples.
 - 💾 Transactions 6 - atomic operations, rollback
 - ⚡ Parameterized Queries 6 - prevent SQL injection
 - 💾 Data modification 8 - insert, update, delete examples
+- 🧩 Mixed Context 10 - LINQ, named SQL, embedded SQL and entity DML in one transaction
+- ⏱️ Benchmarks 11 - side-by-side timing of competing data-access strategies
 </details>
 
-📂 **[View Query Gallery Demo](Samples/QueryGalleryDemo/)**
+📂 **[View Query Gallery Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/QueryGalleryDemo/)**
 
 
 ### 2. RegistrationDemo (Simple)
 Basic user registration showing entity definition, save/query, and data binding.
 
-📂 **[View Registration Demo](Samples/RegistrationDemo/)**
+📂 **[View Registration Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/RegistrationDemo)**
 
 ### 3. DirectBindingDemo (Simple)
 CollectionView binding with CRUD operations and UI updates.

@@ -213,14 +213,38 @@ Simply removing an entity from your code will not drop the corresponding table. 
 ```csharp
     // tableName: Name of the table to drop.
     // dbName: Optional database name override; uses the default database if null.
-    // force: If true, executes `PRAGMA defer_foreign_keys = ON`  to prevent the drop from being blocked by active constraints.
-    public static async Task DropTableAsync(string tableName, string? dbName = default, bool force = false)
+    public static async Task DropTableAsync(string tableName, string? dbName = default)
 
     //Example usage:
-    await SxmStatements.DropTableAsync("OrderHistory", force: true);
+    await SxmSql.DropTableAsync("OrderHistory");
 ```
 
-Asynchronously drops the specified table if it exists. The operation is performed within a transaction and may be blocked by active foreign key constraints unless `force` is specified.
+Asynchronously drops the specified table if it exists. The operation is performed within a transaction.
+
+### Dropping a Table That Other Tables Reference
+
+If any other table declares a foreign key referencing the table you are dropping, `DropTableAsync` refuses the operation and throws an `SxmException` with error code `TableHasDependents`. Nothing is changed. The message names every table that is blocking the drop:
+
+```
+The table 'Customer' cannot be dropped because the following tables reference it
+with foreign keys: Invoice, Order. ...
+```
+
+To drop the table, drop the referencing tables first, innermost dependents before their parents:
+
+```csharp
+    await SxmSql.DropTableAsync("Invoice");   // dependents first
+    await SxmSql.DropTableAsync("Order");
+    await SxmSql.DropTableAsync("Customer");  // then the table they referenced
+```
+
+A table that references only itself is not treated as a dependent, because the self-reference disappears along with the table.
+
+> **Why the drop is refused rather than forced:** SQLite cannot remove a foreign key clause from an existing table. If a referenced table were dropped anyway, every table that references it would be left pointing at a table that no longer exists, and their later inserts and updates would fail with `FOREIGN KEY constraint failed` - often long after the drop, making the cause hard to find. Refusing up front is the only way to guarantee the database is still writable afterwards.
+
+> **Breaking change in 2.0.0:** Earlier versions accepted a `force` parameter that issued `PRAGMA defer_foreign_keys = ON`. That pragma only defers the 
+foreign key check until commit. The parameter has been removed rather than deprecated, so that existing calls fail to compile 
+and get re-examined.
 
 ## What About Type Changes?
 

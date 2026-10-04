@@ -8,7 +8,7 @@
 
 ## 📦 What's Included
 
-This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM through 100+ working query examples organized into 12 categories. No build tools or development environment required!
+This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM through 112 working query examples organized into 12 categories. No build tools or development environment required!
 
 ## 🎯 What You'll See
 
@@ -31,7 +31,7 @@ This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM thro
 
 Result set, execution time, and record counts for every query.
 
-**Realistic Data Set** - ~25,000 records across 12 related tables (Chinook-style music database)
+**Realistic Data Set** - ~25,000 records across 11 related tables (Chinook-style music database)
 
 ## 🚀 How to Run
 

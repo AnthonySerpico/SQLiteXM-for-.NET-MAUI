@@ -166,14 +166,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"FinalizeTransaction failure. Database: '{_connection?.DatabaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"FinalizeTransaction failure. Database: '{_connection?.DatabaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"FinalizeTransaction failure. Database: '{_connection?.DatabaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"FinalizeTransaction failure. Database: '{_connection?.DatabaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.TransactionFailure, context);
             }
             finally
             {
@@ -330,14 +334,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                SxmLogging.Log(ex, $"ExecuteInsertAsync failure. Database: '{_connection?.DatabaseName}'. Table: '{insertDefinition.TableName}'. Command: {insertDefinition.InsertSQL}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"ExecuteInsertAsync failure. Database: '{_connection?.DatabaseName}'. Table: '{insertDefinition.TableName}'. Command: {insertDefinition.InsertSQL}";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteInsertAsync failure. Database: '{_connection?.DatabaseName}'. Table: '{insertDefinition.TableName}'. Command: {insertDefinition.InsertSQL}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"ExecuteInsertAsync failure. Database: '{_connection?.DatabaseName}'. Table: '{insertDefinition.TableName}'. Command: {insertDefinition.InsertSQL}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
 
             Dictionary<string, object?> ir = new Dictionary<string, object?>();
@@ -513,6 +521,32 @@ namespace SQLiteXM
 
             _connection.BeginTransaction();
             await _connection.ExecuteQueryAsync(sqlStatement, parameterValues, cancellationToken).ConfigureFalse();
+        }
+
+        /// <summary>
+        /// Execute an ad-hoc read-only statement inside the transaction and materialize all rows.
+        /// Does not mark the transaction as modified.
+        /// </summary>
+        /// <param name="sqlStatement">SQL statement to execute.</param>
+        /// <param name="parameterValues">Positional parameter values bound as @p0, @p1, ...</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>All rows returned by the statement.</returns>
+        internal async Task<List<Dictionary<string, object?>>> ExecuteReadReturningAsync(string sqlStatement, List<object>? parameterValues, CancellationToken cancellationToken = default)
+        {
+            if (_connection is null)
+            {
+                throw new ArgumentNullException($"ExecuteReadReturningAsync failure. SxmConnection '_connection' is null.");
+            }
+
+            _connection.BeginTransaction();
+            await _connection.ExecuteQueryAsync(sqlStatement, parameterValues, cancellationToken).ConfigureFalse();
+
+            var rows = new List<Dictionary<string, object?>>();
+            Dictionary<string, object?>? row;
+            while ((row = _connection.GetNextRow<Dictionary<string, object?>>()) != null)
+                rows.Add(row);
+
+            return rows;
         }
 
         /// <summary>
@@ -752,21 +786,19 @@ namespace SQLiteXM
         /// If the transaction has modified data this method may trigger synchronization interruption logic.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token (currently unused by implementation).</param>
-        /// <returns>The SQLite error code returned from finishing the transaction.</returns>
-        public async Task<SQLiteErrorCode> CommitTransactionAsync(CancellationToken cancellationToken = default)
+        public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
         {
             if (_connection is null)
             {
                 throw new ArgumentNullException($"CommitTransactionAsync failure. SxmConnection '_connection' is null.");
             }
 
-            SQLiteErrorCode ec = await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.CommitTransaction).ConfigureFalse();
+            await _connection.FinishTransactionAsync(SQLiteXM.SxmDefines.CommitTransaction).ConfigureFalse();
             if (_interruptSynchronize == true)
             {
                 //SxmDatabase.interruptSynchronize (connection.DatabaseName);
                 _interruptSynchronize = false;
             }
-            return ec;
         }
 
         /// <summary>

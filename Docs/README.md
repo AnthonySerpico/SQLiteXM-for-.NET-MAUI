@@ -76,6 +76,14 @@ are safe, which are unsafe, and how to structure your code for concurrent operat
 **Read this when:** You need to perform database operations concurrently using
 `Task.WhenAll`, parallel tasks, or background threads.
 
+### [Error Handling](error-handling.md)
+
+Learn which exception types SQLiteXM reports, why SQLite's own exceptions are not
+wrapped, and how to branch on `SxmException.ErrorCode` safely.
+
+**Read this when:** You are writing `try`/`catch` logic around database operations
+or deciding how your app should recover from failures.
+
 ---
 
 ## ⚙️ Configure Your Database
@@ -151,6 +159,17 @@ tasks, etc).
 
 ---
 
+## 📦 About Releases
+
+### [Versioning Policy](versioning.md)
+
+Learn how SQLiteXM version numbers are assigned, what MAJOR, MINOR, and PATCH
+changes mean, and how to judge the potential impact of upgrading.
+
+**Read this when:** You are upgrading SQLiteXM or reviewing release notes.
+
+---
+
 ## 📚 Recommended Reading Paths
 
 ### New to SQLiteXM
@@ -171,6 +190,7 @@ After the basics, explore the topics relevant to your application:
 
 - **[Supported Data Types](supported-data-types.md)** — when defining properties
 - **[Concurrency](concurrency.md)** — when performing concurrent operations
+- **[Error Handling](error-handling.md)** — when writing recovery logic around failures
 - **[Applying Database Options](database-configuration-options.md)** — when applying options to your database
 - **[SQL Statement File](sql-statement-file.md)** — when configuring `SqlStatements.json`
 - **[INotifyPropertyChanged](inotifypropertychanged.md)** — when binding entities to the MAUI UI
@@ -183,6 +203,7 @@ When your application begins evolving:
 
 - **[Schema Evolution](schema-evolution.md)** — when your data model changes
 - **[Multiple Databases](multiple-databases.md)** — when your application needs separate SQLite databases
+- **[Versioning Policy](versioning.md)** — when upgrading to a new SQLiteXM release
 
 ---
 
@@ -196,6 +217,7 @@ When your application begins evolving:
 | [Working with Data](working-with-data.md) | Querying and modifying data | When building data access |
 | [LINQ Queries](linq-queries.md) | LINQ query guide | When using LINQ or bulk operations |
 | [Concurrency](concurrency.md) | Concurrent operations guide | When performing concurrent operations |
+| [Error Handling](error-handling.md) | Exception types and recovery guidance | When writing `try`/`catch` around database calls |
 | [Supported Data Types](supported-data-types.md) | C# → SQLite type reference | When choosing entity property types |
 | [Applying Database Options](database-configuration-options.md) | Database options and configuration | When configuring initialization |
 | [SQL Statement File](sql-statement-file.md) | `SqlStatements.json` reference | When configuring the statement file |
@@ -204,6 +226,7 @@ When your application begins evolving:
 | [INotifyPropertyChanged](inotifypropertychanged.md) | MAUI binding integration | When connecting entities to the UI |
 | [Application Lifecycle](application-lifecycle.md) | MAUI lifecycle integration | Optional, for mobile app backgrounding |
 | [Advanced Initialization Patterns](advanced-initialization-patterns.md) | Multi-entry-point database readiness | When using BroadcastReceivers/background tasks or needing a hard startup guarantee |
+| [Versioning Policy](versioning.md) | How SQLiteXM version numbers are assigned | When upgrading or reviewing release notes |
 
 ---
 
@@ -218,6 +241,7 @@ If you are not sure where to look:
 - **"How do I query or save data?"** → [Working with Data](working-with-data.md)
 - **"How do I use LINQ?"** → [LINQ Queries](linq-queries.md)
 - **"How do I perform concurrent operations?"** → [Concurrency](concurrency.md)
+- **"How do I handle errors and exceptions?"** → [Error Handling](error-handling.md)
 - **"How do I apply database options?"** → [Applying Database Options](database-configuration-options.md)
 - **"What goes in `SqlStatements.json`?"** → [SQL Statement File](sql-statement-file.md)
 - **"What happens when my schema changes?"** → [Schema Evolution](schema-evolution.md)
@@ -225,3 +249,4 @@ If you are not sure where to look:
 - **"How do entities work with MAUI binding?"** → [INotifyPropertyChanged](inotifypropertychanged.md)
 - **"How do I initialize the database for a BroadcastReceiver or background task?"** → [Advanced Initialization Patterns](advanced-initialization-patterns.md)
 - **"How do I handle app suspension on mobile?"** → [Application Lifecycle](application-lifecycle.md)
+- **"What does a version number change mean?"** → [Versioning Policy](versioning.md)

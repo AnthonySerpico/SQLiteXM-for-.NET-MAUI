@@ -27,41 +27,11 @@ namespace SQLiteXM
             {SxmDefines.SxmErrorCode.LockDb, new ErrorMessage("Unable to lock connection to the database: '{0}'.",
                 SxmDefines.SxmErrorCode.LockDb)},
 
-            {SxmDefines.SxmErrorCode.DbDescriptorExists, new ErrorMessage("A descriptor already exists for the database: '{0}'.",
-                SxmDefines.SxmErrorCode.DbDescriptorExists)},
-
-            {SxmDefines.SxmErrorCode.NoDbDescriptorExists, new ErrorMessage("A descriptor could not be found for the database: '{0}'.",
-                SxmDefines.SxmErrorCode.NoDbDescriptorExists)},
-
-            {SxmDefines.SxmErrorCode.InvalidTableName, new ErrorMessage("The table name '{0}' is invalid.",
-                SxmDefines.SxmErrorCode.InvalidTableName)},
-
             {SxmDefines.SxmErrorCode.NoDatabaseExists, new ErrorMessage("The database '{0}' does not exist.",
                 SxmDefines.SxmErrorCode.NoDatabaseExists)},
 
-            {SxmDefines.SxmErrorCode.MissingSQLStatementHeader, new ErrorMessage("A header in the SQL statements properties file is missing.",
-                SxmDefines.SxmErrorCode.MissingSQLStatementHeader)},
-
-            {SxmDefines.SxmErrorCode.UnknownSqlStatementHeader, new ErrorMessage("The header '{0}' in the SQL statements properties file is invalid.",
-                SxmDefines.SxmErrorCode.UnknownSqlStatementHeader)},
-
-            {SxmDefines.SxmErrorCode.InvalidSqlStatementFile, new ErrorMessage("The SQL statements properties file is improperly formatted.",
-                SxmDefines.SxmErrorCode.InvalidSqlStatementFile)},
-
             {SxmDefines.SxmErrorCode.UnknownSynchCommand, new ErrorMessage("The table synch command '{0}' is not recognized.",
                 SxmDefines.SxmErrorCode.UnknownSynchCommand)},
-
-            {SxmDefines.SxmErrorCode.InvalidSqlStatementDefinition, new ErrorMessage("An '{0}' statement in the SQL statements properties file is improperly formatted.",
-                SxmDefines.SxmErrorCode.InvalidSqlStatementDefinition)},
-
-            {SxmDefines.SxmErrorCode.NoImplicitDbDescriptorExists, new ErrorMessage("An implicit database descriptor could not be found. Did you define more than one database?",
-                SxmDefines.SxmErrorCode.NoImplicitDbDescriptorExists)},
-
-            {SxmDefines.SxmErrorCode.UnknownErrorName, new ErrorMessage("The error '{0}' could not be found.",
-                SxmDefines.SxmErrorCode.UnknownErrorName)},
-
-            {SxmDefines.SxmErrorCode.InnerException, new ErrorMessage("", // Error message from inner exception.
-                SxmDefines.SxmErrorCode.InnerException)},
 
             {SxmDefines.SxmErrorCode.UnknownSqlStatement, new ErrorMessage("The SQL statement '{0}' could not be found in the SQL statements properties file.",
                 SxmDefines.SxmErrorCode.UnknownSqlStatement)},
@@ -69,29 +39,41 @@ namespace SQLiteXM
             {SxmDefines.SxmErrorCode.InvalidDBName, new ErrorMessage("The database name '{0}' is not valid.",
                 SxmDefines.SxmErrorCode.InvalidDBName)},
 
-            {SxmDefines.SxmErrorCode.SqliteException, new ErrorMessage("",
-                SxmDefines.SxmErrorCode.SqliteException)}, // Error message from SQLite.
-
-            {SxmDefines.SxmErrorCode.UserDefined, new ErrorMessage("",
-                SxmDefines.SxmErrorCode.UserDefined)}, // Error message from user.
-
-            {SxmDefines.SxmErrorCode.ThreadLockError, new ErrorMessage("The current thread already has an active instance of SxmSTransaction.",
-                SxmDefines.SxmErrorCode.ThreadLockError)},
-
-            {SxmDefines.SxmErrorCode.SxmSTransactionTimeout, new ErrorMessage("Timeout trying to acquire the SxmSTransaction lock.",
-                SxmDefines.SxmErrorCode.SxmSTransactionTimeout)},
-
             {SxmDefines.SxmErrorCode.DbVersionFormatError, new ErrorMessage("The database version number '{0}' is improperly formatted. The version number must be a valid double greater than 0.",
                 SxmDefines.SxmErrorCode.DbVersionFormatError)},
-
-            {SxmDefines.SxmErrorCode.MissingDatabaseName, new ErrorMessage("The database name is missing or is in the wrong spot in the SQL statements file. The database name must be the first field in the SQL statements file.",
-                SxmDefines.SxmErrorCode.MissingDatabaseName)},
 
             {SxmDefines.SxmErrorCode.AcquireLease, new ErrorMessage("Connection for '{0}' is closing and cannot be acquired.",
                 SxmDefines.SxmErrorCode.AcquireLease)},
 
             {SxmDefines.SxmErrorCode.ConnectionBlockedBackgrounded, new ErrorMessage("Cannot create connection for '{0}': application is backgrounded.",
-                SxmDefines.SxmErrorCode.ConnectionBlockedBackgrounded)}
+                SxmDefines.SxmErrorCode.ConnectionBlockedBackgrounded)},
+
+            {SxmDefines.SxmErrorCode.TableHasDependents, new ErrorMessage("The table '{0}' cannot be dropped because the following tables reference it with foreign keys: {1}. SQLite cannot remove a foreign key clause from an existing table, so dropping '{0}' would leave those tables referencing a table that no longer exists and their subsequent writes would fail. Drop the referencing tables first, innermost dependents before their parents.",
+                SxmDefines.SxmErrorCode.TableHasDependents)},
+
+            // Wrapped-failure categories. The message text is supplied by the wrap site, which knows the
+            // operation that failed, so these templates are intentionally empty.
+
+            {SxmDefines.SxmErrorCode.ConnectionFailure, new ErrorMessage("",
+                SxmDefines.SxmErrorCode.ConnectionFailure)},
+
+            {SxmDefines.SxmErrorCode.LockFailure, new ErrorMessage("",
+                SxmDefines.SxmErrorCode.LockFailure)},
+
+            {SxmDefines.SxmErrorCode.QueryFailure, new ErrorMessage("",
+                SxmDefines.SxmErrorCode.QueryFailure)},
+
+            {SxmDefines.SxmErrorCode.SchemaFailure, new ErrorMessage("",
+                SxmDefines.SxmErrorCode.SchemaFailure)},
+
+            {SxmDefines.SxmErrorCode.DataConversionFailure, new ErrorMessage("",
+                SxmDefines.SxmErrorCode.DataConversionFailure)},
+
+            {SxmDefines.SxmErrorCode.MappingFailure, new ErrorMessage("",
+                SxmDefines.SxmErrorCode.MappingFailure)},
+
+            {SxmDefines.SxmErrorCode.TransactionFailure, new ErrorMessage("",
+                SxmDefines.SxmErrorCode.TransactionFailure)}
         }.ToImmutableDictionary();
         public static IReadOnlyDictionary<SxmDefines.SxmErrorCode, ErrorMessage> Errors => _errors;
     }

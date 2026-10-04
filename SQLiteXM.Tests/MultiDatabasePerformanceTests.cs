@@ -11,11 +11,13 @@ namespace SQLiteXM.Tests;
 /// with larger datasets and under concurrent load.
 /// </summary>
 /// <remarks>
-/// These tests take approximately 9-10 minutes to execute.
+/// Runs in the "MultiDatabase" collection because these tests call
+/// <c>SxmDatabase.ResetForTestingAsync()</c>, which mutates process-wide state. They must be
+/// serialized against the other multi-database tests that do the same.
 /// To exclude from quick test runs: dotnet test --filter "Category!=Performance"
 /// To run only performance tests: dotnet test --filter "Category=Performance"
 /// </remarks>
-[Collection("Performance")]
+[Collection("MultiDatabase")]
 [Trait("Category", "Performance")]
 public class MultiDatabasePerformanceTests : IDisposable
 {
@@ -644,37 +646,62 @@ public class MultiDatabasePerformanceTests : IDisposable
         }
     }
 
-    [Fact]
-    public async Task UpdateOperations_LargeDataset_PerformEfficiently()
+    /// <summary>
+    /// Initializes the products database for the update-operation tests and seeds
+    /// <paramref name="count"/> products inside a single transaction.
+    /// </summary>
+    /// <remarks>
+    /// Seeding is deliberately transactional so that setup cost does not dominate the
+    /// tests below; the behavior under measurement is the update path, not the insert path.
+    /// </remarks>
+    private async Task<List<Product>> InitializeProductsAsync(int count)
     {
-        // Arrange
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
 #if DEBUG
         await SxmDatabase.ResetForTestingAsync();
 #endif
-        using var stream10 = File.OpenRead(_testStatementsPath);
-        await SxmDatabase.InitializeAsync(stream10, options);
+        using var stream = File.OpenRead(_testStatementsPath);
+        await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
 
-        // Create 5000 products
-        var products = new List<Product>();
-        for (int i = 0; i < 5000; i++)
+        var products = new List<Product>(count);
+
+        await using (var seedContext = new SxmTransaction("products"))
         {
-            var product = new Product
+            for (int i = 0; i < count; i++)
             {
-                Name = $"Product {i}",
-                Price = i,
-                InStock = false
-            };
-            await product.SaveAsync();
-            products.Add(product);
+                var product = new Product
+                {
+                    Name = $"Product {i}",
+                    Price = i,
+                    InStock = false
+                };
+                await product.SaveAsync();
+                products.Add(product);
+            }
         }
 
-        // Act - Update all products
-        var stopwatch = Stopwatch.StartNew();
+        return products;
+    }
 
+    /// <summary>
+    /// Correctness test for the update path over a meaningful dataset.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately contains no timing assertion. Wall-clock thresholds on this path measure
+    /// host fsync latency rather than SQLiteXM behavior, so correctness is asserted here and
+    /// cost characteristics are covered by the two tests that follow.
+    /// </remarks>
+    [Fact]
+    public async Task UpdateOperations_LargeDataset_ApplyAllChanges()
+    {
+        // Arrange
+        const int recordCount = 200;
+        var products = await InitializeProductsAsync(recordCount);
+
+        // Act - update every product
         foreach (var product in products)
         {
             product.InStock = true;
@@ -682,19 +709,132 @@ public class MultiDatabasePerformanceTests : IDisposable
             await product.SaveAsync();
         }
 
-        stopwatch.Stop();
+        // Assert - every change was persisted, and no rows were duplicated
+        await using var context = new SxmTransaction("products");
 
-        // Assert
-        Console.WriteLine($"5000 updates completed in {stopwatch.Elapsed.TotalSeconds:F2} seconds");
-        Assert.True(stopwatch.Elapsed.TotalSeconds < 60,
-            $"5000 updates took {stopwatch.Elapsed.TotalSeconds:F2}s (expected <60s)");
+        Assert.Equal(recordCount, context.GetTable<Product>().Count());
+        Assert.True(context.GetTable<Product>().All(p => p.InStock));
 
-        // Verify updates
+        var reloaded = context.GetTable<Product>().OrderBy(p => p.id).ToList();
+        for (int i = 0; i < recordCount; i++)
+        {
+            Assert.Equal(i * 1.1m, reloaded[i].Price);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that batching updates inside a single <see cref="SxmTransaction"/> is
+    /// substantially cheaper than the autocommit path, where every save pays its own commit.
+    /// </summary>
+    /// <remarks>
+    /// Asserts a <em>ratio</em> rather than an absolute duration. The ratio is independent of
+    /// host disk speed, so this test is stable across machines while still failing loudly if
+    /// transaction batching ever stops amortizing commits.
+    /// </remarks>
+    [Fact]
+    public async Task UpdateOperations_TransactionBatching_OutperformsAutocommit()
+    {
+        // Arrange - two disjoint halves so neither measurement warms the other's rows
+        const int batchSize = 150;
+        var products = await InitializeProductsAsync(batchSize * 2);
+
+        var autocommitSet = products.Take(batchSize).ToList();
+        var transactionalSet = products.Skip(batchSize).Take(batchSize).ToList();
+
+        // Act - autocommit: each SaveAsync opens its own connection and commits independently
+        var autocommitWatch = Stopwatch.StartNew();
+        foreach (var product in autocommitSet)
+        {
+            product.InStock = true;
+            await product.SaveAsync();
+        }
+        autocommitWatch.Stop();
+
+        // Act - transactional: one shared connection, one commit for the whole batch
+        var transactionalWatch = Stopwatch.StartNew();
         await using (var context = new SxmTransaction("products"))
         {
-            var allInStock = context.GetTable<Product>().All(p => p.InStock);
-            Assert.True(allInStock);
+            foreach (var product in transactionalSet)
+            {
+                product.InStock = true;
+                await product.SaveAsync();
+            }
         }
+        transactionalWatch.Stop();
+
+        // Assert
+        var autocommitMs = autocommitWatch.Elapsed.TotalMilliseconds;
+        var transactionalMs = transactionalWatch.Elapsed.TotalMilliseconds;
+        var speedup = autocommitMs / Math.Max(transactionalMs, 0.001);
+
+        Console.WriteLine(
+            $"{batchSize} updates - autocommit: {autocommitMs:F0}ms " +
+            $"({autocommitMs / batchSize:F2}ms/update), " +
+            $"transactional: {transactionalMs:F0}ms " +
+            $"({transactionalMs / batchSize:F2}ms/update), " +
+            $"speedup: {speedup:F1}x");
+
+        Assert.True(speedup >= 2.0,
+            $"Transactional batching was only {speedup:F1}x faster than autocommit " +
+            $"(expected >=2x). Commit amortization may have regressed.");
+
+        // Both paths must still be correct
+        await using var verifyContext = new SxmTransaction("products");
+        Assert.True(verifyContext.GetTable<Product>().All(p => p.InStock));
+    }
+
+    /// <summary>
+    /// Benchmark: reports update throughput for the autocommit and transactional paths.
+    /// </summary>
+    /// <remarks>
+    /// This is an observation harness, not a correctness test - it has no pass/fail threshold,
+    /// matching the approach used by <c>LargeSchemaInitializationBenchmarkTests</c>. Elapsed
+    /// times are written to the test output so regressions can be tracked over time without
+    /// making the suite sensitive to host disk latency.
+    /// </remarks>
+    [Fact]
+    public async Task UpdateOperations_LargeDataset_ReportsThroughput()
+    {
+        // Arrange
+        const int recordCount = 1000;
+        var products = await InitializeProductsAsync(recordCount);
+
+        // Measure - autocommit path (one commit per save)
+        var autocommitWatch = Stopwatch.StartNew();
+        foreach (var product in products)
+        {
+            product.Price = product.Price * 1.1m;
+            await product.SaveAsync();
+        }
+        autocommitWatch.Stop();
+
+        // Measure - transactional path (one commit for the whole batch)
+        var transactionalWatch = Stopwatch.StartNew();
+        await using (var context = new SxmTransaction("products"))
+        {
+            foreach (var product in products)
+            {
+                product.InStock = true;
+                await product.SaveAsync();
+            }
+        }
+        transactionalWatch.Stop();
+
+        // Report - no assertions on duration by design
+        Console.WriteLine("=== Update throughput benchmark ===");
+        Console.WriteLine($"Records:       {recordCount}");
+        Console.WriteLine(
+            $"Autocommit:    {autocommitWatch.Elapsed.TotalSeconds:F2}s " +
+            $"({autocommitWatch.Elapsed.TotalMilliseconds / recordCount:F2}ms/update, " +
+            $"{recordCount / autocommitWatch.Elapsed.TotalSeconds:F0} updates/sec)");
+        Console.WriteLine(
+            $"Transactional: {transactionalWatch.Elapsed.TotalSeconds:F2}s " +
+            $"({transactionalWatch.Elapsed.TotalMilliseconds / recordCount:F2}ms/update, " +
+            $"{recordCount / transactionalWatch.Elapsed.TotalSeconds:F0} updates/sec)");
+
+        // Only correctness is asserted
+        await using var verifyContext = new SxmTransaction("products");
+        Assert.Equal(recordCount, verifyContext.GetTable<Product>().Count());
     }
 
     #endregion

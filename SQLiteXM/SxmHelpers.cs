@@ -406,11 +406,12 @@ namespace SQLiteXM
                     string? userPropertyType = pi?.PropertyType.ToString();
                     string? databasePropertyType = value?.GetType().ToString();
 
-                    string errStr =
+                    string context =
                         $"LoadDbValues failure for column '{kvp.Key}' type '{databasePropertyType}' " +
                         $"to provided property '{objectType}.{kvp.Key}' type '{userPropertyType}'.";
 
-                    SxmLogging.Log(ex, errStr);
+                    ExceptionHelper.AddContext(ex, context);
+                    SxmLogging.Log(ex, context);
                     throw;
                 }
                 catch (Exception ex)
@@ -418,12 +419,12 @@ namespace SQLiteXM
                     string? userPropertyType = pi?.PropertyType.ToString();
                     string? databasePropertyType = value?.GetType().ToString();
 
-                    string errStr =
+                    string context =
                         $"LoadDbValues failure for column '{kvp.Key}' type '{databasePropertyType}' " +
                         $"to provided property '{objectType}.{kvp.Key}' type '{userPropertyType}'.";
 
-                    SxmLogging.Log(ex, errStr);
-                    throw ExceptionHelper.Wrap(ex, errStr);
+                    SxmLogging.Log(ex, context);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
                 }
             }
         }
@@ -650,22 +651,25 @@ namespace SQLiteXM
                     string msg = $"Value for column '{columnName}' is outside UInt16 range.";
                     var ex = new OverflowException(msg);
                     SxmLogging.Log(ex, msg);
-                    throw ExceptionHelper.Wrap(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, msg);
                 }
                 return (ushort)n;
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                string err = $"Failed converting column '{columnName}' value to UInt16.";
-                SxmLogging.Log(ex, err);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Failed converting column '{columnName}' value to UInt16.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (Exception ex)
             {
-                string err = $"Failed converting column '{columnName}' value to UInt16.";
-                SxmLogging.Log(ex, err);
-                throw ExceptionHelper.Wrap(ex, err);
+                string context = $"Failed converting column '{columnName}' value to UInt16.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
         }
 
@@ -685,22 +689,25 @@ namespace SQLiteXM
                     string msg = $"Value for column '{columnName}' is outside Int32 range.";
                     var ex = new OverflowException(msg);
                     SxmLogging.Log(ex, msg);
-                    throw ExceptionHelper.Wrap(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, msg);
                 }
                 return (int)n;
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                string err = $"Failed converting column '{columnName}' value to Int32.";
-                SxmLogging.Log(ex, err);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Failed converting column '{columnName}' value to Int32.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (Exception ex)
             {
-                string err = $"Failed converting column '{columnName}' value to Int32.";
-                SxmLogging.Log(ex, err);
-                throw ExceptionHelper.Wrap(ex, err);
+                string context = $"Failed converting column '{columnName}' value to Int32.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
         }
 
@@ -720,22 +727,25 @@ namespace SQLiteXM
                     string msg = $"Value for column '{columnName}' is outside SByte range.";
                     var ex = new OverflowException(msg);
                     SxmLogging.Log(ex, msg);
-                    throw ExceptionHelper.Wrap(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, msg);
                 }
                 return (sbyte)n;
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                string err = $"Failed converting column '{columnName}' value to SByte.";
-                SxmLogging.Log(ex, err);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Failed converting column '{columnName}' value to SByte.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (Exception ex)
             {
-                string err = $"Failed converting column '{columnName}' value to SByte.";
-                SxmLogging.Log(ex, err);
-                throw ExceptionHelper.Wrap(ex, err);
+                string context = $"Failed converting column '{columnName}' value to SByte.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
         }
 
@@ -752,22 +762,25 @@ namespace SQLiteXM
                     string msg = $"Value for column '{columnName}' is outside Int16 range.";
                     var ex = new OverflowException(msg);
                     SxmLogging.Log(ex, msg);
-                    throw ExceptionHelper.Wrap(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, msg);
                 }
                 return (short)n;
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                string err = $"Failed converting column '{columnName}' value to Int16.";
-                SxmLogging.Log(ex, err);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Failed converting column '{columnName}' value to Int16.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (Exception ex)
             {
-                string err = $"Failed converting column '{columnName}' value to Int16.";
-                SxmLogging.Log(ex, err);
-                throw ExceptionHelper.Wrap(ex, err);
+                string context = $"Failed converting column '{columnName}' value to Int16.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
         }
 
@@ -784,22 +797,25 @@ namespace SQLiteXM
                     string msg = $"Value for column '{columnName}' is outside Byte range.";
                     var ex = new OverflowException(msg);
                     SxmLogging.Log(ex, msg);
-                    throw ExceptionHelper.Wrap(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, msg);
                 }
                 return (byte)n;
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                string err = $"Failed converting column '{columnName}' value to Byte.";
-                SxmLogging.Log(ex, err);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Failed converting column '{columnName}' value to Byte.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (Exception ex)
             {
-                string err = $"Failed converting column '{columnName}' value to Byte.";
-                SxmLogging.Log(ex, err);
-                throw ExceptionHelper.Wrap(ex, err);
+                string context = $"Failed converting column '{columnName}' value to Byte.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
         }
 
@@ -816,22 +832,25 @@ namespace SQLiteXM
                     string msg = $"Value for column '{columnName}' is outside UInt32 range.";
                     var ex = new OverflowException(msg);
                     SxmLogging.Log(ex, msg);
-                    throw ExceptionHelper.Wrap(ex, msg);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, msg);
                 }
                 return (uint)n;
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                string err = $"Failed converting column '{columnName}' value to UInt32.";
-                SxmLogging.Log(ex, err);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Failed converting column '{columnName}' value to UInt32.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (Exception ex)
             {
-                string err = $"Failed converting column '{columnName}' value to UInt32.";
-                SxmLogging.Log(ex, err);
-                throw ExceptionHelper.Wrap(ex, err);
+                string context = $"Failed converting column '{columnName}' value to UInt32.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
         }
 
@@ -848,15 +867,18 @@ namespace SQLiteXM
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                string err = $"Failed converting column '{columnName}' value to Single.";
-                SxmLogging.Log(ex, err);
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Failed converting column '{columnName}' value to Single.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (Exception ex)
             {
-                string err = $"Failed converting column '{columnName}' value to Single.";
-                SxmLogging.Log(ex, err);
-                throw ExceptionHelper.Wrap(ex, err);
+                string context = $"Failed converting column '{columnName}' value to Single.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
         }
 
@@ -1074,11 +1096,12 @@ namespace SQLiteXM
                     string? userPropertyType = pi?.PropertyType.ToString();
                     string? valueType = value?.GetType().ToString();
 
-                    string errStr =
+                    string context =
                         $"LoadParameterValues failure for column '{columnName}' on entity '{objectType}' " +
                         $"property type '{userPropertyType}' value type '{valueType}' could not convert the entity's property.";
 
-                    SxmLogging.Log(ex, errStr);
+                    ExceptionHelper.AddContext(ex, context);
+                    SxmLogging.Log(ex, context);
                     throw;
                 }
                 catch (Exception ex)
@@ -1086,12 +1109,12 @@ namespace SQLiteXM
                     string? userPropertyType = pi?.PropertyType.ToString();
                     string? valueType = value?.GetType().ToString();
 
-                    string errStr =
+                    string context =
                         $"LoadParameterValues failure for column '{columnName}' on entity '{objectType}' " +
                         $"property type '{userPropertyType}' value type '{valueType}' could not convert the entity's property.";
 
-                    SxmLogging.Log(ex, errStr);
-                    throw ExceptionHelper.Wrap(ex, errStr);
+                    SxmLogging.Log(ex, context);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
                 }
             }
 

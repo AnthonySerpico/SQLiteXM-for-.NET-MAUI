@@ -5,43 +5,6 @@ using System.Data.Common;
 namespace SQLiteXM
 {
     /// <summary>
-    /// Common SQLite error codes returned by the underlying provider.
-    /// Matches SQLite's native result codes for conversion into the library's API.
-    /// </summary>
-    internal enum SQLiteErrorCode
-    {
-        Ok = 0,
-        Error = 1,
-        Internal = 2,
-        Perm = 3,
-        Abort = 4,
-        Busy = 5,
-        Locked = 6,
-        NoMem = 7,
-        ReadOnly = 8,
-        Interrupt = 9,
-        IOErr = 10,
-        Corrupt = 11,
-        NotFound = 12,
-        Full = 13,
-        CantOpen = 14,
-        Protocol = 0xF,
-        Empty = 0x10,
-        Schema = 17,
-        TooBig = 18,
-        Constraint = 19,
-        Mismatch = 20,
-        Misuse = 21,
-        NOLFS = 22,
-        Auth = 23,
-        Format = 24,
-        Range = 25,
-        NotADatabase = 26,
-        Row = 100,
-        Done = 101
-    }
-
-    /// <summary>
     /// Lease handle returned when a caller acquires exclusive access to a shared connection.
     /// Disposing the lease releases the connection lock.
     /// </summary>
@@ -167,7 +130,11 @@ namespace SQLiteXM
             {
                 DestroyConnectionCore();
 
-                SxmLogging.Log(ex, $"Connection failure. Database: '{this._databaseName}'. Shared: '{this._shared}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Connection failure. Database: '{this._databaseName}'. Shared: '{this._shared}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
@@ -175,9 +142,9 @@ namespace SQLiteXM
             {
                 DestroyConnectionCore();
 
-                string errStr = $"Connection failure. Database: '{this._databaseName}'. Shared: '{this._shared}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"Connection failure. Database: '{this._databaseName}'. Shared: '{this._shared}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.ConnectionFailure, context);
             }
         }
 
@@ -247,14 +214,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"CreateNewConnection failure. Database: '{databaseName ?? "null"}'. {ex.Message}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"CreateNewConnection failure. Database: '{databaseName ?? "null"}'. {ex.Message}";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"CreateNewConnection failure. Database: '{databaseName ?? "null"}'. {ex.Message}";
+                string context = $"CreateNewConnection failure. Database: '{databaseName ?? "null"}'. {ex.Message}";
                 SxmLogging.Log(ex);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.ConnectionFailure, context);
             }
         }
 
@@ -358,7 +329,11 @@ namespace SQLiteXM
                             try { DestroyConnectionCore(); } catch (System.Exception) { }
                             try { ReleaseLock(_lockOwner); } catch (System.Exception) { }
 
-                            SxmLogging.Log(ex, $"LockAsync failure. Database: '{_databaseName}'.");
+                            // Pass-through: the original exception's message cannot be changed, so Data is the
+                            // only place this operation detail can reach the caller.
+                            string context = $"LockAsync failure. Database: '{_databaseName}'.";
+                            ExceptionHelper.AddContext(ex, context);
+                            SxmLogging.Log(ex, context);
                             // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                             throw;
                         }
@@ -367,9 +342,9 @@ namespace SQLiteXM
                             try { DestroyConnectionCore(); } catch (System.Exception) { }
                             try { ReleaseLock(_lockOwner); } catch (System.Exception) { }
 
-                            string errStr = $"LockAsync failure. Database: '{_databaseName}'.";
-                            SxmLogging.Log(ex, errStr);
-                            throw ExceptionHelper.Wrap(ex, errStr);
+                            string context = $"LockAsync failure. Database: '{_databaseName}'.";
+                            SxmLogging.Log(ex, context);
+                            throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.LockFailure, context);
                         }
                     }
 
@@ -415,15 +390,19 @@ namespace SQLiteXM
                         }
                         catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                         {
-                            SxmLogging.Log(ex, $"ReleaseLock failure. Database: '{_databaseName}'.");
+                            // Pass-through: the original exception's message cannot be changed, so Data is the
+                            // only place this operation detail can reach the caller.
+                            string context = $"ReleaseLock failure. Database: '{_databaseName}'.";
+                            ExceptionHelper.AddContext(ex, context);
+                            SxmLogging.Log(ex, context);
                             // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                             throw;
                         }
                         catch (System.Exception ex)
                         {
-                            string errStr = $"ReleaseLock failure. Database: '{_databaseName}'.";
-                            SxmLogging.Log(ex, errStr);
-                            throw ExceptionHelper.Wrap(ex, errStr);
+                            string context = $"ReleaseLock failure. Database: '{_databaseName}'.";
+                            SxmLogging.Log(ex, context);
+                            throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.LockFailure, context);
                         }
                     }
 
@@ -432,15 +411,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"ReleaseLock failure. Database: '{_databaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"ReleaseLock failure. Database: '{_databaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ReleaseLock failure. Database: '{_databaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"ReleaseLock failure. Database: '{_databaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.LockFailure, context);
             }
         }
 
@@ -492,15 +474,18 @@ namespace SQLiteXM
                     }
                     catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                     {
-                        SxmLogging.Log(ex, $"ReleaseConnection failure. Database: '{this._databaseName}'.");
+                        // Pass-through: the original exception's message cannot be changed, so Data is the
+                        // only place this operation detail can reach the caller.
+                        string context = $"ReleaseConnection failure. Database: '{this._databaseName}'.";
+                        ExceptionHelper.AddContext(ex, context);
                         // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                         throw;
                     }
                     catch (System.Exception ex)
                     {
-                        string errStr = $"ReleaseConnection failure. Database: '{this._databaseName}'.";
-                        SxmLogging.Log(ex, errStr);
-                        throw ExceptionHelper.Wrap(ex, errStr);
+                        string context = $"ReleaseConnection failure. Database: '{this._databaseName}'.";
+                        SxmLogging.Log(ex, context);
+                        throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.ConnectionFailure, context);
                     }
                     finally
                     {
@@ -513,9 +498,9 @@ namespace SQLiteXM
                         }
                         catch (System.Exception ex)
                         {
-                            string errStr = $"ReleaseConnection failure destroying or releasing connection. Database: '{this._databaseName}'. Shared: '{_shared}'. Destroy: '{destroy}'.";
-                            SxmLogging.Log(ex, errStr);
-                            throw ExceptionHelper.Wrap(ex, errStr);
+                            string context = $"ReleaseConnection failure destroying or releasing connection. Database: '{this._databaseName}'. Shared: '{_shared}'. Destroy: '{destroy}'.";
+                            SxmLogging.Log(ex, context);
+                            throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.ConnectionFailure, context);
                         }
                     }
                 }
@@ -527,25 +512,18 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Async implementation of finishing a transaction. Returns a <see cref="SQLiteErrorCode"/>.
+        /// Async implementation of finishing a transaction.
         /// </summary>
         /// <param name="commitFlag">True to commit; false to rollback.</param>
-        /// <returns>SQLiteErrorCode representing the operation result.</returns>
-        internal async Task<SQLiteErrorCode> FinishTransactionAsync(bool commitFlag)
+        internal async Task FinishTransactionAsync(bool commitFlag)
         {
-            SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
-
             if (_sqliteConnection != null && _dbConnTransaction != null)
-                sqLiteErrorCode = await DoCommitAsync(commitFlag).ConfigureFalse();
-
-            return sqLiteErrorCode;
+                await DoCommitAsync(commitFlag).ConfigureFalse();
         }
 
         // Async doCommit using async ADO APIs
-        private async Task<SQLiteErrorCode> DoCommitAsync(bool commitFlag)
+        private async Task DoCommitAsync(bool commitFlag)
         {
-            SQLiteErrorCode sqLiteErrorCode = SQLiteErrorCode.Ok;
-
             if (_dbConnTransaction != null)
             {
                 try
@@ -559,31 +537,22 @@ namespace SQLiteXM
                     if (_connCommand != null)
                         _connCommand.Transaction = default(Microsoft.Data.Sqlite.SqliteTransaction);
                 }
-                catch (Microsoft.Data.Sqlite.SqliteException ex)
-                {
-                    string errStr = $"DoCommitAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}Commit flag: '{commitFlag}'.";
-                    SxmLogging.Log(ex, errStr);
-
-                    if (commitFlag == SQLiteXM.SxmDefines.CommitTransaction)
-                        sqLiteErrorCode = (SQLiteErrorCode)ex.ErrorCode;
-                    else
-                        throw ExceptionHelper.Wrap(ex, errStr);
-                }
                 catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
                 {
-                    SxmLogging.Log(ex, $"DoCommitAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}Commit flag: '{commitFlag}'.");
+                    // Pass-through: the original exception's message cannot be changed, so Data is the
+                    // only place this operation detail can reach the caller.
+                    string context = $"DoCommitAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}Commit flag: '{commitFlag}'.";
+                    ExceptionHelper.AddContext(ex, context);
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                     throw;
                 }
                 catch (System.Exception ex)
                 {
-                    string errStr = $"DoCommitAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}Commit flag: '{commitFlag}'.";
-                    SxmLogging.Log(ex, errStr);
-                    throw ExceptionHelper.Wrap(ex, errStr);
+                    string context = $"DoCommitAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}Commit flag: '{commitFlag}'.";
+                    SxmLogging.Log(ex, context);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.ConnectionFailure, context);
                 }
             }
-
-            return sqLiteErrorCode;
         }
 
         /// <summary>
@@ -711,15 +680,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"ExecuteQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"ExecuteQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"ExecuteQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
         }
 
@@ -762,15 +734,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"ExecuteNonQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"ExecuteNonQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"ExecuteNonQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"ExecuteNonQueryAsync failure. Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {command}";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
             }
         }
 
@@ -875,15 +850,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"BeginTransaction failure. Database: '{this._databaseName}'.{Environment.NewLine}Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"BeginTransaction failure. Database: '{this._databaseName}'.{Environment.NewLine}Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"BeginTransaction failure. Database: '{this._databaseName}'.{Environment.NewLine}Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"BeginTransaction failure. Database: '{this._databaseName}'.{Environment.NewLine}Error code: '{(ex is Microsoft.Data.Sqlite.SqliteException s ? s.ErrorCode : 0)}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.ConnectionFailure, context);
             }
         }
 
@@ -920,15 +898,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"GetValue failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"GetValue failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"GetValue failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"GetValue failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
 
             return default;
@@ -953,15 +934,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"GetValue failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"GetValue failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"GetValue failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"GetValue failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
 
             return default;
@@ -986,15 +970,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"GetFieldName failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"GetFieldName failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"GetFieldName failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"GetFieldName failure. Database: '{this._databaseName}'. Field ordinal: '{fieldOrdinal}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
 
             return default;
@@ -1105,15 +1092,18 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"GetType failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"GetType failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.";
+                ExceptionHelper.AddContext(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"GetType failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"GetType failure. Database: '{this._databaseName}'. Field name: '{fieldName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.DataConversionFailure, context);
             }
 
             return default;

@@ -7,9 +7,14 @@ namespace SQLiteXM
     /// </summary>
     /// <remarks>
     /// <para>
-    /// SQLiteXM throws <see cref="SxmException"/> for database and ORM operational failures.
-    /// These exceptions provide stable error codes and preserve provider-specific details
-    /// (such as underlying SQLite errors) through the inner exception and exception metadata.
+    /// SQLiteXM throws <see cref="SxmException"/> for ORM-level operational failures.
+    /// These exceptions provide stable error codes and preserve the originating failure
+    /// through the inner exception and exception metadata.
+    /// </para>
+    /// <para>
+    /// Provider exceptions are <b>not</b> wrapped. A <see cref="SqliteException"/> raised by the
+    /// underlying SQLite provider propagates to the caller unchanged, so that its
+    /// <c>SqliteErrorCode</c> and <c>SqliteExtendedErrorCode</c> remain directly available.
     /// </para>
     /// <para>
     /// Programmer usage errors — such as invalid arguments, unsupported operations,
@@ -20,67 +25,96 @@ namespace SQLiteXM
     /// propagate unchanged.
     /// </para>
     /// <para>
-    /// Callers should typically catch <see cref="SxmException"/> when handling database-related
-    /// failures, while allowing framework and usage exceptions to propagate normally.
+    /// Callers handling database failures should therefore expect either a
+    /// <see cref="SxmException"/> or a <see cref="SqliteException"/>, while allowing framework
+    /// and usage exceptions to propagate normally.
     /// </para>
     /// </remarks>
     public sealed class SxmException : Exception
     {
         /// <summary>
+        /// The <see cref="Exception.Data"/> key under which SQLiteXM stores the error code.
+        /// </summary>
+        internal const string ErrorCodeKey = "sxmErrorCode";
+
+        /// <summary>
+        /// The <see cref="Exception.Data"/> key under which SQLiteXM stores operation context.
+        /// </summary>
+        internal const string ContextKey = "sxmContext";
+
+        /// <summary>
+        /// Gets the stable library error code identifying the cause of this exception.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is the supported way to branch on a SQLiteXM failure. The same value is also stored
+        /// under <c>Data["sxmErrorCode"]</c> for logging and diagnostics, but callers should prefer
+        /// this property because it is strongly typed.
+        /// </para>
+        /// <para>
+        /// Provider failures are never reported here. A <see cref="SqliteException"/> propagates to the
+        /// caller unchanged and must be caught separately.
+        /// </para>
+        /// </remarks>
+        public SxmDefines.SxmErrorCode ErrorCode { get; }
+
+        /// <summary>
+        /// Gets the operation context attached to this exception, or an empty string if none was recorded.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Describes what SQLiteXM was doing when the failure occurred — for example the database,
+        /// table, or statement involved. Never returns <see langword="null"/>, so the value can be
+        /// logged or concatenated without a null check.
+        /// </para>
+        /// <para>
+        /// Intended for logging and diagnostics only. Do not branch on this value; use <see cref="ErrorCode"/> instead.
+        /// </para>
+        /// </remarks>
+        public string Context => this.Data[ContextKey] as string ?? string.Empty;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="SxmException"/> class using a library <see cref="ErrorMessage"/>.
         /// </summary>
         /// <param name="errorMessage">The library error message object containing text and an ID.</param>
         /// <remarks>
-        /// Stores the library error code under <c>Data["sxmErrorCode"]</c>.
+        /// Sets <see cref="ErrorCode"/> and stores the same value under <c>Data["sxmErrorCode"]</c>.
         /// </remarks>
         internal SxmException(ErrorMessage errorMessage)
             : base(errorMessage.ErrorText)
         {
-            this.Data["sxmErrorCode"] = errorMessage.ErrorID;
+            this.ErrorCode = errorMessage.ErrorID;
+            this.Data[ErrorCodeKey] = errorMessage.ErrorID;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SxmException"/> class with a specified message and inner exception.
+        /// Initializes a new instance of the <see cref="SxmException"/> class with a specified message,
+        /// operation context, error code, and inner exception.
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
+        /// <param name="context">Human-readable description of the SQLiteXM operation that failed.</param>
+        /// <param name="code">The category describing which operation failed.</param>
         /// <param name="inner">The exception that is the cause of the current exception.</param>
         /// <remarks>
-        /// Stores <see cref="SxmDefines.SxmErrorCode.InnerException"/> under <c>Data["sxmErrorCode"]</c>.
+        /// <para>
+        /// Used by <c>ExceptionHelper.Wrap</c>. The three values answer different questions and never
+        /// duplicate each other: <paramref name="message"/> describes <i>what</i> went wrong and is taken
+        /// from the original exception, <paramref name="context"/> describes <i>what SQLiteXM was doing</i>
+        /// at the time, and <paramref name="code"/> identifies <i>which operation</i> failed.
+        /// </para>
+        /// <para>
+        /// <paramref name="context"/> is stored under <c>Data["sxmContext"]</c> and surfaced through
+        /// <see cref="Context"/>.
+        /// </para>
         /// </remarks>
-        internal SxmException(string message, Exception? inner)
+        internal SxmException(string message, string context, SxmDefines.SxmErrorCode code, Exception inner)
             : base(message, inner)
         {
-            this.Data["sxmErrorCode"] = SxmDefines.SxmErrorCode.InnerException;
-        }
+            this.ErrorCode = code;
+            this.Data[ErrorCodeKey] = code;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SxmException"/> class that wraps an existing exception.
-        /// </summary>
-        /// <param name="inner">The original exception being wrapped.</param>
-        /// <remarks>
-        /// Uses <paramref name="inner"/> as <see cref="Exception.InnerException"/> and stores
-        /// <see cref="SxmDefines.SxmErrorCode.InnerException"/> under <c>Data["sxmErrorCode"]</c>.
-        /// </remarks>
-        internal SxmException(Exception inner)
-            : base(inner.Message, inner)
-        {
-            this.Data["sxmErrorCode"] = SxmDefines.SxmErrorCode.InnerException;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SxmException"/> class from a <see cref="SqliteException"/>.
-        /// </summary>
-        /// <param name="sqliteException">The <see cref="SqliteException"/> thrown by the underlying provider.</param>
-        /// <remarks>
-        /// Stores <see cref="SxmDefines.SxmErrorCode.SqliteException"/> under <c>Data["sxmErrorCode"]</c> and the provider
-        /// error code under <c>Data["sqliteErrorCode"]</c>. The original <see cref="SqliteException"/> is preserved as the
-        /// <see cref="Exception.InnerException"/>.
-        /// </remarks>
-        internal SxmException(Microsoft.Data.Sqlite.SqliteException sqliteException)
-            : base(sqliteException.Message, sqliteException)
-        {
-            this.Data["sxmErrorCode"] = SxmDefines.SxmErrorCode.SqliteException;
-            this.Data["sqliteErrorCode"] = sqliteException.ErrorCode;
+            if (!string.IsNullOrWhiteSpace(context))
+                this.Data[ContextKey] = context;
         }
 
         /// <summary>

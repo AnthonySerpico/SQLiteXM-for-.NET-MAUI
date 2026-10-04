@@ -148,6 +148,13 @@ public abstract class TestBase : IDisposable
             typeof(DropTableTests.DropTestChildEntity20B),
             typeof(DropTableTests.DropTestEntity21),
             typeof(DropTableTests.DropTestEntity22),
+            typeof(DropTableTests.DropTestParentEntity23),
+            typeof(DropTableTests.DropTestChildEntity23),
+            typeof(DropTableTests.DropTestGrandParentEntity24),
+            typeof(DropTableTests.DropTestParentEntity24),
+            typeof(DropTableTests.DropTestChildEntity24),
+            typeof(SxmExceptionContractTests.ExceptionContractParentEntity),
+            typeof(SxmExceptionContractTests.ExceptionContractChildEntity),
             // LINQ Query Documentation test entities (from LinqQueryDocumentationTests.cs)
             typeof(LinqQueryDocumentationTests.Customer),
             typeof(LinqQueryDocumentationTests.Order)
@@ -268,6 +275,13 @@ public abstract class TestBase : IDisposable
             typeof(DropTableTests.DropTestChildEntity20B),
             typeof(DropTableTests.DropTestEntity21),
             typeof(DropTableTests.DropTestEntity22),
+            typeof(DropTableTests.DropTestParentEntity23),
+            typeof(DropTableTests.DropTestChildEntity23),
+            typeof(DropTableTests.DropTestGrandParentEntity24),
+            typeof(DropTableTests.DropTestParentEntity24),
+            typeof(DropTableTests.DropTestChildEntity24),
+            typeof(SxmExceptionContractTests.ExceptionContractParentEntity),
+            typeof(SxmExceptionContractTests.ExceptionContractChildEntity),
             // LINQ Query Documentation test entities (from LinqQueryDocumentationTests.cs)
             typeof(LinqQueryDocumentationTests.Customer),
             typeof(LinqQueryDocumentationTests.Order)
@@ -432,6 +446,13 @@ public abstract class TestBase : IDisposable
             typeof(DropTableTests.DropTestChildEntity20B),
             typeof(DropTableTests.DropTestEntity21),
             typeof(DropTableTests.DropTestEntity22),
+            typeof(DropTableTests.DropTestParentEntity23),
+            typeof(DropTableTests.DropTestChildEntity23),
+            typeof(DropTableTests.DropTestGrandParentEntity24),
+            typeof(DropTableTests.DropTestParentEntity24),
+            typeof(DropTableTests.DropTestChildEntity24),
+            typeof(SxmExceptionContractTests.ExceptionContractParentEntity),
+            typeof(SxmExceptionContractTests.ExceptionContractChildEntity),
             // LINQ Query Documentation test entities
             typeof(LinqQueryDocumentationTests.Customer),
             typeof(LinqQueryDocumentationTests.Order)

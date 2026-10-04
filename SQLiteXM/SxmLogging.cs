@@ -93,7 +93,12 @@ namespace SQLiteXM
         /// supply the caller member name via <see cref="System.Runtime.CompilerServices.CallerMemberNameAttribute"/>.
         /// Callers may still pass an explicit value (for example <c>nameof(SomeMethod)</c>) if desired.
         /// </param>
-        /// <param name="logLevel">Optional log level label (defaults to <c>"Error"</c>).</param>
+        /// <param name="context">
+        /// Optional human-readable description of the operation that failed, for example the database,
+        /// table, or statement involved. This text is written into the log entry header.
+        /// Despite the historical default of <c>"Error"</c>, this is a context string and not a severity
+        /// level; severity is derived from the exception type when the entry is written.
+        /// </param>
         /// <remarks>
         /// - This helper is a convenience wrapper that resolves the per-database <see cref="_loggers"/> entry
         ///   and forwards the exception to the instance logger's non-static <see cref="Log(System.Exception,string?,string)"/> method.
@@ -102,8 +107,13 @@ namespace SQLiteXM
         /// - Existing call sites that explicitly supply <c>method</c> (for example <c>nameof(...) </c>) remain valid.
         /// - The method is intentionally tolerant: if <paramref name="dbName"/> is <c>null</c> or no logger exists
         ///   for the name, the call is a no-op to avoid cascading failures during error handling.
+        /// - This method only logs. Attaching context to the exception is the responsibility of
+        ///   <c>ExceptionHelper.Wrap</c> for wrapped failures, and of an explicit
+        ///   <c>ExceptionHelper.AddContext</c> call on the rethrow-unchanged path. Logging and the
+        ///   exception contract are deliberately independent, so disabling logging cannot change
+        ///   what a caller observes on the exception.
         /// </remarks>
-        static internal void Log(System.Exception ex, string logLevel = "Error", [System.Runtime.CompilerServices.CallerMemberName] string method = "")
+        static internal void Log(System.Exception ex, string context = "Error", [System.Runtime.CompilerServices.CallerMemberName] string method = "")
         {
             if (!SxmDatabaseOptions.IsLoggingEnabled())
                 return;
@@ -113,7 +123,7 @@ namespace SQLiteXM
             if (dbName != null)
             {
                 if (_loggers.TryGetValue(dbName, out var log))
-                    log.WriteLog(ex, method, logLevel);
+                    log.WriteLog(ex, method, context);
             }
         }
 
@@ -122,12 +132,12 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="ex">The exception to write.</param>
         /// <param name="method">The method name associated with the exception.</param>
-        /// <param name="logLevel">Label indicating the log level.</param>
+        /// <param name="context">Human-readable description of the operation associated with the exception.</param>
         /// <remarks>
         /// Very large exception text is trimmed to avoid excessive memory use on mobile devices.
         /// Exceptions thrown while attempting to enqueue are swallowed to avoid throwing while handling another exception.
         /// </remarks>
-        private void WriteLog(System.Exception ex, string? method, string logLevel)
+        private void WriteLog(System.Exception ex, string? method, string context)
         {
             try
             {
@@ -149,7 +159,7 @@ namespace SQLiteXM
                 }
 
                 StringBuilder entryBuilder = new StringBuilder();
-                entryBuilder.Append("******************************************************* ").Append(logLevel).Append(Environment.NewLine).Append(Environment.NewLine);
+                entryBuilder.Append("******************************************************* ").Append(context).Append(Environment.NewLine).Append(Environment.NewLine);
                 entryBuilder.Append("Time Stamp: ");
                 entryBuilder.Append(DateTime.UtcNow.ToString("MM/dd/yyyy hh:mm:ss.fff tt", CultureInfo.CreateSpecificCulture("en-US")));
                 entryBuilder.Append(" (UTC)  ");

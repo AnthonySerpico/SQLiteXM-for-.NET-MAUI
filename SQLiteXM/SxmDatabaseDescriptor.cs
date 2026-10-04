@@ -108,15 +108,19 @@ namespace SQLiteXM
             }
             catch (System.Exception ex) when (ExceptionHelper.IsNonWrappable(ex))
             {
-                SxmLogging.Log(ex, $"Ctor failure for class SxmDatabaseDescriptor for database '{databaseName}'.");
+                // Pass-through: the original exception's message cannot be changed, so Data is the
+                // only place this operation detail can reach the caller.
+                string context = $"Ctor failure for class SxmDatabaseDescriptor for database '{databaseName}'.";
+                ExceptionHelper.AddContext(ex, context);
+                SxmLogging.Log(ex, context);
                 // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
                 throw;
             }
             catch (System.Exception ex)
             {
-                string errStr = $"Ctor failure for class SxmDatabaseDescriptor for database '{databaseName}'.";
-                SxmLogging.Log(ex, errStr);
-                throw ExceptionHelper.Wrap(ex, errStr);
+                string context = $"Ctor failure for class SxmDatabaseDescriptor for database '{databaseName}'.";
+                SxmLogging.Log(ex, context);
+                throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.SchemaFailure, context);
             }
         }
 

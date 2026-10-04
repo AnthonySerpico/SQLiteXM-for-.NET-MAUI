@@ -415,7 +415,11 @@ namespace SQLiteXM
                     }
 
                     // Cancellation/fatal — rethrow unchanged so callers/runtime can handle appropriately.
-                    SxmLogging.Log(ex, $"RunStatementAsync failure. {statementName} Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}");
+                    // Pass-through: the original exception's message cannot be changed, so Data is the
+                    // only place this operation detail can reach the caller.
+                    string context = $"RunStatementAsync failure. {statementName} Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
+                    ExceptionHelper.AddContext(ex, context);
+                    SxmLogging.Log(ex, context);
                     throw;
                 }
                 catch (System.Exception ex)
@@ -447,9 +451,9 @@ namespace SQLiteXM
                         statementName = $"SQL statement: '{sqlOrStatementName}'.";
                     }
 
-                    string errStr = $"RunStatementAsync failure. {statementName} Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
-                    SxmLogging.Log(ex, errStr);
-                    throw ExceptionHelper.Wrap(ex, errStr);
+                    string context = $"RunStatementAsync failure. {statementName} Database: '{this._databaseName}'.{Environment.NewLine}{Environment.NewLine}Command: {statement}";
+                    SxmLogging.Log(ex, context);
+                    throw ExceptionHelper.Wrap(ex, SxmDefines.SxmErrorCode.QueryFailure, context);
                 }
             }
 
