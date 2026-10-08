@@ -370,3 +370,4 @@ FodyWeavers.xsd
 BenchmarkSuite1/
 /.github/copilot-instructions.md
 /Scripts
+/Samples/QueryGalleryDemo/run-publish-windows.ps1.txt
