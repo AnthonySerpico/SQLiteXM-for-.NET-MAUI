@@ -87,19 +87,17 @@ namespace SQLiteXM
             _lifecycleGateClosed = false;
         }
 
-#if DEBUG
-        /// <summary>
-        /// Clears the connection string cache for testing purposes.
-        /// Must be called when tests change database folder paths between test runs.
-        /// </summary>
-        internal static void ResetForTesting()
-        {
-            lock (_synchLock)
-            {
-                _dbConnectionString.Clear();
-            }
-        }
-#endif
+/// <summary>
+/// Clears the connection string cache for testing purposes.
+/// Must be called when tests change database folder paths between test runs.
+/// </summary>
+internal static void ResetForTesting()
+{
+    lock (_synchLock)
+    {
+        _dbConnectionString.Clear();
+    }
+}
 
         private enum DbParametersDataType { List, TupleList, TwoDArray, OneDArray, HashTable, Dictionary }
 

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Xunit;
 
 namespace SQLiteXM.Tests;
@@ -50,9 +50,7 @@ public class InitializationPatternTests : IDisposable
 
         // CRITICAL: Reset SQLiteXM state and re-initialize with the standard TestBase configuration so
         // subsequent tests (which assume "test_database" is ready) continue to work correctly.
-#if DEBUG
         SxmDatabase.ResetForTestingAsync().GetAwaiter().GetResult();
-#endif
         var initOptions = new SxmDatabaseOptions
         {
             DatabaseFolderOverride = Path.Combine(TestBase.TestRootFolder, "test_database")

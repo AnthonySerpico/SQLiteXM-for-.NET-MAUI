@@ -1,4 +1,4 @@
-using SQLiteXM;
+﻿using SQLiteXM;
 using System.Diagnostics.CodeAnalysis;
 using Xunit;
 
@@ -62,9 +62,7 @@ public class MultiDatabaseLinqTests : IDisposable
         // CRITICAL: Reset SQLiteXM state so subsequent tests work correctly
         try
         {
-#if DEBUG
             SxmDatabase.ResetForTestingAsync().GetAwaiter().GetResult();
-#endif
             // Re-initialize with the standard test configuration from TestBase
             var initOptions = new SxmDatabaseOptions
             {
@@ -119,9 +117,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream1 = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream1, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order));
@@ -156,9 +152,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream2 = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream2, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -192,9 +186,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream3 = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream3, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product), typeof(Order));
@@ -245,9 +237,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -281,9 +271,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -323,9 +311,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -361,9 +347,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -399,9 +383,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -442,9 +424,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -472,9 +452,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -506,9 +484,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Order));
@@ -541,9 +517,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -574,9 +548,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -613,9 +585,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -668,9 +638,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -711,9 +679,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -746,9 +712,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));
@@ -785,9 +749,7 @@ public class MultiDatabaseLinqTests : IDisposable
         CreateMultiDatabaseSqlStatements();
         var options = new SxmDatabaseOptions { DatabaseFolderOverride = _testDbFolder };
 
-#if DEBUG
         await SxmDatabase.ResetForTestingAsync();
-#endif
         using var stream = File.OpenRead(_testStatementsPath);
         await SxmDatabase.InitializeAsync(stream, options);
         await SxmDatabase.RegisterEntitiesAsync(typeof(Product));

@@ -208,13 +208,12 @@ namespace SQLiteXM
             }
         }
 
-#if DEBUG
-        /// <summary>
-        /// Resets all SQL statement caches for testing purposes.
-        /// **WARNING:** Only call this in test scenarios.
-        /// </summary>
-        internal static void ResetForTesting()
-        {
+/// <summary>
+/// Resets all SQL statement caches for testing purposes.
+/// **WARNING:** Only call this in test scenarios.
+/// </summary>
+internal static void ResetForTesting()
+{
             TableCreateStatements?.Clear();
             TriggerStatements?.Clear();
             InsertStatements?.Clear();
@@ -229,7 +228,6 @@ namespace SQLiteXM
             UpdateStatements = new ConcurrentDictionary<string, UpdateDefinition>(StringComparer.OrdinalIgnoreCase);
             DeleteStatements = new ConcurrentDictionary<string, DeleteDefinition>(StringComparer.OrdinalIgnoreCase);
         }
-#endif
 
         /// <summary>
         /// Prevents external instantiation. Instances are not required because the class is used statically.

@@ -208,17 +208,15 @@ namespace SQLiteXM
             return _dbDescriptors.Contains(databaseName);
         }
 
-#if DEBUG
-        /// <summary>
-        /// Resets all database descriptor state for testing purposes.
-        /// **WARNING:** Only call this in test scenarios.
-        /// </summary>
-        internal static void ResetForTesting()
-        {
-            _dbDescriptors = new ConcurrentBag<string>();
-            _databaseFolder = null;
-        }
-#endif
+/// <summary>
+/// Resets all database descriptor state for testing purposes.
+/// **WARNING:** Only call this in test scenarios.
+/// </summary>
+internal static void ResetForTesting()
+{
+    _dbDescriptors = new ConcurrentBag<string>();
+    _databaseFolder = null;
+}
 
         /// <summary>
         /// Returns the list of registered database names.

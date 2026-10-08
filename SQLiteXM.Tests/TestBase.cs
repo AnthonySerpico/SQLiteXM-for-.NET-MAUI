@@ -29,13 +29,6 @@ public abstract class TestBase : IDisposable
 
     static TestBase()
     {
-#if !DEBUG
-        throw new InvalidOperationException(
-            "SQLiteXM tests MUST be run in Debug configuration. " +
-            "The test suite uses DEBUG-only features like SxmDatabase.ResetForTestingAsync() " +
-            "to properly clean up state between tests. Running in Release mode will cause test failures. " +
-            "Please switch to Debug configuration and try again.");
-#endif
         // Initialize shared paths once for all tests
         TestDatabaseFolder = Path.Combine(TestRootFolder, TestDatabaseName);
         Directory.CreateDirectory(TestDatabaseFolder);
@@ -293,11 +286,10 @@ public abstract class TestBase : IDisposable
     /// <summary>
     /// Cleans up test data by deleting the database file and resetting all SQLiteXM state.
     /// Call this in tests that need isolated data.
-    /// **WARNING:** This resets ALL static state - use sparingly and only in DEBUG builds.
+    /// **WARNING:** This resets ALL static state - use sparingly.
     /// </summary>
     protected async Task CleanupTestDataAsync()
     {
-#if DEBUG
         // Shutdown connection manager for this database to close all connections
         await SxmConnectionManager.Instance.ShutdownAsync(TestDatabaseName);
 
@@ -344,10 +336,6 @@ public abstract class TestBase : IDisposable
         // Re-initialize for next test
         Interlocked.Exchange(ref _initCounter, 0);
         await InitializeSqliteXMAsync();
-#else
-        await Task.CompletedTask;
-        throw new InvalidOperationException("CleanupTestDataAsync is only available in DEBUG builds.");
-#endif
     }
 
     /// <summary>
@@ -356,15 +344,10 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task RestartSqliteXMAsync()
     {
-#if DEBUG
         await SxmConnectionManager.Instance.ShutdownAsync(TestDatabaseName);
         await SxmDatabase.ResetForTestingAsync();
         Interlocked.Exchange(ref _initCounter, 0);
         await InitializeSqliteXMAsync();
-#else
-        await Task.CompletedTask;
-        throw new InvalidOperationException("RestartSqliteXMAsync is only available in DEBUG builds.");
-#endif
     }
 
     /// <summary>

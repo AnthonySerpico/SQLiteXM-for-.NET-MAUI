@@ -113,6 +113,39 @@ like this: `_ = InitializeShellAfterDbReadyAsync(window)`
         }
 ```
 
+## Trimming Warning IL2026
+
+When you build for Release on Android or iOS, .NET trims unused code from your app. You may see:
+
+```
+IL2026: Using member 'SQLiteXM.SxmDatabase.StartInitialization(...)' which has 'RequiresUnreferencedCode'
+may break when trimming.
+```
+
+**Your app is not broken.** SQLiteXM annotates the `SxmEntity` base class so that the trimmer preserves the
+public properties and constructors of every entity that derives from it. Your columns are safe.
+
+The warning appears because `StartInitialization` receives entities as a `Type[]`, and the trimmer cannot
+statically prove what the elements of that array are. It warns conservatively.
+
+To silence it, either add this to your `.csproj`:
+
+```xml
+<NoWarn>$(NoWarn);IL2026</NoWarn>
+```
+
+or suppress it on the method that calls `StartInitialization`:
+
+```csharp
+[UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "SQLiteXM preserves entity members via SxmEntity.")]
+public static async Task StartDatabaseAsync()
+```
+
+> 💡 If you would rather not suppress the warning, `SxmDatabase.RegisterEntityAsync<TEntity>()` registers one
+> entity at a time using a generic argument, which the trimmer can verify. Both approaches are equally safe.
+
+---
+
 ## Summary
 
 | Where to call it | What it looks like | When to use it |

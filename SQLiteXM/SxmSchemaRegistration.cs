@@ -117,23 +117,21 @@ internal static class SxmSchemaRegistration
         return null;
     }
 
-#if DEBUG
-    /// <summary>
-    /// Resets all static schema registration state for testing.
-    /// **WARNING:** This is intended ONLY for testing scenarios.
-    /// </summary>
-    internal static void ResetForTesting()
-    {
-        _registeredSchemas.Clear();
-        _tableAttributeNameCache.Clear();
-        _entityTypeMap.Clear();
-        _entityDatabaseMap.Clear();
-        _initTasks.Clear();
-        _uniqueIndexDict.Clear();
-        _standardIndexDict.Clear();
-        _foreignKeyCache.Clear();
-    }
-#endif
+/// <summary>
+/// Resets all static schema registration state for testing.
+/// **WARNING:** This is intended ONLY for testing scenarios.
+/// </summary>
+internal static void ResetForTesting()
+{
+    _registeredSchemas.Clear();
+    _tableAttributeNameCache.Clear();
+    _entityTypeMap.Clear();
+    _entityDatabaseMap.Clear();
+    _initTasks.Clear();
+    _uniqueIndexDict.Clear();
+    _standardIndexDict.Clear();
+    _foreignKeyCache.Clear();
+}
 
     /// <summary>
     /// Resolve the database name from [Table(Database = "...")] attribute.

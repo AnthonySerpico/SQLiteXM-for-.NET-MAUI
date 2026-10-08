@@ -454,6 +454,34 @@ During initialization, SQLiteXM creates or updates the schema for each entity an
 
 ## Practical Entity Design Rules
 
+### Give Every Entity a Unique Class Name
+
+SQLiteXM uses the entity's simple class name (`Type.Name`) as the table name. The `Customer` class
+maps to a table named `Customer`.
+
+Because only the simple name is used, two entity classes with the same name collide, even when
+C# considers them completely different types:
+
+```csharp
+namespace MyApp.Sales
+{
+	public class OrderItem : SxmEntity { }
+}
+
+namespace MyApp.Returns
+{
+	public class OrderItem : SxmEntity { }    // ⚠️ Both map to a table named "OrderItem"
+}
+```
+
+Registration detects this and throws an `InvalidOperationException` describing the collision, so the
+problem surfaces during initialization rather than corrupting data. To fix it, rename one of the
+classes, for example `SalesOrderItem` and `ReturnOrderItem`.
+
+> ✏️ **Note:** Namespaces do not separate tables. Neither does nesting one entity class inside
+> another. `Sales.OrderItem` and `Returns.OrderItem` both map to a table named `OrderItem`.
+> Entity names must be unique across your entire application.
+
 ### Keep Related Entities Together
 
 Entities that are frequently queried together should usually live in the same database.

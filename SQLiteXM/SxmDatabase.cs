@@ -49,7 +49,6 @@ namespace SQLiteXM
 
         private static bool _linqToDbWarmedUp = false;
 
-#if DEBUG
         /// <summary>
         /// Resets all static initialization state to allow re-initialization.
         /// **WARNING:** This is intended ONLY for testing scenarios and should NEVER be called in production code.
@@ -130,7 +129,6 @@ namespace SQLiteXM
                 }
             }
         }
-#endif
 
         /// <summary>
         /// Starts database initialization and entity registration on a background task.
@@ -148,8 +146,8 @@ namespace SQLiteXM
         /// before the first use of the database (e.g. before constructing an <see cref="SxmTransaction"/>
         /// or accessing any entity).
         /// </remarks>
-        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically analyzed by the trimmer. For trimming/AOT-safe startup call StartInitialization(Stream, SxmDatabaseOptions) and then RegisterEntityAsync<TEntity>() for each entity.")]
-        public static void StartInitialization(Stream sqlStatementsStream, SxmDatabaseOptions databaseOptions, params Type[] entities)
+        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically proven to derive from SxmEntity by the trimmer. This is an analysis limitation only: SQLiteXM preserves the public properties and constructors of every SxmEntity-derived type via a [DynamicallyAccessedMembers] annotation on the SxmEntity base class, so entity registration remains correct under trimming and Native AOT. Suppress IL2026 at the call site.")]
+        public static void StartInitialization(Stream sqlStatementsStream, SxmDatabaseOptions? databaseOptions, params Type[] entities)
         {
             Task.Run(async () =>
             {
@@ -178,8 +176,8 @@ namespace SQLiteXM
             });
         }
 
-        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically analyzed by the trimmer.")]
-        private static async Task InitializeDatabaseAsync(Stream sqlStatementsFile, SxmDatabaseOptions databaseOptions, Type[] entities)
+        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically proven to derive from SxmEntity. Preservation is guaranteed by the [DynamicallyAccessedMembers] annotation on SxmEntity.")]
+        private static async Task InitializeDatabaseAsync(Stream sqlStatementsFile, SxmDatabaseOptions? databaseOptions, Type[] entities)
         {
             await SxmDatabase.InitializeAsync(sqlStatementsFile, databaseOptions);
             await SxmDatabase.RegisterEntitiesAsync(entities);
@@ -354,7 +352,7 @@ namespace SQLiteXM
         /// </remarks>
         /// <exception cref="InvalidOperationException">Thrown if SQLiteXM has not been initialized via <see cref="InitializeAsync"/>.</exception>
         /// <exception cref="ArgumentException">Thrown if any type does not derive from <see cref="SxmEntity"/> or is abstract.</exception>
-        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically analyzed by the trimmer. Use RegisterEntityAsync<TEntity>() for trimming/AOT-safe registration.")]
+        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically proven to derive from SxmEntity by the trimmer. Entity members are preserved via the [DynamicallyAccessedMembers] annotation on the SxmEntity base class, so this call is safe under trimming. Suppress IL2026, or call RegisterEntityAsync<TEntity>() if you prefer a statically verifiable alternative.")]
         public static Task RegisterEntitiesAsync(params Type[] entityTypes)
             => RegisterEntitiesCoreAsync(entityTypes);
 
@@ -372,7 +370,7 @@ namespace SQLiteXM
         public static Task RegisterEntityAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>() where TEntity : SxmEntity
             => RegisterEntitiesCoreAsync(new[] { typeof(TEntity) });
 
-        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Every caller either supplies an annotated generic TEntity (RegisterEntityAsync<TEntity>) or is itself marked RequiresUnreferencedCode (RegisterEntitiesAsync(Type[])).")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Entity types are validated at runtime to derive from SxmEntity (see SxmSchemaRegistration.RegisterEntitySchemaAsync), and SxmEntity carries a [DynamicallyAccessedMembers] annotation that propagates to all derived types, so their public properties and constructors are preserved by the trimmer. The warning arises only because the trimmer cannot statically prove the element type of the Type[] array.")]
         private static async Task RegisterEntitiesCoreAsync(Type[] entityTypes)
         {
             try

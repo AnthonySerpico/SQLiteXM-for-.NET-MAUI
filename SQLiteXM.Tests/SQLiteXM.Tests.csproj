@@ -6,20 +6,11 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Uncomment the line below to preserve multi-database test files for inspection -->
-    <DefineConstants>$(DefineConstants);KEEP_MULTI_DB_TEST_FILES</DefineConstants>
+    <!-- Uncomment the line below to preserve multi-database test files for inspection.
+         Files are written under %TEMP%\SQLiteXM.Tests\ and are never pruned, so leave
+         this commented out for normal runs. -->
+    <!-- <DefineConstants>$(DefineConstants);KEEP_MULTI_DB_TEST_FILES</DefineConstants> -->
   </PropertyGroup>
-
-  <!-- Enforce Debug-only builds for test suite -->
-  <Target Name="EnsureDebugConfiguration" BeforeTargets="CoreCompile">
-    <Error Condition="'$(Configuration)' != 'Debug'" Text="The test suite MUST be built and run in Debug configuration only. Release builds are not supported for tests. Please switch to Debug configuration." />
-  </Target>
-
-  <!-- Clean up any stale Release artifacts to prevent test runner confusion -->
-  <Target Name="CleanStaleReleaseArtifacts" BeforeTargets="BeforeBuild" Condition="'$(Configuration)' == 'Debug'">
-    <RemoveDir Directories="$(ProjectDir)bin\Release" Condition="Exists('$(ProjectDir)bin\Release')" />
-    <Message Text="Cleaned stale Release test artifacts to prevent test discovery conflicts." Condition="Exists('$(ProjectDir)bin\Release')" Importance="high" />
-  </Target>
 
   <ItemGroup>
     <!-- Test Framework -->

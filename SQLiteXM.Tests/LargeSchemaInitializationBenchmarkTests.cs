@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using Xunit;
 using Xunit.Abstractions;
@@ -54,9 +54,7 @@ public class LargeSchemaInitializationBenchmarkTests : IDisposable
 
         // CRITICAL: Reset SQLiteXM state and re-initialize with the standard TestBase configuration so
         // subsequent tests (which assume "test_database" is ready) continue to work correctly.
-#if DEBUG
         SxmDatabase.ResetForTestingAsync().GetAwaiter().GetResult();
-#endif
         var initOptions = new SxmDatabaseOptions
         {
             DatabaseFolderOverride = Path.Combine(TestBase.TestRootFolder, "test_database")
