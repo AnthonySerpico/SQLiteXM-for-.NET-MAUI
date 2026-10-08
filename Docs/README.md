@@ -159,6 +159,19 @@ tasks, etc).
 
 ---
 
+## 🐞 Troubleshooting
+
+### [Debugging SQLiteXM](debugging.md)
+
+Learn how to configure Visual Studio to download the SQLiteXM symbol package from
+nuget.org so you can set breakpoints inside SQLiteXM and step through its source
+code from your own project.
+
+**Read this when:** You want to step into SQLiteXM code while debugging, or symbols
+are failing to load.
+
+---
+
 ## 📦 About Releases
 
 ### [Versioning Policy](versioning.md)
@@ -204,6 +217,7 @@ When your application begins evolving:
 - **[Schema Evolution](schema-evolution.md)** — when your data model changes
 - **[Multiple Databases](multiple-databases.md)** — when your application needs separate SQLite databases
 - **[Versioning Policy](versioning.md)** — when upgrading to a new SQLiteXM release
+- **[Debugging SQLiteXM](debugging.md)** — when you need to step into SQLiteXM source code
 
 ---
 
@@ -227,6 +241,7 @@ When your application begins evolving:
 | [Application Lifecycle](application-lifecycle.md) | MAUI lifecycle integration | Optional, for mobile app backgrounding |
 | [Advanced Initialization Patterns](advanced-initialization-patterns.md) | Multi-entry-point database readiness | When using BroadcastReceivers/background tasks or needing a hard startup guarantee |
 | [Versioning Policy](versioning.md) | How SQLiteXM version numbers are assigned | When upgrading or reviewing release notes |
+| [Debugging SQLiteXM](debugging.md) | Symbol/source debugging setup | When stepping into SQLiteXM source code |
 
 ---
 
@@ -250,3 +265,4 @@ If you are not sure where to look:
 - **"How do I initialize the database for a BroadcastReceiver or background task?"** → [Advanced Initialization Patterns](advanced-initialization-patterns.md)
 - **"How do I handle app suspension on mobile?"** → [Application Lifecycle](application-lifecycle.md)
 - **"What does a version number change mean?"** → [Versioning Policy](versioning.md)
+- **"How do I step into SQLiteXM source while debugging?"** → [Debugging SQLiteXM](debugging.md)
