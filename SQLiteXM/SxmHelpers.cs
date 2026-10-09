@@ -280,6 +280,7 @@ namespace SQLiteXM
         /// Resolves a SQL statement name (or inline SQL) to a <see cref="SqlStatementType"/>.
         /// </summary>
         /// <param name="sqlOrStatementName">Named statement key or an inline SQL string (e.g., "SELECT ...").</param>
+        /// <param name="databaseName">Optional database name identifying which database the statement is resolved against. If null, the default database is assumed.</param>
         /// <returns>Corresponding <see cref="SqlStatementDetails"/>.</returns>
         /// <exception cref="ArgumentException">If <paramref name="sqlOrStatementName"/> is null/empty or cannot be resolved.</exception>
         internal static SqlStatementDetails GetDatabaseStatementTypeFromSql(string? sqlOrStatementName, string? databaseName)
@@ -336,7 +337,7 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Populates the writable properties of <paramref name="userObject"/> from the provided database record dictionary.
+        /// Populates the writable properties of <paramref name="entity"/> from the provided database record dictionary.
         /// 
         /// The method performs the following for each key/value pair:
         /// 1. Matches the dictionary key to a public writable property on the target object (case-sensitive, ordinal comparison).
@@ -349,8 +350,8 @@ namespace SQLiteXM
         /// This method is safe for multi-threaded usage and preserves all original exception behavior and logging.
         /// </summary>
         /// <param name="databaseRecord">Dictionary mapping column names to database values (may contain <c>null</c> or <c>DBNull.Value</c>).</param>
-        /// <param name="userObject">The destination object whose properties will be populated.</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="databaseRecord"/> or <paramref name="userObject"/> is <c>null</c>.</exception>
+        /// <param name="entity">The destination entity whose properties will be populated.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="databaseRecord"/> or <paramref name="entity"/> is <c>null</c>.</exception>
         /// <exception cref="Exception">
         /// Any exception thrown by the underlying strict conversion methods, wrapped or logged as appropriate.
         /// Fatal or non-wrappable exceptions are re-thrown without modification.
@@ -430,13 +431,13 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Retrieves a cached dictionary of all public, writable properties for the given <paramref name="objectType"/>.
+        /// Retrieves a cached dictionary of all public, writable properties for the given <paramref name="entity"/>.
         /// 
         /// The dictionary maps property names (case-sensitive, ordinal comparison) to their corresponding <see cref="PropertyInfo"/> objects.
         /// If the type has not been seen before, the properties are retrieved via reflection and cached for future lookups using a
         /// thread-safe <see cref="ConcurrentDictionary{TKey, TValue}"/>.
         /// </summary>
-        /// <param name="objectType">The type whose writable properties are being retrieved.</param>
+        /// <param name="entity">The entity whose writable properties are being retrieved.</param>
         /// <returns>
         /// An <see cref="IReadOnlyDictionary{String, PropertyInfo}"/> mapping property names to <see cref="PropertyInfo"/> instances.
         /// </returns>
@@ -1175,6 +1176,9 @@ namespace SQLiteXM
         /// </param>
         /// <param name="targetType">
         /// The CLR type of the entity property being converted.
+        /// </param>
+        /// <param name="objectType">
+        /// The CLR type of the entity that owns the column, included in the message to identify the offending mapping.
         /// </param>
         /// <returns>
         /// An <see cref="ArgumentException"/> describing the unsupported mapping.

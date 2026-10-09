@@ -82,11 +82,8 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Routes an exception to the logger instance associated with the supplied database name.
+        /// Routes an exception to the logger instance associated with the default database name.
         /// </summary>
-        /// <param name="dbName">
-        /// Database name used as the key to locate the logger instance. If <c>null</c> the call is ignored.
-        /// </param>
         /// <param name="ex">The exception to log. Must not be <c>null</c>.</param>
         /// <param name="method">
         /// Optional name of the calling member. When the caller omits this argument the compiler will
@@ -105,7 +102,7 @@ namespace SQLiteXM
         /// - Using <see cref="System.Runtime.CompilerServices.CallerMemberNameAttribute"/> reduces copy/paste errors
         ///   because callers can omit the <c>method</c> parameter and have the compiler provide the caller name.
         /// - Existing call sites that explicitly supply <c>method</c> (for example <c>nameof(...) </c>) remain valid.
-        /// - The method is intentionally tolerant: if <paramref name="dbName"/> is <c>null</c> or no logger exists
+        /// - The method is intentionally tolerant: if the resolved database name is <c>null</c> or no logger exists
         ///   for the name, the call is a no-op to avoid cascading failures during error handling.
         /// - This method only logs. Attaching context to the exception is the responsibility of
         ///   <c>ExceptionHelper.Wrap</c> for wrapped failures, and of an explicit
@@ -298,7 +295,9 @@ namespace SQLiteXM
                 {
 #if DEBUG
                     System.Diagnostics.Debug.WriteLine($"SxmLogging.RotateLogFileAsync attempt {attempt} failed: {ex.Message}");
-#endif
+#else
+                    _ = ex; // Tells the compiler you intentionally ignored it
+#endif                   
                     // On the last attempt, swallow the exception (preserve original behavior).
                     if (attempt == maxAttempts || token.IsCancellationRequested)
                         return;

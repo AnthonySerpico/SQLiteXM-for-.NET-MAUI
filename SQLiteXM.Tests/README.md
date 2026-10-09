@@ -9,9 +9,9 @@ See the **[Test Filtering Guide](https://github.com/AnthonySerpico/SQLiteXM-for-
 
 ## Test Statistics (Current)
 
-- **Test classes**: 26
-- **Discovered tests**: 386 per target framework
-- **Target frameworks**: `net8.0` and `net9.0` (the suite is multi-targeted, so a full run executes 772 test cases)
+- **Test classes**: 31
+- **Discovered tests**: 529 per target framework
+- **Target frameworks**: `net8.0` and `net9.0` (the suite is multi-targeted, so a full run executes 1058 test cases)
 - **Skipped tests**: 0
 - **Performance-tagged tests**: 12 (`[Trait("Category", "Performance")]`)
 
@@ -73,7 +73,9 @@ Auto-generated schema-scale fixtures: 75 entities (`BenchEntity01`-`BenchEntity7
 | `BulkLinqOperationsTests` | 12 | Sequential | LINQ bulk update/delete, predicates, transaction scoping, chaining |
 | `ColumnRenameTests` | 10 | Sequential | `[Rename]` processing, multi-step rename chains, data preservation |
 | `ConnectionManagerWorkerTests` | 7 | Sequential | Worker leases, lock contention, timeouts, deterministic cleanup |
-| `DropTableTests` | 24 | Sequential | Drop semantics, dependent-table refusal, drop ordering, recreate |
+| `DatabaseOptionsValidatorTests` | 78 | Sequential | `SxmDatabaseOptions` validation rules: numeric ranges, undefined enum values, folder-override paths, configuration-combination warnings, and the `ValidationResult` contract. Pure in-memory - no database required. Resets the shared `EnableConnectionPooling` / `EnableLogging` / `DefaultTimeout` statics around each test |
+| `DatabaseOptionsEffectTests` | 22 | DatabaseOptionsEffect | Proves the configured options actually reach SQLite: `journal_mode`, `synchronous`, `foreign_keys`, `temp_store`, `cache_size` (negative-KB encoding), `busy_timeout` and `wal_autocheckpoint` PRAGMA round-trips, plus `OnConnectionOpened` / `OnConnectionClosed` interceptor invocation and ordering. Most PRAGMAs are per-connection, so they are read from inside an interceptor on the very connection SQLiteXM configured; WAL is additionally verified from an independent connection because it is persisted in the database file. Re-initializes SQLiteXM per test and restores the standard test configuration afterwards |
+| `DropTableTests` | 24 | Sequential |
 | `EntityCrudTests` | 9 | Sequential | Save/InsertOrUpdate/Delete, type round-tripping, nullables, concurrency |
 | `EntityInitializationTests` | 13 | Sequential | Table creation, type mapping, indexes, FKs, triggers, thread safety |
 | `EntityMappingTests` | 4 | Sequential | `MapProperties`, `MapAndSaveAsync`, null/mismatch handling |
@@ -88,12 +90,15 @@ Auto-generated schema-scale fixtures: 75 entities (`BenchEntity01`-`BenchEntity7
 | `MultiDatabaseLinqTests` | 18 | MultiDatabase | Per-database query contexts, aggregates, joins, projections |
 | `MultiDatabasePerformanceTests` | 12 | MultiDatabase, `Category=Performance` | Bulk, scale, and concurrency benchmarks; update-path correctness, transaction-batching speedup ratio, and throughput reporting |
 | `MultiDatabaseTests` | 11 | MultiDatabase | Multiple databases in `statements.json`, entity routing, per-database transactions |
-| `NullHandlingTests` | 28 | Sequential | `NullTestEntity` with 24 nullable columns across TEXT/INTEGER/REAL/BLOB; verifies real SQL `NULL` via `typeof(column)` on insert, update, bulk insert, LINQ bulk update, and read paths |
-| `SchemaEvolutionTests` | 24 | Sequential | Index add/remove/change, trigger add/remove/modify, column drops (including indexed and trigger-referenced), combined rename + drop, unsupported-change contracts |
+| `NamedStatementTests` | 15 | NamedStatement | Executing statements by *name* rather than inline SQL. Stands up its own statements.json declaring `select` / `insert` / `update` / `delete` entries, then covers named-parameter, positional and parameterless execution, name-over-SQL resolution precedence, and the failure paths for unknown, null, empty and near-miss statement names |
+| `NullHandlingTests` | 28 | Sequential |
+| `RunStatementTests` | 18 | Sequential | The `RunStatementAsync` overload matrix for *inline* SQL: no parameters, `Dictionary<string, object?>` named parameters, and `List<object>` positional parameters, in both the typed `TResult` and raw dictionary result forms. Includes parameterization-safety tests that pass a `DROP TABLE` payload as a value and assert it is never executed. Note that dictionary keys are bare column names - the library prepends the `@` itself |
+| `SchemaEvolutionTests` | 24 | Sequential |
 | `SharedConnectionTests` | 7 | Sequential | Shared connection locking, timeouts, multi-caller safety |
 | `SxmExceptionContractTests` | 9 | (default) | `SxmException` metadata contract: `ErrorCode`, `Data["sxmErrorCode"]`, `Context`, exception filters, wrapped vs direct throws |
 | `TransactionPatternTests` | 14 | Sequential | The five transaction patterns from `Docs/application-lifecycle.md`: mixed operations, fault behavior, fault recovery, multiple commits, all-operation-type conformance |
 | `TransactionTests` | 7 | Sequential | Commit/rollback, atomicity, ambient transactions, nested-create rejection |
+| `UpdateSetTests` | 10 | Sequential | `SxmUpdateSet<T>` edge cases behind `Set().UpdateAsync()`: same column set twice, null assignment, multiple distinct columns, no-match predicates, expression-valued setters, mixed value/expression chains, and builder immutability. Several are characterization tests that record current behavior rather than a pre-specified contract |
 
 ## Running Tests
 
@@ -145,11 +150,15 @@ This table describes the **scope** of what each area exercises — the behaviour
 | Advanced LINQ | Composite queries | GroupBy, joins, set operations, aggregates, paging, deferred execution |
 | Documented LINQ patterns | Every documented example | Mirrors `Docs/linq-queries.md` one-to-one |
 | Bulk insert | All three entry points | `SxmSql`, `SxmTransaction`, LINQ extension; batching, id/synchId population, rollback |
-| Bulk update/delete | LINQ bulk paths | `Set().UpdateAsync()` / `DeleteAsync()`, predicates, transaction scoping |
+| Bulk update/delete | LINQ bulk paths | `Set().UpdateAsync()` / `DeleteAsync()`, predicates, transaction scoping, and `SxmUpdateSet<T>` edge cases (duplicate column assignment, null assignment, expression setters, builder immutability) |
 | Schema migration | Supported changes + refusals | Column add, rename, drop; unsupported-change contracts; failed-migration retry |
 | Table drop | Dependency rules | Dependency refusal, drop ordering, recreate |
 | Connection management | Normal and contended paths | Worker leases, shared connections, lock contention, timeouts. Pool exhaustion not exercised |
 | Fail-fast validation | Registration and construction | Early validation errors |
+| Database options validation | Every rule in `SxmDatabaseOptionsValidator` | Errors vs. warnings, defaults accepted as valid, all errors reported together |
+| Database options taking effect | PRAGMA round-trips and connection interceptors | `journal_mode`, `synchronous`, `foreign_keys`, `temp_store`, `cache_size`, `busy_timeout`, `wal_autocheckpoint`, combined-option application, and `OnConnectionOpened` / `OnConnectionClosed` invocation and ordering |
+| Ad-hoc SQL execution | `RunStatementAsync` overload matrix | Inline SQL with no parameters, named (`Dictionary`) parameters and positional (`List`) parameters, typed and raw result shapes, SELECT/UPDATE/DELETE, and parameterization safety against injection payloads |
+| Named SQL statements | Statement-name resolution from `statements.json` | `select` / `insert` / `update` / `delete` definitions executed by name, named vs. positional binding, name-before-SQL resolution order, and unknown / null / empty name failures |
 | Exception contract | Public metadata surface | `SxmException` error codes, `Data["sxmErrorCode"]`, context, filters |
 | Initialization pattern | Startup contract | `StartInitialization` + `EnsureReadyAsync`, idempotency, concurrency, failure propagation |
 | Multi-database | Routing and isolation | Multiple databases, per-database transactions, LINQ, performance |
@@ -159,8 +168,8 @@ This table describes the **scope** of what each area exercises — the behaviour
 
 Each item below corresponds to a qualified entry in the scope table above.
 
-- **Cascading deletes (`ON DELETE CASCADE`)** — the library supports `ForeignKeyDeleteAction.Cascade` and emits the clause, but no test sets it or verifies that deleting a parent row removes its children. Multi-level FK *chains* are covered by `DropTableTests` (`GrandParent -> Parent -> Child`); what is missing is row-level cascade behaviour. Related: nothing asserts `PRAGMA foreign_keys=ON`, which cascades depend on
-- **Trigger execution verification** — triggers are tested for creation, removal, and body modification, but their firing behaviour and effects are not asserted
+- **Cascading deletes (`ON DELETE CASCADE`)** — the library supports `ForeignKeyDeleteAction.Cascade` and emits the clause, but no test sets it or verifies that deleting a parent row removes its children. Multi-level FK *chains* are covered by `DropTableTests` (`GrandParent -> Parent -> Child`); what is missing is row-level cascade behaviour. (`PRAGMA foreign_keys`, which cascades depend on, is now verified by `DatabaseOptionsEffectTests`.)
+- **Trigger execution verification**
 - **Index performance validation** — indexes are verified structurally *and* behaviourally (uniqueness is enforced, violations throw), but no test asserts that a query actually *uses* an index via `EXPLAIN QUERY PLAN`
 - **Custom column type converters** — only built-in type mappings are covered
 - **Database corruption recovery**

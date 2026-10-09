@@ -137,8 +137,8 @@
     /// access is handled.
     /// </para>
     /// <para>
-    /// Most applications should use <see cref="Default"/> and allow SQLiteXM to
-    /// select an appropriate mode automatically.
+    /// Most applications should leave <c>JournalModeOption</c> unset (<c>null</c>) and allow
+    /// SQLiteXM to select an appropriate mode automatically.
     /// </para>
     /// </remarks>
     public enum SxmJournalMode
@@ -180,33 +180,138 @@
         Off
     }
 
+    /// <summary>
+    /// Controls whether SQLiteXM performs a WAL (Write-Ahead Logging) checkpoint when a
+    /// connection is closing, and which checkpoint strategy it uses.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A checkpoint transfers data from the write-ahead log back into the main database file.
+    /// Without checkpointing, the WAL file grows indefinitely.
+    /// </para>
+    /// <para>
+    /// This option only takes effect when <c>JournalModeOption</c> is
+    /// <see cref="SxmJournalMode.Wal"/>. In any other journal mode the setting is ignored,
+    /// and <c>SxmDatabaseOptionsValidator</c> raises a warning if it is configured anyway.
+    /// </para>
+    /// <para>
+    /// Leaving <c>CheckPointConnection</c> unset (<c>null</c>) allows SQLite's own
+    /// automatic checkpointing to apply. See also <c>WalAutoCheckpoint</c>.
+    /// </para>
+    /// </remarks>
     public enum CheckPointConnection
     {
+        /// <summary>
+        /// Performs no checkpoint when a connection closes. SQLite's automatic
+        /// checkpointing still applies unless it has been separately disabled.
+        /// </summary>
         Off = 0,
 
+        /// <summary>
+        /// Performs a PASSIVE checkpoint each time a connection closes. A passive
+        /// checkpoint transfers as much of the WAL as it can without blocking other
+        /// readers or writers, and does not shrink the WAL file.
+        /// </summary>
         OnConnectionClose,
 
+        /// <summary>
+        /// Performs a TRUNCATE checkpoint when a connection closes, but only if the WAL
+        /// file has grown beyond <c>CheckPointWalMaxSize</c> (specified in KB). A truncate
+        /// checkpoint resets the WAL file to zero length, reclaiming disk space.
+        /// Requires <c>CheckPointWalMaxSize</c> to be set; otherwise no checkpoint occurs.
+        /// </summary>
         MaxSize
     }
 
+    /// <summary>
+    /// Controls the SQLite <c>PRAGMA synchronous</c> setting, which determines how
+    /// aggressively the database engine flushes written data to physical storage.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the central tradeoff between write speed and durability — that is, whether a
+    /// transaction reported as committed is guaranteed to survive a power loss or operating
+    /// system crash. Faster settings return from a commit before the data is known to be
+    /// safely on disk.
+    /// </para>
+    /// <para>
+    /// Enum values map directly to SQLite's documented <c>PRAGMA synchronous</c> values
+    /// (0 through 3) and are applied during connection initialization.
+    /// </para>
+    /// <para>
+    /// Most applications should leave <c>SynchronousModeOption</c> unset (<c>null</c>) and
+    /// accept the SQLite default, which is <see cref="Full"/> for most journal modes and
+    /// <see cref="Normal"/> under WAL.
+    /// </para>
+    /// </remarks>
     public enum SxmSynchronousMode
     {
+        /// <summary>
+        /// Writes are not synchronized to disk at all; the database hands data to the
+        /// operating system and continues without waiting.
+        /// This is the fastest setting and the least safe: a system crash or power loss can
+        /// corrupt or lose committed data. Use only for data you can afford to rebuild, or
+        /// where durability is guaranteed by some other mechanism.
+        /// </summary>
         Off = 0,
 
+        /// <summary>
+        /// Synchronizes at the most critical moments only. Under WAL this is generally safe
+        /// against application crashes and is the usual recommendation for WAL databases,
+        /// though a power loss may still lose the most recent transactions.
+        /// </summary>
         Normal,
 
+        /// <summary>
+        /// Synchronizes before each transaction is reported as committed, so a committed
+        /// transaction survives a power loss. This is SQLite's default for most journal modes
+        /// and the recommended balance of safety and performance.
+        /// </summary>
         Full,
 
+        /// <summary>
+        /// As <see cref="Full"/>, but additionally synchronizes the journal's containing
+        /// directory. This provides maximum durability at a significant cost to write
+        /// performance. Prefer <see cref="Full"/> unless absolute durability is required.
+        /// </summary>
         Extra
     }
 
 
+    /// <summary>
+    /// Controls the SQLite <c>PRAGMA temp_store</c> setting, which determines where
+    /// temporary tables and indices created during query execution are held.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// SQLite creates temporary storage for operations such as sorting, grouping, and some
+    /// subqueries. Holding these in memory is faster but increases the process's memory
+    /// footprint, which matters on mobile devices where available memory is constrained.
+    /// </para>
+    /// <para>
+    /// Enum values map directly to SQLite's documented <c>PRAGMA temp_store</c> values
+    /// (0 through 2) and are applied during connection initialization.
+    /// </para>
+    /// </remarks>
     public enum SxmTempStore
     {
+        /// <summary>
+        /// Defers to the default chosen when the SQLite library was compiled.
+        /// This is the behavior you get when <c>TempStore</c> is not explicitly configured.
+        /// </summary>
         Default = 0,
 
+        /// <summary>
+        /// Stores temporary tables and indices in a file on disk. This keeps memory usage
+        /// low at the cost of slower temporary operations.
+        /// </summary>
         File,
 
+        /// <summary>
+        /// Stores temporary tables and indices in memory. This speeds up sorting and
+        /// grouping but increases memory consumption, which can matter for large result
+        /// sets on memory-constrained devices.
+        /// </summary>
         Memory
     }
 

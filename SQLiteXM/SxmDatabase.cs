@@ -344,13 +344,13 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="entityTypes">Array of SxmEntity-derived types to register.</param>
         /// <remarks>
-        /// Call this once at app startup (e.g., in App.xaml.cs or MauiProgram.cs) after calling <see cref="InitializeAsync"/>.
+        /// Call this once at app startup (e.g., in App.xaml.cs or MauiProgram.cs) after calling <see cref="InitializeAsync(Stream, SxmDatabaseOptions)"/>.
         /// All tables, indexes, triggers, and foreign keys will be created/migrated.
         /// 
         /// This method replaces the legacy constructor-based schema initialization pattern.
         /// Entity classes registered via this method will not trigger schema creation on instantiation.
         /// </remarks>
-        /// <exception cref="InvalidOperationException">Thrown if SQLiteXM has not been initialized via <see cref="InitializeAsync"/>.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if SQLiteXM has not been initialized via <see cref="InitializeAsync(Stream, SxmDatabaseOptions)"/>.</exception>
         /// <exception cref="ArgumentException">Thrown if any type does not derive from <see cref="SxmEntity"/> or is abstract.</exception>
         [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically proven to derive from SxmEntity by the trimmer. Entity members are preserved via the [DynamicallyAccessedMembers] annotation on the SxmEntity base class, so this call is safe under trimming. Suppress IL2026, or call RegisterEntityAsync<TEntity>() if you prefer a statically verifiable alternative.")]
         public static Task RegisterEntitiesAsync(params Type[] entityTypes)
@@ -363,7 +363,7 @@ namespace SQLiteXM
         /// </summary>
         /// <typeparam name="TEntity">Concrete SxmEntity-derived type to register.</typeparam>
         /// <remarks>
-        /// Call this once per entity at application startup after <see cref="InitializeAsync"/> or
+        /// Call this once per entity at application startup after <see cref="InitializeAsync(Stream, SxmDatabaseOptions)"/> or
         /// <see cref="StartInitialization(Stream, SxmDatabaseOptions, Type[])"/>. It is safe to call repeatedly;
         /// already-registered types are ignored.
         /// </remarks>
@@ -432,7 +432,7 @@ namespace SQLiteXM
         /// </summary>
         /// <remarks>
         /// Entity classes and database operations require the ORM to be initialized
-        /// via <see cref="SxmDatabase.InitializeAsync"/> before use. This method provides a
+        /// via <see cref="SxmDatabase.InitializeAsync(Stream, SxmDatabaseOptions)"/> before use. This method provides a
         /// centralized fail-fast guard that throws a clear exception if initialization
         /// has not yet occurred.
         /// 
@@ -457,7 +457,6 @@ namespace SQLiteXM
         /// <param name="fileName">
         /// Absolute or relative path to the SQL definition file. Relative paths are resolved against <see cref="AppContext.BaseDirectory"/>.
         /// </param>
-        /// <param name="fileType">The format of the SQL definitions (json, xml, or txt).</param>
         /// <exception cref="ArgumentNullException">fileName is null or whitespace.</exception>
         /// <exception cref="FileNotFoundException">The resolved file cannot be found.</exception>
         private static string ResolveSqlStatementsFile(string fileName)
@@ -695,6 +694,8 @@ namespace SQLiteXM
         /// Store the supplied version into PRAGMA user_version.
         /// </summary>
         /// <param name="versionNumber">Version number to store.</param>
+        /// <param name="databaseName">Name of the database being stamped, used for diagnostic context when the operation fails.</param>
+        /// <param name="sxmConnection">The open <see cref="SxmConnection"/> on which the PRAGMA is executed.</param>
         /// <returns>A task that completes when the PRAGMA has been set.</returns>
         /// <remarks>
         /// SECURITY NOTE: This method uses string formatting instead of parameterization because
@@ -1043,8 +1044,6 @@ namespace SQLiteXM
         /// <summary>
         /// Create the _systemCloudSynchDescriptor table if required and insert a descriptor row for the created table.
         /// </summary>
-        /// <param name="key">Qualified key "database.table".</param>
-        /// <param name="tableNamesMap">Map used to track created table names per database.</param>
         /// <param name="sxmTransaction">Active transaction used to execute DDL and inserts.</param>
         private static async Task CreateCloudSyncDescriptorAsync(SxmUTransaction sxmTransaction)
         {

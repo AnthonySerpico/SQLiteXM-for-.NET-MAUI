@@ -471,7 +471,7 @@ namespace SQLiteXM
         /// <exception cref="ArgumentException">Thrown when the list contains a null element or an entity of a different runtime type.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="statementCount"/> is less than 1.</exception>
         /// <exception cref="InvalidOperationException">Thrown when an entity already has an id or the entity type's schema is not registered.</exception>
-        public Task<int> BulkInsertAsync<T>(IReadOnlyList<T> entities, int statementCount = SxmBulkInsertHelpers.DefaultBatchRows, CancellationToken cancellationToken = default)
+        public Task<int> BulkInsertAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(IReadOnlyList<T> entities, int statementCount = SxmBulkInsertHelpers.DefaultBatchRows, CancellationToken cancellationToken = default)
             where T : SxmEntity
         {
             ThrowIfDisposed();
@@ -771,6 +771,16 @@ namespace SQLiteXM
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Synchronously disposes the context by blocking on <see cref="DisposeAsync"/>.
+        /// </summary>
+        /// <remarks>
+        /// Prefer <c>await using</c> so that <see cref="DisposeAsync"/> is called instead.
+        /// This overload blocks the calling thread while the transaction is committed or rolled
+        /// back, which risks a deadlock if called on a UI thread or in any context with a
+        /// single-threaded synchronization context. It exists to satisfy <see cref="IDisposable"/>
+        /// for callers that cannot use <c>await using</c>.
+        /// </remarks>
         public void Dispose()
         {
             DisposeAsync().AsTask().GetAwaiter().GetResult();

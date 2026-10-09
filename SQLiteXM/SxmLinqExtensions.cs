@@ -2,6 +2,7 @@ using LinqToDB;
 using LinqToDB.Linq;
 using SQLiteXM;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -189,7 +190,7 @@ namespace SQLiteXM
         /// <param name="cancellationToken">Cancellation token checked between batches.</param>
         /// <returns>The number of rows inserted (0 when the context is faulted and the operation was skipped).</returns>
         /// <exception cref="InvalidOperationException">Thrown when the table was not obtained from an <see cref="SxmTransaction"/> or an entity already has an id.</exception>
-        public static Task<int> BulkInsertAsync<T>(this SxmTable<T> table, IReadOnlyList<T> entities, int batchRows = SxmBulkInsertHelpers.DefaultBatchRows, CancellationToken cancellationToken = default)
+        public static Task<int> BulkInsertAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(this SxmTable<T> table, IReadOnlyList<T> entities, int batchRows = SxmBulkInsertHelpers.DefaultBatchRows, CancellationToken cancellationToken = default)
             where T : SxmEntity
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
@@ -659,6 +660,9 @@ namespace SQLiteXM
 
         // ---------- forwarding IQueryable overloads ----------
 
+        /// <summary>
+        /// Asynchronously computes the average of the <see cref="double"/> values returned by the selector (forwarding overload for IQueryable).
+        /// </summary>
         public static Task<double> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, double>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -667,6 +671,10 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously computes the average of the nullable <see cref="double"/> values returned by the selector
+        /// (forwarding overload for IQueryable). Returns <c>null</c> when the sequence contains no non-null values.
+        /// </summary>
         public static Task<double?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -675,6 +683,9 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously computes the average of the <see cref="float"/> values returned by the selector (forwarding overload for IQueryable).
+        /// </summary>
         public static Task<float> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, float>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -683,6 +694,10 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously computes the average of the nullable <see cref="float"/> values returned by the selector
+        /// (forwarding overload for IQueryable). Returns <c>null</c> when the sequence contains no non-null values.
+        /// </summary>
         public static Task<float?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, float?>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -691,6 +706,9 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously computes the average of the <see cref="decimal"/> values returned by the selector (forwarding overload for IQueryable).
+        /// </summary>
         public static Task<decimal> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -699,6 +717,10 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.AverageAsync(query, selector, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously computes the average of the nullable <see cref="decimal"/> values returned by the selector
+        /// (forwarding overload for IQueryable). Returns <c>null</c> when the sequence contains no non-null values.
+        /// </summary>
         public static Task<decimal?> AverageAsync<T>(this IQueryable<T> query, Expression<Func<T, decimal?>> selector, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -1139,6 +1161,9 @@ namespace SQLiteXM
 
         // ---------- forwarding IQueryable overloads with predicate ----------
 
+        /// <summary>
+        /// Asynchronously returns the first element matching the predicate (forwarding overload for IQueryable).
+        /// </summary>
         public static Task<T> FirstAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -1147,6 +1172,9 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.FirstAsync(query, predicate, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously returns the first element matching the predicate, or default if none match (forwarding overload for IQueryable).
+        /// </summary>
         public static Task<T?> FirstOrDefaultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -1155,6 +1183,10 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.FirstOrDefaultAsync(query, predicate, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously returns the single element matching the predicate (forwarding overload for IQueryable).
+        /// Throws if no element or more than one element matches.
+        /// </summary>
         public static Task<T> SingleAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -1163,6 +1195,10 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.SingleAsync(query, predicate, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously returns the single element matching the predicate, or default if none match (forwarding overload for IQueryable).
+        /// Throws if more than one element matches.
+        /// </summary>
         public static Task<T?> SingleOrDefaultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -1171,6 +1207,9 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.SingleOrDefaultAsync(query, predicate, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously determines whether any element satisfies the predicate (forwarding overload for IQueryable).
+        /// </summary>
         public static Task<bool> AnyAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
             where T : class
         {
@@ -1179,6 +1218,9 @@ namespace SQLiteXM
             return LinqToDB.Async.AsyncExtensions.AnyAsync(query, predicate, cancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously counts the elements satisfying the predicate (forwarding overload for IQueryable).
+        /// </summary>
         public static Task<int> CountAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
             where T : class
         {

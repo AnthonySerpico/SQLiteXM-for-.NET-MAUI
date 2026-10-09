@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -51,7 +52,7 @@ namespace SQLiteXM
         /// <c>id</c> (from RETURNING) and <c>synchId</c> (pre-generated) to every entity.
         /// </summary>
         /// <returns>The number of rows inserted.</returns>
-        internal static async Task<int> InsertAsync<T>(QueryExecutor execute, IReadOnlyList<T> entities, int batchRows, CancellationToken cancellationToken)
+        internal static async Task<int> InsertAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(QueryExecutor execute, IReadOnlyList<T> entities, int batchRows, CancellationToken cancellationToken)
             where T : SxmEntity
         {
             if (execute == null) throw new ArgumentNullException(nameof(execute));

@@ -16,7 +16,7 @@ namespace SQLiteXM
     /// Callers acquire leases via <see cref="AcquireConnectionLease"/>; leases must be disposed
     /// (preferably via <c>await using</c>) to decrement the reference count. Shutdown is
     /// deterministic: <see cref="ShutdownAsync"/> marks an entry as closing, waits for the
-    /// reference count to reach zero (or the <paramref name="ct"/> to cancel), then destroys
+    /// reference count to reach zero (or the supplied <c>CancellationToken</c> to cancel), then destroys
     /// the underlying connection. <see cref="RunWorkersAsync"/> acquires leases for all worker
     /// delegates up-front to avoid races with shutdown and executes the workers concurrently
     /// using a shared connection instance.

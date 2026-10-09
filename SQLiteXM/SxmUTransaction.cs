@@ -138,7 +138,6 @@ namespace SQLiteXM
         /// Note: This method may throw if resource cleanup fails. However, the 
         /// public DisposeAsync/Dispose methods are guaranteed to catch and log 
         /// these exceptions to ensure safe object disposal.
-        /// </remarks>
         ///
         /// Important semantics:
         /// - Calling commitTransaction()/commitTransactionAsync() only ends the underlying SQLite transaction
@@ -146,7 +145,7 @@ namespace SQLiteXM
         /// - The SxmUTransaction instance may be reused after a commit to start new database transactions on the same
         ///   connection; the connection lock remains held until this transaction is disposed/finalized.
         /// - FinalizeTransactionAsync is intentionally best-effort and non-throwing to avoid throwing from finalizers.
-        /// </summary>
+        /// </remarks>
         protected async Task FinalizeTransactionAsync()
         {
             // Centralized, idempotent lock release helper.

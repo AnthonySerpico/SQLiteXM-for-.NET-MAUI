@@ -28,8 +28,6 @@ namespace SQLiteXM
 
         private static int _suspended; // 0 = active, 1 = suspended
 
-        private static CancellationTokenSource? _cts;
-
         /// <summary>
         /// Gets or sets the grace period to wait for in-flight operations to complete when the application is suspending.
         /// </summary>

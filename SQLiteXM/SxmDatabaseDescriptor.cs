@@ -75,7 +75,6 @@ namespace SQLiteXM
         /// <summary>
         /// Creates a new <see cref="SxmDatabaseDescriptor"/> for the database name provided by <see cref="SxmDatabaseDescriptor.DefaultDatabase"/>.
         /// </summary>
-        /// <param name="databaseFolder">Optional folder for the database file. Default is <see cref="Environment.SpecialFolder.MyDocuments"/>.</param>
         /// <remarks>
         /// The constructor avoids double-creation of descriptors, validates the database name, ensures the database file exists,
         /// registers the descriptor, and initializes logging for the database.
@@ -201,7 +200,7 @@ namespace SQLiteXM
         /// <returns>True if the database is registered; otherwise, false.</returns>
         /// <remarks>
         /// This method performs a case-sensitive lookup in the internal database descriptor collection.
-        /// A database is considered "defined" if it has been registered via <see cref="SxmDatabase.InitializeAsync"/>.
+        /// A database is considered "defined" if it has been registered via <see cref="SxmDatabase.InitializeAsync(System.IO.Stream, SxmDatabaseOptions)"/>.
         /// </remarks>
         internal static bool IsDatabaseDefined(string databaseName)
         {

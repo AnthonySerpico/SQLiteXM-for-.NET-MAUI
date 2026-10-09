@@ -23,6 +23,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlOrStatementName">The registered SQL statement name to execute.</param>
         /// <param name="sqlStatementParameters">Ordered parameters for the statement.</param>
+        /// <param name="statementDetails">Resolved statement metadata, supplying the <see cref="SqlStatementDetails.SqlStatementType"/> used to execute the query.</param>
         /// <param name="dbName">Optional database name. If null, the default database is used.</param>
         /// <returns>
         /// A task that resolves to a list of rows. Each row is represented as a
@@ -81,6 +82,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlOrStatementName">The registered SQL statement name to execute.</param>
         /// <param name="sqlStatementParameters">Ordered parameters for the statement.</param>
+        /// <param name="statementDetails">Resolved statement metadata, supplying the <see cref="SqlStatementDetails.SqlStatementType"/> used to execute the query.</param>
         /// <param name="sxmTransaction">An open <see cref="SxmUTransaction"/> to execute the statement within.</param>
         /// <returns>
         /// A task that resolves to a list of rows represented as dictionaries
@@ -129,6 +131,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlStatement">The raw SQL statement to execute.</param>
         /// <param name="sqlStatementParameters">Ordered parameters to bind to the statement.</param>
+        /// <param name="statementDetails">Resolved statement metadata, supplying the <see cref="SqlStatementDetails.SqlStatementType"/> used to execute the query.</param>
         /// <param name="dbName">Optional database name. If null, the default database is used.</param>
         /// <returns>
         /// A task that resolves to a list of rows. Each row is represented as a
@@ -185,6 +188,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="sqlStatement">The raw SQL statement to execute.</param>
         /// <param name="sqlStatementParameters">Ordered parameters to bind to the statement.</param>
+        /// <param name="statementDetails">Resolved statement metadata, supplying the <see cref="SqlStatementDetails.SqlStatementType"/> used to execute the query.</param>
         /// <param name="sxmTransaction">An open <see cref="SxmUTransaction"/> to execute the statement within.</param>
         /// <returns>
         /// A task that resolves to a list of rows represented as dictionaries

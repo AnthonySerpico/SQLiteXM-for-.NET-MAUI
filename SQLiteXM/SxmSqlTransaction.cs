@@ -25,7 +25,7 @@ namespace SQLiteXM
     /// - Use <see cref="CreateAsync(SxmConnection, int, CancellationToken)"/> when you already have an
     ///   <see cref="SxmConnection"/> (shared connections may require acquiring an async lock).
     /// - Prefer the async pattern with <c>await using</c> so the transaction can auto-commit on <see cref="DisposeAsync"/>.
-    /// - The synchronous <see cref="Dispose"/> path delegates to <see cref="DisposeAsync"/> and may block.
+    /// - The synchronous <see cref="IDisposable.Dispose"/> path delegates to <see cref="DisposeAsync"/> and may block.
     /// </remarks>
     internal class SxmSqlTransaction : SxmUTransaction
     {
@@ -136,6 +136,7 @@ namespace SQLiteXM
         /// Core async implementation for creating transactions with shared connections.
         /// This method handles the asynchronous lock acquisition for shared connections.
         /// </summary>
+        /// <param name="tx">The partially constructed <see cref="SxmSqlTransaction"/> that takes ownership of the connection lease once it is acquired.</param>
         /// <param name="conn">The shared <see cref="SxmConnection"/> instance.</param>
         /// <param name="waitMilliseconds">Maximum time to wait for the shared connection lock.</param>
         /// <param name="cancellationToken">Cancellation token to abort waiting for the lock.</param>

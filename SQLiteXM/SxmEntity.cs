@@ -21,7 +21,7 @@ namespace SQLiteXM
     /// <para>
     /// <strong>MAUI Data Binding Support:</strong>
     /// SxmEntity implements <see cref="INotifyPropertyChanged"/> to enable seamless integration
-    /// with .NET MAUI's data binding system. Use the <see cref="SetProperty{T}"/> helper method
+    /// with .NET MAUI's data binding system. Use the <see cref="SetProperty{T}(ref T, T, string?)"/> helper method
     /// in your property setters to automatically notify the UI when values change.
     /// </para>
     /// 
@@ -120,7 +120,7 @@ namespace SQLiteXM
     /// <list type="bullet">
     ///   <item>
     ///     <description>
-    ///     Construction validates that <see cref="SxmDatabase.InitializeAsync"/> has been called
+    ///     Construction validates that <see cref="SxmDatabase.InitializeAsync(System.IO.Stream, SxmDatabaseOptions)"/> has been called
     ///     and resolves the database name from <c>[Table(Database = "...")]</c> attribute
     ///     or the default database.
     ///     </description>
@@ -172,9 +172,9 @@ namespace SQLiteXM
         /// </param>
         /// <remarks>
         /// <para>
-        /// This method is typically called by the <see cref="SetProperty{T}"/> helper, which handles
+        /// This method is typically called by the <see cref="SetProperty{T}(ref T, T, string?)"/> helper, which handles
         /// both value comparison and notification. You can call this method directly for computed
-        /// properties or when you need to notify changes without using <see cref="SetProperty{T}"/>.
+        /// properties or when you need to notify changes without using <see cref="SetProperty{T}(ref T, T, string?)"/>.
         /// </para>
         /// <para>
         /// <strong>Example - Computed Property:</strong>
@@ -487,7 +487,7 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Resolve and cache the <see cref="TableAttribute.Database"/> for this entity's CLR type.
+        /// Resolve and cache the <c>Database</c> value of <see cref="TableAttribute"/> for this entity's CLR type.
         /// The first caller pays the reflection cost; subsequent callers return the cached value.
         /// </summary>
         /// <returns>The configured table/database name from <see cref="TableAttribute"/>, or <c>null</c> when not set.</returns>

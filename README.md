@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 386 tests |
+| Automated Test Coverage | 529 tests |
 
 ---
 
@@ -218,7 +218,7 @@ await using (var ctx = new SxmTransaction())
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **386 tests** covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **529 tests** covering real-world scenarios.
 
 ### Performance Benchmarks (from test suite)
 
@@ -234,7 +234,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-The `SQLiteXM.Tests` project contains **386 tests**, run against both **.NET 8** and **.NET 9** (772 test executions), all passing.
+The `SQLiteXM.Tests` project contains **529 tests**, run against both **.NET 8** and **.NET 9** (1,058 test executions), all passing.
 
 | Area | What is covered | Test class | Tests |
 |------|-----------------|------------|------:|
@@ -255,6 +255,9 @@ The `SQLiteXM.Tests` project contains **386 tests**, run against both **.NET 8**
 | | LINQ inside `SxmTransaction` — commit and rollback | `LinqTransactionTests` | 6 |
 | | Bulk `Set(...).UpdateAsync()` and `DeleteAsync()` | `BulkLinqOperationsTests` | 12 |
 | | Every example in [LINQ Queries](./Docs/linq-queries.md), executed as a test | `LinqQueryDocumentationTests` | 43 |
+| | `SxmUpdateSet<T>` edge cases — duplicate column assignment, null assignment, expression setters, builder immutability | `UpdateSetTests` | 10 |
+| **Raw SQL** | `RunStatementAsync` overloads — no parameters, named (`Dictionary`) parameters, positional (`List`) parameters, typed and raw result shapes, and parameterization safety against injection payloads | `RunStatementTests` | 18 |
+| | Named statements resolved from `SqlStatements.json` — named vs. positional binding, name-before-SQL resolution order, unknown and invalid statement names | `NamedStatementTests` | 15 |
 | **Transactions** | Commit, rollback, atomicity, ambient transaction enlistment and nesting | `TransactionTests` | 7 |
 | | Mixed LINQ + entity DML + SQL in one transaction; fault behavior; recovery; multiple commits | `TransactionPatternTests` | 14 |
 | | Mixed unit-of-work commit / rollback and faulted-context write skipping | `MixedUnitOfWorkTests` | 5 |
@@ -263,8 +266,10 @@ The `SQLiteXM.Tests` project contains **386 tests**, run against both **.NET 8**
 | | Cross-database performance and isolation; update-path correctness, transaction-batching speedup, and throughput reporting | `MultiDatabasePerformanceTests` | 12 |
 | **Connections & Concurrency** | Shared-connection locking, contention, and timeouts | `SharedConnectionTests` | 7 |
 | | `RunWorkersAsync` concurrent connection workers | `ConnectionManagerWorkerTests` | 7 |
+| **Database Options** | Every rule in `SxmDatabaseOptionsValidator` — errors vs. warnings, defaults accepted as valid, all errors reported together | `DatabaseOptionsValidatorTests` | 78 |
+| | Options actually taking effect — `journal_mode`, `synchronous`, `foreign_keys`, `temp_store`, `cache_size`, `busy_timeout`, `wal_autocheckpoint` PRAGMA round-trips, plus `OnConnectionOpened` / `OnConnectionClosed` interceptor invocation and ordering | `DatabaseOptionsEffectTests` | 22 |
 | **Error Handling** | `SxmException` contract — `ErrorCode`, `Data["sxmErrorCode"]`, `Context`, exception filters, wrapped vs. direct throws | `SxmExceptionContractTests` | 9 |
-| | **Total** | | **386** |
+| | **Total** | | **529** |
 
 ---
 

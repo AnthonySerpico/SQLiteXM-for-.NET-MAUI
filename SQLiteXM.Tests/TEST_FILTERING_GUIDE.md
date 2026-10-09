@@ -1,12 +1,12 @@
 # SQLiteXM Test Filtering Guide
 
-The suite currently discovers **386 tests per target framework** (`net8.0` and `net9.0`) across 26 test classes. Only one category trait is in use today:
+The suite currently discovers **529 tests per target framework** (`net8.0` and `net9.0`, so 1,058 executions in a full run) across 31 test classes. Only one category trait is in use today:
 
 - `[Trait("Category", "Performance")]` on `MultiDatabasePerformanceTests` (12 tests)
 
 Everything else is untagged, so `Category!=Performance` is the practical "fast suite" filter.
 
-> All commands must run in **Debug** configuration. The test project emits a build error for any other configuration, and a module initializer aborts the run if the assembly was compiled without `DEBUG`.
+> Both **Debug** and **Release** configurations are supported. The old Debug-only build gate and its runtime guard have been removed, and the test-support reset hooks now compile into both configurations. The examples below use Debug because it is the usual development loop; substitute `--configuration Release` wherever you need it.
 
 ## Test Execution Options
 
@@ -14,7 +14,7 @@ Everything else is untagged, so `Category!=Performance` is the practical "fast s
 ```powershell
 dotnet test --configuration Debug
 ```
-Runs 384 tests on `net8.0` and again on `net9.0` (~768 executions), including the 10 performance tests.
+Runs 529 tests on `net8.0` and again on `net9.0` (1,058 executions), including the 12 performance tests.
 
 ### 2. Run everything EXCEPT performance tests
 ```powershell
@@ -65,9 +65,11 @@ dotnet test --configuration Debug -t
 dotnet test --configuration Debug --filter "Category!=Performance&FullyQualifiedName!~LargeSchemaInitializationBenchmark"
 ```
 
-### Functional tests (373)
+### Functional tests (516)
 
-Everything else: entity initialization and CRUD, null handling, schema migration and evolution, column rename, table drop, transactions and transaction patterns, mixed unit of work, LINQ (basic, advanced, documented patterns, bulk operations), bulk insert, connection management, exception contract, initialization pattern, and multi-database functional/LINQ tests.
+That is 529 minus the 12 trait-tagged performance tests and the 1 untagged benchmark. If you filter only on `Category!=Performance`, you get 517 because the benchmark is not trait-tagged.
+
+Functional coverage spans: entity initialization and CRUD, null handling, schema migration and evolution, column rename, table drop, transactions and transaction patterns, mixed unit of work, LINQ (basic, advanced, documented patterns, bulk operations), bulk insert, connection management, exception contract, initialization pattern, database options (validation and runtime PRAGMA effects), raw SQL `RunStatementAsync` and named statements, `SxmUpdateSet` edge cases, and multi-database functional/LINQ tests.
 
 Per-class counts are listed in [README.md](README.md).
 
@@ -103,23 +105,39 @@ dotnet test --configuration Debug --filter "FullyQualifiedName~Linq"
 dotnet test --configuration Debug --filter "FullyQualifiedName~SchemaEvolution|FullyQualifiedName~Migration|FullyQualifiedName~ColumnRename|FullyQualifiedName~DropTable"
 ```
 
+### Database options (validation and runtime effects)
+```powershell
+dotnet test --configuration Debug --filter "FullyQualifiedName~DatabaseOptions"
+```
+
+### Raw SQL and named statements
+```powershell
+dotnet test --configuration Debug --filter "FullyQualifiedName~RunStatementTests|FullyQualifiedName~NamedStatementTests"
+```
+
 ### A single theory case
-`BulkInsertTests` and `NullHandlingTests` use `[Theory]` heavily, so a method filter runs every data case for that method:
+`BulkInsertTests`, `NullHandlingTests` and `DatabaseOptionsValidatorTests` use `[Theory]` heavily
 ```powershell
 dotnet test --configuration Debug --filter "FullyQualifiedName~BulkInsert_ShouldPopulateIds_MatchingDatabaseRows"
 ```
 
 ## Collection Behavior (why ordering matters)
 
+Parallelization is disabled **assembly-wide** by `[assembly: CollectionBehavior(DisableTestParallelization = true)]` in `AssemblyInfo.cs`. Collections therefore group classes by the shared state they mutate rather than by scheduling need.
+
 | Collection | Classes | Parallel? |
 |------------|---------|-----------|
 | `Sequential` | Most classes | No |
 | `MultiDatabase` | `MultiDatabaseTests`, `MultiDatabaseLinqTests`, `MultiDatabasePerformanceTests` | No |
-
-All three multi-database classes share the `MultiDatabase` collection because they call `SxmDatabase.ResetForTestingAsync()`, which mutates process-wide state.
 | `InitializationPattern` | `InitializationPatternTests`, `LargeSchemaInitializationBenchmarkTests` | No |
+| `DatabaseOptionsEffect` | `DatabaseOptionsEffectTests` | No |
+| `NamedStatement` | `NamedStatementTests` | No |
 
-All three collections set `DisableParallelization = true` because tests share one database file and, in the case of `MultiDatabase` and `InitializationPattern`, reset process-wide SQLiteXM state. Filtering down to a subset is always safe; the collections restore standard `TestBase` configuration when they finish.
+The four non-`Sequential` collections exist because their classes call `SxmDatabase.ResetForTestingAsync()` and reinitialize SQLiteXM with their own configuration, which mutates process-wide state. `DatabaseOptionsEffectTests` reinitializes with per-test `SxmDatabaseOptions`; `NamedStatementTests` reinitializes with its own generated statements file.
+
+Filtering down to a subset is always safe: each of these classes restores the standard `TestBase` configuration when it finishes.
+
+`SxmExceptionContractTests` declares no collection and runs in the default one. It asserts only on exception metadata and does not touch shared database state.
 
 ## Recommended Workflow
 
@@ -136,12 +154,15 @@ dotnet test --configuration Debug --filter "Category!=Performance"
 ### Before a release or PR merge
 ```powershell
 dotnet test --configuration Debug
+dotnet test --configuration Release
 ```
 
 ### When investigating performance
 ```powershell
 dotnet test --configuration Debug --filter "Category=Performance"
 ```
+
+Note that Release runs under JIT optimization, so timing figures from `MultiDatabasePerformanceTests` are not comparable across configurations.
 
 ## CI/CD Recommendations
 
@@ -152,7 +173,7 @@ dotnet test --configuration Debug --filter "Category=Performance"
 - Run the full suite including performance tests and record the benchmark output over time.
 
 ### Release validation
-- Always run the full suite on both target frameworks and confirm no performance regressions.
+- Always run the full suite on both target frameworks, in both Debug and Release, and confirm no performance regressions.
 
 ## Visual Studio Test Explorer
 
@@ -172,3 +193,5 @@ public class MyExpensiveTests : TestBase { }
 ```
 
 Then document the new trait here so the filter recipes stay accurate.
+
+If your new class resets or reinitializes SQLiteXM, give it its own collection definition with `DisableParallelization = true` and restore the standard `TestBase` configuration in `Dispose`, following `NamedStatementTests` as the pattern. Then run the full suite to confirm it does not leak state into the other classes.

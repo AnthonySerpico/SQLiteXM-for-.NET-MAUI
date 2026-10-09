@@ -20,7 +20,7 @@ public delegate void ConnectionClosedInterceptor();
 /// <para>
 /// <see cref="SxmDatabaseOptions"/> allows callers to control database initialization
 /// behavior without requiring direct interaction with low-level SQLite PRAGMA commands.
-/// These settings are applied during <see cref="SxmDatabase.InitializeAsync(string, SxmDatabaseOptions?, System.Threading.CancellationToken)"/>
+/// These settings are applied during <see cref="SxmDatabase.InitializeAsync(System.IO.Stream, SxmDatabaseOptions)"/>
 /// and are intended to provide a safe, high-level configuration surface.
 /// </para>
 /// <para>

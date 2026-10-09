@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<!-- Core library: multi-target for broader compatibility -->
-		<TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+		<TargetFrameworks>net8.0;net10.0</TargetFrameworks>
 
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
@@ -14,6 +14,17 @@
 		<EnableAotAnalyzer>true</EnableAotAnalyzer>
 		<EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
 
+		<!-- Ship XML documentation so consumers get IntelliSense tooltips from the package.
+			 This also makes the compiler validate <see cref="..."/> references, which are
+			 silently unchecked when documentation generation is off. -->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+		<!-- Treat documentation defects as build errors so the XML docs cannot silently
+			 regress as new public members are added. Covers missing member docs (CS1591),
+			 partially documented parameter lists (CS1573), unmatched param tags (CS1572),
+			 and broken cref references (CS1574). -->
+		<WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1573;CS1572;CS1574</WarningsAsErrors>
+
 		<!-- NuGet Package Metadata -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>SQLiteXM</PackageId>
@@ -24,7 +35,7 @@
 		<PackageProjectUrl>https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>sqlite;database;orm;maui;net8;net9;dotnet</PackageTags>
+		<PackageTags>sqlite;database;orm;maui;net8;net10;dotnet</PackageTags>
 		<PackageReleaseNotes>Release notes for every version are published at https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/releases</PackageReleaseNotes>
 		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
@@ -70,6 +81,10 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <PackageReference Include="linq2db" Version="6.3.0" />
-	  <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+
+	  <!-- 10.0.11 and later depend on SQLitePCLRaw 2.1.12, which bundles a native SQLite
+		   engine patched against CVE-2025-6965 (GHSA-2m69-gcr7-jv3q). Do not drop below
+		   10.0.11 without re-pinning SQLitePCLRaw.bundle_e_sqlite3 directly. -->
+	  <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
 	</ItemGroup>
 </Project>

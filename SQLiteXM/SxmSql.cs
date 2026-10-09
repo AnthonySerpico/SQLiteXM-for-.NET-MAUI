@@ -57,7 +57,7 @@ namespace SQLiteXM
                 }
 
                 string dtDdl = $"DROP TABLE IF EXISTS {quotedTable}";
-                await SxmDdlHelpers.PerformTableStatementAsync(dtDdl, dbName, sxmTransaction).ConfigureFalse();
+                await SxmDdlHelpers.PerformTableStatementAsync(dtDdl, sxmTransaction).ConfigureFalse();
 
                 await sxmTransaction.CommitTransactionAsync().ConfigureFalse();
             }
@@ -146,7 +146,7 @@ namespace SQLiteXM
         /// <exception cref="ArgumentException">Thrown when the list contains a null element or an entity of a different runtime type.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="statementCount"/> is less than 1.</exception>
         /// <exception cref="InvalidOperationException">Thrown when an entity already has an id or the entity type's schema is not registered.</exception>
-        public static async Task<int> BulkInsertAsync<T>(List<T> entities, int statementCount = SxmBulkInsertHelpers.DefaultBatchRows, string? databaseName = default, CancellationToken cancellationToken = default)
+        public static async Task<int> BulkInsertAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(List<T> entities, int statementCount = SxmBulkInsertHelpers.DefaultBatchRows, string? databaseName = default, CancellationToken cancellationToken = default)
             where T : SxmEntity
         {
             if (statementCount < 1) throw new ArgumentOutOfRangeException(nameof(statementCount), "statementCount must be at least 1.");

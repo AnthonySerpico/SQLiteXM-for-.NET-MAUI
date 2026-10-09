@@ -11,8 +11,9 @@ namespace SQLiteXM
         /// Execute a table-level DDL statement (for example, CREATE or DROP TABLE) in a newly-created transaction and commit it.
         /// </summary>
         /// <param name="sqlStatement">The DDL SQL text to execute.</param>
-        /// <param name="dbName">Optional database name. If omitted, the default database is used.</param>
-        internal static async Task PerformTableStatementAsync(string sqlStatement, string? dbName, SxmUTransaction sxmTransaction)
+        /// <param name="sxmTransaction">The <see cref="SxmUTransaction"/> the DDL statement is executed on. Its connection also supplies the database name used in failure diagnostics.</param>
+        /// <returns>A task that completes when the DDL statement has executed.</returns>
+        internal static async Task PerformTableStatementAsync(string sqlStatement, SxmUTransaction sxmTransaction)
         {
             try
             {
