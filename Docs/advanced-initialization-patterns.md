@@ -104,13 +104,13 @@ calls return immediately.
 
 ## Headless Startup Example - Android `BroadcastReceiver`s & iOS Background Tasks
 
-A application can be activated by the OS **without ever running your normal MAUI
+An application can be activated by the OS **without ever running your normal MAUI
 UI startup path** (`CreateMauiApp()`/`App()`) — for example, an Android
 `BroadcastReceiver` responding to a system event, or an iOS background
 refresh/processing task. If that headless code needs the database, it must
 independently ensure the database is initialized and ready for work.
 
-The examples below show only what's needed to make the database usable
+The Android and iOS examples below show only what's needed to make the database usable
 during headless startup — not the platform-specific mechanics of receiving
 the broadcast or background task itself.
 

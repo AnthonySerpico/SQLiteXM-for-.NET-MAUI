@@ -35,10 +35,14 @@ namespace SQLiteXM
     /// await SxmStore.PutAsync("fontSize", 14);
     /// await SxmStore.PutAsync("showTips", true);
     /// 
-    /// // Retrieve values
-    /// string theme = await SxmStore.GetAsync&lt;string&gt;("theme");
-    /// int fontSize = await SxmStore.GetAsync&lt;int&gt;("fontSize");
-    /// bool showTips = await SxmStore.GetAsync&lt;bool&gt;("showTips");
+    /// // Retrieve values (GetAsync always returns a nullable result)
+    /// string? theme = await SxmStore.GetAsync&lt;string&gt;("theme");
+    /// int? fontSize = await SxmStore.GetAsync&lt;int&gt;("fontSize");
+    /// bool? showTips = await SxmStore.GetAsync&lt;bool&gt;("showTips");
+    /// 
+    /// // Supply a fallback for a missing key, or use ?? to also cover a stored null
+    /// int? sizeOrMinusOne = await SxmStore.GetAsync&lt;int&gt;("fontSize", -1);
+    /// int sizeOrTwelve = await SxmStore.GetAsync&lt;int&gt;("fontSize") ?? 12;
     /// 
     /// // Check type
     /// Type? storedType = await SxmStore.GetTypeAsync("fontSize"); // returns typeof(int)
@@ -97,7 +101,7 @@ namespace SQLiteXM
                 {
                     throw new InvalidOperationException(
                         $"SxmStore cannot be used inside a transaction for database '{currentDbName}'. " +
-                        $"SxmStore operations are only allowed outside transactions or within the default database transaction.");
+                        $"SxmStore operations are only allowed outside transactions or within a transaction on the default database.");
                 }
             }
         }
@@ -159,7 +163,12 @@ namespace SQLiteXM
             return clrTypeName switch
             {
                 "String" => storedValue,
-                "Boolean" => storedValue == "1",
+                "Boolean" => storedValue switch
+                {
+                    "1" => true,
+                    "0" => false,
+                    _ => throw new FormatException($"Invalid stored Boolean value: '{storedValue}'.")
+                },
                 "Byte" => byte.Parse(storedValue, System.Globalization.CultureInfo.InvariantCulture),
                 "Int16" => short.Parse(storedValue, System.Globalization.CultureInfo.InvariantCulture),
                 "Int32" => int.Parse(storedValue, System.Globalization.CultureInfo.InvariantCulture),
@@ -167,7 +176,7 @@ namespace SQLiteXM
                 "Single" => float.Parse(storedValue, System.Globalization.CultureInfo.InvariantCulture),
                 "Double" => double.Parse(storedValue, System.Globalization.CultureInfo.InvariantCulture),
                 "Decimal" => decimal.Parse(storedValue, System.Globalization.CultureInfo.InvariantCulture),
-                "Char" => storedValue.Length > 0 ? storedValue[0] : '\0',
+                "Char" => storedValue.Length == 1 ? storedValue[0]: throw new FormatException("Invalid stored Char value."),
                 _ => throw new InvalidOperationException($"Unsupported CLR type: {clrTypeName}")
             };
         }
@@ -175,9 +184,12 @@ namespace SQLiteXM
         /// <summary>
         /// Stores or updates a key/value pair in the store.
         /// </summary>
-        /// <typeparam name="T">The type of the value. Must be one of the supported primitive types.</typeparam>
+        /// <typeparam name="T">
+        /// The type of the value. Must be one of the supported primitive types, or the nullable
+        /// form of one of them (for example int?).
+        /// </typeparam>
         /// <param name="key">The unique key for this value.</param>
-        /// <param name="value">The value to store.</param>
+        /// <param name="value">The value to store. May be null when T is a nullable type.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         /// <exception cref="ArgumentNullException">Thrown when key is null or empty.</exception>
         /// <exception cref="ArgumentException">Thrown when the value type is not supported.</exception>
@@ -186,6 +198,8 @@ namespace SQLiteXM
         /// </exception>
         /// <remarks>
         /// If the key already exists, its value will be updated (upsert behavior).
+        /// A null value is stored as SQL NULL under the underlying CLR type name, so it can later
+        /// be read back with the nullable form of that type (for example GetAsync&lt;int?&gt;).
         /// This operation participates in the ambient transaction if one exists for the default database.
         /// </remarks>
         public static async Task PutAsync<T>(string key, T value)
@@ -195,7 +209,9 @@ namespace SQLiteXM
 
             ValidateTransactionContext();
 
-            Type valueType = typeof(T);
+            // Nullable<T> is unwrapped so that nullable forms of the supported types (for example int?)
+            // are stored under the same CLR type name as their non-nullable counterparts.
+            Type valueType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
             ValidateSupportedType(valueType, nameof(value));
 
             // Convert value to string for storage
@@ -214,23 +230,20 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Retrieves a value from the store by its key.
+        /// Reads the raw value stored under the specified key and validates it against the requested type.
         /// </summary>
-        /// <typeparam name="T">The expected type of the value.</typeparam>
         /// <param name="key">The key to retrieve.</param>
+        /// <param name="requestedType">The CLR type the caller expects.</param>
         /// <returns>
-        /// The value associated with the key, or default(T) if the key does not exist.
+        /// A tuple indicating whether the key was found and, when found, the converted value
+        /// (which may be null if a null was stored).
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown when key is null or empty.</exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the stored type does not match the requested type T, or when called
-        /// inside a transaction for a non-default database.
+        /// Thrown when the stored type does not match the requested type, or when called inside a
+        /// transaction for a non-default database.
         /// </exception>
-        /// <remarks>
-        /// If the key exists but the stored type doesn't match T, an exception is thrown.
-        /// This helps catch type mismatches early rather than causing silent errors.
-        /// </remarks>
-        public static async Task<T?> GetAsync<T>(string key)
+        private static async Task<(bool Found, object? Value)> ReadAsync(string key, Type requestedType)
         {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key), "Key cannot be null or empty.");
@@ -239,30 +252,16 @@ namespace SQLiteXM
 
             __sxm_store__? entity;
 
-            // Check if we're in a transaction context
-            var ambient = SxmAmbientTransaction.Current;
-            if (ambient != null)
+            // SxmTransaction joins the ambient transaction when one exists, otherwise it creates a temporary one.
+            await using (SxmTransaction ctx = new SxmTransaction())
             {
-                // Use existing transaction
-                using var ctx = new SxmTransaction();
-                entity = await ctx.GetTable<__sxm_store__>()
-                    .FirstOrDefaultAsync(e => e.Key == key)
-                    .ConfigureFalse();
-            }
-            else
-            {
-                // Create a temporary transaction for the query
-                await using var ctx = new SxmTransaction();
-                entity = await ctx.GetTable<__sxm_store__>()
-                    .FirstOrDefaultAsync(e => e.Key == key)
-                    .ConfigureFalse();
+                entity = await ctx.GetTable<__sxm_store__>().FirstOrDefaultAsync(e => e.Key == key).ConfigureFalse();
             }
 
             if (entity == null)
-                return default(T);
+                return (false, null);
 
             // Validate that the stored type matches the requested type
-            Type requestedType = typeof(T);
             string requestedTypeName = requestedType.Name;
 
             if (!string.Equals(entity.CLR_Type, requestedTypeName, StringComparison.Ordinal))
@@ -272,8 +271,73 @@ namespace SQLiteXM
             }
 
             // Convert from string back to the original type
-            object? converted = ConvertFromString(entity.Value, entity.CLR_Type);
-            return (T?)converted;
+            return (true, ConvertFromString(entity.Value, entity.CLR_Type));
+        }
+
+        /// <summary>
+        /// Retrieves a value type from the store by its key.
+        /// </summary>
+        /// <typeparam name="T">
+        /// The expected value type of the stored value, specified in its non-nullable form (for example int).
+        /// </typeparam>
+        /// <param name="key">The key to retrieve.</param>
+        /// <param name="defaultValue">The value to return if the key does not exist. Defaults to null.</param>
+        /// <returns>
+        /// The value associated with the key, null if a null was stored under the key, or defaultValue
+        /// if the key does not exist.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown when key is null or empty.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the stored type does not match the requested type T, or when called
+        /// inside a transaction for a non-default database.
+        /// </exception>
+        /// <remarks>
+        /// The result is nullable so that a stored null and a missing key remain distinguishable:
+        /// a stored null always returns null, while a missing key returns defaultValue.
+        /// If the key exists but the stored type doesn't match T, an exception is thrown.
+        /// This helps catch type mismatches early rather than causing silent errors.
+        /// </remarks>
+        public static async Task<T?> GetAsync<T>(string key, T? defaultValue = null) where T : struct
+        {
+            (bool found, object? value) = await ReadAsync(key, typeof(T)).ConfigureFalse();
+
+            if (!found)
+                return defaultValue;
+
+            if (value == null)
+                return null;
+
+            return (T)value;
+        }
+
+        /// <summary>
+        /// Retrieves a reference type from the store by its key.
+        /// </summary>
+        /// <typeparam name="T">The expected reference type of the stored value (for example string).</typeparam>
+        /// <param name="key">The key to retrieve.</param>
+        /// <param name="defaultValue">The value to return if the key does not exist. Defaults to null.</param>
+        /// <returns>
+        /// The value associated with the key, null if a null was stored under the key, or defaultValue
+        /// if the key does not exist.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown when key is null or empty.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the stored type does not match the requested type T, or when called
+        /// inside a transaction for a non-default database.
+        /// </exception>
+        /// <remarks>
+        /// A stored null always returns null, while a missing key returns defaultValue.
+        /// If the key exists but the stored type doesn't match T, an exception is thrown.
+        /// This helps catch type mismatches early rather than causing silent errors.
+        /// </remarks>
+        public static async Task<T?> GetAsync<T>(string key, T? defaultValue = null) where T : class
+        {
+            (bool found, object? value) = await ReadAsync(key, typeof(T)).ConfigureFalse();
+
+            if (!found)
+                return defaultValue;
+
+            return (T?)value;
         }
 
         /// <summary>
@@ -300,23 +364,10 @@ namespace SQLiteXM
 
             __sxm_store__? entity;
 
-            // Check if we're in a transaction context
-            var ambient = SxmAmbientTransaction.Current;
-            if (ambient != null)
+            // SxmTransaction joins the ambient transaction when one exists, otherwise it creates a temporary one.
+            await using (SxmTransaction ctx = new SxmTransaction())
             {
-                // Use existing transaction
-                using var ctx = new SxmTransaction();
-                entity = await ctx.GetTable<__sxm_store__>()
-                    .FirstOrDefaultAsync(e => e.Key == key)
-                    .ConfigureFalse();
-            }
-            else
-            {
-                // Create a temporary transaction for the query
-                await using var ctx = new SxmTransaction();
-                entity = await ctx.GetTable<__sxm_store__>()
-                    .FirstOrDefaultAsync(e => e.Key == key)
-                    .ConfigureFalse();
+                entity = await ctx.GetTable<__sxm_store__>().FirstOrDefaultAsync(e => e.Key == key).ConfigureFalse();
             }
 
             if (entity == null)
@@ -362,23 +413,10 @@ namespace SQLiteXM
 
             __sxm_store__? entity;
 
-            // Check if we're in a transaction context
-            var ambient = SxmAmbientTransaction.Current;
-            if (ambient != null)
+            // SxmTransaction joins the ambient transaction when one exists, otherwise it creates a temporary one.
+            await using (SxmTransaction ctx = new SxmTransaction())
             {
-                // Use existing transaction
-                using var ctx = new SxmTransaction();
-                entity = await ctx.GetTable<__sxm_store__>()
-                    .FirstOrDefaultAsync(e => e.Key == key)
-                    .ConfigureFalse();
-            }
-            else
-            {
-                // Create a temporary transaction for the query
-                await using var ctx = new SxmTransaction();
-                entity = await ctx.GetTable<__sxm_store__>()
-                    .FirstOrDefaultAsync(e => e.Key == key)
-                    .ConfigureFalse();
+                entity = await ctx.GetTable<__sxm_store__>().FirstOrDefaultAsync(e => e.Key == key).ConfigureFalse();
             }
 
             if (entity == null)
@@ -412,23 +450,10 @@ namespace SQLiteXM
 
             bool exists;
 
-            // Check if we're in a transaction context
-            var ambient = SxmAmbientTransaction.Current;
-            if (ambient != null)
+            // SxmTransaction joins the ambient transaction when one exists, otherwise it creates a temporary one.
+            await using (SxmTransaction ctx = new SxmTransaction())
             {
-                // Use existing transaction
-                using var ctx = new SxmTransaction();
-                exists = await ctx.GetTable<__sxm_store__>()
-                    .AnyAsync(e => e.Key == key)
-                    .ConfigureFalse();
-            }
-            else
-            {
-                // Create a temporary transaction for the query
-                await using var ctx = new SxmTransaction();
-                exists = await ctx.GetTable<__sxm_store__>()
-                    .AnyAsync(e => e.Key == key)
-                    .ConfigureFalse();
+                exists = await ctx.GetTable<__sxm_store__>().AnyAsync(e => e.Key == key).ConfigureFalse();
             }
 
             return exists;
@@ -449,23 +474,10 @@ namespace SQLiteXM
         {
             ValidateTransactionContext();
 
-            // Check if we're in a transaction context
-            var ambient = SxmAmbientTransaction.Current;
-            if (ambient != null)
+            // SxmTransaction joins the ambient transaction when one exists, otherwise it creates a temporary one.
+            await using (SxmTransaction ctx = new SxmTransaction())
             {
-                // Use existing transaction
-                using var ctx = new SxmTransaction();
-                await ctx.GetTable<__sxm_store__>()
-                    .DeleteAsync()
-                    .ConfigureFalse();
-            }
-            else
-            {
-                // Create a temporary transaction for the delete
-                await using var ctx = new SxmTransaction();
-                await ctx.GetTable<__sxm_store__>()
-                    .DeleteAsync()
-                    .ConfigureFalse();
+                await ctx.GetTable<__sxm_store__>().DeleteAsync().ConfigureFalse();
             }
         }
     }

@@ -17,7 +17,7 @@ This guide explains how to configure and use multiple SQLite databases in SQLite
 
 ## Understanding Multiple Databases
 
-In SQLiteXM, databases are defined in the application's `SqlStatements.json` configuration file, typically named:
+In SQLiteXM, databases are defined in the application's configuration file, typically named:
 
 ```text
 SqlStatements.json
@@ -136,7 +136,6 @@ SQLiteXM initialization works exactly the same regardless of how many databases 
 
     // Start database initialization
     SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
-);
 ```
 
 SQLiteXM automatically creates or updates tables in the correct database based on each entity's configuration.
@@ -186,16 +185,7 @@ The `SqlStatements.json` file must define at least one database.
 }
 ```
 
-### Only One Default Database
-
-Exactly one database must be marked as the default database.
-
-```json
-{
-  "database": "MainDatabase",
-  "isDefault": true
-}
-```
+**Only One Default Database.** Exactly one database must be marked as the default database: ` "isDefault": true`
 
 ### Additional Databases
 
