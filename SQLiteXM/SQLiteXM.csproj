@@ -80,11 +80,11 @@
 		<None Include="icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
-	  <PackageReference Include="linq2db" Version="6.3.0" />
+	  <PackageReference Include="linq2db" Version="6.5.0" />
 
 	  <!-- 10.0.11 and later depend on SQLitePCLRaw 2.1.12, which bundles a native SQLite
 		   engine patched against CVE-2025-6965 (GHSA-2m69-gcr7-jv3q). Do not drop below
 		   10.0.11 without re-pinning SQLitePCLRaw.bundle_e_sqlite3 directly. -->
-	  <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+	  <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
 	</ItemGroup>
 </Project>
