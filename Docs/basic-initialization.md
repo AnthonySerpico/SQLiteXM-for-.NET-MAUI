@@ -1,18 +1,23 @@
 ## Basic Database Initialization
 
-This guide shows how to initialize the database from the normal UI launch path. 
-This is when a user launches the application normally, and the normal MAUI startup path 
-is executed.
+This guide covers standard database initialization—when a user manually opens your app and executes 
+the default MAUI startup lifecycle.
 
 
-> 💡 If you only ever access the database from the normal UI launch path, this guide is all you need. However, 
-if your app has multiple startup entry points — headless background work, BroadcastReceivers, background services, 
-etc. — and they need database access, you will, at some point, also need our [Advanced Initialization](./advanced-initialization-patterns.md) guide.
-But that can wait till later.
+> 📌 **Note:** If your app only starts by a user opening it, this guide is all you need. 
+However, if your app handles background entry points that can wake it automatically — like `BroadcastReceivers` 
+or background services — you will eventually need our [Advanced Initialization](./advanced-initialization-patterns.md) 
+guide. But that can wait till later.
+
 
 Below is a basic database initialization wrapped in an `async` static method.
 
 ```csharp
+    // Startup on iOS and Android is latency-critical and watchdog-enforced. Both 
+    // platforms kill apps that block the main thread too long at launch. Synchronous 
+    // initialization isn't merely slow, it's a crash risk. So initialization must overlap 
+    // with app startup.
+
     public static async Task StartDatabaseAsync()
     {
         // Create an array containing all the entities used by your application
@@ -22,7 +27,7 @@ Below is a basic database initialization wrapped in an `async` static method.
             typeof(Post)
         };
 
-        // Open the SqlStatements.json file located in in the 
+        // Open the SqlStatements.json file located in the 
         // `Resources/Raw` folder of the application package.
         Stream stream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
 
@@ -35,7 +40,7 @@ Below is a basic database initialization wrapped in an `async` static method.
 Initialization can be performed anywhere in your app. All that is required is that you initialize the
 database before using it. The question is, where should you call `StartDatabaseAsync()`?
 
-One option is to call it from `MauiProgram.CreateMauiApp()`; like this: `_ = StartDatabaseAsync();`
+One option is to call it from `MauiProgram.CreateMauiApp()`, like this: `_ = StartDatabaseAsync();`
 
 `StartDatabaseAsync` can be called anywhere in `CreateMauiApp`. This gets database initialization started  early in the application lifecycle, before the UI is even created. `SxmDatabase.StartInitialization` 
 returns immediately and runs in the background and does not block other startup work.

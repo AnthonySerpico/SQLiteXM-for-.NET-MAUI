@@ -1,10 +1,12 @@
 # Advanced Database Initialization Patterns
 
+> 📌 **Note:** If your app only starts by a user opening it, the simple guidance in [Basic Initialization](./basic-initialization.md) is enough. Read this guide only if your app handles background entry points that can wake it automatically — like `BroadcastReceivers` or background services.
+
+
 On .NET MAUI, an application can have multiple entry points into application code, and their 
 timing and ordering may be unpredictable.
 
 For example:
-
 
 - **Normal UI launch** — the user launches the application normally.
 - **Deep links / app links / universal links** — the OS launches or activates the application in response to a URI or associated web link.
@@ -15,12 +17,6 @@ For example:
 *Every one of them* may need the database to be ready before doing any work.
 
 This guide documents the pattern used by SQLiteXM for solving this problem: a single, process-wide, thread-safe “database ready” signal that any entry point can await, with a cheap, non-blocking fast path once initialization has completed.
-
-> 💡 If you only ever access the database from
-> the normal UI launch path, the simple
-> guidance in [Basic Initialization](./basic-initialization.md) is enough. Read this guide
-> if your app has multiple startup entry points (headless background work,
-> `BroadcastReceiver`s, background services, etc.).
 
 ---
 
