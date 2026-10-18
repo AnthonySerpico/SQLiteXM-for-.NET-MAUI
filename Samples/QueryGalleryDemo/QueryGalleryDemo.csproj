@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst;net10.0-windows10.0.19041.0</TargetFrameworks>
+		<TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
 
 		<!-- Note for MacCatalyst:
 		The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
@@ -77,5 +77,21 @@
 	<ItemGroup>
 		<ProjectReference Include="..\QueryGalleryDemo.SourceGenerators\QueryGalleryDemo.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
+
+	<!--
+	Packages the unpackaged win-x64 build into a zip after a Release build.
+
+	SkipPublishScript is the recursion guard: publish-windows.ps1 calls "dotnet publish"
+	on this same project, which builds it again and would re-enter this target forever.
+	The script passes -p:SkipPublishScript=true so the inner build skips it.
+	The TargetFramework condition keeps this from firing once per TFM on a multi-targeted build.
+	-->
+	<Target Name="PublishWindowsZip"
+			AfterTargets="PostBuildEvent"
+			Condition="'$(SkipPublishScript)' != 'true'
+					   And '$(Configuration)' == 'Release'
+					   And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)publish-windows.ps1&quot; -Configuration $(Configuration)" />
+	</Target>
 
 </Project>

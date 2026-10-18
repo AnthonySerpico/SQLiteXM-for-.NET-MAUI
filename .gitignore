@@ -372,3 +372,5 @@ BenchmarkSuite1/
 /Scripts
 /Samples/QueryGalleryDemo/run-publish-windows.ps1.txt
 /QueryGalleryDemo-win-x64.zip
+/DirectBindingDemo-win-x64.zip
+/RegistrationDemo-win-x64.zip

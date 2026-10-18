@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst;net10.0-windows10.0.19041.0</TargetFrameworks>
+		<TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net10.0-tizen</TargetFrameworks> -->
 
@@ -21,6 +21,14 @@
 
 		<!-- Windows-specific properties -->
 		<WindowsPackageType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
+
+		<!-- Self-contained win-x64: the publish output carries its own .NET runtime
+			 (coreclr.dll / hostfxr.dll) and Windows App SDK, so the zip runs on a
+			 machine with nothing preinstalled. -->
+		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+
+		<RuntimeIdentifiers Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">win-x64</RuntimeIdentifiers>
+		<SelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">true</SelfContained>
 
 		<!-- Display name -->
 		<ApplicationTitle>DirectBindingDemo</ApplicationTitle>
@@ -86,5 +94,21 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\..\SQLiteXM\SQLiteXM.csproj" />
 	</ItemGroup>
+
+	<!--
+	Packages the unpackaged win-x64 build into a zip after a Release build.
+
+	SkipPublishScript is the recursion guard: publish-windows.ps1 calls "dotnet publish"
+	on this same project, which builds it again and would re-enter this target forever.
+	The script passes -p:SkipPublishScript=true so the inner build skips it.
+	The TargetFramework condition keeps this from firing once per TFM on a multi-targeted build.
+	-->
+	<Target Name="PublishWindowsZip"
+			AfterTargets="PostBuildEvent"
+			Condition="'$(SkipPublishScript)' != 'true'
+					   And '$(Configuration)' == 'Release'
+					   And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+		<Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)publish-windows.ps1&quot; -Configuration $(Configuration)" />
+	</Target>
 
 </Project>
