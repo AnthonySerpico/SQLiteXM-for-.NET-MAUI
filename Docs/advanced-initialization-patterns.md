@@ -22,7 +22,7 @@ This guide documents the pattern used by SQLiteXM for solving this problem: a si
 
 ## The Requirements
 
-- Each of these entry points needs the ability to independently trigger database initialization when required.
+- Each of these entry points needs the ability to independently trigger database initialization.
 - We cannot make any assumptions about the order or timing in which these entry points will be called.
 - Database initialization must be safe to trigger from any entry point, at any time, concurrently, and must be guaranteed to execute only once per application process.
 - There must be a mechanism that guarantees that database-dependent work cannot proceed until database initialization has successfully completed. If initialization fails, the failure must be propagated to callers rather than allowing them to proceed as though the database were ready.
@@ -230,6 +230,7 @@ If you want to write your own initialization code that bypasses SQLiteXM's built
 ```csharp
     // Open the SqlStatements.json file from the application package
     using Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
+
     // Initialize the database
     await SxmDatabase.InitializeAsync(sqlStatementsStream, databaseOptions: null);
 
@@ -240,6 +241,7 @@ If you want to write your own initialization code that bypasses SQLiteXM's built
         typeof(Order), 
         typeof(Product)
     };
+
     // Register your application entities
     await SxmDatabase.RegisterEntitiesAsync(applicationEntities);
 ```

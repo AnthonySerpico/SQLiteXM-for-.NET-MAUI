@@ -310,7 +310,7 @@ public class LinqQueryDocumentationTests : TestBase
         {
             var table = ctx.GetTable<Customer>();
             var emailList = await table
-                .Select(c => c.Email)
+                .Select(c => c.Email!)
                 .ToListAsync();
 
             // Assert
@@ -728,7 +728,7 @@ public class LinqQueryDocumentationTests : TestBase
         {
             var table = ctx.GetTable<Customer>();
             var uniqueCities = await table
-                .Select(c => c.City)
+                .Select(c => c.City!)
                 .Distinct()
                 .ToListAsync();
 
@@ -1077,7 +1077,7 @@ public class LinqQueryDocumentationTests : TestBase
     /// <summary>
     /// Helper method to clean up test data.
     /// </summary>
-    private async Task CleanupTableDataAsync()
+    private new async Task CleanupTableDataAsync()
     {
         try
         {

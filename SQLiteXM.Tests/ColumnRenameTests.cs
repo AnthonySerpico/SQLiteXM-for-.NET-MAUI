@@ -115,24 +115,6 @@ public class ColumnRenameTests : TestBase
     }
 
     /// <summary>
-    /// Checks if a column exists in a table.
-    /// </summary>
-    private async Task<bool> ColumnExistsAsync(string tableName, string columnName)
-    {
-        using var conn = GetDirectConnection();
-        await conn.OpenAsync();
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"PRAGMA table_info({tableName})";
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            if (reader.GetString(1).Equals(columnName, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        return false;
-    }
-
-    /// <summary>
     /// Creates a test table directly with specified columns (bypassing entity registration).
     /// </summary>
     private async Task CreateTestTableDirectlyAsync(string tableName, params (string name, string type)[] columns)

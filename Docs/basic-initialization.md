@@ -1,23 +1,29 @@
 ## Basic Database Initialization
 
-This guide covers standard database initialization—when a user manually opens your app and executes 
-the default MAUI startup lifecycle.
+This guide covers standard database initialization — this is when a user manually opens your app and the default MAUI startup lifecycle executes.
 
+## Application Startup on Mobile
+
+Startup on iOS and Android is time-critical and watchdog-enforced. Both platforms kill apps that block the main thread too long 
+at launch. Synchronous initialization isn't merely slow, it's a crash risk. So initialization must overlap with app startup.
+
+For this reason, SQLiteXM implements a two-step asynchronous pattern for initialization:
+
+| Call | What it does |
+|---|---|
+| `StartInitialization` | Returns immediately. Database initialization is started in the background, overlapping with other startup work |
+| `EnsureReadyAsync` | An awaitable "is database ready?" signal — waits if initialization is still in progress, returns instantly if already finished |
 
 > 📌 **Note:** If your app only starts by a user opening it, this guide is all you need. 
 However, if your app handles background entry points that can wake it automatically — like `BroadcastReceivers` 
 or background services — you will eventually need our [Advanced Initialization](./advanced-initialization-patterns.md) 
 guide. But that can wait till later.
 
+---
 
 Below is a basic database initialization wrapped in an `async` static method.
 
 ```csharp
-    // Startup on iOS and Android is latency-critical and watchdog-enforced. Both 
-    // platforms kill apps that block the main thread too long at launch. Synchronous 
-    // initialization isn't merely slow, it's a crash risk. So initialization must overlap 
-    // with app startup.
-
     public static async Task StartDatabaseAsync()
     {
         // Create an array containing all the entities used by your application
@@ -40,15 +46,12 @@ Below is a basic database initialization wrapped in an `async` static method.
 Initialization can be performed anywhere in your app. All that is required is that you initialize the
 database before using it. The question is, where should you call `StartDatabaseAsync()`?
 
-One option is to call it from `MauiProgram.CreateMauiApp()`, like this: `_ = StartDatabaseAsync();`
-
-`StartDatabaseAsync` can be called anywhere in `CreateMauiApp`. This gets database initialization started  early in the application lifecycle, before the UI is even created. `SxmDatabase.StartInitialization` 
-returns immediately and runs in the background and does not block other startup work.
+One option is to call it from `MauiProgram.CreateMauiApp()`, like this: `_ = StartDatabaseAsync();`. This gets database initialization started 
+early in the application lifecycle. It's safe to call from anywhere in `CreateMauiApp`. 
 
 ## Verifying Database Initialization Has Completed
 
-After starting initialization, the next step before interacting with the database is to confirm that 
-initialization has completed. This is done by calling:
+After starting initialization, the next step is to confirm that initialization has completed. This is done by calling:
 
 ```csharp
 await SxmDatabase.EnsureReadyAsync();
@@ -58,14 +61,10 @@ await SxmDatabase.EnsureReadyAsync();
 completed, it returns immediately. It is not necessary to call `EnsureReadyAsync` immediately after calling 
 `StartInitialization`. All that is required is that you call it at least once before accessing the database.
 
-> ⚠️ If `StartInitialization` fails (for example, the SQL statements file can't be parsed, or the database can't be 
-> created/opened), `EnsureReadyAsync` will throw the exception that caused the failure. You should wrap your call to 
-`EnsureReadyAsync` in a try/catch block and handle exceptions appropriately.
-
-All that's left is to decide where to make the call. The general guidance is to 
-call `EnsureReadyAsync` as late as possible, just before you need to access the database. Let's assume you need the 
-database very early in the application lifecycle. In this case, there are two good options depending on *how* early 
-you need access.
+Where should you make this call? The general guidance is to call
+`EnsureReadyAsync` as late as possible, just before you need to access the database. Let's assume you need the 
+database very early in the application lifecycle. In this case, there are two good options depending on *how* 
+early you need access.
 
 One possibility is to call `EnsureReadyAsync` in the `OnStart` method of your `App` class.
 
@@ -78,6 +77,10 @@ protected async override void OnStart()
     await SxmDatabase.EnsureReadyAsync();
 }
 ```
+
+> ⚠️ If `StartInitialization` fails (for example, the SQL statements file can't be parsed, or the database can't be 
+> created/opened), `EnsureReadyAsync` will throw the exception that caused the failure. You should wrap your call to 
+`EnsureReadyAsync` in a try/catch block and handle exceptions appropriately.
 
 What if you need access even earlier, for example, you need the database during AppShell construction.
 In this case, you will need to initialize before `new AppShell()`. 
@@ -128,26 +131,9 @@ may break when trimming.
 ```
 
 **Your app is not broken.** SQLiteXM annotates the `SxmEntity` base class so that the trimmer preserves the
-public properties and constructors of every entity that derives from it. Your columns are safe.
-
-The warning appears because `StartInitialization` receives entities as a `Type[]`, and the trimmer cannot
-statically prove what the elements of that array are. It warns conservatively.
-
-To silence it, either add this to your `.csproj`:
-
-```xml
-<NoWarn>$(NoWarn);IL2026</NoWarn>
-```
-
-or suppress it on the method that calls `StartInitialization`:
-
-```csharp
-[UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "SQLiteXM preserves entity members via SxmEntity.")]
-public static async Task StartDatabaseAsync()
-```
-
-> 💡 If you would rather not suppress the warning, `SxmDatabase.RegisterEntityAsync<TEntity>()` registers one
-> entity at a time using a generic argument, which the trimmer can verify. Both approaches are equally safe.
+public properties and constructors of every entity that derives from it. Your columns are safe. The warning 
+appears because `StartInitialization` receives entities as a `Type[]`, and the trimmer cannot statically prove 
+what the elements of that array are. It warns conservatively.
 
 ---
 

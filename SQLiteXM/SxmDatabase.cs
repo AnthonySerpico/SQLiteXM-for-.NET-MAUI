@@ -7,7 +7,6 @@ using System.Xml.Linq;
 using static SQLiteXM.SxmDefines;
 using static SQLiteXM.SxmSerialization;
 using static SxmQueryProcessor;
-//using static LinqToDB.DataProvider.SqlServer.SqlServerProviderAdapter;
 
 namespace SQLiteXM
 {
@@ -166,7 +165,19 @@ namespace SQLiteXM
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"SQLiteXM database initialization failed: {ex}");
+                    // This method is fire-and-forget, so there is no caller to throw back to. The failure is
+                    // parked on DbReady and rethrown on the consumer's stack when they await EnsureReadyAsync().
+                    //
+                    // Attach context before faulting DbReady. Inner layers may already have faulted it with this
+                    // same exception instance; AddContext mutates ex.Data, so the context still reaches the
+                    // consumer in that case. It is not wrapped in SxmException because the exceptions that reach
+                    // here are typically non-wrappable (SqliteException, InvalidOperationException).
+                    ExceptionHelper.AddContext(ex, "Starting database initialization and entity registration");
+
+                    // Log through SxmLogging rather than Debug.WriteLine, which is compiled out of Release builds
+                    // and would leave a consumer who never awaits EnsureReadyAsync() with no record of the failure.
+                    SxmLogging.Log(ex, "SQLiteXM database initialization failed", nameof(StartInitialization));
+
                     DbReady.TrySetException(ex);
                 }
                 finally
@@ -352,14 +363,11 @@ namespace SQLiteXM
         /// </remarks>
         /// <exception cref="InvalidOperationException">Thrown if SQLiteXM has not been initialized via <see cref="InitializeAsync(Stream, SxmDatabaseOptions)"/>.</exception>
         /// <exception cref="ArgumentException">Thrown if any type does not derive from <see cref="SxmEntity"/> or is abstract.</exception>
-        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically proven to derive from SxmEntity by the trimmer. Entity members are preserved via the [DynamicallyAccessedMembers] annotation on the SxmEntity base class, so this call is safe under trimming. Suppress IL2026, or call RegisterEntityAsync<TEntity>() if you prefer a statically verifiable alternative.")]
-        public static Task RegisterEntitiesAsync(params Type[] entityTypes)
-            => RegisterEntitiesCoreAsync(entityTypes);
+        [RequiresUnreferencedCode("Entity types passed as System.Type[] cannot be statically proven to derive from SxmEntity by the trimmer. Entity members are preserved via the [DynamicallyAccessedMembers] annotation on the SxmEntity base class, so this call is safe under trimming. Suppress IL2026 at the call site.")]
+        public static Task RegisterEntitiesAsync(params Type[] entityTypes) => RegisterEntitiesCoreAsync(entityTypes);
 
         /// <summary>
-        /// Register a single entity type and create/migrate its schema. This overload is trimming and
-        /// Native AOT safe because the entity type is supplied as a generic argument, allowing the
-        /// trimmer to preserve all of its members.
+        /// RegisterEntityAsync&lt;TEntity&gt;() is deprecated and will be removed in a future release. Use <see cref="RegisterEntitiesAsync(Type[])"/> instead.
         /// </summary>
         /// <typeparam name="TEntity">Concrete SxmEntity-derived type to register.</typeparam>
         /// <remarks>
@@ -367,8 +375,8 @@ namespace SQLiteXM
         /// <see cref="StartInitialization(Stream, SxmDatabaseOptions, Type[])"/>. It is safe to call repeatedly;
         /// already-registered types are ignored.
         /// </remarks>
-        public static Task RegisterEntityAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>() where TEntity : SxmEntity
-            => RegisterEntitiesCoreAsync(new[] { typeof(TEntity) });
+        [Obsolete("RegisterEntityAsync<TEntity>() is deprecated and will be removed in a future release. Use RegisterEntitiesAsync(typeof(TEntity)) instead, which does the same work and registers any number of entity types in a single call.", DiagnosticId = "SXM0001")]
+        public static Task RegisterEntityAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>() where TEntity : SxmEntity => RegisterEntitiesCoreAsync(new[] { typeof(TEntity) });
 
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Entity types are validated at runtime to derive from SxmEntity (see SxmSchemaRegistration.RegisterEntitySchemaAsync), and SxmEntity carries a [DynamicallyAccessedMembers] annotation that propagates to all derived types, so their public properties and constructors are preserved by the trimmer. The warning arises only because the trimmer cannot statically prove the element type of the Type[] array.")]
         private static async Task RegisterEntitiesCoreAsync(Type[] entityTypes)

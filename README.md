@@ -19,7 +19,7 @@ The result is SQLiteXM.
 |------------|----------|
 | Designed specifically for .NET MAUI + SQLite | ✅ |
 | AOT/IL Trimming Safe — works with MAUI's default Release trimming, no linker configuration needed ([details](#aot-trimming)) | ✅ |
-| Mobile-optimized database initialization — idempotent, concurrency-safe startup from any entry point | ✅ |
+| Mobile-native database initialization — idempotent, concurrency-safe startup from any entry point | ✅ |
 | LINQ query support | ✅ |
 | Raw SQL Support | ✅ |
 | Automatic entity-to-table mapping | ✅ |

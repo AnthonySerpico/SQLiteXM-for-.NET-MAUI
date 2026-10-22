@@ -7,6 +7,7 @@
 //  - Every 9th entity adds [RequiredNotNull(0f)] on Field09.
 //  - Every 11th entity adds [RequiredNotNull(0)] on Field02.
 // </auto-generated>
+#nullable enable
 using SQLiteXM;
 using System;
 using System.Diagnostics.CodeAnalysis;

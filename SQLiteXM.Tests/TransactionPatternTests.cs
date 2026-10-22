@@ -117,7 +117,7 @@ public class TransactionPatternTests : TestBase
 
             // All three should be visible inside the transaction
             var count = ctx.GetTable<SimpleEntity>()
-                .Count(e => e.Name.StartsWith("Pattern1_"));
+                .Count(e => e.Name!.StartsWith("Pattern1_"));
             count.Should().BeGreaterThanOrEqualTo(3, "all inserts should be visible in transaction");
 
             // Explicitly rollback instead of committing
