@@ -193,21 +193,14 @@ Initialization is performed once, typically during application startup.
     // Start database initialization in the background
     // SQLiteXM takes ownership of 'sqlStatementsStream' and ensures proper disposal.
     SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
-
-    // Later, when database access is required:
-    await SxmDatabase.EnsureReadyAsync();
 ```
 
-Call `SxmDatabase.StartInitialization(...)` once, normally early in the application startup cycle. A good place is 
-in MauiProgram.cs right after calling `MauiApp.CreateBuilder()`. `StartInitialization` returns immediately 
+The call to `SxmDatabase.StartInitialization(...)` is normally made early in the application startup cycle. 
+A good place is in MauiProgram.cs right after calling `MauiApp.CreateBuilder()`. `StartInitialization` returns immediately 
 without blocking - initialization runs in the background.
 
-You can call `StartInitialization` from anywhere (including headless startup paths like Android `BroadcastReceiver`s or iOS
-background handlers). You do not need to synchronize calls to `StartInitialization` either - SQLiteXM handles this internally. 
-And it is safe to call multiple times and concurrently; only the first call actually performs initialization. 
-Subsequent calls return immediately.
-
-See the **[Basic Initialization](./basic-initialization.md)** guide for details.
+You can call `StartInitialization` from anywhere. And it is safe to call multiple times and concurrently; 
+only the first call actually performs initialization. 
 
 ## What's Happening?
 
@@ -220,6 +213,7 @@ Initialization performs several important tasks.
 - Registers which entity types to use
 - Inspects entity metadata
 - Creates or updates the database schema
+- See the **[Basic Initialization](./basic-initialization.md)** guide for more details.
 
 ## Database Options
 
@@ -238,10 +232,10 @@ Before the *first* use of the database, anywhere in your app, be sure to call:
 await SxmDatabase.EnsureReadyAsync();
 ```
 
-`EnsureReadyAsync` only needs to be called once. It waits for the database initialization task started by `StartInitialization` 
-to complete, guaranteeing that the database is fully initialized and ready for use.
-It can be called multiple times and concurrently if needed. Once initialization has completed, subsequent 
-calls return immediately.
+`EnsureReadyAsync` waits for the database initialization task started by `StartInitialization` to complete, 
+guaranteeing that the database is fully initialized and ready for use. While `EnsureReadyAsync` only needs 
+to be called once, it is safe to call multiple times and concurrently. Once initialization has completed, 
+subsequent calls return immediately.
 
 `EnsureReadyAsync` is safe to call from UI-thread async code, view models, or background services alike. You
 decide *where* in your app it makes the most sense to await initialization.
