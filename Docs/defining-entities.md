@@ -164,7 +164,7 @@ public DateTime AddedOn { get; set; }
 
 This is useful when you want to override the default storage type chosen by SQLiteXM.
 
-For complete details on data type mapping and supported types, see the [SQLiteXM Data Type](./SUPPORTED_DATA_TYPES.md) guide.
+For complete details on data type mapping and supported types, see the [SQLiteXM Data Type](./supported-data-types.md) guide.
 
 ---
 
@@ -348,7 +348,7 @@ Use `[RequiredNotNull]` when a property must not be null and should have a non-n
 [Table(IsColumnAttributeRequired = false)]
 public class Settings : SxmEntity
 {
-	[RequiredNotNull(defaultValue: "Not Set")]
+	[RequiredNotNull(DefaultValue = "Not Set")]
 	public string Theme { get; set; } = string.Empty;
 }
 ```
@@ -394,7 +394,7 @@ Use `[ForeignKey]` to declare a relationship to another table.
 [Table(IsColumnAttributeRequired = false)]
 public class Order : SxmEntity
 {
-	[ForeignKey(foreignTable: nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
+	[ForeignKey(ForeignTable = nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
 	public long CustomerId { get; set; }
 }
 ```
@@ -642,5 +642,6 @@ Key points:
 
 Entities are registered during initialization by `SxmDatabase.StartInitialization(...)`
 
-For a basic workflow overview, see **GettingStarted.md**.
-For multi-database setup, see **MULTI_DATABASES.md**.
+For a basic workflow overview, see [Getting Started](./getting-started.md).
+
+For multi-database setup, see [Multiple Databases](./multiple-databases.md).

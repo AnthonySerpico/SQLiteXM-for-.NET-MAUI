@@ -234,7 +234,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-The `SQLiteXM.Tests` project contains **529 tests**, run against both **.NET 8** and **.NET 9** (1,058 test executions), all passing.
+The `SQLiteXM.Tests` project contains **529 tests**, run against both **.NET 8** and **.NET 10** (1,058 test executions), all passing.
 
 | Area | What is covered | Test class | Tests |
 |------|-----------------|------------|------:|
@@ -348,7 +348,7 @@ SQLiteXM removes that burden:
   `DynamicallyAccessedMembers`, so the trimmer keeps your entity classes intact without any attributes, linker 
   files, or project changes on your side.
 - **Works with MAUI's defaults.** Create a MAUI project, add SQLiteXM, define your entities, build in Release. 
-  Nothing to configure. Verified against MAUI's default Release trimming on .NET 8 and .NET 9.
+  Nothing to configure. Verified against MAUI's default Release trimming on .NET 8 and .NET 10.
 
 As with any MAUI project, run your Release build on a device or emulator before shipping — Debug builds do not 
 trim, so that is the only place trimming behavior can be observed.

@@ -118,7 +118,7 @@ Key points:
 - **One type per call.** All entities must be of exactly type `T`; a mixed list throws `ArgumentException` before any write.
 - **Same post-insert state as `SaveAsync`.** After the call each entity's `id` and `synchId` are populated from the database. Values changed by `AFTER INSERT` triggers are not read back.
 - **No self-inserting triggers.** `BulkInsertAsync` is not supported on tables with INSERT triggers that add rows back into the same table. Use `SaveAsync()` for those entities instead.
-- **`statementCount`** controls
+- **`statementCount`** controls how many rows are written per `INSERT` statement. It defaults to 20, must be at least 1 (`ArgumentOutOfRangeException` otherwise), and is automatically capped so that no single statement binds more than 1000 parameters - larger statements bind measurably slower in `Microsoft.Data.Sqlite`. Fewer, larger statements mean fewer round trips; the default suits most workloads, so only change it if measurement shows a benefit.
 - **Its own transaction, always.** `SxmSql.BulkInsertAsync` never joins an ambient `SxmTransaction`. To bulk insert as part of a larger unit of work, use the transactional form described in [Bulk inserts inside a transaction](#bulk-inserts-inside-a-transaction).
 - **`databaseName`** is optional; when omitted, the default database is used.
 
@@ -260,7 +260,7 @@ static Task<List<Dictionary<string, object?>>> RunStatementAsync(string sqlOrSta
 
 > 💡 Every overload accepts an optional trailing `databaseName`. Omit it to run against the default database; provide it to target a specific named database. 
 
->  This is covered fully in: ➡️ [Multi-Database Support](./multi-database.md).
+>  This is covered fully in: ➡️ [Multi-Database Support](./multiple-databases.md).
 
 ### Using named SQL statements with `SxmSql.RunStatementAsync`
 

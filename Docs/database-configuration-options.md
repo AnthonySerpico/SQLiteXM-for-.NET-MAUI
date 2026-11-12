@@ -48,27 +48,26 @@ If no options are supplied, SQLiteXM uses its default configuration and SQLite's
 ## Database Options
 
 
-The following table lists all available options in `SxmDatabaseOptions`, 
-including advanced settings and lifecycle hooks.
+The following table lists all options in `SxmDatabaseOptions` and their defaults, including connection lifecycle hooks.
 
 
 | Option                    | Default                                   | Typical Recommendation                                                                       |
-| ------------------------- | ----------------------------------------- |  -------------------------------------------------------------------------------------------- |
-| `ForeignKeys`             | SQLite default                            | **`true`** for applications using foreign keys                                               |
-| `JournalModeOption`       | SQLite default                            | **`Wal`** for most applications                                                              |
-| `SynchronousModeOption`   | SQLite default                            | **`Normal`** when using WAL                                                                  |
-| `BusyTimeout`             | SQLite default                            | **3–5 seconds** for most applications                                                        |
-| `CacheSize`               | SQLite default                            | Start with **2–4 MB** and tune as needed                                                     |
-| `WalAutoCheckpoint`       | SQLite default                            | **250–500 pages** for many mobile applications                                               |
-| `TempStore`               | SQLite default                            | Usually leave at default; `Memory` can improve temporary operations when memory is available |
-| `CheckPointConnection`    | SQLite default                            | Usually leave at default unless you need explicit checkpoint control                         |
-| `CheckPointWalMaxSize`    | SQLite default                            | Configure when using `CheckPointConnection.MaxSize`                                          |
-| `EnableConnectionPooling` | Microsoft.Data.Sqlite default-**`true`**        | **`true`** for most applications                                                       |
-| `DefaultTimeout`          | Microsoft.Data.Sqlite default-**`30 seconds`**  |**30 seconds** is a reasonable starting point for general application workloads         |
-| `EnableLogging`           | `false`                                    | **`true` during development;** `false` if production logging is not desired                  |
-| `DatabaseFolderOverride`  | LocalApplicationData                      | Usually leave at the default application-local location                                      |
-| `OnConnectionOpened(...)` | Not registered                            | Use only when connection-specific initialization, verification, or custom logic is required  |
-| `OnConnectionClosed(...)` | Not registered                            | Use only when connection-close handling, cleanup, or instrumentation is required             |
+| ------------------------- | ----------------------------------------- |  --------------------------------------------------------------------------------------------|
+| `ForeignKeys`             | `false` (Off)                             | **`true`** for applications using foreign keys                                               |
+| `JournalModeOption`       | `SxmJournalMode.Delete`                   | **`Wal`** for most applications                                                              |
+| `SynchronousModeOption`   | `SxmSynchronousMode.Full`                 | **`Normal`** when using WAL                                                                  |
+| `BusyTimeout`             | `0` Milliseconds                          | **3–5 seconds** for most applications                                                        |
+| `CacheSize`               | `2000` (2000 KB)                          | Start with **2–4 MB** and tune as needed                                                     |
+| `WalAutoCheckpoint`       | `1000` (1000 Pages)                       | **250–500 pages** for many mobile applications                                               |
+| `TempStore`               | `SxmTempStore.Default`                    | Usually leave at default; `Memory` can improve temporary operations when memory is available |
+| `CheckPointConnection`    | `CheckPointConnection.Off`                | Usually leave at default unless you need explicit checkpoint control                         |
+| `CheckPointWalMaxSize`    | `null` (No Value Set)                     | Configure when using `CheckPointConnection.MaxSize`                                          |
+| `EnableConnectionPooling` | `true`                                    | **`true`** for most applications                                                       |
+| `DefaultTimeout`          | `30 seconds`                              |**30 seconds** is a reasonable starting point for general application workloads         |
+| `EnableLogging`           | `false`                                   | **`true` during development;** `false` if production logging is not desired                 |
+| `DatabaseFolderOverride`  | LocalApplicationData                      | Usually leave at the default application-local location                                     |
+| `OnConnectionOpened(...)` | None registered                           | Use only when connection-specific initialization, verification, or custom logic is required |
+| `OnConnectionClosed(...)` | None registered                           | Use only when connection-close handling, cleanup, or instrumentation is required            |
 
 
 
@@ -165,7 +164,7 @@ It is provided as a reference and is not intended as a recommended configuration
 
 **Property:** `ForeignKeys`  
 **Type:** `bool?`  
-**Default:** `null` (SQLite default is OFF)
+**Default:** `false` (Off) 
 
 Enables or disables foreign key constraint enforcement.
 
@@ -186,7 +185,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `JournalModeOption`  
 **Type:** `SxmJournalMode?`  
-**Default:** `null`
+**Default:** `SxmJournalMode.Delete` 
 
 Controls SQLite's journaling mechanism for transaction durability and concurrency.
 
@@ -221,7 +220,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `SynchronousModeOption`  
 **Type:** `SxmSynchronousMode?`  
-**Default:** `null`
+**Default:** `SxmSynchronousMode.Full`  
 
 Controls how aggressively SQLite syncs data to disk.
 
@@ -250,7 +249,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `BusyTimeout`  
 **Type:** `long?` (milliseconds)  
-**Default:** `null`
+**Default:** `0`
 
 How long to wait when the database is locked before returning SQLITE_BUSY.
 
@@ -272,7 +271,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `CacheSize`  
 **Type:** `long?` (kilobytes)  
-**Default:** `null`
+**Default:** `2000` (2000 KB) 
 
 Amount of memory SQLite uses for caching database pages.
 
@@ -298,7 +297,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `WalAutoCheckpoint`  
 **Type:** `long?` (pages)  
-**Default:** `null` (SQLite default is 1000)
+**Default:** `1000` (1000 Pages) 
 
 Number of pages in WAL file before automatic checkpoint.
 
@@ -320,7 +319,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `TempStore`  
 **Type:** `SxmTempStore?`  
-**Default:** `null`
+**Default:** `SxmTempStore.Default` 
 
 Where SQLite stores temporary tables and indices.
 
@@ -350,7 +349,7 @@ var options = new SxmDatabaseOptions
 **Type:** `bool?`  
 **Default:** `true`
 
-Enables reuse of database connections instead of creating new ones.
+Enables reuse of database connections instead of creating new ones. Used by Microsoft.Data.Sqlite.
 
 ```csharp
 var options = new SxmDatabaseOptions
@@ -376,7 +375,7 @@ var options = new SxmDatabaseOptions
 **Type:** `int?` (seconds)  
 **Default:** `null`
 
-Default command timeout for database operations.
+Default command timeout for database operations. Used by Microsoft.Data.Sqlite.
 
 ```csharp
 var options = new SxmDatabaseOptions
@@ -412,7 +411,7 @@ SQLiteXM provides fine-grained control over when and how WAL checkpointing occur
 
 **Property:** `CheckPointConnection`  
 **Type:** `CheckPointConnection?`  
-**Default:** `null`
+**Default:** `CheckPointConnection.Off`
 
 Controls automatic checkpoint behavior.
 
@@ -436,7 +435,7 @@ var options = new SxmDatabaseOptions
 
 **Property:** `CheckPointWalMaxSize`  
 **Type:** `int?` (kilobytes)  
-**Default:** `null`
+**Default:** `null` (No Value Set) 
 
 Maximum WAL file size before triggering a checkpoint (used with `CheckPointConnection.MaxSize`).
 

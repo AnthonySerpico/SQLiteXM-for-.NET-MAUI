@@ -323,9 +323,11 @@ public partial class CustomerViewModel : ObservableObject
 		IsSaving = true;
 		try
 		{
-			using var ctx = await SxmTransaction.CreateAsync();
-			Customer = await ctx.GetTable<Customer>()
-				.FirstOrDefaultAsync(c => c.id == id);
+			await using (SxmTransaction ctx = new SxmTransaction())
+			{
+				Customer = await ctx.GetTable<Customer>()
+				    .FirstOrDefaultAsync(c => c.id == id);
+			}
 
 			StatusMessage = "Customer loaded";
 		}
