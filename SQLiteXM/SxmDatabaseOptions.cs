@@ -14,6 +14,53 @@ public delegate void ConnectionOpenedInterceptor(Microsoft.Data.Sqlite.SqliteCon
 public delegate void ConnectionClosedInterceptor();
 
 /// <summary>
+/// Delegate invoked after SQLiteXM has finished creating or synchronizing the schema of one entity table.
+/// </summary>
+/// <param name="args">Details about the table that was processed and the DDL statements that were executed.</param>
+public delegate void SchemaSynchronizedInterceptor(SxmSchemaSynchronizedEventArgs args);
+
+/// <summary>
+/// Describes a single schema create/synchronize pass for one entity table.
+/// </summary>
+/// <remarks>
+/// <para>
+/// An instance is delivered to every handler registered with
+/// <see cref="SxmDatabaseOptions.OnSchemaSynchronized"/> once SQLiteXM has compared an entity class
+/// against its table and executed whatever DDL (Data Definition Language - CREATE/ALTER/DROP statements)
+/// was required. When the table already matched the entity, <see cref="DdlStatements"/> is empty.
+/// </para>
+/// </remarks>
+public sealed class SxmSchemaSynchronizedEventArgs
+{
+    internal SxmSchemaSynchronizedEventArgs(string databaseName, string tableName, bool tableCreated, IReadOnlyList<string> ddlStatements, TimeSpan duration)
+    {
+        DatabaseName = databaseName;
+        TableName = tableName;
+        TableCreated = tableCreated;
+        DdlStatements = ddlStatements;
+        Duration = duration;
+    }
+
+    /// <summary>Name of the database that owns the table.</summary>
+    public string DatabaseName { get; }
+
+    /// <summary>Name of the table (always the entity's CLR class name).</summary>
+    public string TableName { get; }
+
+    /// <summary>
+    /// <c>true</c> when the table did not exist and was created; <c>false</c> when an existing
+    /// table was synchronized with the entity definition.
+    /// </summary>
+    public bool TableCreated { get; }
+
+    /// <summary>The exact DDL statements SQLiteXM executed, in execution order.</summary>
+    public IReadOnlyList<string> DdlStatements { get; }
+
+    /// <summary>How long the create/synchronize pass took.</summary>
+    public TimeSpan Duration { get; }
+}
+
+/// <summary>
 /// Represents configuration options used when initializing a SQLiteXM database.
 /// </summary>
 /// <remarks>
@@ -115,6 +162,7 @@ internal static void ResetForTesting()
 
     private List<ConnectionOpenedInterceptor>? ConnectionOpenedInterceptors { get; set; }
     private List<ConnectionClosedInterceptor>? ConnectionClosedInterceptors { get; set; }
+    private List<SchemaSynchronizedInterceptor>? SchemaSynchronizedInterceptors { get; set; }
 
     /// <summary>
     /// Gets the SQLite journal mode enum that should be applied during initialization.
@@ -252,6 +300,59 @@ internal static void ResetForTesting()
             ConnectionClosedInterceptors ??= new List<ConnectionClosedInterceptor>();
             ConnectionClosedInterceptors.Add(connectionClosedInterceptor);
         }
+    }
+
+    /// <summary>
+    /// Adds a handler that is invoked after an entity table has been created or synchronized.
+    /// </summary>
+    /// <param name="schemaSynchronizedInterceptor">The handler to register.</param>
+    /// <remarks>
+    /// <para>
+    /// SQLiteXM compares each registered entity class with its table during
+    /// <see cref="SxmDatabase.RegisterEntitiesAsync(Type[])"/> (and during initialization when entity
+    /// types are supplied up front). Whatever DDL it executes to bring the table in line - CREATE TABLE,
+    /// ADD COLUMN, RENAME COLUMN, DROP COLUMN, CREATE/DROP INDEX, CREATE TRIGGER - is reported to the
+    /// registered handlers through <see cref="SxmSchemaSynchronizedEventArgs"/>, one call per table.
+    /// </para>
+    /// <para>
+    /// This is useful for diagnostics, migration audit logs, or for showing users exactly how their
+    /// database changed after an upgrade. Handlers run synchronously on the registering thread; an
+    /// exception thrown by a handler fails the registration of that entity.
+    /// </para>
+    /// <para>
+    /// This method is thread-safe. Multiple handlers are invoked in the order they were added.
+    /// </para>
+    /// </remarks>
+    public void OnSchemaSynchronized(SchemaSynchronizedInterceptor schemaSynchronizedInterceptor)
+    {
+        lock (_interceptorLock)
+        {
+            SchemaSynchronizedInterceptors ??= new List<SchemaSynchronizedInterceptor>();
+            SchemaSynchronizedInterceptors.Add(schemaSynchronizedInterceptor);
+        }
+    }
+
+    /// <summary>
+    /// Invokes any schema-synchronized interceptors associated with a database name.
+    /// </summary>
+    /// <param name="args">Details of the schema pass that just completed.</param>
+    internal static void SchemaSynchronized(SxmSchemaSynchronizedEventArgs args)
+    {
+        SxmDatabaseOptions? initOptions = GetInitOptionsFromDatabaseName(args.DatabaseName);
+        if (initOptions == null)
+            return;
+
+        SchemaSynchronizedInterceptor[]? handlers;
+        lock (initOptions._interceptorLock)
+        {
+            handlers = initOptions.SchemaSynchronizedInterceptors?.ToArray();
+        }
+
+        if (handlers == null)
+            return;
+
+        foreach (SchemaSynchronizedInterceptor handler in handlers)
+            handler(args);
     }
 
     /// <summary>

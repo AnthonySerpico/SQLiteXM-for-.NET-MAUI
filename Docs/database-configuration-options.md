@@ -44,6 +44,7 @@ This guide describes these options and how they are applied in your app.
 - [Lifecycle Hooks](#lifecycle-hooks)
   - [OnConnectionOpened](#onconnectionopened)
   - [OnConnectionClosed](#onconnectionclosed)
+  - [OnSchemaSynchronized](#onschemasynchronized)
 - [Database Path Customization](#database-path-customization)
   - [DatabaseFolderOverride](#databasefolderoverride)
 
@@ -110,6 +111,7 @@ The following table lists all options in `SxmDatabaseOptions` and their defaults
 | `DatabaseFolderOverride`  | LocalApplicationData                      | Usually leave at the default application-local location                                     |
 | `OnConnectionOpened(...)` | None registered                           | Use only when connection-specific initialization, verification, or custom logic is required |
 | `OnConnectionClosed(...)` | None registered                           | Use only when connection-close handling, cleanup, or instrumentation is required            |
+| `OnSchemaSynchronized(...)` | None registered                         | Use when you want to log or audit the DDL SQLiteXM runs while creating or upgrading tables   |
 
 
 
@@ -175,9 +177,10 @@ It is provided as a reference and is not intended as a recommended configuration
         DatabaseFolderOverride = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
     };
 
-    // The connection hooks below are optional and can be used to run custom logic when a connection 
-    // is opened or closed. Most applications will not need these hooks. The examples below show how 
-    // to use the supplied connection to verify PRAGMA settings.
+    // The lifecycle hooks below are optional and can be used to run custom logic when a connection 
+    // is opened or closed, or when SQLiteXM creates or upgrades an entity's table. Most applications 
+    // will not need these hooks. The examples below show how to use the supplied connection to verify 
+    // PRAGMA settings, and how to log the schema changes SQLiteXM makes.
 
     // ✅ Connection opened lifecycle hooks
     databaseOptions.OnConnectionOpened(connection =>
@@ -194,6 +197,20 @@ It is provided as a reference and is not intended as a recommended configuration
     // ✅ Connection closed lifecycle hooks
     databaseOptions.OnConnectionClosed(() =>
     {
+    });
+
+    // ✅ Schema synchronized lifecycle hook
+    // Called once per entity table after SQLiteXM has created it or brought it in line with the class.
+    // args.DdlStatements is the exact list of CREATE / ALTER / DROP statements that were executed.
+    databaseOptions.OnSchemaSynchronized(args =>
+    {
+        string action = args.TableCreated ? "created" : "synchronized";
+        System.Diagnostics.Debug.WriteLine($"{args.DatabaseName}.{args.TableName} {action} in {args.Duration.TotalMilliseconds:0} ms");
+
+        foreach (string ddl in args.DdlStatements)
+        {
+            System.Diagnostics.Debug.WriteLine($"    {ddl}");
+        }
     });
 
 ```
@@ -415,7 +432,7 @@ SxmDatabaseOptions options = new SxmDatabaseOptions
 
 **Property:** `DefaultTimeout`  
 **Type:** `int?` (seconds)  
-**Default:** `null`
+**Default:** `30`
 
 Default command timeout for database operations. Used by Microsoft.Data.Sqlite.
 
@@ -497,9 +514,9 @@ SxmDatabaseOptions options = new SxmDatabaseOptions
 
 ## Lifecycle Hooks
 
-SQLiteXM allows you to hook into connection lifecycle events for custom logic.
+SQLiteXM allows you to hook into connection and schema lifecycle events for custom logic.
 
-Most applications will never need lifecycle hooks. They are intended for advanced scenarios where custom logic should run whenever a SQLite connection is opened or closed.
+Most applications will never need lifecycle hooks. They are intended for advanced scenarios where custom logic should run whenever a SQLite connection is opened or closed, or whenever SQLiteXM changes the structure of a table.
 
 ### OnConnectionOpened
 
@@ -554,6 +571,64 @@ options.OnConnectionClosed(() =>
 - Log connection lifetime
 - Update metrics
 - Trigger maintenance tasks
+
+---
+
+### OnSchemaSynchronized
+
+Executes custom code after SQLiteXM has created or synchronized the table for one entity class.
+
+SQLiteXM does not use database migration scripts. When an entity is registered (through `StartInitialization` or
+`RegisterEntitiesAsync`), SQLiteXM compares the entity class to its corresponding table that already exists and runs whatever
+DDL - Data Definition Language, meaning `CREATE`, `ALTER`, and `DROP` statements - is needed to make them
+match. This hook hands you the exact list of statements that ran, once per table.
+
+```csharp
+options.OnSchemaSynchronized(args =>
+{
+	string verb = args.TableCreated ? "created" : "synchronized";
+	Console.WriteLine($"{args.DatabaseName}.{args.TableName} {verb} in {args.Duration.TotalMilliseconds:0} ms");
+
+	foreach (string ddl in args.DdlStatements)
+	{
+		Console.WriteLine($"  {ddl}");
+	}
+});
+```
+
+The handler receives an `SxmSchemaSynchronizedEventArgs` with these properties:
+
+| Property        | Type                    | Meaning                                                                                     |
+| --------------- | ----------------------- | ------------------------------------------------------------------------------------------- |
+| `DatabaseName`  | `string`                | The database that owns the table                                                            |
+| `TableName`     | `string`                | The table name (always the entity's class name)                                             |
+| `TableCreated`  | `bool`                  | `true` if the table did not exist and was created; `false` if an existing table was updated |
+| `DdlStatements` | `IReadOnlyList<string>` | Every statement executed, in order. Empty when the table already matched the entity        |
+| `Duration`      | `TimeSpan`              | How long the create/synchronize pass took                                                   |
+
+A typical upgrade might report:
+
+```
+Chinook.Product synchronized in 12 ms
+  ALTER TABLE "Product" RENAME COLUMN "Title" TO "Name"
+  ALTER TABLE "Product" ADD COLUMN "Category" TEXT not null default 'General'
+  CREATE INDEX "IDX_Product_Name" ON "Product" ("Name")
+  ALTER TABLE "Product" DROP COLUMN "Barcode"
+```
+
+Handlers run synchronously on the thread performing the registration. If a handler throws, the
+registration of that entity fails with the handler's exception - the same rule the connection hooks follow -
+so keep handlers short and defensive.
+
+**Use cases:**
+- Write a migration audit log so support can see how a user's database was upgraded
+- Surface schema changes in diagnostic or debug builds
+- Collect timing metrics for schema work during startup
+- Confirm in tests that an attribute change produced the DDL you expected
+
+> 💡 The QueryGalleryDemo sample's **Schema Evolution** category is built on this hook. Each example shows
+> a table's columns and indexes before and after registration, the rows that survived, and the DDL
+> reported here.
 
 ---
 

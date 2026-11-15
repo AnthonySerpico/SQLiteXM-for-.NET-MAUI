@@ -41,7 +41,7 @@ All types live in the `SQLiteXM` namespace unless stated otherwise.
   - [Bulk delete](#bulk-delete)
 - [SxmUpdateSet&lt;T&gt;](#sxmupdatesett)
 - [SxmSql](#sxmsql)
-- [SxmStore](#sxmstore)
+<!-- - [SxmStore](#sxmstore) -->
 
 **Errors**
 - [SxmException](#sxmexception)
@@ -59,6 +59,8 @@ All types live in the `SQLiteXM` namespace unless stated otherwise.
 **Delegates**
 - [ConnectionOpenedInterceptor](#connectionopenedinterceptor)
 - [ConnectionClosedInterceptor](#connectionclosedinterceptor)
+- [SchemaSynchronizedInterceptor](#schemasynchronizedinterceptor)
+- [SxmSchemaSynchronizedEventArgs](#sxmschemasynchronizedeventargs)
 
 ---
 
@@ -123,6 +125,7 @@ default in place."
 |---|---|
 | `void OnConnectionOpened(ConnectionOpenedInterceptor connectionOpenedInterceptor)` | Registers a callback that receives the raw `SqliteConnection` each time a connection is opened. Useful for verifying PRAGMA settings or applying custom ones. |
 | `void OnConnectionClosed(ConnectionClosedInterceptor connectionClosedInterceptor)` | Registers a callback invoked each time a connection is closed. |
+| `void OnSchemaSynchronized(SchemaSynchronizedInterceptor schemaSynchronizedInterceptor)` | Registers a callback invoked after each entity table is created or synchronized. It receives the exact DDL statements SQLiteXM executed (CREATE TABLE, ADD/RENAME/DROP COLUMN, CREATE/DROP INDEX, CREATE TRIGGER). Useful for migration audit logs and diagnostics. |
 
 ---
 
@@ -548,7 +551,7 @@ List<Order> orders = await SxmSql.RunStatementAsync<Order>(
 
 ---
 
-### SxmStore
+<!-- ### SxmStore
 
 ```csharp
 public static class SxmStore
@@ -579,7 +582,7 @@ await SxmStore.PutAsync("fontSize", 14);
 int fontSize = await SxmStore.GetAsync<int>("fontSize") ?? 12;
 ```
 
----
+--- -->
 
 ## Errors
 
@@ -718,6 +721,40 @@ public delegate void ConnectionClosedInterceptor();
 ```
 
 Callback registered with `SxmDatabaseOptions.OnConnectionClosed`.
+
+### SchemaSynchronizedInterceptor
+
+```csharp
+public delegate void SchemaSynchronizedInterceptor(SxmSchemaSynchronizedEventArgs args);
+```
+
+Callback registered with `SxmDatabaseOptions.OnSchemaSynchronized`. Invoked once per entity table after
+`RegisterEntitiesAsync` (or initialization with entity types) has compared the class to the table and run
+any DDL needed. Handlers run synchronously; an exception thrown by a handler fails that entity's registration.
+
+### SxmSchemaSynchronizedEventArgs
+
+```csharp
+public sealed class SxmSchemaSynchronizedEventArgs
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `DatabaseName` | `string` | Database that owns the table. |
+| `TableName` | `string` | Table name (always the entity's CLR class name). |
+| `TableCreated` | `bool` | `true` if the table was created from scratch; `false` if an existing table was synchronized. |
+| `DdlStatements` | `IReadOnlyList<string>` | The DDL statements executed, in order. Empty when the table already matched the entity. |
+| `Duration` | `TimeSpan` | How long the create/synchronize pass took. |
+
+```csharp
+SxmDatabaseOptions options = new SxmDatabaseOptions();
+options.OnSchemaSynchronized(args =>
+{
+    foreach (string ddl in args.DdlStatements)
+        Console.WriteLine($"[{args.TableName}] {ddl}");
+});
+await SxmDatabase.InitializeAsync(stream, options);
+```
 
 ---
 

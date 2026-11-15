@@ -239,6 +239,8 @@ internal static void ResetForTesting()
 
                     string message = $"{ddlStatementsList.Count} DDL statement(s) executed:{Environment.NewLine}" + string.Join(Environment.NewLine, ddlStatementsList.Select((w, i) => $"  [{i + 1}] {w}"));
                     SxmLogging.Log(new SxmInformational(message), $"{(newTable ? "Creating" : "Synchronizing")} schema. Database: '{databaseName}'. Table: '{tableName}'. Duration: {stopwatch.ElapsedMilliseconds}ms", $"InitializeSchemaAsync");
+
+                    SxmDatabaseOptions.SchemaSynchronized(new SxmSchemaSynchronizedEventArgs(databaseName, tableName, newTable, ddlStatementsList.AsReadOnly(), stopwatch.Elapsed));
                 }),
                 LazyThreadSafetyMode.ExecutionAndPublication
             )
