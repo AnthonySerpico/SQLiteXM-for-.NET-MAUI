@@ -25,7 +25,7 @@ await Task.WhenAll(
 	Task.Run(async () =>
 	{
 		await using var ctx2 = new SxmTransaction();
-		return await ctx2.GetTable<Order>().Where(o => o.Total > 100).ToListAsync();
+		return await ctx2.GetTable<Order>().Where(o => o.CustomerId == 42).ToListAsync();
 	})
 );
 ```
@@ -121,7 +121,7 @@ await using (var ctx = new SxmTransaction())
 {
 	// Operations execute one at a time on the same connection
 	var customers = await ctx.GetTable<Customer>().Where(c => c.Age > 30).ToListAsync();
-	var orders = await ctx.GetTable<Order>().Where(o => o.Total > 100).ToListAsync();
+	var orders = await ctx.GetTable<Order>().Where(o => o.CustomerId == 42).ToListAsync();
 }
 ```
 
@@ -179,7 +179,7 @@ await using (var ctx = new SxmTransaction())
 	// UNSAFE: Both queries use ctx's connection concurrently
 	await Task.WhenAll(
 		ctx.GetTable<Customer>().Where(c => c.Age > 30).ToListAsync(),
-		ctx.GetTable<Order>().Where(o => o.Total > 100).ToListAsync()
+		ctx.GetTable<Order>().Where(o => o.CustomerId == 42).ToListAsync()
 	);
 }
 ```

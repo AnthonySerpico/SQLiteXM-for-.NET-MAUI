@@ -150,7 +150,21 @@ public abstract class TestBase : IDisposable
             typeof(SxmExceptionContractTests.ExceptionContractChildEntity),
             // LINQ Query Documentation test entities (from LinqQueryDocumentationTests.cs)
             typeof(LinqQueryDocumentationTests.Customer),
-            typeof(LinqQueryDocumentationTests.Order)
+            typeof(LinqQueryDocumentationTests.Order),
+            // Navigation property / LoadWith test entities (from LoadWithTests.cs)
+            typeof(LoadWithTests.NavPublisher),
+            typeof(LoadWithTests.NavAuthor),
+            typeof(LoadWithTests.NavBook),
+            typeof(LoadWithTests.NavStandalone),
+            // Decimal range comparison test entity (from DecimalComparisonTests.cs)
+            typeof(DecimalComparisonTests.DecimalRangeEntity),
+            // Dual foreign key navigation test entities (from DualForeignKeyNavigationTests.cs)
+            typeof(DualForeignKeyNavigationTests.DualPerson),
+            typeof(DualForeignKeyNavigationTests.DualJournal),
+            typeof(DualForeignKeyNavigationTests.DualPaper),
+            typeof(DualForeignKeyNavigationTests.DualReport),
+            typeof(DualForeignKeyNavigationTests.DualArticle)
+            , typeof(DualForeignKeyNavigationTests.TriplePanel)
             // NOTE: Column rename test entities are NOT registered here - tests register them individually
             // after setting up test data to properly exercise the rename migration logic
         ).GetAwaiter().GetResult();
@@ -277,7 +291,21 @@ public abstract class TestBase : IDisposable
             typeof(SxmExceptionContractTests.ExceptionContractChildEntity),
             // LINQ Query Documentation test entities (from LinqQueryDocumentationTests.cs)
             typeof(LinqQueryDocumentationTests.Customer),
-            typeof(LinqQueryDocumentationTests.Order)
+            typeof(LinqQueryDocumentationTests.Order),
+            // Navigation property / LoadWith test entities (from LoadWithTests.cs)
+            typeof(LoadWithTests.NavPublisher),
+            typeof(LoadWithTests.NavAuthor),
+            typeof(LoadWithTests.NavBook),
+            typeof(LoadWithTests.NavStandalone),
+            // Decimal range comparison test entity (from DecimalComparisonTests.cs)
+            typeof(DecimalComparisonTests.DecimalRangeEntity),
+            // Dual foreign key navigation test entities (from DualForeignKeyNavigationTests.cs)
+            typeof(DualForeignKeyNavigationTests.DualPerson),
+            typeof(DualForeignKeyNavigationTests.DualJournal),
+            typeof(DualForeignKeyNavigationTests.DualPaper),
+            typeof(DualForeignKeyNavigationTests.DualReport),
+            typeof(DualForeignKeyNavigationTests.DualArticle)
+            , typeof(DualForeignKeyNavigationTests.TriplePanel)
             // NOTE: Column rename test entities are NOT registered here - tests register them individually
             // after setting up test data to properly exercise the rename migration logic
         );
@@ -438,7 +466,23 @@ public abstract class TestBase : IDisposable
             typeof(SxmExceptionContractTests.ExceptionContractChildEntity),
             // LINQ Query Documentation test entities
             typeof(LinqQueryDocumentationTests.Customer),
-            typeof(LinqQueryDocumentationTests.Order)
+            typeof(LinqQueryDocumentationTests.Order),
+            // Navigation property / LoadWith test entities.
+            // NavBook is listed before NavPublisher and NavAuthor so child rows are removed first.
+            typeof(LoadWithTests.NavBook),
+            typeof(LoadWithTests.NavPublisher),
+            typeof(LoadWithTests.NavAuthor),
+            typeof(LoadWithTests.NavStandalone),
+            // Decimal range comparison test entity
+            typeof(DecimalComparisonTests.DecimalRangeEntity),
+            // Dual foreign key navigation test entities.
+            // DualPaper is listed before DualPerson so child rows are removed first.
+            typeof(DualForeignKeyNavigationTests.DualPaper),
+            typeof(DualForeignKeyNavigationTests.DualReport),
+            typeof(DualForeignKeyNavigationTests.DualArticle),
+            typeof(DualForeignKeyNavigationTests.TriplePanel),
+            typeof(DualForeignKeyNavigationTests.DualPerson),
+            typeof(DualForeignKeyNavigationTests.DualJournal)
         };
 
         var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);

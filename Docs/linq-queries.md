@@ -4,6 +4,38 @@ SQLiteXM provides comprehensive LINQ support for querying and manipulating data.
 
 ---
 
+## Contents
+
+**Getting oriented**
+- [Understanding LINQ in SQLiteXM](#understanding-linq-in-sqlitexm)
+- [Prerequisites](#prerequisites)
+- [Creating a Transaction for LINQ](#creating-a-transaction-for-linq)
+
+**Reading data**
+- [Basic LINQ Queries](#basic-linq-queries)
+- [Async Materialization Methods](#async-materialization-methods)
+- [Advanced LINQ Operations](#advanced-linq-operations)
+
+**Modifying data**
+- [Bulk Insert Operations](#bulk-insert-operations)
+- [Bulk Update Operations](#bulk-update-operations)
+- [Bulk Delete Operations](#bulk-delete-operations)
+
+**Putting it together**
+- [Combining LINQ with Entity DML and SQL](#combining-linq-with-entity-dml-and-sql)
+- [Query Execution and Performance](#query-execution-and-performance)
+- [Working with Multiple SQLite Databases](#working-with-multiple-sqlite-databases)
+- [Error Handling](#error-handling)
+- [Complete Examples](#complete-examples)
+
+**Reference**
+- [Best Practices](#best-practices)
+- [LINQ Method Reference](#linq-method-reference)
+- [Related Documentation](#related-documentation)
+- [Summary](#summary)
+
+---
+
 ## Understanding LINQ in SQLiteXM
 
 LINQ (Language-Integrated Query) allows you to write strongly-typed database queries using C# syntax. In SQLiteXM, LINQ queries:
@@ -25,6 +57,30 @@ LINQ examples in this guide assume:
 
 - The database has been initialized. For details, see: ➡️ [Getting Started](./getting-started.md).
 - You are executing the LINQ examples inside an `SxmTransaction` block. For details, see: ➡️ [Reading and Writing Data](./working-with-data.md).
+- The following two entities are registered:
+
+```csharp
+[Table(IsColumnAttributeRequired = false)]
+public class Customer : SxmEntity
+{
+	public string? Name  { get; set; }
+	public string? Email { get; set; }
+}
+
+[Table(IsColumnAttributeRequired = false)]
+public class Order : SxmEntity
+{
+	public long     CustomerId { get; set; }
+	public string?  Product    { get; set; }
+	public decimal  Amount     { get; set; }
+	public string?  Status     { get; set; }
+	public DateTime OrderDate  { get; set; }
+}
+```
+
+Both inherit from `SxmEntity`, which supplies the auto-managed `id` primary-key column.
+
+> 💡 The string properties above are declared as nullable (`string?`). Some examples in this guide call a method on one, such as `c.Name!.StartsWith("A")`. The `!` is the null-forgiving operator: it tells the C# compiler you know the value is not null, suppressing a nullable warning. It has no effect on the generated SQL. If your own entities declare non-nullable strings, you can drop the `!`.
 
 ---
 
@@ -39,7 +95,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	SxmTable<Customer> customers = ctx.GetTable<Customer>();
 
 	// Now you can query the table using LINQ
-	var results = await customers.Where(c => c.Name == "Ada Lovelace").ToListAsync();
+	List<Customer> results = await customers.Where(c => c.Name == "Ada Lovelace").ToListAsync();
 }
 ```
 
@@ -88,9 +144,11 @@ await using (SxmTransaction ctx = new SxmTransaction())
 {
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
-	// Find high-value orders for a specific customer
-	List<Order> bigOrders = await orders
-		.Where(o => o.CustomerId == 42 && o.Amount >= 100m)
+	DateTime cutoffDate = DateTime.UtcNow.AddDays(-30);
+
+	// Find recent orders for a specific customer
+	List<Order> recentOrders = await orders
+		.Where(o => o.CustomerId == 42 && o.OrderDate >= cutoffDate)
 		.ToListAsync();
 }
 ```
@@ -118,10 +176,10 @@ await using (SxmTransaction ctx = new SxmTransaction())
 {
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
-	// Sort by customer, then by amount descending
+	// Sort by customer, then by order date descending
 	List<Order> sorted = await orders
 		.OrderBy(o => o.CustomerId)
-		.ThenByDescending(o => o.Amount)
+		.ThenByDescending(o => o.OrderDate)
 		.ToListAsync();
 }
 ```
@@ -219,11 +277,12 @@ SQLiteXM provides async extension methods for materializing query results. All o
 | `LongCountAsync()` | `Task<long>` | Returns the count as a long |
 | `AnyAsync()` | `Task<bool>` | Returns true if any rows match |
 | `AllAsync()` | `Task<bool>` | Returns true if all rows match the predicate |
-| `MinAsync()` | `Task<T>` | Returns the minimum value |
-| `MaxAsync()` | `Task<T>` | Returns the maximum value |
-| `SumAsync()` | `Task<T>` | Returns the sum of values |
-| `AverageAsync()` | `Task<T>` | Returns the average of values |
-| `ToDictionaryAsync()` | `Task<Dictionary<TKey, T>>` | Materializes to a dictionary |
+| `MinAsync()` | `Task<TResult?>` | Returns the minimum value. ⚠️ Not reliable on a `decimal` column |
+| `MaxAsync()` | `Task<TResult?>` | Returns the maximum value. ⚠️ Not reliable on a `decimal` column |
+| `SumAsync()` | `Task<TResult>` | Returns the sum of values |
+| `AverageAsync()` | `Task<TResult>` | Returns the average of values |
+| `ContainsAsync()` | `Task<bool>` | Returns true if the given item exists |
+| `ToDictionaryAsync()` | `Task<Dictionary<TKey, T>>` | Materializes to a dictionary. ⚠️ Throws if the key column holds duplicate values |
 
 ### Examples
 
@@ -235,20 +294,30 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	// Count orders
 	int orderCount = await orders.CountAsync();
 
-	// Check if any high-value orders exist
-	bool hasExpensive = await orders.AnyAsync(o => o.Amount > 1000m);
+	// Check if this customer has any orders at all
+	bool hasOrders = await orders.AnyAsync(o => o.CustomerId == 42);
 
-	// Get total order amount
+	// Get total order amount (SUM is numeric, so this is safe on a decimal column)
 	decimal totalRevenue = await orders.SumAsync(o => o.Amount);
 
-	// Get average order value
+	// Get average order value (also safe)
 	decimal avgOrder = await orders.AverageAsync(o => o.Amount);
 
-	// Get minimum and maximum
-	decimal minOrder = await orders.MinAsync(o => o.Amount);
-	decimal maxOrder = await orders.MaxAsync(o => o.Amount);
+	// MinAsync/MaxAsync on a decimal column would compare text and return the
+	// wrong row, so find the extremes in memory instead.
+	List<decimal> amounts = await orders.Select(o => o.Amount).ToListAsync();
+	decimal minOrder = amounts.Min();
+	decimal maxOrder = amounts.Max();
+
+	// Check that every order is assigned to a customer
+	bool allAssigned = await orders.AllAsync(o => o.CustomerId != 0);
+
+	// Build a lookup keyed by the order id
+	Dictionary<long, Order> ordersById = await orders.ToDictionaryAsync(o => o.id);
 }
 ```
+
+> 💡 `ToDictionaryAsync` throws if the column you key on holds duplicate values, so key on something unique such as `id`.
 
 ---
 
@@ -347,6 +416,9 @@ await using (SxmTransaction ctx = new SxmTransaction())
 }
 ```
 
+> ✏️ **Note:** When you simply want a related entity attached to each row, `LoadWith` is usually
+> easier than writing a join. See [Loading Related Data](./loading-related-data.md).
+
 ### Distinct Results
 
 Remove duplicates from results:
@@ -373,8 +445,11 @@ await using (SxmTransaction ctx = new SxmTransaction())
 {
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
-	// Categorize orders by amount
-	var categorized = await orders
+	// Categorize orders by amount.
+	// The comparison is a decimal range test, so it must be done in memory.
+	List<Order> allOrders = await orders.ToListAsync();
+
+	var categorized = allOrders
 		.Select(o => new
 		{
 			o.Product,
@@ -382,7 +457,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 			Category = o.Amount < 50m ? "Small" :
 					   o.Amount < 200m ? "Medium" : "Large"
 		})
-		.ToListAsync();
+		.ToList();
 }
 ```
 
@@ -509,15 +584,32 @@ await using (SxmTransaction ctx = new SxmTransaction())
 {
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
-	// Apply 10% discount to all orders over $500
+	// Apply a 10% discount to a customer's orders.
+	// The filter uses CustomerId (an integer), so it is evaluated numerically.
+	// The Set expression is arithmetic, which is also safe on a decimal column.
 	int rowsUpdated = await orders
-		.Where(o => o.Amount > 500m)
+		.Where(o => o.CustomerId == 42)
 		.Set(o => o.Amount, o => o.Amount * 0.9m)
 		.UpdateAsync();
 
 	Console.WriteLine($"Applied discount to {rowsUpdated} orders");
 }
 ```
+
+> ⚠️ Do **not** filter a bulk update by a decimal range, such as `.Where(o => o.Amount > 500m)`. That comparison is evaluated as text and will update the wrong rows. If you need a decimal threshold, load the matching ids in memory first and filter the update by those ids:
+>
+> ```csharp
+> List<Order> loaded = await orders.ToListAsync();
+> List<long> targetIds = loaded
+> 	.Where(o => o.Amount > 500m)
+> 	.Select(o => o.id)
+> 	.ToList();
+>
+> int rowsUpdated = await orders
+> 	.Where(o => targetIds.Contains(o.id))
+> 	.Set(o => o.Amount, o => o.Amount * 0.9m)
+> 	.UpdateAsync();
+> ```
 
 ### Updating Multiple Properties
 
@@ -530,8 +622,8 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 	// Update multiple properties
 	int rowsUpdated = await customers
-		.Where(c => c.Email.Contains("@oldcompany.com"))
-		.Set(c => c.Email, c => c.Email.Replace("@oldcompany.com", "@newcompany.com"))
+		.Where(c => c.Email!.Contains("@oldcompany.com"))
+		.Set(c => c.Email, c => c.Email!.Replace("@oldcompany.com", "@newcompany.com"))
 		.Set(c => c.Name, c => c.Name + " (Migrated)")
 		.UpdateAsync();
 }
@@ -599,9 +691,9 @@ await using (SxmTransaction ctx = new SxmTransaction())
 {
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
-	// Delete old orders for a specific customer
+	// Delete a specific customer's cancelled orders
 	int rowsDeleted = await orders
-		.Where(o => o.CustomerId == 42 && o.Amount < 10m)
+		.Where(o => o.CustomerId == 42 && o.Status == "Cancelled")
 		.DeleteAsync();
 }
 ```
@@ -619,11 +711,14 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 	SxmTable<Customer> customers = ctx.GetTable<Customer>();
 
-	var highValueCustomerIds = await orders
+	// Amount is a decimal column, so the threshold must be applied in memory.
+	List<Order> allOrders = await orders.ToListAsync();
+
+	List<long> highValueCustomerIds = allOrders
 		.Where(o => o.Amount > 1000m)
 		.Select(o => o.CustomerId)
 		.Distinct()
-		.ToListAsync();
+		.ToList();
 
 	// 2. Entity DML: Create a reward for each customer
 	foreach (long customerId in highValueCustomerIds)
@@ -643,7 +738,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	string sql = "INSERT INTO ActivityLog (EventType, EventDate, Details) " +
 				 "VALUES (@Type, @Date, @Details)";
 
-	var parameters = new Dictionary<string, object?>
+	Dictionary<string, object?> parameters = new Dictionary<string, object?>
 	{
 		["Type"] = "VIP_PROMOTION",
 		["Date"] = DateTime.UtcNow,
@@ -672,7 +767,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	SxmTable<Customer> customers = ctx.GetTable<Customer>();
 
 	// This does NOT execute a query yet
-	var query = customers.Where(c => c.Name.StartsWith("A"));
+	IQueryable<Customer> query = customers.Where(c => c.Name!.StartsWith("A"));
 
 	// Query executes here when materialized
 	List<Customer> results = await query.ToListAsync();
@@ -687,7 +782,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
 	// Start with base query
-	IQueryable<Order> query = orders.Where(o => o.Amount > 0);
+	IQueryable<Order> query = orders.Where(o => o.Status != "Cancelled");
 
 	// Conditionally add filters
 	if (customerId.HasValue)
@@ -695,13 +790,19 @@ await using (SxmTransaction ctx = new SxmTransaction())
 		query = query.Where(o => o.CustomerId == customerId.Value);
 	}
 
-	if (minAmount.HasValue)
+	if (fromDate.HasValue)
 	{
-		query = query.Where(o => o.Amount >= minAmount.Value);
+		query = query.Where(o => o.OrderDate >= fromDate.Value);
 	}
 
 	// Execute the composed query
 	List<Order> results = await query.ToListAsync();
+
+	// A decimal threshold cannot be composed into the SQL query, so apply it last
+	if (minAmount.HasValue)
+	{
+		results = results.Where(o => o.Amount >= minAmount.Value).ToList();
+	}
 }
 ```
 
@@ -711,8 +812,8 @@ SQLiteXM translates LINQ expressions into efficient SQL. For example:
 
 ```csharp
 // This LINQ query:
-var query = customers
-	.Where(c => c.Name.StartsWith("A") && c.Email.Contains("@example.com"))
+IQueryable<Customer> query = customers
+	.Where(c => c.Name!.StartsWith("A") && c.Email!.Contains("@example.com"))
 	.OrderBy(c => c.Name)
 	.Take(10);
 
@@ -733,14 +834,14 @@ var query = customers
 	   .ToListAsync();
 
    // Less efficient: retrieves all columns
-   var allCustomers = await customers.ToListAsync();
+   List<Customer> allCustomers = await customers.ToListAsync();
    ```
 
 2. **Filter before joining** to reduce the dataset size:
    ```csharp
    // Good: filter first
    var results = await customers
-	   .Where(c => c.Name.StartsWith("A"))
+	   .Where(c => c.Name!.StartsWith("A"))
 	   .Join(orders, c => c.id, o => o.CustomerId, (c, o) => new { c, o })
 	   .ToListAsync();
    ```
@@ -748,13 +849,13 @@ var query = customers
 3. **Use bulk operations** for modifying multiple rows:
    ```csharp
    // Good: single UPDATE statement
-   await orders.Where(o => o.Amount > 100).Set(o => o.Amount, 0).UpdateAsync();
+   await orders.Where(o => o.Status == "Cancelled").Set(o => o.Amount, 0m).UpdateAsync();
 
    // Slower: many individual updates
-   var orderList = await orders.Where(o => o.Amount > 100).ToListAsync();
-   foreach (var order in orderList)
+   List<Order> orderList = await orders.Where(o => o.Status == "Cancelled").ToListAsync();
+   foreach (Order order in orderList)
    {
-	   order.Amount = 0;
+	   order.Amount = 0m;
 	   await order.SaveAsync();
    }
    ```
@@ -791,7 +892,18 @@ For more details, see ➡️ [Multiple Databases](./multiple-databases.md).
 
 ## Error Handling
 
-LINQ queries can fail for several reasons: SQL syntax errors, constraint violations, or database connection issues. Always handle exceptions appropriately:
+LINQ queries can fail for several reasons: SQL syntax errors, constraint violations, or database connection issues. Always handle exceptions appropriately.
+
+Not every failure arrives as the same exception type, so a single `catch` is rarely enough:
+
+| Exception | When it happens |
+|---|---|
+| `InvalidOperationException` | `SingleAsync` / `FirstAsync` found zero or multiple rows |
+| `NotSupportedException` | The expression could not be translated into SQL |
+| `SxmException` | SQLiteXM could not complete the operation. Branch on `ErrorCode` |
+| `SqliteException` | A constraint violation, such as a foreign-key or unique conflict |
+
+Order the `catch` arms from most specific to least specific:
 
 ```csharp
 try
@@ -814,12 +926,30 @@ catch (InvalidOperationException ex)
 	// SingleAsync throws if zero or multiple rows match
 	Console.WriteLine($"Query failed: {ex.Message}");
 }
-catch (Exception ex)
+catch (SxmException ex) when (ex.ErrorCode == SxmDefines.SxmErrorCode.QueryFailure)
 {
-	// Other database errors
-	Console.WriteLine($"Database error: {ex.Message}");
+	// The query itself failed to execute
+	Console.WriteLine($"Query failed: {ex.Message}");
+}
+catch (SxmException ex) when (ex.ErrorCode == SxmDefines.SxmErrorCode.DataConversionFailure)
+{
+	// A stored value did not match the entity property type,
+	// which usually means the entity and the stored schema have diverged
+	Console.WriteLine($"Conversion failed: {ex.Message}");
+}
+catch (SxmException ex)
+{
+	// Any other SQLiteXM failure. ex.Context carries diagnostic detail.
+	Console.WriteLine($"SQLiteXM error: {ex.Message}");
+}
+catch (SqliteException ex)
+{
+	// Constraint violations surface as SqliteException, not SxmException
+	Console.WriteLine($"Constraint violation: {ex.Message}");
 }
 ```
+
+> 💡 `MappingFailure` is also possible when an entity, column, or association cannot be mapped — most often with `LoadWith`. For the complete list of error codes and which APIs raise them, see: ➡️ [Error Handling](./error-handling.md).
 
 When an exception occurs inside an `SxmTransaction`:
 
@@ -841,8 +971,10 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	SxmTable<Customer> customers = ctx.GetTable<Customer>();
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
-	// Find customers who spent over $1000 total
-	var loyalCustomers = await (
+	// Find customers who spent over $1000 total.
+	// This comparison is against the result of Sum, which is already a number,
+	// so it is evaluated numerically even though Amount is a decimal column.
+	List<long> loyalCustomers = await (
 		from o in orders
 		group o by o.CustomerId into g
 		where g.Sum(o => o.Amount) > 1000m
@@ -900,7 +1032,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 	SxmTable<Order> orders = ctx.GetTable<Order>();
 
 	// Find customers with no orders
-	var customerIdsWithOrders = await orders
+	List<long> customerIdsWithOrders = await orders
 		.Select(o => o.CustomerId)
 		.Distinct()
 		.ToListAsync();
@@ -930,9 +1062,11 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 6. **Use indexes wisely:** Add indexes to columns frequently used in `Where` clauses and joins. See ➡️ [Defining Entities](./defining-entities.md).
 
-7. **Handle exceptions:** Always wrap transaction blocks in try/catch to handle query failures gracefully.
+7. **Handle exceptions:** Always wrap transaction blocks in try/catch. Catch `SxmException` and branch on `ErrorCode` rather than catching bare `Exception`, and remember that constraint violations arrive as `SqliteException`. See ➡️ [Error Handling](./error-handling.md).
 
 8. **Test query performance:** For complex queries or large datasets, verify that your LINQ expressions translate to efficient SQL.
+
+Materialize first, then compare or sort in memory. See [Supported Data Types — decimal](./supported-data-types.md#decimal).
 
 ---
 
@@ -942,10 +1076,10 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 | Operator | Purpose | Example |
 |----------|---------|---------|
-| `Where` | Filter rows | `.Where(c => c.Name.StartsWith("A"))` |
+| `Where` | Filter rows | `.Where(c => c.Name!.StartsWith("A"))` |
 | `Select` | Project/transform results | `.Select(c => new { c.Name, c.Email })` |
 | `OrderBy` | Sort ascending | `.OrderBy(c => c.Name)` |
-| `OrderByDescending` | Sort descending | `.OrderByDescending(o => o.Amount)` |
+| `OrderByDescending` | Sort descending | `.OrderByDescending(o => o.OrderDate)` |
 | `ThenBy` | Additional sort ascending | `.OrderBy(c => c.Name).ThenBy(c => c.Email)` |
 | `ThenByDescending` | Additional sort descending | `.OrderBy(c => c.Name).ThenByDescending(c => c.Email)` |
 | `Take` | Limit results | `.Take(10)` |
@@ -962,7 +1096,7 @@ All materialization methods are async and must be awaited:
 |--------|-------------|-------------|
 | `ToListAsync()` | `Task<List<T>>` | Convert results to a list |
 | `ToArrayAsync()` | `Task<T[]>` | Convert results to an array |
-| `ToDictionaryAsync()` | `Task<Dictionary<TKey,T>>` | Convert results to a dictionary |
+| `ToDictionaryAsync()` | `Task<Dictionary<TKey,T>>` | Convert results to a dictionary. ⚠️ Throws if the key column holds duplicate values |
 | `FirstAsync()` | `Task<T>` | First row (throws if empty) |
 | `FirstOrDefaultAsync()` | `Task<T?>` | First row or null |
 | `SingleAsync()` | `Task<T>` | Only row (throws if 0 or >1) |
@@ -976,10 +1110,11 @@ All materialization methods are async and must be awaited:
 | `LongCountAsync()` | `Task<long>` | Count rows (long) |
 | `AnyAsync()` | `Task<bool>` | Check if any rows exist |
 | `AllAsync()` | `Task<bool>` | Check if all rows match predicate |
-| `SumAsync()` | `Task<T>` | Sum numeric column |
-| `AverageAsync()` | `Task<T>` | Average numeric column |
-| `MinAsync()` | `Task<T>` | Minimum value |
-| `MaxAsync()` | `Task<T>` | Maximum value |
+| `SumAsync()` | `Task<TResult>` | Sum a numeric column |
+| `AverageAsync()` | `Task<TResult>` | Average a numeric column |
+| `MinAsync()` | `Task<TResult?>` | Minimum value. ⚠️ Not reliable on a `decimal` column |
+| `MaxAsync()` | `Task<TResult?>` | Maximum value. ⚠️ Not reliable on a `decimal` column |
+| `ContainsAsync()` | `Task<bool>` | Check whether a given item exists |
 
 ### Modification Methods
 
@@ -998,6 +1133,7 @@ All materialization methods are async and must be awaited:
 - ➡️ [Getting Started](./getting-started.md) - Initialize SQLiteXM and register entities
 - ➡️ [Working with Data](./working-with-data.md) - Entity DML, SQL, and transactions
 - ➡️ [Defining Entities](./defining-entities.md) - Configure entities and indexes
+- ➡️ [Loading Related Data](./loading-related-data.md) - Load related entities with `LoadWith`
 - ➡️ [Multiple SQLite Databases](./multiple-databases.md) - Work with multiple SQLite databases
 
 ---

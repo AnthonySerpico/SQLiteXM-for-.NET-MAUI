@@ -19,6 +19,24 @@ namespace SQLiteXM
         /// Convert a nullable <see cref="decimal"/> to an invariant string using the "G29" format
         /// to avoid losing precision when round-tripping. Returns <c>null</c> when <paramref name="d"/> is <c>null</c>.
         /// </summary>
+        /// <remarks>
+        /// SQLite has no native decimal type, so decimal is stored as TEXT to keep values exact.
+        /// The consequence is that SQLite compares these values as text, character by character.
+        /// Because "G29" is variable width, text order does not match numeric order: "9.99" sorts
+        /// after "30" because '9' &gt; '3'.
+        /// <para>
+        /// Supported in SQL: storage, exact round-trip, and equality comparison.
+        /// NOT supported in SQL: range comparison (&gt; &lt; &gt;= &lt;=), ORDER BY, MIN and MAX.
+        /// Materialize the rows first and filter or sort in memory when numeric semantics matter.
+        /// </para>
+        /// <para>
+        /// Unlike <see cref="ULongToString"/>, which zero-pads to a fixed width so that text order
+        /// matches numeric order, decimal cannot use that trick directly: it is signed and has a
+        /// fractional part, so a sort-stable format would need offset encoding at a fixed scale,
+        /// capping precision and requiring migration of existing databases.
+        /// See SQLiteXM.Tests/DecimalComparisonTests.cs for the characterization tests.
+        /// </para>
+        /// </remarks>
         /// <param name="d">The nullable decimal value to convert.</param>
         /// <returns>Culture-invariant string representation of <paramref name="d"/>, or <c>null</c>.</returns>
         internal static string? DecimalToString(decimal? d)

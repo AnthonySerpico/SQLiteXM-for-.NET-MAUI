@@ -18,9 +18,11 @@ Each part of the version communicates the type of change included in a release.
 
 The **MAJOR** version is incremented when a release contains a **breaking change**.
 
-A breaking change is any change in SQLiteXM that **can require an existing user to make a change in their use of the library**. The word "can" is deliberate. A change is breaking because of what the change does. Whether it actually breaks any particular user depends on whether that user's code is affected.
+A breaking change is any change in SQLiteXM that **can require an existing user to make a change in their use of the library**. The word "can" is deliberate. A change is breaking because of what the change does. Whether it actually breaks any particular user depends on whether that user's code **exercises the changed path**. If it does, it breaks - every time, for every user.
 
 This is not limited to changes that cause existing code to stop compiling. A change may also be considered breaking if an existing user must change their code, configuration, initialization, handling of results or errors, or other usage of SQLiteXM in order to continue correctly using the library.
+
+A change is **not** breaking merely because a user's own build or tooling settings turn it into a failure. For example, marking a method as deprecated raises a compiler warning. A project that treats warnings as errors will fail to build, but the method still compiles, runs, and behaves exactly as before. The failure comes from the user's configuration, not from SQLiteXM, so the deprecation is a MINOR change. The later release that actually removes the method is the breaking one.
 
 When a MAJOR version is incremented, the MINOR and PATCH versions are reset to zero.
 

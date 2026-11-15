@@ -232,8 +232,7 @@ namespace SQLiteXM
             if (sourceType is null) throw new ArgumentNullException(nameof(sourceType));
             if (string.IsNullOrWhiteSpace(navigationPropertyName)) throw new ArgumentException("navigationPropertyName required.", nameof(navigationPropertyName));
             if (string.IsNullOrWhiteSpace(thisKey)) throw new ArgumentException("thisKey required.", nameof(thisKey));
-            if (!typeof(SxmEntity).IsAssignableFrom(sourceType))
-                throw new ArgumentException("sourceType must derive from SxmEntity.", nameof(sourceType));
+            if (!typeof(SxmEntity).IsAssignableFrom(sourceType)) throw new ArgumentException("sourceType must derive from SxmEntity.", nameof(sourceType));
 
             // Find navigation property and target type
             PropertyInfo navProp = sourceType.GetProperty(navigationPropertyName, BindingFlags.Public | BindingFlags.Instance)

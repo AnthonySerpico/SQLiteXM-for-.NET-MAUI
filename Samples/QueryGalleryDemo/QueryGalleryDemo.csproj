@@ -71,10 +71,10 @@
 		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="SQLiteXM" Version="2.0.1" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\SQLiteXM\SQLiteXM.csproj" />
 		<ProjectReference Include="..\QueryGalleryDemo.SourceGenerators\QueryGalleryDemo.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
@@ -86,11 +86,7 @@
 	The script passes -p:SkipPublishScript=true so the inner build skips it.
 	The TargetFramework condition keeps this from firing once per TFM on a multi-targeted build.
 	-->
-	<Target Name="PublishWindowsZip"
-			AfterTargets="PostBuildEvent"
-			Condition="'$(SkipPublishScript)' != 'true'
-					   And '$(Configuration)' == 'Release'
-					   And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+	<Target Name="PublishWindowsZip" AfterTargets="PostBuildEvent" Condition="'$(SkipPublishScript)' != 'true'&#xD;&#xA;					   And '$(Configuration)' == 'Release'&#xD;&#xA;					   And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
 		<Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)publish-windows.ps1&quot; -Configuration $(Configuration)" />
 	</Target>
 

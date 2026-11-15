@@ -186,6 +186,9 @@ public class Person : SxmEntity
 
 When present, `[NotColumn]` prevents the property from being mapped to a database column, regardless of the `IsColumnAttributeRequired` setting on the class.
 
+`[NotColumn]` is also used to declare a navigation property, which holds a related entity in memory
+so it can be loaded alongside the main query. See [Loading Related Data](./loading-related-data.md).
+
 ### When to Use It
 
 * Computed properties
@@ -425,6 +428,12 @@ If a customer is deleted, SQLite must decide what happens to the related orders.
 * Referential integrity
 * Modeling related entities in the same database
 
+### Loading the Related Entity
+
+A foreign key stores the related row's `id`, not the related object. To have SQLiteXM load the
+related entity for you, add a navigation property and query with `LoadWith`. See
+[Loading Related Data](./loading-related-data.md).
+
 ---
 
 ### Entity Registration
@@ -643,5 +652,7 @@ Key points:
 Entities are registered during initialization by `SxmDatabase.StartInitialization(...)`
 
 For a basic workflow overview, see [Getting Started](./getting-started.md).
+
+For loading related entities, see [Loading Related Data](./loading-related-data.md).
 
 For multi-database setup, see [Multiple Databases](./multiple-databases.md).

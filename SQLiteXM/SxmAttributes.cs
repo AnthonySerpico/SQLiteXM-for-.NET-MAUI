@@ -472,6 +472,27 @@ namespace SQLiteXM
     /// <summary>
     /// Attribute to request creation of a foreign key constraint referencing another table.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An entity may declare any number of foreign keys, including several that reference the
+    /// same target table (for example an <c>AuthorId</c> and a <c>CoAuthorId</c> both referencing
+    /// a people table). Every such foreign key is created, enforced, stored, and queried normally,
+    /// and all of them can be used in an explicit join.
+    /// </para>
+    /// <para>
+    /// LIMITATION: only the eager-loading pairing is restricted. A foreign key may be paired with
+    /// a <c>[NotColumn]</c> navigation property so the related row can be loaded through
+    /// <see cref="SxmTable{T}.LoadWith{TProperty}(System.Linq.Expressions.Expression{System.Func{T, TProperty}})"/>.
+    /// That pairing matches the navigation property by its CLR type only, so when two navigation
+    /// properties on one entity share a type they cannot be told apart.
+    /// </para>
+    /// <para>
+    /// LoadWith therefore throws <see cref="ArgumentException"/> when the entity declares more than
+    /// one foreign key referencing the same target table, rather than risk loading the row from the
+    /// wrong foreign key. Use an explicit join on the foreign-key column instead. Nothing about the
+    /// foreign key itself needs to change.
+    /// </para>
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class ForeignKeyAttribute : Attribute
     {

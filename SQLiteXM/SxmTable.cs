@@ -2,6 +2,7 @@ using LinqToDB;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace SQLiteXM;
 
@@ -35,49 +36,193 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
 
     /// <summary>
     /// Return a new <see cref="SxmTable{T}"/> that will eagerly load the specified navigation
-    /// property when executed against a LinqToDB <see cref="ITable{T}"/>.
+    /// property when the query is executed.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// LIMITATION: LoadWith is supported only when an entity has at most ONE foreign key pointing
+    /// at a given target table. The association registry matches a foreign key to a navigation
+    /// property using the property's CLR type alone, so two properties of the same type cannot be
+    /// told apart.
+    /// </para>
+    /// <para>
+    /// This is enforced: if the entity declares more than one <c>[ForeignKey]</c> referencing the
+    /// target table, LoadWith throws <see cref="ArgumentException"/> rather than risk binding the
+    /// navigation property to the wrong column and silently loading the wrong row. The check counts
+    /// <c>[ForeignKey]</c> declarations only, so it never assumes that a property of the target type
+    /// was intended as a navigation property.
+    /// </para>
+    /// <para>
+    /// The foreign keys themselves are unaffected: all of them are created, enforced, and stored
+    /// normally, and all can be queried with an explicit join. Only eager loading through
+    /// LoadWith is restricted.
+    /// </para>
+    /// <para>
+    /// WORKAROUND: join on the foreign-key column instead of using LoadWith. A join names the
+    /// joining column explicitly, so every foreign key remains usable:
+    /// <code>
+    /// List&lt;Paper&gt; papers = await ctx.GetTable&lt;Paper&gt;().ToListAsync();
+    /// List&lt;Person&gt; people = await ctx.GetTable&lt;Person&gt;().ToListAsync();
+    ///
+    /// string? authorName   = people.Single(x =&gt; x.id == paper.AuthorId).PersonName;
+    /// string? coAuthorName = people.Single(x =&gt; x.id == paper.CoAuthorId).PersonName;
+    /// </code>
+    /// </para>
+    /// </remarks>
     /// <typeparam name="TProperty">The navigation property type.</typeparam>
     /// <param name="navigationProperty">Expression selecting the navigation property to load.</param>
-    /// <returns>
-    /// A new <see cref="SxmTable{T}"/> wrapping the updated query when the underlying
-    /// source is an <see cref="ITable{T}"/>; otherwise the original instance (no-op).
-    /// </returns>
+    /// <returns>A new <see cref="SxmTable{T}"/> wrapping the updated query.</returns>
+    /// <exception cref="ArgumentNullException">The expression is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">
+    /// The expression does not select a registered navigation property, or the entity declares
+    /// more than one foreign key referencing the navigation property's target table.
+    /// </exception>
     public SxmTable<T> LoadWith<TProperty>(Expression<Func<T, TProperty?>> navigationProperty)
     {
-        if (_inner is ITable<T> table)
-        {
-            // This resolves LinqToDB's LoadWith extension for ITable<T>
-            var newQuery = table.LoadWith(navigationProperty);
-            return new SxmTable<T>(newQuery, _context);
-        }
+        ValidateNavigationExpression(navigationProperty);
 
-        // fallback: no-op (query stays unchanged)
-        return this;
+        // LinqToDB exposes LoadWith for IQueryable<T>, not just ITable<T>. Using the IQueryable
+        // overload lets LoadWith calls be chained: the first call returns a query that is no
+        // longer an ITable<T>, and requiring ITable<T> here would silently drop every later call.
+        IQueryable<T> newQuery = _inner.LoadWith(navigationProperty);
+        return new SxmTable<T>(newQuery, _context);
     }
 
     /// <summary>
     /// Overload of <see cref="LoadWith{TProperty}(Expression{Func{T, TProperty}})"/> that
-    /// accepts multiple navigation property expressions. Each provided expression will be
-    /// applied in order when the underlying query is an <see cref="ITable{T}"/>.
+    /// accepts multiple navigation property expressions, applied in order.
     /// </summary>
+    /// <remarks>
+    /// The same restriction applies as for the single-property overload: LoadWith is supported only
+    /// when the entity has at most ONE foreign key referencing a given target table. If any supplied
+    /// expression selects a navigation property whose target table is referenced by more than one
+    /// <c>[ForeignKey]</c> on the entity, this method throws <see cref="ArgumentException"/>. Use an
+    /// explicit join for those properties instead. See
+    /// <see cref="LoadWith{TProperty}(Expression{Func{T, TProperty}})"/> for the full explanation
+    /// and an example.
+    /// </remarks>
     /// <param name="navigationProperties">One or more navigation property expressions to load.</param>
-    /// <returns>
-    /// A new <see cref="SxmTable{T}"/> wrapping the updated query when the underlying
-    /// source is an <see cref="ITable{T}"/>; otherwise the original instance (no-op).
-    /// </returns>
+    /// <returns>A new <see cref="SxmTable{T}"/> wrapping the updated query.</returns>
+    /// <exception cref="ArgumentNullException">The array, or any element in it, is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">
+    /// An expression does not select a registered navigation property, or the entity declares more
+    /// than one foreign key referencing that navigation property's target table.
+    /// </exception>
     public SxmTable<T> LoadWith(params Expression<Func<T, object?>>[] navigationProperties)
     {
-        if (_inner is ITable<T> table)
+        if (navigationProperties == null)
+            throw new ArgumentNullException(nameof(navigationProperties));
+
+        foreach (Expression<Func<T, object?>> prop in navigationProperties)
         {
-            IQueryable<T> q = table;
-            foreach (var prop in navigationProperties)
-            {
-                q = ((ITable<T>)q).LoadWith(prop);
-            }
-            return new SxmTable<T>(q, _context);
+            ValidateNavigationExpression(prop);
         }
-        return this;
+
+        IQueryable<T> q = _inner;
+        foreach (Expression<Func<T, object?>> prop in navigationProperties)
+        {
+            q = q.LoadWith(prop);
+        }
+
+        return new SxmTable<T>(q, _context);
+    }
+
+    /// <summary>
+    /// Verifies that a LoadWith expression selects a genuine navigation property with a registered
+    /// association, rather than an ordinary mapped column or an arbitrary expression.
+    /// </summary>
+    /// <remarks>
+    /// The compiler already guarantees the selected member exists on <typeparamref name="T"/>, but it
+    /// cannot tell a navigation property from a scalar column. Without this check, a call such as
+    /// <c>LoadWith(o =&gt; o.CustomerId)</c> compiles and then fails obscurely (or silently does
+    /// nothing) at query-execution time, far from the offending call site.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The expression is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">The expression does not select a registered navigation property.</exception>
+    private static void ValidateNavigationExpression(LambdaExpression navigationProperty)
+    {
+        if (navigationProperty == null)
+            throw new ArgumentNullException(nameof(navigationProperty));
+
+        // Unwrap the boxing conversion the compiler inserts for the object-returning params overload.
+        Expression body = navigationProperty.Body;
+        if (body is UnaryExpression unary &&
+            (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.ConvertChecked))
+        {
+            body = unary.Operand;
+        }
+
+        MemberExpression? memberExpression = body as MemberExpression;
+        if (memberExpression == null)
+        {
+            throw new ArgumentException(
+                $"LOADWITH ERROR on entity '{typeof(T).Name}': The expression is not a navigation property selector.\n" +
+                $"SOLUTION: Pass a simple property access, for example: LoadWith(x => x.RelatedEntity).",
+                nameof(navigationProperty));
+        }
+
+        // Only validate the first hop; nested paths such as x => x.Customer.Region are resolved by
+        // walking back to the member whose declaring expression is the lambda parameter.
+        MemberExpression firstHop = memberExpression;
+        while (firstHop.Expression is MemberExpression parentMember)
+        {
+            firstHop = parentMember;
+        }
+
+        if (firstHop.Expression is not ParameterExpression)
+        {
+            throw new ArgumentException(
+                $"LOADWITH ERROR on entity '{typeof(T).Name}': The expression must select a navigation property of '{typeof(T).Name}'.\n" +
+                $"SOLUTION: Pass a simple property access, for example: LoadWith(x => x.RelatedEntity).",
+                nameof(navigationProperty));
+        }
+
+        string memberName = firstHop.Member.Name;
+
+        // Reject the ambiguous case BEFORE checking registration. When an entity declares more than
+        // one [ForeignKey] to the same target table, association wiring cannot tell the navigation
+        // properties apart (it matches on CLR type alone) and may bind this property to the other
+        // foreign key's column, silently loading the wrong row. Counting [ForeignKey] declarations
+        // is unambiguous and never assumes a property of the target type is a navigation property.
+        if (firstHop.Member is PropertyInfo navProperty)
+        {
+            Type targetType = Nullable.GetUnderlyingType(navProperty.PropertyType) ?? navProperty.PropertyType;
+            List<string> foreignKeys = SxmHelpers.GetForeignKeyColumnsTargeting(typeof(T), targetType.Name);
+
+            if (foreignKeys.Count > 1)
+            {
+                throw new ArgumentException(
+                    $"LOADWITH ERROR on entity '{typeof(T).Name}': '{memberName}' cannot be eagerly loaded because " +
+                    $"'{typeof(T).Name}' declares {foreignKeys.Count} foreign keys referencing '{targetType.Name}' " +
+                    $"({string.Join(", ", foreignKeys)}).\n" +
+                    $"CAUSE: LoadWith matches a navigation property to a foreign key by the property's type alone, " +
+                    $"so when several foreign keys point at the same table the correct column cannot be determined. " +
+                    $"Allowing it could silently load the row from the wrong foreign key.\n" +
+                    $"SOLUTION: Use an explicit join on the foreign-key column you want, for example:\n" +
+                    $"  List<{typeof(T).Name}> rows = await ctx.GetTable<{typeof(T).Name}>().ToListAsync();\n" +
+                    $"  List<{targetType.Name}> related = await ctx.GetTable<{targetType.Name}>().ToListAsync();\n" +
+                    $"  {targetType.Name} match = related.Single(x => x.id == row.{foreignKeys[0]});\n" +
+                    $"LoadWith is supported when an entity has at most one foreign key per target table.",
+                    nameof(navigationProperty));
+            }
+        }
+
+        if (!SxmHelpers.IsRegisteredAssociation(typeof(T), memberName))
+        {
+            List<string> available = SxmHelpers.GetRegisteredAssociationNames(typeof(T));
+            string availableText = available.Count == 0
+                ? $"'{typeof(T).Name}' has no navigation properties."
+                : $"Available navigation properties: {string.Join(", ", available)}.";
+
+            throw new ArgumentException(
+                $"LOADWITH ERROR on entity '{typeof(T).Name}': '{memberName}' is not a navigation property.\n" +
+                $"CAUSE: LoadWith eagerly loads a related entity through a registered association. " +
+                $"'{memberName}' is either an ordinary mapped column or has no association configured.\n" +
+                $"SOLUTION: Declare a navigation property marked [NotColumn] whose type is the related entity, " +
+                $"backed by a [ForeignKey] property, and ensure both entity types are registered before querying.\n" +
+                $"{availableText}",
+                nameof(navigationProperty));
+        }
     }
 
     /// <summary>
@@ -88,6 +233,17 @@ public sealed class SxmTable<T> : IQueryable<T> where T : class
     /// </remarks>
     /// <returns>The underlying <see cref="ITable{T}"/> if the inner query implements it; otherwise <c>null</c>.</returns>
     internal ITable<T>? AsITable() => _inner as ITable<T>;
+
+    /// <summary>
+    /// Return the underlying query as an <see cref="IQueryable{T}"/>.
+    /// </summary>
+    /// <remarks>
+    /// Operators such as <see cref="LoadWith{TProperty}(Expression{Func{T, TProperty}})"/> produce an
+    /// <see cref="IQueryable{T}"/> that is no longer an <see cref="ITable{T}"/>. Materializers must use
+    /// this rather than <see cref="AsITable"/> so composed queries remain executable.
+    /// </remarks>
+    /// <returns>The underlying queryable. Never <c>null</c>.</returns>
+    internal IQueryable<T> AsInnerQueryable() => _inner;
 
     /// <summary>
     /// Try to obtain the underlying LinqToDB <see cref="ITable{T}"/>.

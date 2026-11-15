@@ -1,4 +1,4 @@
-﻿# Reading and writing data in SQLiteXM — LINQ, SQL, and Transactional Blocks
+# Reading and writing data in SQLiteXM — LINQ, SQL, and Transactional Blocks
 
 SQLiteXM lets you read and write to a database in multiple ways: 
 1. Directly using an **entity instance** — called entity DML. 
@@ -8,6 +8,41 @@ SQLiteXM lets you read and write to a database in multiple ways:
 The same transaction used to execute LINQ statements can also include entity DML and SQL statements, all in one atomic unit of work. 
 
 This guide walks that spectrum end to end: from the simplest single-statement calls (`entity.SaveAsync()` and `SxmSql.RunStatementAsync(...)`) up to the fully-transactional `SxmTransaction` block that unifies entity DML, named SQL, embedded SQL, and LINQ on one transaction.
+
+---
+
+## Contents
+
+- [Concepts & Conventions](#concepts--conventions)
+- [The Two Execution Modes](#the-two-execution-modes)
+
+**Standalone — each call is its own transaction**
+- [Standalone Entity DML — `SaveAsync` / `DeleteAsync`](#standalone-entity-dml--saveasync--deleteasync)
+- [Standalone Bulk Inserts — `SxmSql.BulkInsertAsync`](#standalone-bulk-inserts--sxmsqlbulkinsertasync)
+- [Standalone SQL — `SxmSql.RunStatementAsync`](#standalone-sql--sxmsqlrunstatementasync)
+  - [Quick start — embedded SQL](#quick-start--embedded-sql)
+  - [Writing and Modifying Data with `RunStatementAsync`](#writing-and-modifying-data-with-runstatementasync)
+  - [The RunStatementAsync overloads](#the-runstatementasync-overloads)
+  - [Using named SQL statements with `SxmSql.RunStatementAsync`](#using-named-sql-statements-with-sxmsqlrunstatementasync)
+
+**Transactional blocks — many statements, one unit of work**
+- [Transactions](#transactions)
+  - [Creating a transaction](#creating-a-transaction)
+  - [Entity DML inside a transaction](#entity-dml-inside-a-transaction)
+  - [Bulk inserts inside a transaction](#bulk-inserts-inside-a-transaction)
+  - [SQL inside a transaction — `RunStatementAsync`](#sql-inside-a-transaction--runstatementasync)
+  - [LINQ inside a transaction](#linq-inside-a-transaction)
+  - [Manual commit and rollback (optional)](#manual-commit-and-rollback-optional)
+- [Using LINQ, SQL, and Entity DML in One Transaction](#using-linq-sql-and-entity-dml-in-one-transaction)
+- [Transaction performance and threading](#transaction-performance-and-threading)
+
+**Failure handling and guidance**
+- [Error Handling and Rollback](#error-handling-and-rollback)
+  - [Standalone calls](#standalone-calls)
+  - [Inside an `SxmTransaction` block](#inside-an-sxmtransaction-block)
+  - [Exceptions to know about](#exceptions-to-know-about)
+- [Choosing the Right API](#choosing-the-right-api)
+- [Best Practices](#best-practices)
 
 ---
 
@@ -93,7 +128,7 @@ Each call is atomic on its own. It commits if the statement succeeds and rolls b
 
 ## Standalone Bulk Inserts — `SxmSql.BulkInsertAsync`
 
-When you have many new entities to insert, calling `SaveAsync()` once per entity works but issues one `INSERT` per row. 
+When you have many new entities to save, calling `SaveAsync()` once per entity works but issues one `INSERT` per row. 
 The static method `SxmSql.BulkInsertAsync` is the bulk counterpart: it writes the entities using multi-row INSERT statements inside a single, self-contained transaction that commits on success and rolls back on failure.
 
 ```csharp
@@ -121,6 +156,8 @@ Key points:
 - **`statementCount`** controls how many rows are written per `INSERT` statement. It defaults to 20, must be at least 1 (`ArgumentOutOfRangeException` otherwise), and is automatically capped so that no single statement binds more than 1000 parameters - larger statements bind measurably slower in `Microsoft.Data.Sqlite`. Fewer, larger statements mean fewer round trips; the default suits most workloads, so only change it if measurement shows a benefit.
 - **Its own transaction, always.** `SxmSql.BulkInsertAsync` never joins an ambient `SxmTransaction`. To bulk insert as part of a larger unit of work, use the transactional form described in [Bulk inserts inside a transaction](#bulk-inserts-inside-a-transaction).
 - **`databaseName`** is optional; when omitted, the default database is used.
+
+> 💡 **Insert is the only bulk operation with a standalone form.** Bulk *update* and *delete* are expressed as LINQ queries, so they require a transaction. See [Bulk Update Operations](./linq-queries.md#bulk-update-operations) and [Bulk Delete Operations](./linq-queries.md#bulk-delete-operations).
 
 ---
 
@@ -152,22 +189,22 @@ The example above shows another simple SQL SELECT. It returns a `List` of `Custo
 **(3) Typed result, dictionary parameters:**
 
 ```csharp
-var parms = new Dictionary<string, object?> { ["MinAmount"] = 100m };
+var parms = new Dictionary<string, object?> { ["CustomerId"] = 42L };
 
-string sql = "SELECT id, Product, Amount FROM `Order` WHERE Amount >= @MinAmount";
-List<Order> big = await SxmSql.RunStatementAsync<Order>(sql, parms);
+string sql = "SELECT id, Product, Amount FROM `Order` WHERE CustomerId = @CustomerId";
+List<Order> customerOrders = await SxmSql.RunStatementAsync<Order>(sql, parms);
 ```
 
-The example above shows a SQL SELECT that takes one named parameter; `@MinAmount`. It returns a `List` of `Order` objects where each `Order` in the List represents a single row returned by the query.
+The example above shows a SQL SELECT that takes one named parameter; `@CustomerId`. It returns a `List` of `Order` objects where each `Order` in the List represents a single row returned by the query.
 
 **(4) Positional parameters:**
 
 SQLiteXM also supports positional SQL parameters. Pass the values in a `List<object>` in the same order as the placeholders appear in the SQL statement:
 
 ```csharp
-List<object> parms = new List<object> { 42L, 100m };
+List<object> parms = new List<object> { 42L, "Widget" };
 
-string sql = "SELECT id, Product, Amount FROM `Order` WHERE CustomerId = @p0 AND Amount >= @p1";
+string sql = "SELECT id, Product, Amount FROM `Order` WHERE CustomerId = @p0 AND Product = @p1";
 List<Order> orders = await SxmSql.RunStatementAsync<Order>(sql, parms);
 ```
 💡 Named parameters are recommended over positional parameters for most SQL. Positional parameters can be useful when there are only one or two parameters 
@@ -410,7 +447,7 @@ The rules are the same as the standalone form: new entities only, one type per c
 `ctx.BulkInsertAsync(entities)` is equivalent to `ctx.GetTable<T>().BulkInsertAsync(entities)`; the LINQ form is covered in [LINQ Queries — Bulk Insert Operations](./linq-queries.md#bulk-insert-operations).
 
 
-### SQL inside a transaction— `RunStatementAsync`
+### SQL inside a transaction — `RunStatementAsync`
 
 `SxmTransaction` exposes its own set of `RunStatementAsync` overloads that mirror the eight in `SxmSql`, with two differences:
 

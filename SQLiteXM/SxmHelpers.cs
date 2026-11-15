@@ -26,6 +26,107 @@ namespace SQLiteXM
         private static readonly ConcurrentDictionary<string, byte> _registeredAssociations = new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 
         /// <summary>
+        /// Tracks which foreign-key columns on an entity point at each target table.
+        /// Key format: "{SourceType.FullName}-&gt;{TargetTableName}"; the value is the set of
+        /// foreign-key column names declared on that entity for that target.
+        /// </summary>
+        /// <remarks>
+        /// A set (rather than a counter) is used because an entity's foreign keys can be discovered
+        /// more than once - schema registration reads the <c>[ForeignKey]</c> attributes, and
+        /// <see cref="SxmAssociationMapper"/> re-discovers them from the SQLite schema. Recording the
+        /// column names makes repeat discovery of the SAME column idempotent, so only genuinely
+        /// distinct foreign keys increase the count.
+        /// </remarks>
+        private static readonly ConcurrentDictionary<string, HashSet<string>> _foreignKeyTargets = new ConcurrentDictionary<string, HashSet<string>>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Records that <paramref name="sourceKey"/> on <paramref name="sourceType"/> is a foreign key
+        /// referencing <paramref name="targetTableName"/>.
+        /// </summary>
+        private static void TrackForeignKeyTarget(Type sourceType, string sourceKey, string targetTableName)
+        {
+            if (sourceType == null || string.IsNullOrEmpty(sourceKey) || string.IsNullOrEmpty(targetTableName))
+                return;
+
+            HashSet<string> columns = _foreignKeyTargets.GetOrAdd(
+                $"{sourceType.FullName}->{targetTableName}",
+                _ => new HashSet<string>(StringComparer.Ordinal));
+
+            lock (columns)
+            {
+                columns.Add(sourceKey);
+            }
+        }
+
+        /// <summary>
+        /// Returns the foreign-key column names declared on <paramref name="sourceType"/> that
+        /// reference <paramref name="targetTableName"/>.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="SxmTable{T}.LoadWith{TProperty}"/> uses this to reject eager loading when an
+        /// entity has more than one foreign key to the same target table. Association wiring matches
+        /// a navigation property by its CLR type alone, so with two such foreign keys the correct
+        /// column cannot be determined and LoadWith may silently load the wrong row. Counting
+        /// <c>[ForeignKey]</c> declarations is unambiguous: it never assumes that a property of the
+        /// target type is intended as a navigation property.
+        /// </remarks>
+        /// <param name="sourceType">The entity type that declares the foreign keys.</param>
+        /// <param name="targetTableName">The referenced table (target CLR type) name.</param>
+        internal static List<string> GetForeignKeyColumnsTargeting(Type sourceType, string targetTableName)
+        {
+            if (sourceType == null || string.IsNullOrEmpty(targetTableName))
+                return new List<string>();
+
+            if (!_foreignKeyTargets.TryGetValue($"{sourceType.FullName}->{targetTableName}", out HashSet<string>? columns))
+                return new List<string>();
+
+            List<string> result;
+            lock (columns)
+            {
+                result = new List<string>(columns);
+            }
+
+            result.Sort(StringComparer.Ordinal);
+            return result;
+        }
+
+        /// <summary>
+        /// Returns <c>true</c> when a runtime association was successfully registered for the given
+        /// navigation property. Used by <see cref="SxmTable{T}.LoadWith{TProperty}"/> to reject members
+        /// that are ordinary columns rather than navigation properties.
+        /// </summary>
+        /// <param name="sourceType">The entity type that declares the navigation property.</param>
+        /// <param name="navigationPropertyName">The navigation property name.</param>
+        internal static bool IsRegisteredAssociation(Type sourceType, string navigationPropertyName)
+        {
+            if (sourceType == null || string.IsNullOrEmpty(navigationPropertyName))
+                return false;
+
+            return _registeredAssociations.ContainsKey($"{sourceType.FullName}.{navigationPropertyName}");
+        }
+
+        /// <summary>
+        /// Returns the names of all navigation properties with a successfully registered association
+        /// for <paramref name="sourceType"/>. Used to build helpful error messages.
+        /// </summary>
+        internal static List<string> GetRegisteredAssociationNames(Type sourceType)
+        {
+            List<string> names = new List<string>();
+            if (sourceType == null)
+                return names;
+
+            string prefix = $"{sourceType.FullName}.";
+            foreach (string key in _registeredAssociations.Keys)
+            {
+                if (key.StartsWith(prefix, StringComparison.Ordinal))
+                    names.Add(key.Substring(prefix.Length));
+            }
+
+            names.Sort(StringComparer.Ordinal);
+            return names;
+        }
+
+        /// <summary>
         /// Thread-safe cache storing property metadata for each object type.
         /// 
         /// Maps a <see cref="Type"/> to a read-only dictionary of property names to their corresponding <see cref="PropertyInfo"/> objects.
@@ -213,8 +314,23 @@ namespace SQLiteXM
         /// <param name="sourceType">Type that contains the foreign key/navigation property.</param>
         /// <param name="sourceKey">Name of the FK column on the source type.</param>
         /// <param name="targetTableName">Name of the target CLR type (table) to match against.</param>
+        /// <remarks>
+        /// KNOWN LIMITATION: the navigation property is matched by CLR type alone;
+        /// <paramref name="sourceKey"/> is not used to select it. When an entity declares two
+        /// foreign keys to the same target table, both calls find the same (first-declared)
+        /// navigation property, so the registered property may be bound to the other foreign key's
+        /// column. Rather than fix the matching, every foreign key is recorded by
+        /// <c>TrackForeignKeyTarget</c> and <see cref="SxmTable{T}.LoadWith{TProperty}"/> refuses to
+        /// eagerly load any navigation property whose target table is referenced by more than one
+        /// foreign key. The foreign keys themselves still work and an explicit join covers the case.
+        /// See SQLiteXM.Tests\DualForeignKeyNavigationTests.cs for the characterization tests.
+        /// </remarks>
         internal static void CreateAssociation([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type sourceType, string sourceKey, string targetTableName)
         {
+            // Record the foreign key before any navigation-property matching. This happens even when
+            // no navigation property exists, so SxmTable.LoadWith can detect the ambiguous case of
+            // two foreign keys pointing at the same target table and fail loudly.
+            TrackForeignKeyTarget(sourceType, sourceKey, targetTableName);
 
             // Attempt to wire an association if a navigation property exists.
             // Conditions:
@@ -234,23 +350,38 @@ namespace SQLiteXM
                     string assocKey = $"{sourceType.FullName}.{navProp.Name}";
                     if (_registeredAssociations.TryAdd(assocKey, 0))
                     {
-                        // Register runtime association: Source.FK -> Target.id
-                        SxmAssociationMapper.ConfigureAssociation(
-                            sourceType: sourceType,
-                            navigationPropertyName: navProp.Name,
-                            thisKey: sourceKey,
-                            canBeNull: true);
+                        try
+                        {
+                            // Register runtime association: Source.FK -> Target.id
+                            SxmAssociationMapper.ConfigureAssociation(
+                                sourceType: sourceType,
+                                navigationPropertyName: navProp.Name,
+                                thisKey: sourceKey,
+                                canBeNull: true);
+                        }
+                        catch
+                        {
+                            // The key is only a record of a SUCCESSFUL registration: SxmTable.LoadWith
+                            // trusts it to decide whether a navigation property is usable. If wiring
+                            // failed, the claim must be withdrawn so LoadWith reports a clear error
+                            // instead of forwarding an unmapped member to LinqToDB.
+                            _registeredAssociations.TryRemove(assocKey, out _);
+                            throw;
+                        }
                     }
                 }
                 else
                 {
-                    // OPTIONAL: You can log or ignore if no navigation property is found.
-                    // This means only the physical FK will exist; navigation-based LINQ won't.
+                    // No navigation property found. This is normal and valid: the entity has a
+                    // physical foreign-key column but no navigation-based loading. Nothing to do.
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Swallow or log; association registration failure should not break table creation.
+                // Association wiring is an optional convenience and must not break table creation,
+                // so the failure is contained here. It is logged rather than silently discarded
+                // because an unwired association is otherwise invisible until a query misbehaves.
+                SxmLogging.Log(ex, $"Failed to register association on '{sourceType.Name}' for foreign key '{sourceKey}' -> '{targetTableName}'. Navigation-based loading will be unavailable for this relationship.");
             }
 
         }

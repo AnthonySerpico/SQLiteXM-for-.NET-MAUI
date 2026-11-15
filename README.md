@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 529 tests |
+| Automated Test Coverage | 602 tests |
 
 ---
 
@@ -78,6 +78,8 @@ public class User : SxmEntity
 
     public DateTime CreatedAt { get; set; }
 
+    public DateTime? LastLogin { get; set; }
+
     [Index]
     public string? Email { get; set; }
 }
@@ -100,6 +102,7 @@ public class Post : SxmEntity
 * `[Table]` defines schema behavior for the entity
 * `[Index]` declares a database index on the property
 * `[ForeignKey]` defines relational constraints between entities
+* A nullable property such as `DateTime? LastLogin` maps to a column that allows `NULL`
 
 The schema is created when the database is initialized with `StartInitialization(...)` (step 3).
 
@@ -176,7 +179,7 @@ SQL, and begin using transactions.
 
 ```csharp
 // 'User' inherits from SxmEntity and is automatically mapped to a database table
-var user = new User
+User user = new User
 {
     Name = "Alice",
     Age = 0,
@@ -188,18 +191,29 @@ var user = new User
 // 'Age' is initially set to 0; the record is updated below.
 await user.SaveAsync();
 
-await using (var ctx = new SxmTransaction())
+await using (SxmTransaction ctx = new SxmTransaction())
 {
     // LINQ — query the user to modify.
-    var existingUser = ctx.GetTable<User>().FirstOrDefault(u => u.Name == "Alice");
+    User? existingUser = await ctx.GetTable<User>().FirstOrDefaultAsync(u => u.Name == "Alice");
 
-    // Embedded SQL — execute SQL within the same transaction.
-    await ctx.RunStatementAsync("UPDATE User SET LastLogin = CURRENT_TIMESTAMP WHERE Name == 'Alice'");
+    if (existingUser != null)
+    {
+        // Embedded SQL — execute SQL within the same transaction.
+        // Values are passed as parameters rather than built into the SQL text.
+        Dictionary<string, object?> loginParms = new Dictionary<string, object?>
+        {
+            ["LastLogin"] = DateTime.UtcNow,
+            ["Name"]      = "Alice"
+        };
 
-    // Entity DML — persist the change.
-    // Uses the active transaction.
-    existingUser.Age = 25;
-    await existingUser.SaveAsync();
+        await ctx.RunStatementAsync(
+            "UPDATE User SET LastLogin = @LastLogin WHERE Name = @Name", loginParms);
+
+        // Entity DML — persist the change.
+        // Uses the active transaction.
+        existingUser.Age = 25;
+        await existingUser.SaveAsync();
+    }
 
 } // <-- Automatically commits transaction on dispose if no errors occurred
 ```
@@ -209,8 +223,9 @@ await using (var ctx = new SxmTransaction())
 * `SaveAsync()` inserts a new entity or updates an existing entity based on its primary key
 * `SxmTransaction` starts a new transaction scope for database operations
 * All database operations within the transaction participate in the same commit scope
-* LINQ executes against the database and returns an entity instance
-* `RunStatementAsync()` executes embedded SQL within the active transaction
+* LINQ executes against the database and returns an entity instance, or `null` when no row matches
+* `RunStatementAsync()` executes embedded SQL within the active transaction, binding values as
+parameters rather than concatenating them into the SQL text
 * Entity instances can be modified and persisted using the same `SaveAsync`
 
 
@@ -218,7 +233,7 @@ await using (var ctx = new SxmTransaction())
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **529 tests** covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with **602 tests** covering real-world scenarios.
 
 ### Performance Benchmarks (from test suite)
 
@@ -234,7 +249,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-The `SQLiteXM.Tests` project contains **529 tests**, run against both **.NET 8** and **.NET 10** (1,058 test executions), all passing.
+The `SQLiteXM.Tests` project contains **602 tests**, run against both **.NET 8** and **.NET 10** (1,204 test executions), all passing.
 
 | Area | What is covered | Test class | Tests |
 |------|-----------------|------------|------:|
@@ -254,7 +269,7 @@ The `SQLiteXM.Tests` project contains **529 tests**, run against both **.NET 8**
 | | Joins, grouping, aggregation, paging, async materialization | `AdvancedLinqTests` | 12 |
 | | LINQ inside `SxmTransaction` — commit and rollback | `LinqTransactionTests` | 6 |
 | | Bulk `Set(...).UpdateAsync()` and `DeleteAsync()` | `BulkLinqOperationsTests` | 12 |
-| | Every example in [LINQ Queries](./Docs/linq-queries.md), executed as a test | `LinqQueryDocumentationTests` | 43 |
+| | Every example in [LINQ Queries](./Docs/linq-queries.md), executed as a test | `LinqQueryDocumentationTests` | 49 |
 | | `SxmUpdateSet<T>` edge cases — duplicate column assignment, null assignment, expression setters, builder immutability | `UpdateSetTests` | 10 |
 | **Raw SQL** | `RunStatementAsync` overloads — no parameters, named (`Dictionary`) parameters, positional (`List`) parameters, typed and raw result shapes, and parameterization safety against injection payloads | `RunStatementTests` | 18 |
 | | Named statements resolved from `SqlStatements.json` — named vs. positional binding, name-before-SQL resolution order, unknown and invalid statement names | `NamedStatementTests` | 15 |
@@ -269,7 +284,10 @@ The `SQLiteXM.Tests` project contains **529 tests**, run against both **.NET 8**
 | **Database Options** | Every rule in `SxmDatabaseOptionsValidator` — errors vs. warnings, defaults accepted as valid, all errors reported together | `DatabaseOptionsValidatorTests` | 78 |
 | | Options actually taking effect — `journal_mode`, `synchronous`, `foreign_keys`, `temp_store`, `cache_size`, `busy_timeout`, `wal_autocheckpoint` PRAGMA round-trips, plus `OnConnectionOpened` / `OnConnectionClosed` interceptor invocation and ordering | `DatabaseOptionsEffectTests` | 22 |
 | **Error Handling** | `SxmException` contract — `ErrorCode`, `Data["sxmErrorCode"]`, `Context`, exception filters, wrapped vs. direct throws | `SxmExceptionContractTests` | 9 |
-| | **Total** | | **529** |
+| **Related Data** | `LoadWith` eager loading — chained calls, nested paths, argument validation, filtering and projection over navigation properties | `LoadWithTests` | 35 |
+| | Rejection of entities with multiple foreign keys to the same target table, and confirmation that valid entities are unaffected | `DualForeignKeyNavigationTests` | 18 |
+| **Data Types** | `decimal` stored as TEXT — which SQL operations are numerically correct and which are text-ordered | `DecimalComparisonTests` | 14 |
+| | **Total** | | **602** |
 
 ---
 

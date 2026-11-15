@@ -544,6 +544,120 @@ public class LinqQueryDocumentationTests : TestBase
         }
     }
 
+    [Fact]
+    public async Task AsyncMaterialization_AllAsync_ShouldReturnTrueWhenAllMatch()
+    {
+        // Arrange
+        var customers = await CreateTestCustomersAsync();
+
+        // Act
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
+        {
+            var table = ctx.GetTable<Customer>();
+            var allAdults = await table.AllAsync(c => c.Age >= 18);
+
+            // Assert
+            allAdults.Should().BeTrue(); // Youngest is Ada at 36
+        }
+    }
+
+    [Fact]
+    public async Task AsyncMaterialization_AllAsync_ShouldReturnFalseWhenAnyFails()
+    {
+        // Arrange
+        var customers = await CreateTestCustomersAsync();
+
+        // Act
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
+        {
+            var table = ctx.GetTable<Customer>();
+            var allOver90 = await table.AllAsync(c => c.Age > 90);
+
+            // Assert
+            allOver90.Should().BeFalse(); // Ada (36) and Grace (85) are not
+        }
+    }
+
+    [Fact]
+    public async Task AsyncMaterialization_ToDictionaryAsync_ShouldKeyByIdSelector()
+    {
+        // Arrange
+        var customers = await CreateTestCustomersAsync();
+
+        // Act
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
+        {
+            var table = ctx.GetTable<Customer>();
+            Dictionary<long, Customer> byId = await table.ToDictionaryAsync(c => c.id);
+
+            // Assert
+            byId.Should().HaveCount(5);
+            byId.Keys.Should().OnlyHaveUniqueItems();
+
+            long adaId = customers.Single(c => c.Name == "Ada Lovelace").id;
+            byId[adaId].Email.Should().Be("ada@example.com");
+        }
+    }
+
+    [Fact]
+    public async Task AsyncMaterialization_ToDictionaryAsync_ShouldSupportElementSelector()
+    {
+        // Arrange
+        var customers = await CreateTestCustomersAsync();
+
+        // Act
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
+        {
+            var table = ctx.GetTable<Customer>();
+            Dictionary<long, string?> emailById =
+                await table.ToDictionaryAsync(c => c.id, c => c.Email);
+
+            // Assert
+            long graceId = customers.Single(c => c.Name == "Grace Hopper").id;
+            emailById[graceId].Should().Be("grace@example.com");
+        }
+    }
+
+    [Fact]
+    public async Task AsyncMaterialization_ToDictionaryAsync_ShouldThrowOnDuplicateKeys()
+    {
+        // The documentation warns that the key selector must produce unique keys.
+        // Several customers share a City, so keying on it must fail.
+
+        // Arrange
+        var customers = await CreateTestCustomersAsync();
+
+        // Act
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
+        {
+            var table = ctx.GetTable<Customer>();
+
+            Func<Task> act = async () => await table.ToDictionaryAsync(c => c.City!);
+
+            // Assert: Hampton appears twice (Katherine and Dorothy)
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+    }
+
+    [Fact]
+    public async Task AsyncMaterialization_ContainsAsync_ShouldDetectExistingRow()
+    {
+        // Arrange
+        var customers = await CreateTestCustomersAsync();
+
+        // Act
+        await using (var ctx = new SxmTransaction(TestDatabaseName))
+        {
+            var table = ctx.GetTable<Customer>();
+
+            Customer ada = await table.SingleAsync(c => c.Name == "Ada Lovelace");
+            var found = await table.ContainsAsync(ada);
+
+            // Assert
+            found.Should().BeTrue();
+        }
+    }
+
     #endregion
 
     #region String Operations

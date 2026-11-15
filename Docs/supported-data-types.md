@@ -120,6 +120,60 @@ public class Product : SxmEntity
 }
 ```
 
+> ⚠️ **Because the value is stored as text, SQLite compares it as text.** SQLite compares text character by character, the way a dictionary orders words, so the stored string `"9.99"` is treated as greater than `"30"` — the character `9` comes after `3`. The numeric values are never consulted.
+
+Some operations are therefore safe and some are not. This applies equally to LINQ and to raw SQL, because both are evaluated by SQLite:
+
+| Operation on a `decimal` column | Works correctly? | Why |
+|---|---|---|
+| `==` and `!=` | ✅ Yes | The same value always produces the same text |
+| `SumAsync`, `AverageAsync`, `SUM`, `AVG` | ✅ Yes | SQLite converts text to a number for arithmetic |
+| Arithmetic updates, e.g. `Amount * 0.9` | ✅ Yes | Also arithmetic |
+| Comparing an aggregate, e.g. `SUM(Amount) > 1000` | ✅ Yes | `SUM` already produced a number |
+| Saving and loading a value | ✅ Yes | Text storage preserves full precision |
+| `>`, `<`, `>=`, `<=` | ❌ **No** | Compared as text, not as numbers |
+| `OrderBy`, `ORDER BY` | ❌ **No** | Sorted as text |
+| `MinAsync`, `MaxAsync`, `MIN`, `MAX` | ❌ **No** | Picks the smallest/largest *string* |
+
+> ⚠️ **This fails silently.** A range filter returns the wrong rows rather than raising an error. That is especially dangerous in a bulk `UpdateAsync` or `DeleteAsync`, where it will change or remove rows you did not intend.
+
+#### The Workaround
+
+Load the rows first, then compare or sort them in memory, where normal C# decimal rules apply:
+
+```csharp
+await using (SxmTransaction ctx = new SxmTransaction())
+{
+	SxmTable<Order> orders = ctx.GetTable<Order>();
+
+	// ❌ WRONG: compared as text, returns the wrong rows
+	List<Order> wrong = await orders
+		.Where(o => o.Amount >= 100m)
+		.ToListAsync();
+
+	// ✅ CORRECT: narrow with any non-decimal filters in SQL first,
+	// then apply the decimal comparison in memory
+	List<Order> correct = (await orders
+			.Where(o => o.CustomerId == 42)
+			.ToListAsync())
+		.Where(o => o.Amount >= 100m)
+		.ToList();
+}
+```
+
+Apply the same pattern for sorting and for finding a minimum or maximum:
+
+```csharp
+List<Order> all = await orders.ToListAsync();
+
+List<Order> sorted = all.OrderByDescending(o => o.Amount).ToList();
+decimal maxAmount = all.Max(o => o.Amount);
+```
+
+The same rule applies to raw SQL run through `SxmSql.RunStatementAsync`: filter and sort on non-decimal columns in the statement, then compare in memory.
+
+If you need true SQL-side range filtering and sorting on money, store the value as a whole number of cents in a `long` column instead, and convert at the edges of your code.
+
 ### ulong
 
 `ulong` values are stored as fixed-width, zero-padded `TEXT` because SQLite `INTEGER` 

@@ -68,6 +68,14 @@ LINQ, SQL, entity persistence, and transactions.
 
 Learn SQLiteXM LINQ extensions and how to use LINQ to query and manipulate data in SQLiteXM.
 
+### [Loading Related Data](loading-related-data.md)
+
+Learn how to define navigation properties and use `LoadWith` to load related entities along with
+your main query, instead of fetching them one at a time.
+
+**Read this when:** Your entities reference each other through `[ForeignKey]` and you want the
+related objects filled in automatically.
+
 ### [Concurrency](concurrency.md)
 
 Learn how to safely use SQLiteXM in concurrent scenarios, including which patterns
@@ -202,6 +210,7 @@ This is enough to get SQLiteXM running and begin building an application.
 After the basics, explore the topics relevant to your application:
 
 - **[Supported Data Types](supported-data-types.md)** — when defining properties
+- **[Loading Related Data](loading-related-data.md)** — when entities reference each other
 - **[Concurrency](concurrency.md)** — when performing concurrent operations
 - **[Error Handling](error-handling.md)** — when writing recovery logic around failures
 - **[Applying Database Options](database-configuration-options.md)** — when applying options to your database
@@ -230,6 +239,7 @@ When your application begins evolving:
 | [Defining Entities](defining-entities.md) | Entity and schema definition | When designing your data model |
 | [Working with Data](working-with-data.md) | Querying and modifying data | When building data access |
 | [LINQ Queries](linq-queries.md) | LINQ query guide | When using LINQ or bulk operations |
+| [Loading Related Data](loading-related-data.md) | Navigation properties and `LoadWith` | When loading related entities |
 | [Concurrency](concurrency.md) | Concurrent operations guide | When performing concurrent operations |
 | [Error Handling](error-handling.md) | Exception types and recovery guidance | When writing `try`/`catch` around database calls |
 | [Supported Data Types](supported-data-types.md) | C# → SQLite type reference | When choosing entity property types |
@@ -240,6 +250,7 @@ When your application begins evolving:
 | [INotifyPropertyChanged](inotifypropertychanged.md) | MAUI binding integration | When connecting entities to the UI |
 | [Application Lifecycle](application-lifecycle.md) | MAUI lifecycle integration | Optional, for mobile app backgrounding |
 | [Advanced Initialization Patterns](advanced-initialization-patterns.md) | Multi-entry-point database readiness | When using BroadcastReceivers/background tasks or needing a hard startup guarantee |
+| [Initialization Guarantees — Verified](advanced-initialization-patterns-test-coverage.md) | Test evidence and startup benchmarks | When you want proof behind the initialization guarantees |
 | [Versioning Policy](versioning.md) | How SQLiteXM version numbers are assigned | When upgrading or reviewing release notes |
 | [Debugging SQLiteXM](debugging.md) | Symbol/source debugging setup | When stepping into SQLiteXM source code |
 
@@ -255,6 +266,7 @@ If you are not sure where to look:
 - **"What data types can I use?"** → [Supported Data Types](supported-data-types.md)
 - **"How do I query or save data?"** → [Working with Data](working-with-data.md)
 - **"How do I use LINQ?"** → [LINQ Queries](linq-queries.md)
+- **"How do I load related entities?"** → [Loading Related Data](loading-related-data.md)
 - **"How do I perform concurrent operations?"** → [Concurrency](concurrency.md)
 - **"How do I handle errors and exceptions?"** → [Error Handling](error-handling.md)
 - **"How do I apply database options?"** → [Applying Database Options](database-configuration-options.md)
