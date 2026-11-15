@@ -252,7 +252,7 @@ This is covered fully in: ➡️ **[Working With Data](./working-with-data.md)**
 For example:
 
 ```csharp
-var user = new User
+User user = new User
 {
     Name = "Alice",
     Age = 30,
@@ -262,10 +262,10 @@ var user = new User
 // Insert the new entity.
 await user.SaveAsync();
 
-await using (var ctx = new SxmTransaction())
+await using (SxmTransaction ctx = new SxmTransaction())
 {
     // Query using LINQ.
-    var existingUser =
+    User? existingUser =
         ctx.GetTable<User>()
            .FirstOrDefault(u => u.Name == "Alice");
 

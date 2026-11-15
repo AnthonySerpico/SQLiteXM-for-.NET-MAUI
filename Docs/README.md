@@ -191,6 +191,19 @@ changes mean, and how to judge the potential impact of upgrading.
 
 ---
 
+## 📖 Reference
+
+### [API Reference](api-reference.md)
+
+A complete listing of every public type and member in SQLiteXM — classes, methods, properties,
+attributes, enumerations, and delegates — with signatures, short descriptions, and links to the
+guide that covers each feature in depth.
+
+**Read this when:** You know what you want to do and need the exact signature, or you want to
+see everything the library offers at a glance.
+
+---
+
 ## 📚 Recommended Reading Paths
 
 ### New to SQLiteXM

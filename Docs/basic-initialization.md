@@ -91,7 +91,7 @@ like this: `_ = InitializeShellAfterDbReadyAsync(window)`
 ```csharp
         protected override Window CreateWindow(IActivationState? activationState)
         {
-            var window = new Window(new ContentPage
+            Window window = new Window(new ContentPage
             {
                 Content = new ActivityIndicator
                 {

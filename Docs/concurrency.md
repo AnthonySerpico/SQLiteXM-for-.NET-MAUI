@@ -19,12 +19,12 @@ SQLiteXM enables concurrency by allowing you to create **multiple transactions t
 await Task.WhenAll(
 	Task.Run(async () =>
 	{
-		await using var ctx1 = new SxmTransaction();
+		await using SxmTransaction ctx1 = new SxmTransaction();
 		return await ctx1.GetTable<Customer>().Where(c => c.Age > 30).ToListAsync();
 	}),
 	Task.Run(async () =>
 	{
-		await using var ctx2 = new SxmTransaction();
+		await using SxmTransaction ctx2 = new SxmTransaction();
 		return await ctx2.GetTable<Order>().Where(o => o.CustomerId == 42).ToListAsync();
 	})
 );
@@ -73,12 +73,12 @@ SQLiteXM supports multiple SQLite databases (see [Multi-Database Support](./mult
 await Task.WhenAll(
 	Task.Run(async () =>
 	{
-		await using var ctx1 = new SxmTransaction("MainDatabase");
+		await using SxmTransaction ctx1 = new SxmTransaction("MainDatabase");
 		await ctx1.GetTable<Customer>().Where(c => c.Active).ToListAsync();
 	}),
 	Task.Run(async () =>
 	{
-		await using var ctx2 = new SxmTransaction("ArchiveDatabase");
+		await using SxmTransaction ctx2 = new SxmTransaction("ArchiveDatabase");
 		await ctx2.GetTable<Order>().Where(o => o.Year < 2020).ToListAsync();
 	})
 );
@@ -97,12 +97,12 @@ You can also run concurrent transactions to the **same database** using separate
 await Task.WhenAll(
 	Task.Run(async () =>
 	{
-		await using var ctx1 = new SxmTransaction();
+		await using SxmTransaction ctx1 = new SxmTransaction();
 		await ctx1.GetTable<Customer>().ToListAsync();
 	}),
 	Task.Run(async () =>
 	{
-		await using var ctx2 = new SxmTransaction();
+		await using SxmTransaction ctx2 = new SxmTransaction();
 		await ctx2.GetTable<Order>().ToListAsync();
 	})
 );
@@ -117,11 +117,11 @@ await Task.WhenAll(
 Of course, you can always use a single transaction for sequential operations:
 
 ```csharp
-await using (var ctx = new SxmTransaction())
+await using (SxmTransaction ctx = new SxmTransaction())
 {
 	// Operations execute one at a time on the same connection
-	var customers = await ctx.GetTable<Customer>().Where(c => c.Age > 30).ToListAsync();
-	var orders = await ctx.GetTable<Order>().Where(o => o.CustomerId == 42).ToListAsync();
+	List<Customer> customers = await ctx.GetTable<Customer>().Where(c => c.Age > 30).ToListAsync();
+	List<Order> orders = await ctx.GetTable<Order>().Where(o => o.CustomerId == 42).ToListAsync();
 }
 ```
 
@@ -174,7 +174,7 @@ Now that you've seen the safe patterns, here are the anti-patterns to avoid:
 ### ❌ Concurrent LINQ queries on the same transaction
 
 ```csharp
-await using (var ctx = new SxmTransaction())
+await using (SxmTransaction ctx = new SxmTransaction())
 {
 	// UNSAFE: Both queries use ctx's connection concurrently
 	await Task.WhenAll(
@@ -191,7 +191,7 @@ await using (var ctx = new SxmTransaction())
 ### ❌ Concurrent entity operations on the same transaction
 
 ```csharp
-await using (var ctx = new SxmTransaction())
+await using (SxmTransaction ctx = new SxmTransaction())
 {
 	// UNSAFE: Both SaveAsync calls use ctx's connection concurrently
 	await Task.WhenAll(
@@ -208,7 +208,7 @@ await using (var ctx = new SxmTransaction())
 ### ❌ Concurrent SQL statements on the same transaction
 
 ```csharp
-await using (var ctx = new SxmTransaction())
+await using (SxmTransaction ctx = new SxmTransaction())
 {
 	// UNSAFE: Both RunStatementAsync calls use ctx's connection concurrently
 	await Task.WhenAll(
@@ -225,7 +225,7 @@ await using (var ctx = new SxmTransaction())
 ### ❌ Mixed operations on the same transaction
 
 ```csharp
-await using (var ctx = new SxmTransaction())
+await using (SxmTransaction ctx = new SxmTransaction())
 {
 	// UNSAFE: All three operations share ctx's connection
 	await Task.WhenAll(

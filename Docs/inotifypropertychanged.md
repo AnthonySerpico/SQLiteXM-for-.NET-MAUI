@@ -464,8 +464,8 @@ public partial class OrderViewModel : ObservableObject
 	{
 		if (SelectedOrder == null) return;
 
-		using var ctx = await SxmTransaction.CreateAsync();
-		var items = await ctx.GetTable<OrderItem>()
+		await using SxmTransaction ctx = new SxmTransaction();
+		List<OrderItem> items = await ctx.GetTable<OrderItem>()
 			.Where(i => i.OrderId == SelectedOrder.id)
 			.ToListAsync();
 
@@ -492,9 +492,9 @@ public partial class CustomerListViewModel : ObservableObject
 
 	private async Task SearchCustomersAsync()
 	{
-		using var ctx = await SxmTransaction.CreateAsync();
+		await using SxmTransaction ctx = new SxmTransaction();
 
-		var query = ctx.GetTable<Customer>().AsQueryable();
+		IQueryable<Customer> query = ctx.GetTable<Customer>().AsQueryable();
 
 		if (!string.IsNullOrWhiteSpace(SearchText))
 		{
@@ -503,7 +503,7 @@ public partial class CustomerListViewModel : ObservableObject
 				c.Email!.Contains(SearchText));
 		}
 
-		var results = await query.ToListAsync();
+		List<Customer> results = await query.ToListAsync();
 		Customers = new ObservableCollection<Customer>(results);
 	}
 }

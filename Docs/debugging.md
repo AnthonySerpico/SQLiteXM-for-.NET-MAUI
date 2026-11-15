@@ -121,15 +121,15 @@ downloading the PDB and placing it where the debugger will find it.
 
 In the powershell script below:
 
-- Replace `$version` `2.0.0` with the version of SQLiteXM you are referencing, and `$tfm` `net9.0` with your target framework.
-- Replace `$dest` with your application's output folder, for example, `C:\Users\Me\source\repos\App1\bin\Debug\net9.0-windows10.0.19041.0\win10-x64\`
+- Replace `$version` `2.0.0` with the version of SQLiteXM you are referencing, and `$tfm` `net10.0` with your target framework (`net8.0` or `net10.0`).
+- Replace `$dest` with your application's output folder, for example, `C:\Users\Me\source\repos\App1\bin\Debug\net10.0-windows10.0.19041.0\win10-x64\`
 
 Run the PowerShell snippet below in a terminal.
 
 ```powershell
 $version = '2.0.0'
-$tfm     = 'net9.0'
-$dest    = 'C:\Users\ajser\source\repos\MauiApp1\MauiApp1\bin\Debug\net9.0-windows10.0.19041.0\win10-x64'
+$tfm     = 'net10.0'
+$dest    = 'C:\Users\Me\source\repos\App1\App1\bin\Debug\net10.0-windows10.0.19041.0\win10-x64'
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 $zip = "$env:TEMP\sqlitexm.$version.zip"

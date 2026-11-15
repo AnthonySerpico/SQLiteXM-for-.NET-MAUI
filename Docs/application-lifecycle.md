@@ -272,7 +272,7 @@ protected override void OnSleep()
 try
 {
 	// This will fail if called after OnSleep blocks connections
-	var customer = new Customer { Name = "Alice" };
+	Customer customer = new Customer { Name = "Alice" };
 	await customer.SaveAsync(); // throws SxmException
 }
 catch (SxmException ex) when (ex.ErrorCode == SxmDefines.SxmErrorCode.ConnectionBlockedBackgrounded)
@@ -301,7 +301,7 @@ If your app has predictable operation patterns, adjust the grace period dynamica
 public async Task PerformLargeExportAsync()
 {
 	// Temporarily extend grace period for long operation
-	var originalGracePeriod = SxmLifecycleManager.SuspendGracePeriod;
+	TimeSpan originalGracePeriod = SxmLifecycleManager.SuspendGracePeriod;
 	SxmLifecycleManager.SuspendGracePeriod = TimeSpan.FromSeconds(8);
 
 	try

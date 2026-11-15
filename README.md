@@ -45,14 +45,14 @@ See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.
 
 **Want to see SQLiteXM in action?** Download the pre-built **Query Gallery Demo** application:
 
-This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 12 categories. 
+This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 13 categories. 
 
 
 **[📥 Download QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)**  
 This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe` to explore LINQ queries, joins, aggregations, transactions, and more.
 
 **Features:**
-- ✅ 110+ working query examples across 12 categories - LINQ, SQL, Bulk Insert, and Benchmarks
+- ✅ 125+ working query examples across 13 categories - LINQ, SQL, LoadWith eager loading, Bulk Insert, and Benchmarks
 - ✅ Live code execution with performance metrics
 - ✅ Realistic music database (~25,000 records)
 
@@ -296,7 +296,7 @@ The `SQLiteXM.Tests` project contains **602 tests**, run against both **.NET 8**
 SQLiteXM includes **three sample applications** to help you learn:
 
 ### 1. QueryGalleryDemo (Comprehensive) ⭐
-An **interactive query explorer** with 112 examples across 12 categories. 
+An **interactive query explorer** with 127 examples across 13 categories. 
 **Features**: Runnable examples, per-example explanations, execution timing, result visualization. Example code is extracted from the executing methods by a source generator, so what you see is exactly what runs. 
 
 <details>

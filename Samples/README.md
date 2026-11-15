@@ -14,9 +14,10 @@ This directory contains three sample applications demonstrating different aspect
 This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe`.
 
 **What it demonstrates:**
-- 112 working query examples across 12 categories
+- 127 working query examples across 13 categories
 - Basic queries (SELECT, WHERE, ORDER BY, LIKE)
 - Joins and table relationships (INNER, LEFT JOIN)
+- Eager loading of related entities with `LoadWith` (single, multiple, chained and nested paths)
 - Aggregations (COUNT, SUM, AVG, GROUP BY)
 - Advanced LINQ (pagination, complex sorting, compound filters)
 - Many-to-many relationships via junction tables
@@ -115,7 +116,7 @@ This demo runs completely self-contained. Simply extract the ZIP file on Windows
 1. **Download:** [QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)
 2. **Extract** the ZIP to any folder
 3. **Run** `QueryGalleryDemo.exe` - the demo runs completely self-contained on Windows 10+
-4. Browse 112 query examples with live execution and performance metrics
+4. Browse 127 query examples with live execution and performance metrics
 
 ### Option 2: Build from Source (All Samples)
 
@@ -144,7 +145,7 @@ This demo runs completely self-contained. Simply extract the ZIP file on Windows
 
 **Development:**
 - Visual Studio 2022+ or VS Code with .NET MAUI workload
-- .NET 9 SDK
+- .NET 10 SDK (SQLiteXM supports .NET 8 and .NET 10; the samples target .NET 10)
 - Platform-specific tooling (Android SDK, Xcode for iOS/Mac)
 
 **Running Pre-Built (QueryGalleryDemo only):**

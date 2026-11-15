@@ -164,7 +164,7 @@ public DateTime AddedOn { get; set; }
 
 This is useful when you want to override the default storage type chosen by SQLiteXM.
 
-For complete details on data type mapping and supported types, see the [SQLiteXM Data Type](./supported-data-types.md) guide.
+For complete details on data type mapping and supported types, see the [Supported Data Types](./supported-data-types.md) guide.
 
 ---
 

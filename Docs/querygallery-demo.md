@@ -8,7 +8,7 @@
 
 ## 📦 What's Included
 
-This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM through 112 working query examples organized into 12 categories. No build tools or development environment required!
+This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM through 127 working query examples organized into 13 categories. No build tools or development environment required!
 
 ## 🎯 What You'll See
 
@@ -18,6 +18,7 @@ This is a **ready-to-run** MAUI Windows application that showcases SQLiteXM thro
 |-----------|------|---------|
 | **Basic Queries** | LINQ | SELECT, WHERE, ORDER BY, LIKE patterns
 | **Joins & Navigation** | LINQ | INNER JOIN, LEFT JOIN, multi-table queries
+| **LoadWith (Eager Loading)** | LINQ | Load related entities with the main query: single, multiple, chained, and nested paths
 | **Aggregations** | LINQ | COUNT, SUM, AVG, GROUP BY operations
 | **Advanced LINQ** | LINQ | Pagination, complex sorting, compound filters
 | **Raw SQL** | SQL | Custom SQL statements loaded from configuration

@@ -12,10 +12,11 @@ This demo runs completely self-contained. Simply extract the ZIP file on Windows
 ## 📋 Overview
 
 QueryGalleryDemo is an advanced sample application that showcases the full range of SQLiteXM's
-query capabilities through a categorized gallery of **112 working examples**. The app demonstrates:
+query capabilities through a categorized gallery of **127 working examples**. The app demonstrates:
 
 - **Chinook-style Schema**: ~25,000 records across 11 related tables (Artists, Albums, Tracks, Genres, Playlists, Customers, Invoices, etc.)
 - **LINQ Query Provider**: Type-safe, composable queries with full IntelliSense support
+- **Eager Loading**: `LoadWith` fills in related entities (including nested paths) as part of the main query
 - **Named SQL**: Raw SQL statements loaded by name from a JSON configuration file
 - **Embedded SQL**: Ad-hoc SQL strings executed directly inside a transaction context
 - **Entity DML**: Insert / update / delete through tracked entity objects (DML = Data Manipulation Language)
@@ -38,15 +39,16 @@ This sample teaches developers:
 
 1. **Basic SQLite Operations**: SELECT, WHERE, ORDER BY, LIKE, DISTINCT
 2. **Relationship Navigation**: INNER JOIN, LEFT JOIN, multi-table and self-referencing queries
-3. **Aggregation Functions**: COUNT, SUM, AVG, MIN, MAX, GROUP BY
-4. **Advanced LINQ**: Paging, subqueries, HAVING, conditional aggregates, UNION, top-N-per-group
-5. **Named / Raw SQL**: Executing SQL defined in `SqlStatements.json` with full SQLite feature access
-6. **Many-to-Many Relationships**: Junction table queries and bidirectional navigation
-7. **Transaction Patterns**: Atomic operations, explicit commit, rollback, auto-rollback on exception
-8. **Parameterized Queries**: SQL-injection-safe parameter binding
-9. **Data Modification**: Insert, update, delete including generated-ID retrieval and cascade behaviour
-10. **Mixed Context Work**: Sharing one connection and one transaction across LINQ, SQL and entity DML
-11. **Performance Engineering**: Indexing, projection, pagination strategy, bulk insert, query caching
+3. **Eager Loading**: `LoadWith` for single, multiple, chained, and nested navigation properties, and when to prefer a join
+4. **Aggregation Functions**: COUNT, SUM, AVG, MIN, MAX, GROUP BY
+5. **Advanced LINQ**: Paging, subqueries, HAVING, conditional aggregates, UNION, top-N-per-group
+6. **Named / Raw SQL**: Executing SQL defined in `SqlStatements.json` with full SQLite feature access
+7. **Many-to-Many Relationships**: Junction table queries and bidirectional navigation
+8. **Transaction Patterns**: Atomic operations, explicit commit, rollback, auto-rollback on exception
+9. **Parameterized Queries**: SQL-injection-safe parameter binding
+10. **Data Modification**: Insert, update, delete including generated-ID retrieval and cascade behaviour
+11. **Mixed Context Work**: Sharing one connection and one transaction across LINQ, SQL and entity DML
+12. **Performance Engineering**: Indexing, projection, pagination strategy, bulk insert, query caching
 
 ## 🏗️ Architecture
 
@@ -74,7 +76,7 @@ The Chinook-style schema is seeded with the following volumes:
 ```
 WelcomePage (entity registration + seeding progress)
 	↓
-QueryMenuPage (12 category cards)
+QueryMenuPage (13 category cards)
 	↓
 QueryCategoryPage (list of examples in the selected category)
 	↓
@@ -83,8 +85,8 @@ QueryExecutionPage (code + explanation + results + metrics)
 
 ### Technology Stack
 
-- **.NET 9 MAUI**: Cross-platform UI framework (`net9.0-android`, `net9.0-ios`, `net9.0-maccatalyst`, `net9.0-windows10.0.19041.0`)
-- **SQLiteXM 1.3.0**: ORM with LINQ provider, named SQL and transaction support
+- **.NET 10 MAUI**: Cross-platform UI framework. The sample ships targeting `net10.0-windows10.0.19041.0`; SQLiteXM itself supports .NET 8 and .NET 10, so other MAUI targets can be added to the project file
+- **SQLiteXM 2.0.1**: ORM with LINQ provider, `LoadWith` eager loading, named SQL and transaction support (referenced as a project reference)
 - **CommunityToolkit.Mvvm 8.4.0**: MVVM infrastructure (`[ObservableProperty]`, `[RelayCommand]`)
 - **QueryGalleryDemo.SourceGenerators**: Local Roslyn generator project referenced as an analyzer
 - **Default trimming settings**: The project applies **no** trimming or AOT overrides, demonstrating that SQLiteXM needs no linker configuration
@@ -93,10 +95,11 @@ QueryExecutionPage (code + explanation + results + metrics)
 
 ```
 QueryGalleryDemo/
-├── Examples/                        # 97 attribute-declared, self-executing examples
+├── Examples/                        # 112 attribute-declared, self-executing examples
 │   ├── QueryExampleAttribute.cs    # [QueryExample] metadata + IQueryExampleRunner
 │   ├── Basic/BasicExamples.cs                      (10)
 │   ├── Relationships/RelationshipsExamples.cs       (8)
+│   ├── LoadWith/LoadWithExamples.cs                (15)
 │   ├── Aggregations/AggregationsExamples.cs        (10)
 │   ├── AdvancedLinq/AdvancedLinqExamples.cs        (11)
 │   ├── Performance/PerformanceExamples.cs           (9)
@@ -110,7 +113,7 @@ QueryGalleryDemo/
 │   ├── Artist.cs, Album.cs, Track.cs, Genre.cs, MediaType.cs
 │   ├── Playlist.cs, PlaylistTrack.cs               # Many-to-many junction
 │   ├── Customer.cs, Employee.cs, Invoice.cs, InvoiceLine.cs
-│   ├── QueryCategory.cs             # Enum of the 12 categories
+│   ├── QueryCategory.cs             # Enum of the 13 categories
 │   ├── QueryExample.cs              # Example metadata + QueryType enum
 │   └── QueryResult.cs               # Result wrapper model
 ├── Services/
@@ -134,7 +137,7 @@ QueryGalleryDemo/
 
 ## 🔍 Query Categories
 
-112 examples across 12 categories. Eleven categories are generated from `[QueryExample]` classes;
+127 examples across 13 categories. Twelve categories are generated from `[QueryExample]` classes;
 the **Raw SQL** category is built at runtime in `QueryExampleProvider` from `SqlStatements.json`.
 
 | # | Category | Examples | Primary QueryType |
@@ -151,7 +154,8 @@ the **Raw SQL** category is built at runtime in `QueryExampleProvider` from `Sql
 | 10 | Data Modification | 8 | Entity_DML / Mixed |
 | 11 | Mixed Context | 10 | Mixed |
 | 12 | Benchmarks | 11 | Mixed |
-| | **Total** | **112** | |
+| 13 | LoadWith | 15 | Linq |
+| | **Total** | **127** | |
 
 ### 1. Basic (10)
 Get All Artists · Get All Genres · Filter Tracks by Genre · Find Artist by Name · Get Tracks by
@@ -218,6 +222,13 @@ Projection: Full Entity vs. Select Columns · Pagination: OFFSET vs. Keyset · A
 In Memory · Existence: `Any()` vs. `Count() > 0` vs. `FirstOrDefault()` · Update: Entity Round-Trip
 vs. Set-Based · Cold vs. Warm (query cache effect) · Insert at Scale: `SaveAsync` loop vs. LINQ
 `BulkInsertAsync` vs. `SxmSql.BulkInsertAsync`
+
+### 13. LoadWith (15)
+Basic LoadWith · With vs. Without LoadWith · Multiple Properties (params) · Chained LoadWith Calls ·
+LoadWith + Where + OrderBy · Filter on the Loaded Entity · Nullable FK Leaves Property Null · Keep
+Only Rows With a Match · Self-Referencing Relationship · Nested Path (Two Levels) · Nested Path
+Through a Junction Table · Single Result with FirstOrDefaultAsync · Group In Memory After LoadWith ·
+Validation: Not a Navigation Property · LoadWith vs. Explicit Join
 
 ## 💡 Key Features Demonstrated
 
@@ -410,16 +421,17 @@ if (needsSeeding)
 
 1. **Basic** → WHERE, ORDER BY, LIKE, DISTINCT
 2. **Relationships** → INNER JOIN, LEFT JOIN, self-referencing joins
-3. **Aggregations** → COUNT, SUM, AVG, MIN, MAX, GROUP BY
-4. **Advanced LINQ** → Paging, subqueries, HAVING, UNION, top-N-per-group
-5. **Raw SQL** → Named statements and when to drop below LINQ
-6. **Parameterized Queries** → Safe binding of user input
-7. **Many-to-Many** → Junction tables and bidirectional navigation
-8. **Data Modification** → Insert, update, delete and generated IDs
-9. **Transactions** → Atomicity, explicit commit, rollback, auto-rollback
-10. **Mixed Context** → Combining every style in one unit of work
-11. **Performance** → Indexing, projection and pagination strategy
-12. **Benchmarks** → Measure the trade-offs for yourself
+3. **LoadWith** → Eager loading of related entities, nested paths, and when a join is the better tool
+4. **Aggregations** → COUNT, SUM, AVG, MIN, MAX, GROUP BY
+5. **Advanced LINQ** → Paging, subqueries, HAVING, UNION, top-N-per-group
+6. **Raw SQL** → Named statements and when to drop below LINQ
+7. **Parameterized Queries** → Safe binding of user input
+8. **Many-to-Many** → Junction tables and bidirectional navigation
+9. **Data Modification** → Insert, update, delete and generated IDs
+10. **Transactions** → Atomicity, explicit commit, rollback, auto-rollback
+11. **Mixed Context** → Combining every style in one unit of work
+12. **Performance** → Indexing, projection and pagination strategy
+13. **Benchmarks** → Measure the trade-offs for yourself
 
 ## 🔧 Customization
 
@@ -430,7 +442,7 @@ if (needsSeeding)
 3. Implement `IQueryExampleRunner.RunAsync()` and return the data to display
 4. Rebuild — the source generator registers it automatically, and the example appears in the app
 
-Ids follow a `prefix_number` convention (`basic_11`, `mix_11`, …) and are sorted naturally, so
+Ids follow a `prefix_number` convention (`basic_11`, `lw_16`, `mix_11`, …) and are sorted naturally, so
 numeric suffixes order correctly without zero padding.
 
 ### Adding a New Raw SQL Example

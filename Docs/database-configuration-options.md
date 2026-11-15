@@ -14,6 +14,48 @@ This guide describes these options and how they are applied in your app.
 
 ---
 
+## Contents
+
+**Getting oriented**
+- [Initializing SQLiteXM](#initializing-sqlitexm)
+- [Database Options](#database-options)
+- [Recommended Starting Configuration](#recommended-starting-configuration)
+- [Complete Configuration Example](#complete-configuration-example)
+
+**SQLite PRAGMA Settings**
+- [Foreign Key Enforcement](#foreign-key-enforcement)
+- [Journal Mode](#journal-mode)
+- [Synchronous Mode](#synchronous-mode)
+- [Busy Timeout](#busy-timeout)
+- [Cache Size](#cache-size)
+- [WAL Auto-Checkpoint](#wal-auto-checkpoint)
+- [Temp Store](#temp-store)
+
+**Connections and checkpoints**
+- [Connection Management](#connection-management)
+  - [Connection Pooling](#connection-pooling)
+  - [Default Timeout](#default-timeout)
+  - [Logging](#logging)
+- [WAL Checkpoint Control](#wal-checkpoint-control)
+  - [CheckPointConnection](#checkpointconnection)
+  - [CheckPointWalMaxSize](#checkpointwalmaxsize)
+
+**Hooks and file location**
+- [Lifecycle Hooks](#lifecycle-hooks)
+  - [OnConnectionOpened](#onconnectionopened)
+  - [OnConnectionClosed](#onconnectionclosed)
+- [Database Path Customization](#database-path-customization)
+  - [DatabaseFolderOverride](#databasefolderoverride)
+
+**Guidance**
+- [Best Practices](#best-practices)
+- [Configuration Profiles](#configuration-profiles)
+  - [Mobile-Optimized Configuration](#mobile-optimized-configuration)
+  - [High-Performance Configuration (Desktop)](#high-performance-configuration-desktop)
+  - [Maximum Durability Configuration](#maximum-durability-configuration)
+
+---
+
 ## Initializing SQLiteXM
 
 As we learned in the [`Getting Started Guide`](./getting-started.md), initialization of SQLiteXM is performed once, typically during application startup.
@@ -91,7 +133,7 @@ These three settings provide a good balance of safety, durability, and performan
 for most applications and are a recommended starting point for SQLiteXM.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
     ForeignKeys = true,
     JournalModeOption = SxmJournalMode.Wal,
@@ -169,7 +211,7 @@ It is provided as a reference and is not intended as a recommended configuration
 Enables or disables foreign key constraint enforcement.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	ForeignKeys = true  // Enforce referential integrity
 };
@@ -198,7 +240,7 @@ Controls SQLite's journaling mechanism for transaction durability and concurrenc
 - `SxmJournalMode.Off` - No journaling (dangerous!)
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	JournalModeOption = SxmJournalMode.Wal  // Best for concurrent access
 };
@@ -231,7 +273,7 @@ Controls how aggressively SQLite syncs data to disk.
 - `SxmSynchronousMode.Extra` (3) - Extra paranoid mode
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	JournalModeOption = SxmJournalMode.Wal,
 	SynchronousModeOption = SxmSynchronousMode.Normal  // Good balance
@@ -254,7 +296,7 @@ var options = new SxmDatabaseOptions
 How long to wait when the database is locked before returning SQLITE_BUSY.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	BusyTimeout = 5000  // Wait up to 5 seconds
 };
@@ -276,7 +318,7 @@ var options = new SxmDatabaseOptions
 Amount of memory SQLite uses for caching database pages.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	CacheSize = 2048  // 2 MB cache (2048 KB)
 };
@@ -302,7 +344,7 @@ var options = new SxmDatabaseOptions
 Number of pages in WAL file before automatic checkpoint.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	WalAutoCheckpoint = 1000  // Checkpoint every 1000 pages (~4MB)
 };
@@ -329,7 +371,7 @@ Where SQLite stores temporary tables and indices.
 - `SxmTempStore.Memory` (2) - Store in RAM (faster)
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	TempStore = SxmTempStore.Memory  // Faster temp operations
 };
@@ -352,7 +394,7 @@ var options = new SxmDatabaseOptions
 Enables reuse of database connections instead of creating new ones. Used by Microsoft.Data.Sqlite.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	EnableConnectionPooling = true  // Reuse connections (recommended)
 };
@@ -378,7 +420,7 @@ var options = new SxmDatabaseOptions
 Default command timeout for database operations. Used by Microsoft.Data.Sqlite.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	DefaultTimeout = 30  // 30 second command timeout
 };
@@ -395,7 +437,7 @@ var options = new SxmDatabaseOptions
 Enables SQLiteXM internal logging.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	EnableLogging = true  // Log database operations
 };
@@ -421,7 +463,7 @@ Controls automatic checkpoint behavior.
 - `CheckPointConnection.MaxSize` - Checkpoint when WAL exceeds size limit
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	JournalModeOption = SxmJournalMode.Wal,
 	CheckPointConnection = CheckPointConnection.MaxSize,
@@ -440,7 +482,7 @@ var options = new SxmDatabaseOptions
 Maximum WAL file size before triggering a checkpoint (used with `CheckPointConnection.MaxSize`).
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	CheckPointConnection = CheckPointConnection.MaxSize,
 	CheckPointWalMaxSize = 2048  // 2048 KB (2 MB) limit
@@ -464,7 +506,7 @@ Most applications will never need lifecycle hooks. They are intended for advance
 Executes custom code after a connection is opened and PRAGMA settings are applied.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	ForeignKeys = true,
 	JournalModeOption = SxmJournalMode.Wal
@@ -474,7 +516,7 @@ var options = new SxmDatabaseOptions
 options.OnConnectionOpened(connection =>
 {
 	// Verify PRAGMA settings
-	using var cmd = connection.CreateCommand();
+	using SqliteCommand cmd = connection.CreateCommand();
 	cmd.CommandText = "PRAGMA foreign_keys";
 	long? fkEnabled = (long?)cmd.ExecuteScalar();
 
@@ -526,7 +568,7 @@ options.OnConnectionClosed(() =>
 Override the default database file location.
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	DatabaseFolderOverride = Environment.GetFolderPath(
 		Environment.SpecialFolder.LocalApplicationData
@@ -634,7 +676,7 @@ CacheSize = 8192  // 8 MB
 ### Mobile-Optimized Configuration
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	ForeignKeys = true,
 	JournalModeOption = SxmJournalMode.Wal,
@@ -653,7 +695,7 @@ var options = new SxmDatabaseOptions
 ### High-Performance Configuration (Desktop)
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	ForeignKeys = true,
 	JournalModeOption = SxmJournalMode.Wal,
@@ -672,7 +714,7 @@ var options = new SxmDatabaseOptions
 ### Maximum Durability Configuration
 
 ```csharp
-var options = new SxmDatabaseOptions
+SxmDatabaseOptions options = new SxmDatabaseOptions
 {
 	ForeignKeys = true,
 	JournalModeOption = SxmJournalMode.Wal,

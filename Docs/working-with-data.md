@@ -189,7 +189,7 @@ The example above shows another simple SQL SELECT. It returns a `List` of `Custo
 **(3) Typed result, dictionary parameters:**
 
 ```csharp
-var parms = new Dictionary<string, object?> { ["CustomerId"] = 42L };
+Dictionary<string, object?> parms = new Dictionary<string, object?> { ["CustomerId"] = 42L };
 
 string sql = "SELECT id, Product, Amount FROM `Order` WHERE CustomerId = @CustomerId";
 List<Order> customerOrders = await SxmSql.RunStatementAsync<Order>(sql, parms);
@@ -215,7 +215,7 @@ changes.
 
 INSERT
 ```csharp
-var parameters = new Dictionary<string, object?>
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
 {
     { "Name", "Ada Lovelace" },
     { "Email", "ada@example.com" }
@@ -228,7 +228,7 @@ The INSERT creates the row and the RETURNING clause causes SQLite to return the 
 
 UPDATE
 ```csharp
-var parameters = new Dictionary<string, object?>
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
 {
     { "OldEmail", "ada@analytical.com" },
     { "NewEmail", "ada@analytical.io" }
@@ -241,7 +241,7 @@ The UPDATE modifies the existing row. Because the statement includes RETURNING, 
 
 DELETE
 ```csharp
-var parameters = new Dictionary<string, object?>
+Dictionary<string, object?> parameters = new Dictionary<string, object?>
 {
     { "Email", "ada@analytical.io" }
 };
@@ -597,7 +597,7 @@ You might be tempted to do something like this from the UI thread to avoid block
 ```csharp
 await Task.Run(async () =>
 {
-    await using (var ctx = new SxmTransaction())
+    await using (SxmTransaction ctx = new SxmTransaction())
     {
         // ... statements ...
     }
@@ -628,11 +628,11 @@ take long enough to affect UI responsiveness, such as when performing:
 // Good: bulk insert of 10,000 records on background thread
 await Task.Run(async () =>
 {
-    await using (var ctx = new SxmTransaction())
+    await using (SxmTransaction ctx = new SxmTransaction())
     {
         for (int i = 0; i < 10000; i++)
         {
-            var customer = new Customer { Name = $"Customer {i}" };
+            Customer customer = new Customer { Name = $"Customer {i}" };
             await customer.SaveAsync();
         }
     }
