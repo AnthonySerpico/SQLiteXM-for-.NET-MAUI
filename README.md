@@ -91,7 +91,7 @@ public class Post : SxmEntity
 
     public string? Content { get; set; }
 
-    [ForeignKey(ForeignTable = nameof(User))]
+    [ForeignKey(nameof(User))]
     public long UserId { get; set; }
 }
 ```

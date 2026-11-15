@@ -416,9 +416,14 @@ internal static void ResetForTesting()
             string notNull = string.Empty;
             if (requiredNotNull is not null)
             {
-                notNull = requiredNotNull.DefaultValue is not null
-                    ? $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.DefaultValue)}"
-                    : " not null";
+                if (requiredNotNull.DefaultValue is null)
+                {
+                    throw new InvalidOperationException(
+                        $"SCHEMA ERROR in entity '{typeName}': Property '{memberInfoName}' has [RequiredNotNull] but no default value was supplied.\n" +
+                        $"SOLUTION: Supply the default value, for example [RequiredNotNull(0)] or [RequiredNotNull(DefaultValue = 0)].");
+                }
+
+                notNull = $" not null default {SxmHelpers.FormatSqlLiteral(requiredNotNull.DefaultValue)}";
             }
 
             string columnName = string.IsNullOrEmpty(propertyInfoWithAlias.Alias) ? memberInfoName : propertyInfoWithAlias.Alias;
@@ -437,6 +442,13 @@ internal static void ResetForTesting()
 
             if (isForeignKey is not null)
             {
+                if (string.IsNullOrWhiteSpace(isForeignKey.ForeignTable))
+                {
+                    throw new InvalidOperationException(
+                        $"SCHEMA ERROR in entity '{typeName}': Property '{memberInfoName}' has [ForeignKey] but no foreign table name was supplied.\n" +
+                        $"SOLUTION: Supply the referenced table, for example [ForeignKey(nameof(Customer))] or [ForeignKey(ForeignTable = nameof(Customer))].");
+                }
+
                 foreignKeyAttributeList ??= new List<ForeignKeyFields>();
                 foreignKeyAttributeList.Add(new ForeignKeyFields
                 {

@@ -15,6 +15,12 @@ public class Invoice : SxmEntity
     [Index]
     public long CustomerId { get; set; }
 
+    /// <summary>
+    /// Navigation property for <see cref="CustomerId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Customer? Customer { get; set; }
+
     [Required]
     [Index]
     public DateTime InvoiceDate { get; set; }

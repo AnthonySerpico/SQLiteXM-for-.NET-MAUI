@@ -18,4 +18,10 @@ public class Album : SxmEntity
     [ForeignKey(foreignTable: nameof(Artist))]
     [Index]
     public long ArtistId { get; set; }
+
+    /// <summary>
+    /// Navigation property for <see cref="ArtistId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Artist? Artist { get; set; }
 }

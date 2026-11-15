@@ -24,6 +24,7 @@ public static class QueryExampleProvider
         examples.AddRange(GetDataModificationExamples());
         examples.AddRange(GetMixedContextExamples());
         examples.AddRange(GetBenchmarkExamples());
+        examples.AddRange(GetLoadWithExamples());
 
         return examples;
     }
@@ -44,6 +45,7 @@ public static class QueryExampleProvider
             QueryCategory.DataModification => GetDataModificationExamples(),
             QueryCategory.MixedContext => GetMixedContextExamples(),
             QueryCategory.Benchmarks => GetBenchmarkExamples(),
+            QueryCategory.LoadWith => GetLoadWithExamples(),
             _ => new List<QueryExample>()
         };
     }
@@ -535,6 +537,17 @@ return results;",
     {
         return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
             .Where(e => e.Category == QueryCategory.Benchmarks)
+            .OrderBy(e => NaturalOrderKey(e.Id))
+            .ToList();
+    }
+
+    /// <summary>
+    /// LoadWith (eager loading) examples live in Samples/QueryGalleryDemo/Examples/LoadWith/LoadWithExamples.cs.
+    /// </summary>
+    private static List<QueryExample> GetLoadWithExamples()
+    {
+        return QueryGalleryDemo.Examples.Generated.GeneratedQueryExamples.All
+            .Where(e => e.Category == QueryCategory.LoadWith)
             .OrderBy(e => NaturalOrderKey(e.Id))
             .ToList();
     }

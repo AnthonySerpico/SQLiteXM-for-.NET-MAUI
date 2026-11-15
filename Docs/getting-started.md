@@ -156,11 +156,11 @@ See  ➡️ **[Defining Entities](./defining-entities.md)** for a complete attri
 public class PlaylistTrack : SxmEntity
 {
     [Index]
-    [ForeignKey(ForeignTable = nameof(Playlist), OnDelete = ForeignKeyDeleteAction.Cascade)]
+    [ForeignKey(nameof(Playlist), OnDelete = ForeignKeyDeleteAction.Cascade)]
     public long PlaylistId { get; set; }
 
     [Index]
-    [ForeignKey(ForeignTable = nameof(Track), OnDelete = ForeignKeyDeleteAction.Cascade)]
+    [ForeignKey(nameof(Track), OnDelete = ForeignKeyDeleteAction.Cascade)]
     public long TrackId { get; set; }
 
     // Overrides the default data type for DateTime from long (ticks) to ISO 8601 string

@@ -351,15 +351,17 @@ Use `[RequiredNotNull]` when a property must not be null and should have a non-n
 [Table(IsColumnAttributeRequired = false)]
 public class Settings : SxmEntity
 {
-	[RequiredNotNull(DefaultValue = "Not Set")]
+	[RequiredNotNull("Not Set")]
 	public string Theme { get; set; } = string.Empty;
 }
 ```
 
 ### Behavior
 
-* The attribute stores a default value
-* The default value cannot be null
+* The default value can be supplied either as the constructor argument
+  (`[RequiredNotNull("Not Set")]`) or through the `DefaultValue` property
+  (`[RequiredNotNull(DefaultValue = "Not Set")]`). Both forms are equivalent.
+* The default value is required and cannot be null. If it is omitted, SQLiteXM reports a schema error when the entity is registered.
 * It is intended for values that must always be present
 
 `[RequiredNotNull]` is applied to the table definition itself. The column above is created as
@@ -397,10 +399,16 @@ Use `[ForeignKey]` to declare a relationship to another table.
 [Table(IsColumnAttributeRequired = false)]
 public class Order : SxmEntity
 {
-	[ForeignKey(ForeignTable = nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
+	[ForeignKey(nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
 	public long CustomerId { get; set; }
 }
 ```
+
+* The referenced table name can be supplied either as the constructor argument
+  (`[ForeignKey(nameof(Customer))]`) or through the `ForeignTable` property
+  (`[ForeignKey(ForeignTable = nameof(Customer))]`). Both forms are equivalent.
+* The table name is required. If it is omitted, SQLiteXM reports a schema error when the entity is registered.
+* `OnDelete` is an optional property and is set using the `OnDelete = ...` syntax shown above.
 
 ### Understanding ForeignKeyDeleteAction
 
@@ -539,14 +547,14 @@ public class Customer : SxmEntity
 public class Order : SxmEntity
 {
 	[Column]
-	[ForeignKey(ForeignTable = nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
+	[ForeignKey(nameof(Customer), OnDelete = ForeignKeyDeleteAction.Cascade)]
 	public long CustomerId { get; set; }
 
 	[Column]
 	public DateTime OrderDate { get; set; }
 
 	[Column]
-	[RequiredNotNull(DefaultValue = 0m)]
+	[RequiredNotNull(0m)]
 	public decimal Total { get; set; }
 }
 
@@ -560,7 +568,7 @@ BEGIN
 END;")]
 public class OrderLine : SxmEntity
 {
-	[ForeignKey(ForeignTable = nameof(Order), OnDelete = ForeignKeyDeleteAction.Cascade)]
+	[ForeignKey(nameof(Order), OnDelete = ForeignKeyDeleteAction.Cascade)]
 	public long OrderId { get; set; }
 
 	public int LineNumber { get; set; }

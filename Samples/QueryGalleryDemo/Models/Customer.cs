@@ -41,4 +41,11 @@ public class Customer : SxmEntity
     [ForeignKey(foreignTable: nameof(Employee))]
     [Index]
     public long? SupportRepId { get; set; }
+
+    /// <summary>
+    /// Navigation property for <see cref="SupportRepId"/>. Populated by LoadWith; otherwise null.
+    /// Stays null when the customer has no support representative.
+    /// </summary>
+    [NotColumn]
+    public Employee? SupportRep { get; set; }
 }

@@ -25,6 +25,13 @@ public class Employee : SxmEntity
     [Index]
     public long? ReportsTo { get; set; }
 
+    /// <summary>
+    /// Navigation property for <see cref="ReportsTo"/> (self-referencing). Populated by LoadWith;
+    /// otherwise null. Stays null for top-level employees who report to nobody.
+    /// </summary>
+    [NotColumn]
+    public Employee? Manager { get; set; }
+
     public DateTime? BirthDate { get; set; }
 
     public DateTime? HireDate { get; set; }

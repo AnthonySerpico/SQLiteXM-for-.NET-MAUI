@@ -395,8 +395,18 @@ namespace SQLiteXM
     {
         /// <summary>
         /// The default value to use when the member is required and cannot be null.
+        /// Must be set either through the constructor or the property initializer syntax
+        /// (<c>[RequiredNotNull(DefaultValue = ...)]</c>); a null value is rejected at entity registration.
         /// </summary>
-        public object DefaultValue { get; set; }
+        public object? DefaultValue { get; set; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RequiredNotNullAttribute"/> attribute.
+        /// Use with the property initializer syntax, for example <c>[RequiredNotNull(DefaultValue = 0)]</c>.
+        /// </summary>
+        public RequiredNotNullAttribute()
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RequiredNotNullAttribute"/> attribute.
@@ -498,13 +508,23 @@ namespace SQLiteXM
     {
         /// <summary>
         /// The referenced foreign table name.
+        /// Must be set either through the constructor or the property initializer syntax
+        /// (<c>[ForeignKey(ForeignTable = ...)]</c>); an empty value is rejected at entity registration.
         /// </summary>
-        public string ForeignTable { get; set; }
+        public string ForeignTable { get; set; } = string.Empty;
 
         /// <summary>
         /// The action to take when the referenced row is deleted.
         /// </summary>
         public ForeignKeyDeleteAction OnDelete { get; set; } = ForeignKeyDeleteAction.None;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ForeignKeyAttribute"/> attribute.
+        /// Use with the property initializer syntax, for example <c>[ForeignKey(ForeignTable = nameof(Customer))]</c>.
+        /// </summary>
+        public ForeignKeyAttribute()
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ForeignKeyAttribute"/> attribute.

@@ -16,10 +16,22 @@ public class InvoiceLine : SxmEntity
     [Index]
     public long InvoiceId { get; set; }
 
+    /// <summary>
+    /// Navigation property for <see cref="InvoiceId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Invoice? Invoice { get; set; }
+
     [Required]
     [ForeignKey(foreignTable: nameof(Track))]
     [Index]
     public long TrackId { get; set; }
+
+    /// <summary>
+    /// Navigation property for <see cref="TrackId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Track? Track { get; set; }
 
     [Required]
     public decimal UnitPrice { get; set; }

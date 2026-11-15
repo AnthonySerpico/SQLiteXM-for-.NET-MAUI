@@ -64,7 +64,7 @@
                     </Label>
 
                     <Label Grid.Column="1" TextType="Html">
-                        <Label.Text><![CDATA[• Many-to-Many Relationships<br/>• Transactions (ACID Operations)<br/>• Advanced LINQ<br/>• Parameterized Queries (Safe SQL)<br/>• Data Modification (INSERT/UPDATE/DELETE)<br/>• Mixed Transactions (LINQ + SQL + Entity DML)]]></Label.Text>
+                        <![CDATA[• Many-to-Many Relationships<br/>• Transactions (ACID Operations)<br/>• Advanced LINQ<br/>• Parameterized Queries (Safe SQL)<br/>• Data Modification (INSERT/UPDATE/DELETE)<br/>• Mixed Transactions (LINQ + SQL + Entity DML)<br/>• LoadWith (Eager Loading of Related Entities)]]>
                     </Label>
                 </Grid>
             </VerticalStackLayout>

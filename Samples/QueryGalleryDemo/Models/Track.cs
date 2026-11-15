@@ -20,14 +20,32 @@ public class Track : SxmEntity
     [Index]
     public long? AlbumId { get; set; }
 
+    /// <summary>
+    /// Navigation property for <see cref="AlbumId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Album? Album { get; set; }
+
     [ForeignKey(foreignTable: nameof(MediaType))]
     [Index]
     [Required]
     public long MediaTypeId { get; set; }
 
+    /// <summary>
+    /// Navigation property for <see cref="MediaTypeId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public MediaType? MediaType { get; set; }
+
     [ForeignKey(foreignTable: nameof(Genre))]
     [Index]
     public long? GenreId { get; set; }
+
+    /// <summary>
+    /// Navigation property for <see cref="GenreId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Genre? Genre { get; set; }
 
     public string? Composer { get; set; }
 

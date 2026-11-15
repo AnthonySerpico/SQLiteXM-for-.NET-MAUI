@@ -16,8 +16,20 @@ public class PlaylistTrack : SxmEntity
     [Index]
     public long PlaylistId { get; set; }
 
+    /// <summary>
+    /// Navigation property for <see cref="PlaylistId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Playlist? Playlist { get; set; }
+
     [Required]
     [ForeignKey(foreignTable: nameof(Track), OnDelete = ForeignKeyDeleteAction.Cascade)]
     [Index]
     public long TrackId { get; set; }
+
+    /// <summary>
+    /// Navigation property for <see cref="TrackId"/>. Populated by LoadWith; otherwise null.
+    /// </summary>
+    [NotColumn]
+    public Track? Track { get; set; }
 }

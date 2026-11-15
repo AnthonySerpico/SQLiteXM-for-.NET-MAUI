@@ -16,5 +16,6 @@ public enum QueryCategory
     ParameterizedQueries,
     DataModification,
     MixedContext,
-    Benchmarks
+    Benchmarks,
+    LoadWith
 }
