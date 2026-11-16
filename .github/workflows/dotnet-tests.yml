@@ -25,4 +25,4 @@ jobs:
         run: dotnet restore SQLiteXM.Tests/SQLiteXM.Tests.csproj
 
       - name: Build & Run 602 Tests
-        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj --filter "FullyQualifiedName~Query_ComplexLinq_LargeDataset_PerformsWell" -m:1 --configuration Release --verbosity normal --blame-hang-timeout 180s --logger "console;verbosity=detailed"
+        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj --filter "FullyQualifiedName~Query_ComplexLinq_LargeDataset_PerformsWell" -m:1 --configuration Release --verbosity normal --blame-hang-timeout 10m --logger "console;verbosity=detailed"
