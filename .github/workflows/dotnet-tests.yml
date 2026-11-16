@@ -5,24 +5,40 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dotnet-version: [ '8.0.x', '10.0.x' ]
+        target-framework: [ 'net8.0', 'net10.0' ]
+        exclude:
+          - dotnet-version: '8.0.x'
+            target-framework: 'net10.0'
+          - dotnet-version: '10.0.x'
+            target-framework: 'net8.0'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET 8 & .NET 10
+      - name: Setup .NET ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
+          dotnet-version: ${{ matrix.dotnet-version }}
 
       - name: Restore dependencies
         run: dotnet restore SQLiteXM.Tests/SQLiteXM.Tests.csproj
 
-      - name: Build & Run 602 Tests
-        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj -m:1 --configuration Release --verbosity normal --blame-hang-timeout 12m --logger "console;verbosity=detailed"
+      - name: Build & Run 602 Tests (${{ matrix.target-framework }})
+        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj --framework ${{ matrix.target-framework }} -m:1 --configuration Release --verbosity normal --blame-hang-timeout 20m --logger "console;verbosity=detailed"
+
+      - name: Upload Test Results & Hang Dumps
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-hang-dumps-${{ matrix.target-framework }}
+          path: SQLiteXM.Tests/TestResults/**/*
