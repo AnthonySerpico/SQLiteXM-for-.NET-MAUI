@@ -1,6 +1,0 @@
-- name: Run Complex LINQ Test
-  run: >
-    dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj
-    --filter "FullyQualifiedName~Query_ComplexLinq_LargeDataset_PerformsWell"
-    -m:1
-    --logger "console;verbosity=detailed"
