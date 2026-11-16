@@ -25,4 +25,4 @@ jobs:
         run: dotnet restore SQLiteXM.Tests/SQLiteXM.Tests.csproj
 
       - name: Build & Run 602 Tests
-        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj --configuration Release --verbosity normal --blame-hang-timeout 30s --logger "console;verbosity=detailed"
+        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj -m:1 --configuration Release --verbosity normal --blame-hang-timeout 30s --logger "console;verbosity=detailed"
