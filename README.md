@@ -35,6 +35,16 @@ The result is SQLiteXM.
 
 ---
 
+## 📦 Installation
+
+```bash
+dotnet add package SQLiteXM
+```
+
+Or install via the [NuGet Package Manager](https://www.nuget.org/packages/SQLiteXM/)
+
+---
+
 ## 📖 Documentation
 
 See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/README.md)** to find the right guide for where you are in your project.
@@ -43,18 +53,24 @@ See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.
 
 ## 🎮 Try SQLiteXM with the Query Gallery Demo
 
-**Want to see SQLiteXM in action?** Download the pre-built **Query Gallery Demo** application:
-
-This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 13 categories. 
-
-
-**[📥 Download QueryGalleryDemo_Windows.zip](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)**  
-This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe` to explore LINQ queries, joins, aggregations, transactions, and more.
+📥 **Want to see SQLiteXM in action?** Download the pre-built **[Query Gallery Demo](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)** application. This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 13 categories. This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe` to explore.
 
 **Features:**
-- ✅ 125+ working query examples across 13 categories - LINQ, SQL, LoadWith eager loading, Bulk Insert, and Benchmarks
+- ✅ 125+ working query examples across 13 categories - LINQ, SQL, LoadWith eager loading, Bulk Insert, Benchmarks, and more.
 - ✅ Live code execution with performance metrics
 - ✅ Realistic music database (~25,000 records)
+
+<details>
+<summary>🖼️ <strong>Preview Query Gallery Screenshot</strong></summary>
+
+<p align="center">
+  <a href="Docs/images/query-gallery-categories.png">
+    <img src="Docs/images/query-gallery-categories.png" alt="SQLiteXM Query Gallery Categories" width="550" />
+  </a>
+  <br />
+  <sub><em>Click the image to view full size</em></sub>
+</p>
+</details>
 
 Want more details? See the [Query Gallery Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/querygallery-demo.md)
 
@@ -251,6 +267,12 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 The `SQLiteXM.Tests` project contains **602 tests**, run against both **.NET 8** and **.NET 10** (1,204 test executions), all passing.
 
+<details>
+
+<summary>📋 <strong>View the Full Test Coverage Breakdown (602 tests)</strong></summary>
+
+<p> </p>   
+
 | Area | What is covered | Test class | Tests |
 |------|-----------------|------------|------:|
 | **Schema & Initialization** | Entity registration, table creation, `[Table]` / `[Column]` options | `EntityInitializationTests` | 13 |
@@ -289,6 +311,8 @@ The `SQLiteXM.Tests` project contains **602 tests**, run against both **.NET 8**
 | **Data Types** | `decimal` stored as TEXT — which SQL operations are numerically correct and which are text-ordered | `DecimalComparisonTests` | 14 |
 | | **Total** | | **602** |
 
+</details>
+
 ---
 
 ## 📚 Sample Applications
@@ -296,7 +320,7 @@ The `SQLiteXM.Tests` project contains **602 tests**, run against both **.NET 8**
 SQLiteXM includes **three sample applications** to help you learn:
 
 ### 1. QueryGalleryDemo (Comprehensive) ⭐
-An **interactive query explorer** with 127 examples across 13 categories. 
+An **interactive query explorer** with 125+ examples across 13 categories. 
 **Features**: Runnable examples, per-example explanations, execution timing, result visualization. Example code is extracted from the executing methods by a source generator, so what you see is exactly what runs. 
 
 <details>
@@ -329,16 +353,6 @@ CollectionView binding with CRUD operations and UI updates.
 
 📂 **[View Direct Binding Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/DirectBindingDemo)**
 
-
----
-
-## 📦 Installation
-
-```bash
-dotnet add package SQLiteXM
-```
-
-Or install via the [NuGet Package Manager](https://www.nuget.org/packages/SQLiteXM/)
 
 ---
 
