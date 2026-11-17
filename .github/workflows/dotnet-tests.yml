@@ -1,4 +1,4 @@
-name: Build & Test (.NET 8 & 10)
+name: 602 Test (.NET 8 & 10)
 
 on:
   push:
