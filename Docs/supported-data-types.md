@@ -1,7 +1,5 @@
 # SQLiteXM Supported Data Types
 
-
-
 SQLiteXM supports a select set of C# data types and maps them to SQLite storage types during 
 schema creation, parameter binding, and result materialization.
 
@@ -60,26 +58,26 @@ converter or some other explicit mapping strategy.
 
 | C# Data Type | Default SQLite Storage Type | Override Storage Type |
 |---|---|---|
-| `string` | `TEXT` | None |
-| `decimal` | `TEXT` | None |
-| `ulong` | `TEXT` | None |
-| `Guid` | `BLOB` | `TEXT` |
-| `DateTime` | `INTEGER` | `TEXT` |
-| `DateTimeOffset` | `INTEGER` | `TEXT` |
-| `DateOnly` | `INTEGER` | `TEXT` |
-| `TimeOnly` | `INTEGER` | `TEXT` |
-| `TimeSpan` | `INTEGER` | `TEXT` |
-| `bool` | `INTEGER` | None |
-| `byte` | `INTEGER` | None |
-| `sbyte` | `INTEGER` | None |
-| `short` | `INTEGER` | None |
-| `ushort` | `INTEGER` | None |
-| `int` | `INTEGER` | None |
-| `uint` | `INTEGER` | None |
-| `long` | `INTEGER` | None |
-| `float` | `REAL` | None |
-| `double` | `REAL` | None |
-| `byte[]` | `BLOB` | None |
+| [`string`](#string) | `TEXT` | None |
+| [`decimal`](#decimal) | `TEXT` | None |
+| [`ulong`](#ulong) | `TEXT` | None |
+| [`Guid`](#guid) | `BLOB` | `TEXT` |
+| [`DateTime`](#datetime) | `INTEGER` | `TEXT` |
+| [`DateTimeOffset`](#datetimeoffset) | `INTEGER` | `TEXT` |
+| [`DateOnly`](#dateonly) | `INTEGER` | `TEXT` |
+| [`TimeOnly`](#timeonly) | `INTEGER` | `TEXT` |
+| [`TimeSpan`](#timespan) | `INTEGER` | `TEXT` |
+| [`bool`](#bool) | `INTEGER` | None |
+| [`byte`](#byte) | `INTEGER` | None |
+| [`sbyte`](#sbyte) | `INTEGER` | None |
+| [`short`](#short) | `INTEGER` | None |
+| [`ushort`](#ushort) | `INTEGER` | None |
+| [`int`](#int) | `INTEGER` | None |
+| [`uint`](#uint) | `INTEGER` | None |
+| [`long`](#long) | `INTEGER` | None |
+| [`float`](#float) | `REAL` | None |
+| [`double`](#double) | `REAL` | None |
+| [`byte[]`](#byte-1) | `BLOB` | None |
 
 ## Nullable Types
 
@@ -120,7 +118,7 @@ public class Product : SxmEntity
 }
 ```
 
-> ⚠️ **Because the value is stored as text, SQLite compares it as text.** SQLite compares text character by character, the way a dictionary orders words, so the stored string `"9.99"` is treated as greater than `"30"` — the character `9` comes after `3`. The numeric values are never consulted.
+> ⚠️ **Because the value is stored as text, SQLite compares it as text.** SQLite compares text character by character, the way a dictionary orders words, so the stored string `"9.99"` is treated as greater than `"30"` — the character `9` comes after `3`. The numeric values are not used.
 
 Some operations are therefore safe and some are not. This applies equally to LINQ and to raw SQL, because both are evaluated by SQLite:
 

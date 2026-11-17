@@ -5,8 +5,8 @@
 If you are new to SQLiteXM or ORMs, the word entity may be unfamiliar. An entity is simply a C# class
 that represents data your application wants to store in the database.
 
-In SQLiteXM, an entity is a C# class that inherits from `SxmEntity` entities are registered during initialization with
-`SxmDatabase.StartInitialization(...)`.
+In SQLiteXM, an entity is a C# class that inherits from `SxmEntity`. Entities are registered during initialization with
+`SxmDatabase.StartInitialization(...)`, creating a matching database table for each one.
 
 For example, an application might need to store customers. A customer has information such as a name and email address. 
 In SQLiteXM, you define a Customer entity as a C# class:
@@ -22,8 +22,7 @@ public class Customer : SxmEntity
 }
 ```
 
-In this example, SQLiteXM uses this class as the C# representation of a `Customer` record stored in the database.
-Behind the scenes, SQLiteXM maps the entity to a SQLite table:
+In this example, the Customer class represents a customer record in the database. The `Name` and `Email` properties are automatically mapped to database columns in the `Customer` table.
 
 | C# | | SQLite Database |
 |---|---|---|
@@ -65,15 +64,15 @@ SQLiteXM provides attributes that control things such as:
 
 | Attribute | Targets | Purpose |
 |---|---|---|
-| `[Table]` | Class | Configures table-level behavior and can assign the entity to a database |
-| `[Column]` | Property | Maps a public property to a column |
-| `[NotColumn]` | Property | Excludes a public property from schema mapping |
-| `[Rename]` | Property | Preserves data when a public property name changes |
-| `[Index]` | Class, Property | Creates a non-unique index |
-| `[UniqueIndex]` | Class, Property | Creates a unique index |
-| `[Trigger]` | Class | Adds trigger SQL during schema creation |
-| `[RequiredNotNull]` | Property | Requires a non-null value and supplies a default |
-| `[ForeignKey]` | Property | Creates a foreign key reference |
+| [`[Table]`](#table-attribute) | Class | Configures table-level behavior and can assign the entity to a database |
+| [`[Column]`](#column-attribute) | Property | Maps a public property to a column |
+| [`[NotColumn]`](#notcolumn-attribute) | Property | Excludes a public property from schema mapping |
+| [`[Rename]`](#rename-attribute) | Property | Preserves data when a public property name changes |
+| [`[Index]`](#index-attribute) | Class, Property | Creates a non-unique index |
+| [`[UniqueIndex]`](#uniqueindex-attribute) | Class, Property | Creates a unique index |
+| [`[Trigger]`](#trigger-attribute) | Class | Adds trigger SQL during schema creation |
+| [`[RequiredNotNull]`](#requirednotnull-attribute) | Property | Requires a non-null value and supplies a default |
+| [`[ForeignKey]`](#foreignkey-attribute) | Property | Creates a foreign key reference |
 
 The important thing to understand is that the entity defines the data, while the attributes provide configuration
 for how SQLiteXM maps that data to the database.
@@ -186,8 +185,7 @@ public class Person : SxmEntity
 
 When present, `[NotColumn]` prevents the property from being mapped to a database column, regardless of the `IsColumnAttributeRequired` setting on the class.
 
-`[NotColumn]` is also used to declare a navigation property, which holds a related entity in memory
-so it can be loaded alongside the main query. See [Loading Related Data](./loading-related-data.md).
+`[NotColumn]` is also used to declare a navigation property. Navigation properties are a separate concept. A navigation property holds a related entity in memory so it can be loaded alongside the main query. See [Loading Related Data](./loading-related-data.md).
 
 ### When to Use It
 
@@ -352,7 +350,7 @@ Use `[RequiredNotNull]` when a property must not be null and should have a non-n
 public class Settings : SxmEntity
 {
 	[RequiredNotNull("Not Set")]
-	public string Theme { get; set; } = string.Empty;
+	public string Theme { get; set; }
 }
 ```
 
@@ -446,26 +444,8 @@ related entity for you, add a navigation property and query with `LoadWith`. See
 
 ### Entity Registration
 
-Defining entities is only the first step. SQLiteXM must also register them before use. This is done by `SxmDatabase.StartInitialization(...)`.
-
-```csharp
-    // Create an array of all the entities used by your application
-    Type[] applicationEntities = new Type[]
-    {
-        typeof(User), 
-        typeof(Order), 
-        typeof(Product)
-    };
-
-    // Open the SqlStatements.json file from the application package
-    Stream sqlStatementsStream = await FileSystem.OpenAppPackageFileAsync("SqlStatements.json");
-
-    // Start database initialization
-    SxmDatabase.StartInitialization(sqlStatementsStream, databaseOptions: null, applicationEntities);
-);
-```
-
-During initialization, SQLiteXM creates or updates the schema for each entity and applies indexes, triggers, and foreign keys where appropriate.
+Once your entities have been created, they need to be registered with SQLiteXM during database initialization. This is done by passing an array of entity types to `SxmDatabase.StartInitialization(...)`.
+For details, see [Basic Initialization](./basic-initialization.md).
 
 ---
 
@@ -498,6 +478,8 @@ classes, for example `SalesOrderItem` and `ReturnOrderItem`.
 > ✏️ **Note:** Namespaces do not separate tables. Neither does nesting one entity class inside
 > another. `Sales.OrderItem` and `Returns.OrderItem` both map to a table named `OrderItem`.
 > Entity names must be unique across your entire application.
+
+Database table names are mapped to entity class names. The first time an entity is registered, a new table is created that is assigned the same name as the entity. If you rename an entity, SQLiteXM will see it as a new entity that needs a new database table, orphaning the original table. Once an entity has been deployed to production, do not rename it. Choose entity class names carefully before releasing.
 
 ### Keep Related Entities Together
 
@@ -640,27 +622,3 @@ directly on the entity. `[Column]`, `[NotColumn]`, and
 `[Table(IsColumnAttributeRequired = ...)]` apply to inherited properties as
 well.
 
----
-
-## Summary
-
-SQLiteXM entities are plain C# classes with attribute-based mapping.
-
-Key points:
-
-* Inherit from `SxmEntity`
-* Use `[Table]` to configure column mapping and optionally choose the database
-* Use `[Column]` to control mapped public properties
-* Use `[NotColumn]` for values that should not be stored
-* Use `[Rename]` to preserve data during refactoring
-* Use `[Index]` and `[UniqueIndex]` to improve query performance and enforce uniqueness
-* Use `[ForeignKey]` for relationships
-* Use `[Trigger]` for custom database behavior
-
-Entities are registered during initialization by `SxmDatabase.StartInitialization(...)`
-
-For a basic workflow overview, see [Getting Started](./getting-started.md).
-
-For loading related entities, see [Loading Related Data](./loading-related-data.md).
-
-For multi-database setup, see [Multiple Databases](./multiple-databases.md).

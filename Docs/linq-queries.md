@@ -17,6 +17,7 @@ SQLiteXM provides comprehensive LINQ support for querying and manipulating data.
 - [Advanced LINQ Operations](#advanced-linq-operations)
 
 **Modifying data**
+- [Setting Values with Set](#setting-values-with-set)
 - [Bulk Insert Operations](#bulk-insert-operations)
 - [Bulk Update Operations](#bulk-update-operations)
 - [Bulk Delete Operations](#bulk-delete-operations)
@@ -463,6 +464,34 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 ---
 
+## Setting Values with Set
+
+`Set` defines the new value for each matched row. Chain it after `Where`, then call `UpdateAsync()` to run the update.
+
+| Overload | Use |
+|----------|-----|
+| `Set(property, value)` | Assigns a constant. The value must match the property's type. |
+| `Set(property, expression)` | Computes the new value for each row from that row's current values. |
+
+- Chain several `Set` calls to update several properties in one statement.
+- Without a `Where` clause, `UpdateAsync()` updates every row in the table.
+- Expressions must be translatable to SQL. An expression that cannot be translated throws `NotSupportedException`.
+
+```csharp
+await using (SxmTransaction ctx = new SxmTransaction())
+{
+	SxmTable<Order> orders = ctx.GetTable<Order>();
+
+	int rowsUpdated = await orders
+		.Where(o => o.Status == "Pending")
+		.Set(o => o.Status, "Processing")
+		.Set(o => o.Amount, o => o.Amount + 5m)
+		.UpdateAsync();
+}
+```
+
+---
+
 ## Bulk Insert Operations
 
 SQLiteXM supports bulk inserts using LINQ. Instead of calling `SaveAsync()` once per entity, `BulkInsertAsync` writes many new entities using multi-row INSERT statements, which is far more efficient for large batches.
@@ -841,7 +870,7 @@ IQueryable<Customer> query = customers
    ```csharp
    // Good: filter first
    var results = await customers
-	   .Where(c => c.Name!.StartsWith("A"))
+	  .Where(c => c.Name!.StartsWith("A"))
 	   .Join(orders, c => c.id, o => o.CustomerId, (c, o) => new { c, o })
 	   .ToListAsync();
    ```
@@ -1065,8 +1094,6 @@ await using (SxmTransaction ctx = new SxmTransaction())
 7. **Handle exceptions:** Always wrap transaction blocks in try/catch. Catch `SxmException` and branch on `ErrorCode` rather than catching bare `Exception`, and remember that constraint violations arrive as `SqliteException`. See ➡️ [Error Handling](./error-handling.md).
 
 8. **Test query performance:** For complex queries or large datasets, verify that your LINQ expressions translate to efficient SQL.
-
-Materialize first, then compare or sort in memory. See [Supported Data Types — decimal](./supported-data-types.md#decimal).
 
 ---
 

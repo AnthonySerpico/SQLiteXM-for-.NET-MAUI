@@ -68,7 +68,9 @@ LINQ, SQL, entity persistence, and transactions.
 
 Learn SQLiteXM LINQ extensions and how to use LINQ to query and manipulate data in SQLiteXM.
 
-### [Loading Related Data](loading-related-data.md)
+**Read this when:** You want to access the database using LINQ.
+
+### [Loading Related Data]
 
 Learn how to define navigation properties and use `LoadWith` to load related entities along with
 your main query, instead of fetching them one at a time.

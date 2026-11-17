@@ -444,14 +444,15 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 The rules are the same as the standalone form: new entities only, one type per call, and every entity's `id` and `synchId` are populated afterward. If the transaction is already faulted, the call is skipped and returns 0, consistent with the other write paths inside a faulted block.
 
-`ctx.BulkInsertAsync(entities)` is equivalent to `ctx.GetTable<T>().BulkInsertAsync(entities)`; the LINQ form is covered in [LINQ Queries — Bulk Insert Operations](./linq-queries.md#bulk-insert-operations).
+`ctx.BulkInsertAsync(entities)` is equivalent to `ctx.GetTable<T>().BulkInsertAsync(entities)`; 
+the LINQ form is covered in [LINQ Queries — Bulk Insert Operations](./linq-queries.md#bulk-insert-operations).
 
 
 ### SQL inside a transaction — `RunStatementAsync`
 
 `SxmTransaction` exposes its own set of `RunStatementAsync` overloads that mirror the eight in `SxmSql`, with two differences:
 
-- There is no `databaseName` parameter — Because the database is fixed by the transaction, the `RunStatementAsync` overloads in `SxmTransaction` do **not** take a `databaseName` argument.
+- There is no `databaseName` parameter. The database is fixed by the transaction, so the `RunStatementAsync` overloads in `SxmTransaction` do not take one.
 - The statement runs inside the transaction.
 
 Both embedded SQL and named SQL statements are fully supported. The call site is identical to the standalone case, except that the transaction is used instead of `SxmSql`:

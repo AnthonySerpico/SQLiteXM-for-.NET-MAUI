@@ -8,7 +8,7 @@ repository. It defines the databases used by the application and where reusable 
 This file is required by SQLiteXM and must be placed in your application's `Resources/Raw` folder. 
 The `Build Action` must be set to `MauiAsset`. The SqlStatements.json file is processed during database initialization.
 
-**Note:** Database configurations (folder paths, PRAGMA settings, connection settings, etc.) are specified separately via `SxmDatabaseOptions` during initialization, not in this file.
+**Note:** Database configurations (PRAGMA settings, cache size, connection pooling, etc.) are specified separately via `SxmDatabaseOptions` not in this guide. For details, see [SQLiteXM Database Options](./database-configuration-options.md)
 
 ---
 
@@ -89,9 +89,9 @@ For multiple databases, add more entries to the `databases` array:
 ---
 
 ### **📌 Default Database Purpose** 
-You might ask , "Why is it necessary to mark one database as the default?" The default database is used when a SQLiteXM API provides 
-an optional database name and no database name is supplied. In that case, SQLiteXM executes the operation against the default database. 
-This provides a convenient API for applications that use a single database—the most common scenario—without requiring the database name 
+You might ask , "Why is it necessary to mark one database as the default?" The default database is used when a SQLiteXM API includes 
+an **optional** database name parameter and no name is supplied when called. In that case, SQLiteXM executes the API against the default database. 
+This provides a convenience for applications that use a single database—the most common scenario—not requiring the database name 
 to be specified on every call.
 
 ---

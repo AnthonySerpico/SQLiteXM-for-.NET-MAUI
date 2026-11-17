@@ -19,7 +19,7 @@ The result is SQLiteXM.
 |------------|----------|
 | Designed specifically for .NET MAUI + SQLite | ✅ |
 | AOT/IL Trimming Safe — works with MAUI's default Release trimming, no linker configuration needed ([details](#aot-trimming)) | ✅ |
-| Mobile-native database initialization — idempotent, concurrency-safe startup from any entry point | ✅ |
+| Thread-safe, idempotent database startup, callable from any entry point | ✅ |
 | LINQ query support | ✅ |
 | Raw SQL Support | ✅ |
 | Automatic entity-to-table mapping | ✅ |
@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 602 tests |
+| Automated Test Coverage | 600+ tests |
 
 ---
 

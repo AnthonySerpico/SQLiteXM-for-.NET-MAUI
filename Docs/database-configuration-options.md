@@ -96,22 +96,22 @@ The following table lists all options in `SxmDatabaseOptions` and their defaults
 
 | Option                    | Default                                   | Typical Recommendation                                                                       |
 | ------------------------- | ----------------------------------------- |  --------------------------------------------------------------------------------------------|
-| `ForeignKeys`             | `false` (Off)                             | **`true`** for applications using foreign keys                                               |
-| `JournalModeOption`       | `SxmJournalMode.Delete`                   | **`Wal`** for most applications                                                              |
-| `SynchronousModeOption`   | `SxmSynchronousMode.Full`                 | **`Normal`** when using WAL                                                                  |
-| `BusyTimeout`             | `0` Milliseconds                          | **3–5 seconds** for most applications                                                        |
-| `CacheSize`               | `2000` (2000 KB)                          | Start with **2–4 MB** and tune as needed                                                     |
-| `WalAutoCheckpoint`       | `1000` (1000 Pages)                       | **250–500 pages** for many mobile applications                                               |
-| `TempStore`               | `SxmTempStore.Default`                    | Usually leave at default; `Memory` can improve temporary operations when memory is available |
-| `CheckPointConnection`    | `CheckPointConnection.Off`                | Usually leave at default unless you need explicit checkpoint control                         |
-| `CheckPointWalMaxSize`    | `null` (No Value Set)                     | Configure when using `CheckPointConnection.MaxSize`                                          |
-| `EnableConnectionPooling` | `true`                                    | **`true`** for most applications                                                       |
-| `DefaultTimeout`          | `30 seconds`                              |**30 seconds** is a reasonable starting point for general application workloads         |
-| `EnableLogging`           | `false`                                   | **`true` during development;** `false` if production logging is not desired                 |
-| `DatabaseFolderOverride`  | LocalApplicationData                      | Usually leave at the default application-local location                                     |
-| `OnConnectionOpened(...)` | None registered                           | Use only when connection-specific initialization, verification, or custom logic is required |
-| `OnConnectionClosed(...)` | None registered                           | Use only when connection-close handling, cleanup, or instrumentation is required            |
-| `OnSchemaSynchronized(...)` | None registered                         | Use when you want to log or audit the DDL SQLiteXM runs while creating or upgrading tables   |
+| [`ForeignKeys`](#foreign-key-enforcement) | `false` (Off)                             | **`true`** for applications using foreign keys                                               |
+| [`JournalModeOption`](#journal-mode) | `SxmJournalMode.Delete`                   | **`Wal`** for most applications                                                              |
+| [`SynchronousModeOption`](#synchronous-mode) | `SxmSynchronousMode.Full`                 | **`Normal`** when using WAL                                                                  |
+| [`BusyTimeout`](#busy-timeout) | `0` Milliseconds                          | **3–5 seconds** for most applications                                                        |
+| [`CacheSize`](#cache-size) | `2000` (2000 KB)                          | Start with **2–4 MB** and tune as needed                                                     |
+| [`WalAutoCheckpoint`](#wal-auto-checkpoint) | `1000` (1000 Pages)                       | **250–500 pages** for many mobile applications                                               |
+| [`TempStore`](#temp-store) | `SxmTempStore.Default`                    | Usually leave at default; `Memory` can improve temporary operations when memory is available |
+| [`CheckPointConnection`](#checkpointconnection) | `CheckPointConnection.Off`                | Usually leave at default unless you need explicit checkpoint control                         |
+| [`CheckPointWalMaxSize`](#checkpointwalmaxsize) | `null` (No Value Set)                     | Configure when using `CheckPointConnection.MaxSize`                                          |
+| [`EnableConnectionPooling`](#connection-pooling) | `true`                                    | **`true`** for most applications                                                       |
+| [`DefaultTimeout`](#default-timeout) | `30 seconds`                              |**30 seconds** is a reasonable starting point for general application workloads         |
+| [`EnableLogging`](#logging) | `false`                                   | **`true` during development;** `false` if production logging is not desired                 |
+| [`DatabaseFolderOverride`](#databasefolderoverride) | LocalApplicationData                      | Usually leave at the default application-local location                                     |
+| [`OnConnectionOpened(...)`](#onconnectionopened) | None registered                           | Use only when connection-specific initialization, verification, or custom logic is required |
+| [`OnConnectionClosed(...)`](#onconnectionclosed) | None registered                           | Use only when connection-close handling, cleanup, or instrumentation is required            |
+| [`OnSchemaSynchronized(...)`](#onschemasynchronized) | None registered                         | Use when you want to log or audit the DDL SQLiteXM runs while creating or upgrading tables   |
 
 
 

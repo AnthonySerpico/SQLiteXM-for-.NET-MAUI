@@ -95,7 +95,7 @@ public class User : SxmEntity
 }
 ```
 
-Because no database is specified, the `User` table is created in the default database.
+Because no database is specified, the entity's corresponding `User` table is created in the default database.
 
 ---
 
@@ -170,35 +170,10 @@ List<ApplicationLog> logs = await logTransaction
 
 SQLiteXM enforces the following rules:
 
-### At Least One Database Required
+- The `SqlStatements.json` file must define at least one database.
+- Only one default database - exactly one database must be marked as the default database: ` "isDefault": true`
+- You may define as many non-default databases as needed.
 
-The `SqlStatements.json` file must define at least one database.
-
-```json
-{
-  "databases": [
-    {
-      "database": "MainDatabase",
-      "isDefault": true
-    }
-  ]
-}
-```
-
-**Only One Default Database.** Exactly one database must be marked as the default database: ` "isDefault": true`
-
-### Additional Databases
-
-You may define as many non-default databases as needed.
-
-```json
-{
-  "database": "Logging",
-  "isDefault": false
-}
-```
-
----
 
 SQLiteXM does not support:
 
@@ -279,7 +254,7 @@ Analytics
 
 ---
 
-# Summary
+## Summary
 
 SQLiteXM supports both single-database and multi-database applications.
 

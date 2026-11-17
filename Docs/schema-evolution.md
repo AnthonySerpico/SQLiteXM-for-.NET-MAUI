@@ -51,6 +51,25 @@ The key inputs are:
 SQLiteXM uses that comparison to determine how the schema should be modified and applies the required DDL statements to evolve 
 the schema to match the new entity model.
 
+## Schema Options at a Glance
+
+The following table summarizes each schema option described in this guide and whether SQLiteXM supports it.
+
+| Schema Option | Supported by SQLiteXM | Notes |
+|---------------|-----------------------|-------|
+| [Can SQLiteXM Add Columns?](#can-sqlitexm-add-columns) | ✅ Yes | Uses `ALTER TABLE ... ADD COLUMN` |
+| [Can SQLiteXM Drop Columns?](#can-sqlitexm-drop-columns) | ✅ Yes | Destructive; column must not be referenced by indexes or triggers |
+| [Can SQLiteXM Rename Columns?](#can-sqlitexm-rename-columns) | ✅ Yes | Requires `[Rename]`; preserves data |
+| [Can SQLiteXM Add New Indexes?](#can-sqlitexm-add-new-indexes) | ✅ Yes | All index types supported - unique, non-unique, and composite |
+| [Can SQLiteXM Remove Indexes?](#can-sqlitexm-remove-indexes) | ✅ Yes | All index types supported - unique, non-unique, and composite |
+| [Can SQLiteXM Modify Indexes?](#can-sqlitexm-modify-indexes) | ✅ Yes | Index is dropped and recreated; ⚠️ changing to unique can fail if duplicate data exists |
+| [Can SQLiteXM Add Triggers?](#can-sqlitexm-add-triggers) | ✅ Yes | Trigger is created during registration |
+| [Can SQLiteXM Remove Triggers?](#can-sqlitexm-remove-triggers) | ✅ Yes | Trigger is dropped during registration |
+| [Can SQLiteXM Modify Triggers?](#can-sqlitexm-modify-triggers) | ✅ Yes | Trigger is dropped and recreated during registration |
+| [Does SQLiteXM Support Dropping Tables?](#does-sqlitexm-support-dropping-tables) | ✅ Yes | Only via `DropTableAsync`; refused if other tables reference the table |
+| [What About Type Changes?](#what-about-type-changes) | ❌ No | Requires data conversion and table rebuild |
+| [What About Foreign Key Changes?](#what-about-foreign-key-changes) | ❌ No | SQLite cannot alter foreign key constraints without a rebuild |
+
 ## Can SQLiteXM Add Columns?
 
 Yes.
@@ -259,7 +278,6 @@ These types of changes would require reading existing data, converting it, and r
 Changes to existing foreign key definitions are not supported.
 
 SQLite does not provide direct ALTER TABLE support for modifying foreign key constraints. Because SQLiteXM does not rebuild existing tables, foreign key definitions are considered immutable once created.
-
 
 ## Supported (Safe) Schema Changes
 

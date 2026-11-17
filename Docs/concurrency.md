@@ -154,14 +154,10 @@ Understanding the architecture helps explain why the patterns above work:
 
 While SQLiteXM fully supports concurrent operations through separate transactions, there is one important constraint:
 
-**An `SxmTransaction` instance is not thread-safe and must not be used concurrently from multiple threads or tasks.**
-
-This constraint comes from the underlying ADO.NET provider. According to [Microsoft's documentation](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors):
-
 > **⚠️ WARNING**  
-> Although SQLite supports concurrent access to the same database from multiple threads, the .NET API objects are not thread-safe. This means that `SqliteConnection`, `SqliteCommand`, and `SqliteDataReader` **cannot be shared and used concurrently from multiple threads**.
+> An `SxmTransaction` is not thread-safe. Do not use the same `SxmTransaction` from multiple threads or tasks at the same time, including by passing it to several `Task`s in `Task.WhenAll`.
 
-Each `SxmTransaction` wraps a single `SqliteConnection`. Attempting to execute multiple operations concurrently on the same `SxmTransaction` violates this thread-safety constraint and can lead to unpredictable behavior.
+SQLiteXM uses the SQLite ADO.NET provider underneath, and the provider's connection, command, and reader objects cannot be shared across threads. Attempting to execute multiple operations concurrently on the same `SxmTransaction` violates this constraint and can lead to unpredictable behavior. For background, see [Microsoft's documentation](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors).
 
 **The solution is simple:** Use separate `SxmTransaction` instances for concurrent operations, as shown in the examples above.
 

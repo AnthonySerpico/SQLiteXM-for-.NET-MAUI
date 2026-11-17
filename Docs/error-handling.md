@@ -45,9 +45,12 @@ violation to the user. Wrapping it would either discard that detail or force you
 dig it back out of an inner exception.
 
 ```csharp
-catch (SqliteException ex) when (ex.SqliteErrorCode == 5)   // SQLITE_BUSY
+int sqliteBusy = 5; // SQLITE_BUSY: another connection holds a lock on the database.
+
+catch (SqliteException ex) when (ex.SqliteErrorCode == sqliteBusy)
 {
-	// Safe to retry after a short delay.
+	// SQLiteXM's BusyTimeout has already elapsed by this point. Retrying after a
+	// short delay is reasonable only if the operation is safe to repeat (idempotent).
 }
 ```
 
@@ -140,10 +143,10 @@ same string:
 `SqliteException` would otherwise tell you nothing about the operation that
 surfaced it.
 
-On an `SxmException`, read it through the `Context` property. On any other
-exception type, use the `GetSxmContext()` extension method — it works on
-everything SQLiteXM can surface, so you never need to know where the value is
-stored:
+`SxmException` exposes its context directly through the `Context` property, while
+other exception types, such as `SqliteException`, carry the same information and are
+read through the `GetSxmContext()` extension method, which works on everything
+SQLiteXM can surface, so you never need to know where the value is stored:
 
 ```csharp
 catch (SxmException ex)
@@ -208,7 +211,7 @@ handling is always the same — let it through.
 |---|---|---|---|
 | `SxmDatabase.StartInitialization` | — | `ArgumentException` | Fire-and-forget. Initialization runs in the background and **failures do not surface here** — they surface at `EnsureReadyAsync`. Argument validation on the options is immediate. |
 | `SxmDatabase.InitializeAsync` | `InvalidDBName`, `DbVersionFormatError`, `UnknownSynchCommand` — all mean a malformed SQL statements file<br>`SchemaFailure` | `ArgumentException`, `InvalidOperationException`, `SqliteException` | `InvalidOperationException` means the database name was already registered. `ArgumentException` comes from options validation. Both are setup bugs — fix the call, do not retry. |
-| `SxmDatabase.EnsureReadyAsync` | Any code | `ArgumentException`
+| `SxmDatabase.EnsureReadyAsync` | `InvalidDBName`, `DbVersionFormatError`, `UnknownSynchCommand`, `SchemaFailure` | `ArgumentException` | Surfaces failures from the background initialization started by `StartInitialization`. Await it before first use. |
 | `SxmDatabase.RegisterEntitiesAsync` | `SchemaFailure`, `MappingFailure` | `ArgumentException`, `InvalidOperationException`, `SqliteException` | `ArgumentException` means a type does not derive from `SxmEntity` or is abstract. `InvalidOperationException` means SQLiteXM is not initialized yet. Returns silently for a null or empty list. |
 | `SxmSchemaRegistration.RegisterEntitySchemaAsync` | `SchemaFailure` | `ArgumentException`, `ArgumentNullException`, `InvalidDataException`, `InvalidOperationException`, `SqliteException` | `InvalidDataException` means the target database is missing or undefined; `InvalidOperationException` means an entity name collision. On failure the registration is rolled back, so a corrected retry is safe. |
 | `SxmSchemaRegistration.IsSchemaRegistered` | — | — | Pure lookup. Does not throw. |

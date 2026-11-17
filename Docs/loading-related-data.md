@@ -117,28 +117,23 @@ List<Book> books = await table
 
 ### Combining with Other LINQ Operations
 
-`LoadWith` is an ordinary query step, so it works alongside `Where`, `OrderBy`, and the rest.
+LoadWith works alongside `Where`, `OrderBy`, and other LINQ operators. You can call it before or after these operators, as long as you apply it before executing the query.
 
 ```csharp
+// LoadWith before filtering and sorting
 List<Book> books = await table
-	.LoadWith(b => b.Publisher)
-	.Where(b => b.PublisherId != null)
-	.OrderBy(b => b.Title)
-	.ToListAsync();
-```
+    .LoadWith(b => b.Publisher)
+    .Where(b => b.PublisherId != null)
+    .OrderBy(b => b.Title)
+    .ToListAsync();
 
-> ⚠️ **Important:** Call `LoadWith` **first**, before `Where`, `OrderBy`, or any other LINQ
-> operator. `LoadWith` is available only on the table itself. Once you call `Where` or `OrderBy`,
-> the result is a plain LINQ query that no longer has a `LoadWith` method, so this will not
-> compile:
->
-> ```csharp
-> // Does not compile: 'IQueryable<Book>' does not contain a definition for 'LoadWith'
-> List<Book> books = await table
-> 	.Where(b => b.PublisherId != null)
-> 	.LoadWith(b => b.Publisher)
-> 	.ToListAsync();
-> ```
+// LoadWith after filtering and sorting
+List<Book> books = await table
+    .Where(b => b.PublisherId != null)
+    .OrderBy(b => b.Title)
+    .LoadWith(b => b.Publisher)
+    .ToListAsync();
+```
 
 ---
 

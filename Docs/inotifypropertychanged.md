@@ -10,10 +10,10 @@ allowing .NET MAUI controls and other MVVM infrastructure to react to changes.
 ## Overview
 
 All entities that inherit from SxmEntity implement `INotifyPropertyChanged`, allowing you to:
-- ✅ Bind entity properties directly to MAUI UI controls
-- ✅ Get automatic UI updates when entity properties change
-- ✅ Eliminate repetitive property notification code
-- ✅ Use entities directly in MVVM patterns without wrapper ViewModels
+- Bind entity properties directly to MAUI UI controls
+- Get automatic UI updates when entity properties change
+- Eliminate repetitive property notification code
+- Hold the entities in your ViewModel as properties, and bind your controls to the entity's properties, such as `{Binding Customer.Name}`. You don't need to write a matching property in the ViewModel for each field of the entity
 
 ### Quick Start
 
@@ -262,17 +262,22 @@ For observable collections, use `ObservableCollection<T>`:
 
 ```csharp
 using System.Collections.ObjectModel;
+using System.Linq;
 
 [Table(IsColumnAttributeRequired = false)]
 public class ShoppingCart : SxmEntity
 {
 	private ObservableCollection<CartItem> _items = new();
 
+	public ShoppingCart()
+	{
+		_items.CollectionChanged += (s, e) => RecalculateTotal();
+	}
+
 	[NotColumn]  // Don't persist the collection directly
 	public ObservableCollection<CartItem> Items
 	{
 		get => _items;
-		set => SetProperty(ref _items, value);
 	}
 
 	private decimal _total;
@@ -288,6 +293,16 @@ public class ShoppingCart : SxmEntity
 	}
 }
 ```
+
+Callers add items through the `Items` property. The `CollectionChanged` handler recalculates `Total` automatically:
+
+```csharp
+var cart = new ShoppingCart();
+cart.Items.Add(new CartItem { Price = 9.99m, Quantity = 2 });
+// cart.Total is now 19.98
+```
+
+`Items` is read-only, so callers add and remove items on the existing collection and the handler stays attached.
 
 ## Using with MVVM Frameworks
 
@@ -362,7 +377,7 @@ public partial class CustomerViewModel : ObservableObject
 
 **Important:** Do not use CommunityToolkit.Mvvm's `[ObservableObject]` attribute on SxmEntity-derived classes. 
 SxmEntity already implements `INotifyPropertyChanged` and provides the required notification helpers, another 
-source of that implementation is unnecessary and can cause conflicts..
+source of that implementation is unnecessary and can cause conflicts.
 
 ```csharp
 // ❌ DON'T DO THIS - Causes compiler error
@@ -375,7 +390,7 @@ public class Customer : SxmEntity { }
 
 ### Prism, ReactiveUI, and Other Frameworks
 
-The standard `INotifyPropertyChanged` implementation works with all MVVM frameworks:
+Prism and ReactiveUI ViewModels bind to any `INotifyPropertyChanged` object. The ViewModel below holds a SQLiteXM `Customer` entity. Reassigning `Customer` notifies the view through the ViewModel, and changes to the entity's own properties notify the view through `SxmEntity`:
 
 ```csharp
 // Prism
@@ -534,12 +549,24 @@ public class SensorReading : SxmEntity
 		IsAlertActive = Temperature > 100 || Temperature < 0;
 	}
 }
-
+```
+```xml
 // In your XAML
 <Label Text="{Binding Temperature, StringFormat='Temp: {0:F1}°C'}" />
 <Label Text="ALERT!" 
 	   IsVisible="{Binding IsAlertActive}"
 	   TextColor="Red" />
+```
+
+### Updating from Background Threads
+
+`await` continuations in MVVM code usually return to the UI thread. If you update an entity from a background thread, such as a timer, sensor callback, or `Task.Run`, marshal the change to the UI thread. Property-change notifications update bound controls, and MAUI controls must be updated on the UI thread:
+
+```csharp
+MainThread.BeginInvokeOnMainThread(() =>
+{
+	Temperature = reading;
+});
 ```
 
 ## Troubleshooting
@@ -567,20 +594,31 @@ public string? Name
 
 **Problem:** Binding doesn't work at all.
 
-**Solution:** Verify the `BindingContext` is set correctly:
+**Solution:** Set the `BindingContext` to a single ViewModel that holds the entity, and declare the matching `x:DataType` in XAML:
+
+```xml
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 xmlns:local="clr-namespace:MyApp"
+			 x:Class="MyApp.CustomerPage"
+			 x:DataType="local:CustomerViewModel">
+	<Entry Text="{Binding Customer.Name}" />
+</ContentPage>
+```
 
 ```csharp
-// In code-behind
-public CustomerPage()
+// CustomerPage.xaml.cs
+public partial class CustomerPage : ContentPage
 {
-	InitializeComponent();
-	BindingContext = this;  // Or your ViewModel
+	public CustomerPage()
+	{
+		InitializeComponent();
+		BindingContext = new CustomerViewModel();
+	}
 }
-
-// In XAML
-<ContentPage ...
-			 x:DataType="local:CustomerViewModel">
 ```
+
+`x:DataType` enables compile-time binding checks and must match the type assigned to `BindingContext`. `xmlns:local` maps the ViewModel's namespace; change `MyApp` to your project's namespace.
 
 ### Computed Property Not Updating
 
