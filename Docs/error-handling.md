@@ -237,10 +237,6 @@ handling is always the same — let it through.
 |---|---|---|---|
 | `SxmTransaction.CommitTransactionAsync` | `TransactionFailure` | `InvalidOperationException`, `ObjectDisposedException`, `SqliteException` | `InvalidOperationException` means an earlier operation on this context failed — call `RollbackTransactionAsync` instead. No-ops when no transaction is open. **If the commit throws, assume the work did not persist.** |
 | `SxmTransaction.RollbackTransactionAsync` | `TransactionFailure` | `ObjectDisposedException`, `SqliteException` | Clears the faulted state even if the rollback fails, so the context is reusable afterwards. Safe to call when no transaction is open. |
-| `SxmUTransaction.CommitTransactionAsync`<br>`SxmUTransaction.RollbackTransactionAsync` | `TransactionFailure` | `ArgumentNullException`, `SqliteException` | Same semantics as above across all attached databases. |
-| `SxmUTransaction.AttachDatabaseAsync` | `NoDatabaseExists` — the name is not a registered database | `ArgumentNullException`, `InvalidOperationException`, `SqliteException` | Silently no-ops when asked to attach the connection's own database. The parameterless overload attaches every registered database and fails on the first problem. |
-| `SxmUTransaction.DetachDatabaseAsync()` | — | `ArgumentNullException` | **Best-effort cleanup: per-database failures are swallowed** so every database gets a detach attempt. Does not report which detaches failed. Only the null-connection guard escapes. |
-| `SxmUTransaction.DetachDatabaseAsync(string)` | `NoDatabaseExists` | `ArgumentNullException`, `InvalidOperationException`, `SqliteException` | The single-database overload **does** report failures, unlike the parameterless one. |
 
 ### Connections and Lifecycle
 
@@ -257,6 +253,7 @@ handling is always the same — let it through.
 | `SxmSql.DropTableAsync` | `TableHasDependents` — other tables reference this one<br>`QueryFailure`, `SchemaFailure` | `SqliteException` | Complete list. `TableHasDependents` is raised **before any DDL runs**, so the schema is untouched and the message names every dependent table in the order you need to drop them. |
 | `SxmDatabaseDescriptor.GetWalFileSize` | — | `ArgumentException`, `InvalidOperationException` | Returns `0` when the WAL file does not exist rather than throwing. `InvalidOperationException` means the database folder was never configured. |
 
+<!-- The following section is a placeholder for future expansion. It is not yet complete.
 ### Key-Value Store
 
 Every `SxmStore` method shares one shape, so they are listed together.
@@ -265,6 +262,7 @@ Every `SxmStore` method shares one shape, so they are listed together.
 |---|---|---|---|
 | `SxmStore.GetTypeAsync`<br>`SxmStore.RemoveAsync`<br>`SxmStore.ContainsKeyAsync`<br>`SxmStore.ClearAsync` | `QueryFailure`<br><br>**Plus any code from connection acquisition** | `ArgumentNullException`, `InvalidOperationException`, `SqliteException` | `ArgumentNullException` means a null or empty key. `InvalidOperationException` means an ambient transaction is open against a different database. **Missing keys are not errors**: `GetTypeAsync` returns `null` and `RemoveAsync` returns `false`. |
 
+-->
 ---
 
 ## Cancellation and Usage Errors

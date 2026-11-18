@@ -125,15 +125,15 @@ Some operations are therefore safe and some are not. This applies equally to LIN
 | Operation on a `decimal` column | Works correctly? | Why |
 |---|---|---|
 | `==` and `!=` | ✅ Yes | The same value always produces the same text |
-| `SumAsync`, `AverageAsync`, `SUM`, `AVG` | ✅ Yes | SQLite converts text to a number for arithmetic |
-| Arithmetic updates, e.g. `Amount * 0.9` | ✅ Yes | Also arithmetic |
+| `SumAsync`, `AverageAsync`, `SUM`, `AVG` | ⚠️ Mostly | SQLite converts text to a floating-point `REAL` number, so very large or many-digit totals can lose precision |
+| Arithmetic updates, e.g. `Amount * 0.9` | ⚠️ Mostly | SQLite calculates in floating-point `REAL`, so the stored result can differ slightly from exact decimal math |
 | Comparing an aggregate, e.g. `SUM(Amount) > 1000` | ✅ Yes | `SUM` already produced a number |
 | Saving and loading a value | ✅ Yes | Text storage preserves full precision |
 | `>`, `<`, `>=`, `<=` | ❌ **No** | Compared as text, not as numbers |
 | `OrderBy`, `ORDER BY` | ❌ **No** | Sorted as text |
 | `MinAsync`, `MaxAsync`, `MIN`, `MAX` | ❌ **No** | Picks the smallest/largest *string* |
 
-> ⚠️ **This fails silently.** A range filter returns the wrong rows rather than raising an error. That is especially dangerous in a bulk `UpdateAsync` or `DeleteAsync`, where it will change or remove rows you did not intend.
+> ❗ **Range comparisons, sorting, and `MIN`/`MAX` on `decimal` columns fail silently.** A range filter returns the wrong rows rather than raising an error.
 
 #### The Workaround
 

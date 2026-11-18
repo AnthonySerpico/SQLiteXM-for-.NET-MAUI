@@ -71,7 +71,7 @@ public class Customer : SxmEntity
 		<Label Text="{Binding Customer.Age, StringFormat='Age: {0}'}" />
 
 		<Button Text="Save" 
-				Command="{Binding SaveCommand}" />
+				Clicked="OnSaveClicked" />
 	</StackLayout>
 </ContentPage>
 ```
@@ -467,7 +467,7 @@ public partial class OrderViewModel : ObservableObject
 			if (SetProperty(ref _selectedOrder, value))
 			{
 				// Load order details when selection changes
-				LoadOrderDetails();
+				_ = LoadOrderDetailsAsync();
 			}
 		}
 	}
@@ -475,14 +475,18 @@ public partial class OrderViewModel : ObservableObject
 	[ObservableProperty]
 	private ObservableCollection<OrderItem> _orderItems = new();
 
-	private async void LoadOrderDetails()
+	private async Task LoadOrderDetailsAsync()
 	{
-		if (SelectedOrder == null) return;
+		Order? order = SelectedOrder;
+		if (order == null) return;
 
 		await using SxmTransaction ctx = new SxmTransaction();
 		List<OrderItem> items = await ctx.GetTable<OrderItem>()
-			.Where(i => i.OrderId == SelectedOrder.id)
+			.Where(i => i.OrderId == order.id)
 			.ToListAsync();
+
+		// Ignore results if the selection changed while the query was running
+		if (order != SelectedOrder) return;
 
 		OrderItems = new ObservableCollection<OrderItem>(items);
 	}
@@ -500,6 +504,8 @@ public partial class CustomerListViewModel : ObservableObject
 	[ObservableProperty]
 	private ObservableCollection<Customer> _customers = new();
 
+	private int _searchVersion;
+
 	partial void OnSearchTextChanged(string? value)
 	{
 		_ = SearchCustomersAsync();
@@ -507,6 +513,8 @@ public partial class CustomerListViewModel : ObservableObject
 
 	private async Task SearchCustomersAsync()
 	{
+		int version = ++_searchVersion;
+
 		await using SxmTransaction ctx = new SxmTransaction();
 
 		IQueryable<Customer> query = ctx.GetTable<Customer>().AsQueryable();
@@ -519,6 +527,9 @@ public partial class CustomerListViewModel : ObservableObject
 		}
 
 		List<Customer> results = await query.ToListAsync();
+
+		if (version != _searchVersion) return;
+
 		Customers = new ObservableCollection<Customer>(results);
 	}
 }

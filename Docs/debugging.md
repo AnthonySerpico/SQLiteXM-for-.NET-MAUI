@@ -82,7 +82,7 @@ in SQLiteXM source rather than stepping over the call.
 
 **Nothing referencing `SQLiteXM.pdb` appears in Symbol Load Information**
 
-The module filter is almost certainly the cause. Re-check step 4. Alternatively, change
+The module filter is almost certainly the cause. Re-check step 2. Alternatively, change
 **Automatic symbol searching** from "Automatically choose what module symbols to search for"
 to the option that searches **all** modules.
 

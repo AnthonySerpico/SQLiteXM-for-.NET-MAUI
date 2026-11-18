@@ -70,7 +70,7 @@ Learn SQLiteXM LINQ extensions and how to use LINQ to query and manipulate data 
 
 **Read this when:** You want to access the database using LINQ.
 
-### [Loading Related Data]
+### [Loading Related Data](./loading-related-data.md)
 
 Learn how to define navigation properties and use `LoadWith` to load related entities along with
 your main query, instead of fetching them one at a time.
