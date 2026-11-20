@@ -41,11 +41,11 @@ namespace SQLiteXM
         /// Converters registered here:
         /// - decimal  &lt;-&gt; string (TEXT)
         /// - ulong    &lt;-&gt; string (TEXT)
-        /// - DateTime &lt;-&gt; string (ISO 8601) and long (Unix ms)
+        /// - DateTime &lt;-&gt; string (ISO 8601) and long (total ticks)
         /// - DateOnly &lt;-&gt; string and long (DayNumber)
-        /// - TimeOnly &lt;-&gt; string and long (total milliseconds)
-        /// - TimeSpan &lt;-&gt; string and long (total milliseconds)
-        /// - DateTimeOffset &lt;-&gt; string and long (Unix ms)
+        /// - TimeOnly &lt;-&gt; string and long (total ticks)
+        /// - TimeSpan &lt;-&gt; string and long (total ticks)
+        /// - DateTimeOffset &lt;-&gt; string and long (UTC ticks)
         /// - Guid     &lt;-&gt; string (TEXT) and byte[] (RFC 4122 BLOB)
         ///
         /// The actual serialization and parsing logic is implemented in <see cref="SxmColumnDataConverters"/>.

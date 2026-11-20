@@ -210,6 +210,43 @@ public class SchemaEvolutionTests : TestBase
         [RequiredNotNull("n/a")] public string? Name { get; set; }
     }
 
+    [Table(IsColumnAttributeRequired = false)]
+    public class EvoFkParent : SxmEntity
+    {
+        public string? Name { get; set; }
+    }
+
+    // DB column ParentId has no foreign key; entity declares one.
+    [Table(IsColumnAttributeRequired = false)]
+    public class EvoFkAdd : SxmEntity
+    {
+        public string? Name { get; set; }
+        [ForeignKey(foreignTable: nameof(EvoFkParent))] public long? ParentId { get; set; }
+    }
+
+    // DB column ParentId references EvoFkParent; entity declares no foreign key.
+    [Table(IsColumnAttributeRequired = false)]
+    public class EvoFkRemove : SxmEntity
+    {
+        public string? Name { get; set; }
+        public long? ParentId { get; set; }
+    }
+
+    // DB foreign key uses ON DELETE CASCADE; entity requests ON DELETE SET NULL.
+    [Table(IsColumnAttributeRequired = false)]
+    public class EvoFkModify : SxmEntity
+    {
+        public string? Name { get; set; }
+        [ForeignKey(foreignTable: nameof(EvoFkParent), OnDelete = ForeignKeyDeleteAction.SetNull)] public long? ParentId { get; set; }
+    }
+
+    // DB column Status has DEFAULT 'old'; entity declares no default.
+    [Table(IsColumnAttributeRequired = false)]
+    public class EvoDefaultChange : SxmEntity
+    {
+        public string? Status { get; set; }
+    }
+
     // ==================================================================================
     // Helpers
     // ==================================================================================
@@ -703,5 +740,70 @@ public class SchemaEvolutionTests : TestBase
 
         (await IsColumnNotNullAsync(t, "Name")).Should().BeFalse("SQLite cannot add NOT NULL to an existing column; SQLiteXM must not attempt it");
         (await ExecuteScalarAsync<long>($"SELECT COUNT(*) FROM {t} WHERE Name IS NULL")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task UnsupportedChange_AddForeignKey_ShouldNotAddConstraintToExistingColumn()
+    {
+        const string t = nameof(EvoFkAdd);
+        await CreateLegacyTableAsync(t, "Name TEXT, ParentId INTEGER");
+        await ExecuteNonQueryAsync($"INSERT INTO {t} (Name, ParentId) VALUES ('a', 999)");
+
+        await RegisterAsync<EvoFkAdd>();
+
+        (await GetForeignKeyCountAsync(t)).Should().Be(0, "SQLite cannot add a foreign key to an existing table");
+        (await ExecuteScalarAsync<long>($"SELECT COUNT(*) FROM {t}")).Should().Be(1, "existing rows must be untouched");
+    }
+
+    [Fact]
+    public async Task UnsupportedChange_RemoveForeignKey_ShouldLeaveConstraintInPlace()
+    {
+        const string t = nameof(EvoFkRemove);
+        await DropTableDirectlyAsync("EvoFkParent");
+        await ExecuteNonQueryAsync("CREATE TABLE EvoFkParent (id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT)");
+        await CreateLegacyTableAsync(t, "Name TEXT, ParentId INTEGER REFERENCES EvoFkParent(id)");
+        await ExecuteNonQueryAsync($"INSERT INTO {t} (Name, ParentId) VALUES ('a', NULL)");
+
+        await RegisterAsync<EvoFkRemove>();
+
+        (await GetForeignKeyCountAsync(t)).Should().Be(1, "SQLite cannot drop a foreign key from an existing table");
+    }
+
+    [Fact]
+    public async Task UnsupportedChange_ModifyForeignKey_ShouldKeepOriginalOnDeleteAction()
+    {
+        const string t = nameof(EvoFkModify);
+        await DropTableDirectlyAsync("EvoFkParent");
+        await ExecuteNonQueryAsync("CREATE TABLE EvoFkParent (id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT)");
+        await CreateLegacyTableAsync(t, "Name TEXT, ParentId INTEGER REFERENCES EvoFkParent(id) ON DELETE CASCADE");
+        await ExecuteNonQueryAsync($"INSERT INTO {t} (Name, ParentId) VALUES ('a', NULL)");
+
+        await RegisterAsync<EvoFkModify>();
+
+        (await GetForeignKeyOnDeleteAsync(t, "ParentId")).Should().Be("CASCADE", "SQLite cannot alter an existing ON DELETE action");
+    }
+
+    [Fact]
+    public async Task UnsupportedChange_DefaultValue_ShouldLeaveExistingDefaultUnchanged()
+    {
+        const string t = nameof(EvoDefaultChange);
+        await CreateLegacyTableAsync(t, "Status TEXT DEFAULT 'old'");
+
+        await RegisterAsync<EvoDefaultChange>();
+
+        (await GetColumnDefaultAsync(t, "Status")).Should().Be("'old'", "SQLiteXM does not rebuild tables to change a default value");
+    }
+
+    [Fact]
+    public async Task UnsupportedChange_PrimaryKey_ShouldLeaveExistingPrimaryKeyUnchanged()
+    {
+        const string t = nameof(EvoDefaultChange);
+        await CreateLegacyTableAsync(t, "Status TEXT DEFAULT 'old'");
+        await ExecuteNonQueryAsync($"INSERT INTO {t} (Status) VALUES ('a')");
+
+        await RegisterAsync<EvoDefaultChange>();
+
+        (await GetPrimaryKeyColumnsAsync(t)).Should().Equal(new[] { "id" }, "SQLiteXM does not rebuild tables to change a primary key");
+        (await ExecuteScalarAsync<long>($"SELECT COUNT(*) FROM {t}")).Should().Be(1);
     }
 }

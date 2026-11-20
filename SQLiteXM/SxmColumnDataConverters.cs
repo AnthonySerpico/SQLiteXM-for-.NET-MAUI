@@ -89,28 +89,6 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Convert a nullable <see cref="TimeSpan"/> to total milliseconds (rounded via cast to <see cref="long"/>).
-        /// Returns <c>null</c> when <paramref name="ts"/> is <c>null</c>.
-        /// </summary>
-        /// <param name="ts">The nullable <see cref="TimeSpan"/> to convert.</param>
-        /// <returns>Total milliseconds contained in <paramref name="ts"/>, or <c>null</c>.</returns>
-        internal static long? TimeSpanToTotalMilliseconds(TimeSpan? ts)
-        {
-            return ts.HasValue ? (long)ts.Value.TotalMilliseconds : null;
-        }
-
-        /// <summary>
-        /// Convert a nullable <see cref="TimeOnly"/> to total milliseconds since midnight.
-        /// Returns <c>null</c> when <paramref name="to"/> is <c>null</c>.
-        /// </summary>
-        /// <param name="to">The nullable <see cref="TimeOnly"/> value to convert.</param>
-        /// <returns>Total milliseconds since midnight represented by <paramref name="to"/>, or <c>null</c>.</returns>
-        internal static long? TimeOnlyToTotalMilliseconds(TimeOnly? to)
-        {
-            return to.HasValue ? (long)to.Value.ToTimeSpan().TotalMilliseconds : null;
-        }
-
-        /// <summary>
         /// Convert a nullable <see cref="TimeSpan"/> to total ticks.
         /// Returns <c>null</c> when <paramref name="ts"/> is <c>null</c>.
         /// </summary>
@@ -213,11 +191,11 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Convert a nullable <see cref="DateTimeOffset"/> to .NET Ticks (100-nanosecond intervals since 0001-01-01).
+        /// Convert a nullable <see cref="DateTimeOffset"/> to UTC .NET Ticks (100-nanosecond intervals since 0001-01-01 00:00:00 UTC).
         /// Returns <c>null</c> when <paramref name="dto"/> is <c>null</c>.
         /// </summary>
         /// <param name="dto">The nullable <see cref="DateTimeOffset"/> to convert.</param>
-        /// <returns>Ticks representing <paramref name="dto"/>, or <c>null</c>.</returns>
+        /// <returns>UTC ticks representing <paramref name="dto"/>, or <c>null</c>.</returns>
         internal static long? DateTimeOffsetToTicks(DateTimeOffset? dto)
         {
             return dto?.UtcTicks;
@@ -244,6 +222,7 @@ namespace SQLiteXM
         /// <param name="s">String containing the decimal value, or <c>null</c>.</param>
         /// <returns>Parsed <see cref="decimal"/> or <c>null</c>.</returns>
         /// <exception cref="FormatException">Thrown if <paramref name="s"/> is not a valid decimal.</exception>
+        /// <exception cref="OverflowException">Thrown if <paramref name="s"/> is outside the <see cref="decimal"/> range.</exception>
         internal static decimal? DecimalFromString(string? s)
         {
             return s is null ? (decimal?)null : Decimal.Parse(s, CultureInfo.InvariantCulture);
@@ -256,18 +235,19 @@ namespace SQLiteXM
         /// <param name="s">String containing the unsigned long decimal digits, or <c>null</c>.</param>
         /// <returns>Parsed <see cref="ulong"/> or <c>null</c>.</returns>
         /// <exception cref="FormatException">Thrown if <paramref name="s"/> is not a valid unsigned integer.</exception>
+        /// <exception cref="OverflowException">Thrown if <paramref name="s"/> is outside the <see cref="ulong"/> range.</exception>
         internal static ulong? ULongFromString(string? s)
         {
             return s is null ? (ulong?)null : UInt64.Parse(s, CultureInfo.InvariantCulture);
         }
 
         /// <summary>
-        /// Create a <see cref="DateTime"/> from Unix time in milliseconds (UTC).
         /// Convert a nullable long representing .NET Ticks back to a <see cref="DateTime"/>.
         /// Returns <c>null</c> when <paramref name="ticks"/> is <c>null</c>.
         /// </summary>
         /// <param name="ticks">Ticks (100-nanosecond intervals since 0001-01-01), or <c>null</c>.</param>
         /// <returns><see cref="DateTime"/> corresponding to <paramref name="ticks"/>, or <c>null</c>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="ticks"/> is outside the valid <see cref="DateTime"/> range.</exception>
         internal static DateTime? DateTimeFromTicks(long? ticks)
         {
             return ticks.HasValue ? new DateTime(ticks.Value) : (DateTime?)null;
@@ -286,21 +266,12 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Create a <see cref="TimeSpan"/> from total milliseconds. Returns <c>null</c> when <paramref name="totalMs"/> is <c>null</c>.
-        /// </summary>
-        /// <param name="totalMs">Total milliseconds, or <c>null</c>.</param>
-        /// <returns><see cref="TimeSpan"/> equivalent to <paramref name="totalMs"/> milliseconds, or <c>null</c>.</returns>
-        internal static TimeSpan? TimeSpanFromTotalMilliseconds(long? totalMs)
-        {
-            return totalMs.HasValue ? TimeSpan.FromMilliseconds(totalMs.Value) : (TimeSpan?)null;
-        }
-
-        /// <summary>
         /// Create a <see cref="TimeSpan"/> from total ticks.
         /// Returns <c>null</c> when <paramref name="totalTicks"/> is <c>null</c>.
         /// </summary>
         /// <param name="totalTicks">Total ticks, or <c>null</c>.</param>
         /// <returns><see cref="TimeSpan"/> equivalent to <paramref name="totalTicks"/> ticks, or <c>null</c>.</returns>
+        /// <exception cref="OverflowException">Thrown if <paramref name="totalTicks"/> is outside the valid <see cref="TimeSpan"/> range.</exception>
         internal static TimeSpan? TimeSpanFromTotalTicks(long? totalTicks)
         {
             return totalTicks.HasValue ? TimeSpan.FromTicks(totalTicks.Value) : (TimeSpan?)null;
@@ -312,6 +283,7 @@ namespace SQLiteXM
         /// </summary>
         /// <param name="totalTicks">Total ticks since midnight, or <c>null</c>.</param>
         /// <returns><see cref="TimeOnly"/> corresponding to <paramref name="totalTicks"/>, or <c>null</c>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="totalTicks"/> is less than 0 or not less than one day of ticks.</exception>
         internal static TimeOnly? TimeOnlyFromTotalTicks(long? totalTicks)
         {
             return totalTicks.HasValue ? new TimeOnly(totalTicks.Value) : (TimeOnly?)null;
@@ -327,17 +299,6 @@ namespace SQLiteXM
         internal static TimeSpan? TimeSpanFromString(string? timeSpanString)
         {
             return timeSpanString is null ? (TimeSpan?)null : TimeSpan.Parse(timeSpanString, CultureInfo.InvariantCulture);
-        }
-
-        /// <summary>
-        /// Create a <see cref="TimeOnly"/> from total milliseconds since midnight.
-        /// Returns <c>null</c> when <paramref name="totalMs"/> is <c>null</c>.
-        /// </summary>
-        /// <param name="totalMs">Total milliseconds since midnight, or <c>null</c>.</param>
-        /// <returns><see cref="TimeOnly"/> corresponding to <paramref name="totalMs"/>, or <c>null</c>.</returns>
-        internal static TimeOnly? TimeOnlyFromTotalMilliseconds(long? totalMs)
-        {
-            return totalMs.HasValue ? TimeOnly.FromTimeSpan(TimeSpan.FromMilliseconds(totalMs.Value)) : (TimeOnly?)null;
         }
 
         /// <summary>
@@ -439,22 +400,17 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Create a <see cref="DateTimeOffset"/> from .NET Ticks (100-nanosecond intervals since 0001-01-01).
+        /// Create a UTC <see cref="DateTimeOffset"/> from .NET Ticks (100-nanosecond intervals since 0001-01-01 00:00:00 UTC).
         /// Returns <c>null</c> when <paramref name="ticks"/> is <c>null</c>.
         /// </summary>
-        /// <param name="ticks">Ticks, or <c>null</c>.</param>
-        /// <returns><see cref="DateTimeOffset"/> representing <paramref name="ticks"/>, or <c>null</c>.</returns>
+        /// <param name="ticks">UTC ticks, or <c>null</c>.</param>
+        /// <returns>UTC <see cref="DateTimeOffset"/> representing <paramref name="ticks"/> (offset <c>+00:00</c>), or <c>null</c>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="ticks"/> is outside the valid <see cref="DateTimeOffset"/> range.</exception>
         internal static DateTimeOffset? DateTimeOffsetFromTicks(long? ticks)
         {
             if (!ticks.HasValue) return null;
 
-            // DateTime Ticks range: 0 to 3155378975999999999 (DateTime.MinValue to MaxValue)
-            // DateTimeOffset has same range constraints as DateTime
-            if (ticks.Value < 0)
-                return DateTimeOffset.MinValue;
-            if (ticks.Value > 3155378975999999999)
-                return DateTimeOffset.MaxValue;
-
+            // The constructor validates the range and throws ArgumentOutOfRangeException for invalid ticks.
             return new DateTimeOffset(ticks.Value, TimeSpan.Zero);
         }
 

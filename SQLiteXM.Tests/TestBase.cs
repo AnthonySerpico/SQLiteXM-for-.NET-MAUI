@@ -27,6 +27,45 @@ public abstract class TestBase : IDisposable
     private bool _disposed = false;
     private static int _initCounter = 0;
 
+    internal static SxmDatabaseOptions CreateTestOptions(string databaseFolder)
+    {
+        SxmDatabaseOptions options = new SxmDatabaseOptions
+        {
+            DatabaseFolderOverride = databaseFolder
+        };
+
+        options.OnConnectionOpened(connection =>
+        {
+            using Microsoft.Data.Sqlite.SqliteCommand command = connection.CreateCommand();
+            command.CommandText = Volatile.Read(ref ConcurrencyState.Active) ? "PRAGMA busy_timeout = 5000;" : "PRAGMA busy_timeout = 0;";
+            command.ExecuteNonQuery();
+        });
+
+        return options;
+    }
+
+    internal static IDisposable EnterConcurrencyScope()
+    {
+        Volatile.Write(ref ConcurrencyState.Active, true);
+        return new ConcurrencyScope();
+    }
+
+    private sealed class ConcurrencyScope : IDisposable
+    {
+        public void Dispose()
+        {
+            Volatile.Write(ref ConcurrencyState.Active, false);
+        }
+    }
+
+    // Separate holder with no static constructor. Connection hooks run on worker threads while
+    // TestBase's static constructor may still be blocked waiting on them, so they must not touch
+    // TestBase's static initialization. Default value (false) requires no initializer.
+    private static class ConcurrencyState
+    {
+        internal static bool Active;
+    }
+
     static TestBase()
     {
         // Initialize shared paths once for all tests
@@ -57,12 +96,9 @@ public abstract class TestBase : IDisposable
         // Do NOT reset here - we want initialization to persist for all tests
         // (Reset is only needed when developing/debugging specific test scenarios)
 
-        var initOptions = new SxmDatabaseOptions
-        {
-            DatabaseFolderOverride = TestDatabaseFolder
-        };
+        SxmDatabaseOptions initOptions = CreateTestOptions(TestDatabaseFolder);
 
-        // Run async initialization synchronously - safe in static constructor
+        // Run async initialization synchronously
         using var stream = File.OpenRead(TestSqlStatementsPath);
         SxmDatabase.InitializeAsync(stream, initOptions).GetAwaiter().GetResult();
 
@@ -210,10 +246,7 @@ public abstract class TestBase : IDisposable
     {
         // Re-initialize if needed (e.g., after cleanup)
         // InitializeAsync is safe to call multiple times - it returns early if already initialized
-        var initOptions = new SxmDatabaseOptions
-        {
-            DatabaseFolderOverride = TestDatabaseFolder
-        };
+        SxmDatabaseOptions initOptions = CreateTestOptions(TestDatabaseFolder);
 
         using var stream = File.OpenRead(TestSqlStatementsPath);
         await SxmDatabase.InitializeAsync(stream, initOptions);
@@ -702,6 +735,57 @@ public abstract class TestBase : IDisposable
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = $"SELECT name FROM pragma_index_info('{indexName}') ORDER BY seqno";
+        var list = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            list.Add(reader.GetString(0));
+        return list;
+    }
+
+    /// <summary>
+    /// Returns the number of foreign key constraints declared on a table.
+    /// </summary>
+    protected async Task<long> GetForeignKeyCountAsync(string tableName)
+    {
+        return await ExecuteScalarAsync<long>($"SELECT COUNT(*) FROM pragma_foreign_key_list('{tableName}')");
+    }
+
+    /// <summary>
+    /// Returns the ON DELETE action of the foreign key on the given column, or null if none exists.
+    /// </summary>
+    protected async Task<string?> GetForeignKeyOnDeleteAsync(string tableName, string columnName)
+    {
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT on_delete FROM pragma_foreign_key_list('{tableName}') WHERE \"from\" = '{columnName}'";
+        return await command.ExecuteScalarAsync() as string;
+    }
+
+    /// <summary>
+    /// Returns the declared default value expression of a column, or null if none exists.
+    /// </summary>
+    protected async Task<string?> GetColumnDefaultAsync(string tableName, string columnName)
+    {
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT dflt_value FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'";
+        return await command.ExecuteScalarAsync() as string;
+    }
+
+    /// <summary>
+    /// Returns the primary key column names of a table, in key order.
+    /// </summary>
+    protected async Task<List<string>> GetPrimaryKeyColumnsAsync(string tableName)
+    {
+        var dbPath = Path.Combine(TestDatabaseFolder, TestDatabaseName);
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT name FROM pragma_table_info('{tableName}') WHERE pk > 0 ORDER BY pk";
         var list = new List<string>();
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())

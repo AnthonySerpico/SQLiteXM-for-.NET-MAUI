@@ -122,7 +122,7 @@ Below is an example definition for an INSERT statement, which would be placed in
 ```
 
 INSERT, SELECT, UPDATE, and DELETE statements all use the same three fields for their definitions:
-- **Statement Name** - Unique identifier for the statement
+- **Statement Name** - Identifier for the statement. Names must be unique across categories (`insert`, `select`, `update`, `delete`). Name-based lookup checks the categories in the order `select`, `update`, `delete`, `insert` and uses the first match, so a name used in more than one category might load the wrong statement.
 
 - **Table Name** - The target table
 

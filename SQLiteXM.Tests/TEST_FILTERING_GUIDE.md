@@ -1,6 +1,6 @@
 # SQLiteXM Test Filtering Guide
 
-The suite currently discovers **529 tests per target framework** (`net8.0` and `net9.0`, so 1,058 executions in a full run) across 31 test classes. Only one category trait is in use today:
+The suite currently discovers **696 tests per target framework** (`net8.0` and `net10.0`, so 1,392 executions in a full run) across 37 test classes.
 
 - `[Trait("Category", "Performance")]` on `MultiDatabasePerformanceTests` (12 tests)
 
@@ -14,7 +14,7 @@ Everything else is untagged, so `Category!=Performance` is the practical "fast s
 ```powershell
 dotnet test --configuration Debug
 ```
-Runs 529 tests on `net8.0` and again on `net9.0` (1,058 executions), including the 12 performance tests.
+Runs 696 tests on `net8.0` and again on `net10.0` (1,392 executions), including the 12 performance tests.
 
 ### 2. Run everything EXCEPT performance tests
 ```powershell
@@ -29,9 +29,9 @@ dotnet test --configuration Debug --filter "Category=Performance"
 
 ### 4. Run a single target framework
 ```powershell
-dotnet test --configuration Debug --framework net9.0
+dotnet test --configuration Debug --framework net10.0
 ```
-Halves the run time when you don't need cross-TFM coverage. Combine with any `--filter`.
+Halves the run time
 
 ### 5. Run one specific test
 ```powershell
@@ -65,11 +65,11 @@ dotnet test --configuration Debug -t
 dotnet test --configuration Debug --filter "Category!=Performance&FullyQualifiedName!~LargeSchemaInitializationBenchmark"
 ```
 
-### Functional tests (516)
+### Functional tests (683 per target framework)
 
-That is 529 minus the 12 trait-tagged performance tests and the 1 untagged benchmark. If you filter only on `Category!=Performance`, you get 517 because the benchmark is not trait-tagged.
+That is 696 minus the 12 trait-tagged performance tests and the 1 untagged benchmark. If you filter only on `Category!=Performance`, you get 684 per target framework because the benchmark is not trait-tagged.
 
-Functional coverage spans: entity initialization and CRUD, null handling, schema migration and evolution, column rename, table drop, transactions and transaction patterns, mixed unit of work, LINQ (basic, advanced, documented patterns, bulk operations), bulk insert, connection management, exception contract, initialization pattern, database options (validation and runtime PRAGMA effects), raw SQL `RunStatementAsync` and named statements, `SxmUpdateSet` edge cases, and multi-database functional/LINQ tests.
+Functional coverage spans: entity initialization and CRUD, null handling, schema migration and evolution, column rename, table drop, transactions and transaction patterns, mixed unit of work, LINQ (basic, advanced, documented patterns, bulk operations, `LoadWith`), bulk insert, connection management, concurrency, decimal comparison, dual foreign-key navigation, supported data type storage, exception contract, initialization pattern, database options (validation and runtime PRAGMA effects), raw SQL `RunStatementAsync` and named statements, `SxmUpdateSet` edge cases, and multi-database functional/LINQ tests.
 
 Per-class counts are listed in [README.md](README.md).
 
@@ -132,8 +132,9 @@ Parallelization is disabled **assembly-wide** by `[assembly: CollectionBehavior(
 | `InitializationPattern` | `InitializationPatternTests`, `LargeSchemaInitializationBenchmarkTests` | No |
 | `DatabaseOptionsEffect` | `DatabaseOptionsEffectTests` | No |
 | `NamedStatement` | `NamedStatementTests` | No |
+| `Concurrency` | `ConcurrencyTests`, `ConcurrencyMultiDatabaseTests` | No (ordered last by `ConcurrencyLastCollectionOrderer`) |
 
-The four non-`Sequential` collections exist because their classes call `SxmDatabase.ResetForTestingAsync()` and reinitialize SQLiteXM with their own configuration, which mutates process-wide state. `DatabaseOptionsEffectTests` reinitializes with per-test `SxmDatabaseOptions`; `NamedStatementTests` reinitializes with its own generated statements file.
+The non-`Sequential` collections exist because their classes call `SxmDatabase.ResetForTestingAsync()` and reinitialize SQLiteXM with their own configuration, which mutates process-wide state.
 
 Filtering down to a subset is always safe: each of these classes restores the standard `TestBase` configuration when it finishes.
 
@@ -143,7 +144,7 @@ Filtering down to a subset is always safe: each of these classes restores the st
 
 ### During active development
 ```powershell
-dotnet test --configuration Debug --framework net9.0 --filter "Category!=Performance"
+dotnet test --configuration Debug --framework net10.0 --filter "Category!=Performance"
 ```
 
 ### Before committing

@@ -39,6 +39,8 @@ namespace SQLiteXM
         private Microsoft.Data.Sqlite.SqliteTransaction? _enlistedTransaction;
         private string? _databaseName;
 
+        internal SxmConnection SxmConnectionForTesting => _sxmConnection;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="SxmTransaction"/> class, creating a LINQ-enabled
         /// transactional context for the specified database.

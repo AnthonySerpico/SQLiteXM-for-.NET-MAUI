@@ -447,13 +447,19 @@ public class MultiDatabasePerformanceTests : IDisposable
         // Verify all entities were created
         using (var productContext = new SxmTransaction("products"))
         {
-            var productCount = productContext.GetTable<Product>().Count();
-            Assert.Equal(50, productCount);
+            var products = productContext.GetTable<Product>().ToList();
+            Assert.Equal(50, products.Count);
+            Assert.Equal(Enumerable.Range(0, 50).Select(i => $"Product {i}").OrderBy(n => n),
+                products.Select(p => p.Name).OrderBy(n => n));
+            Assert.All(products, p => Assert.True(p.InStock));
         }
         using (var orderContext = new SxmTransaction("orders"))
         {
-            var orderCount = orderContext.GetTable<Order>().Count();
-            Assert.Equal(50, orderCount);
+            var orders = orderContext.GetTable<Order>().ToList();
+            Assert.Equal(50, orders.Count);
+            Assert.Equal(Enumerable.Range(0, 50).Select(i => $"Customer {i}").OrderBy(n => n),
+                orders.Select(o => o.CustomerName).OrderBy(n => n));
+            Assert.All(orders, o => Assert.True(o.IsPaid));
         }
     }
 

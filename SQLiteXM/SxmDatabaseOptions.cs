@@ -406,9 +406,9 @@ internal static void ResetForTesting()
 
         RunConnectionPragmas(sqliteConnection, initOptions);
 
-        lock (initOptions._interceptorLock)
+        if (initOptions.ConnectionOpenedInterceptors != null)
         {
-            if (initOptions.ConnectionOpenedInterceptors != null)
+            lock (initOptions._interceptorLock)
             {
                 foreach (ConnectionOpenedInterceptor connectionOpenedInterceptor in initOptions.ConnectionOpenedInterceptors)
                     connectionOpenedInterceptor(sqliteConnection);

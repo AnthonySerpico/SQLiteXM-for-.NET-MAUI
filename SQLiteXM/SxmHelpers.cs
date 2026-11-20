@@ -734,7 +734,7 @@ namespace SQLiteXM
             if (targetType == typeof(TimeSpan))
             {
                 if (value is long l)
-                    return SxmColumnDataConverters.TimeSpanFromTotalMilliseconds(l);
+                    return SxmColumnDataConverters.TimeSpanFromTotalTicks(l);
 
                 if (value is string s)
                     return SxmColumnDataConverters.TimeSpanFromString(s);
@@ -756,7 +756,7 @@ namespace SQLiteXM
             if (targetType == typeof(TimeOnly))
             {
                 if (value is long l)
-                    return SxmColumnDataConverters.TimeOnlyFromTotalMilliseconds(l);
+                    return SxmColumnDataConverters.TimeOnlyFromTotalTicks(l);
 
                 if (value is string s)
                     return SxmColumnDataConverters.TimeOnlyFromString(s);
@@ -1115,7 +1115,7 @@ namespace SQLiteXM
                         }
                     }
 
-                    // DateTime supports TEXT or INTEGER (Unix ms).
+                    // DateTime supports TEXT or INTEGER (ticks).
                     else if (targetType == typeof(DateTime))
                     {
                         if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
@@ -1175,7 +1175,7 @@ namespace SQLiteXM
                         }
                     }
 
-                    // TimeSpan supports TEXT or INTEGER (total ms).
+                    // TimeSpan supports TEXT or INTEGER (total ticks).
                     else if (targetType == typeof(TimeSpan))
                     {
                         if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
@@ -1185,7 +1185,7 @@ namespace SQLiteXM
                         }
                         else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
                         {
-                            long? l = SxmColumnDataConverters.TimeSpanToTotalMilliseconds((TimeSpan)value);
+                            long? l = SxmColumnDataConverters.TimeSpanToTotalTicks((TimeSpan)value);
                             dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
                         }
                         else
@@ -1195,7 +1195,7 @@ namespace SQLiteXM
                         }
                     }
 
-                    // TimeOnly supports TEXT or INTEGER (total ms).
+                    // TimeOnly supports TEXT or INTEGER (total ticks).
                     else if (targetType == typeof(TimeOnly))
                     {
                         if (dbType.Equals("TEXT", StringComparison.OrdinalIgnoreCase))
@@ -1205,7 +1205,7 @@ namespace SQLiteXM
                         }
                         else if (dbType.Equals("INTEGER", StringComparison.OrdinalIgnoreCase))
                         {
-                            long? l = SxmColumnDataConverters.TimeOnlyToTotalMilliseconds((TimeOnly)value);
+                            long? l = SxmColumnDataConverters.TimeOnlyToTotalTicks((TimeOnly)value);
                             dbValue = l.HasValue ? (object)l.Value : DBNull.Value;
                         }
                         else

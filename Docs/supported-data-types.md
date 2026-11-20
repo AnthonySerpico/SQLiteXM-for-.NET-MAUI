@@ -45,7 +45,8 @@ In practice, this means:
 * `string` maps to `TEXT`
 * `byte[]` maps to `BLOB`
 * `Guid` defaults to `BLOB` but can be stored as `TEXT`
-* Specialized types such as `DateTime`, `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset`, defaults to `INTEGER` (ticks) but can be stored as `TEXT`.
+* `DateTime`, `TimeOnly`, `TimeSpan`, and `DateTimeOffset` default to `INTEGER` (ticks) but can be stored as `TEXT`. 
+* `DateOnly` defaults to `INTEGER` Unix epoch (days since 1970-01-01) but can also be stored as `TEXT`. 
 
 SQLite `INTEGER` is a 64-bit signed value and maps to C# `long`. Smaller integral types such as `int`, `short`, and `byte` are also stored using `INTEGER`.
 
@@ -108,7 +109,7 @@ public class Person : SxmEntity
 
 ### decimal
 
-`decimal` values are stored as `TEXT` to preserve precision. SQLite REAL cannot safely represent many decimal values.
+`decimal` values are stored as `TEXT` to preserve precision, using the invariant culture "G29" format. SQLite REAL cannot safely represent many decimal values.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -177,6 +178,7 @@ If you need true SQL-side range filtering and sorting on money, store the value 
 `ulong` values are stored as fixed-width, zero-padded `TEXT` because SQLite `INTEGER` 
 cannot represent the entire `ulong` range without loss of precision.
 
+Values are written as exactly 20 digits (`D20` format), so `42` is stored as `00000000000000000042`.
 Zero padding is what preserves lexical sort order for numeric strings.
 With fixed width and zero padding, string order matches numeric order.
 
@@ -200,6 +202,8 @@ public class Customer : SxmEntity
 }
 ```
 
+By default, the 16-byte value is the native .NET layout produced by `Guid.ToByteArray()`. The first three components are little-endian and the last eight bytes are in their original order. This is the format SQLiteXM uses for BLOB storage, so the bytes are not in RFC 4122 (network) order.
+
 You can override `Guid` to `TEXT`.
 
 ```csharp
@@ -221,7 +225,7 @@ Example:
 
 `DateTime` values are stored as `INTEGER` by default. SQLiteXM stores them as .NET ticks.
 
-When read back, the value is reconstructed from those ticks.
+When read back, the value is reconstructed from those ticks. The ticks do not include a `DateTimeKind`, so values are returned with `DateTimeKind.Unspecified`, regardless of whether they were `Local`, `Utc`, or `Unspecified` when saved.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -231,7 +235,17 @@ public class AuditEntry : SxmEntity
 }
 ```
 
-You can override `DateTime` to `TEXT` to store an ISO 8601 string.
+You can override `DateTime` to `TEXT` to store an ISO 8601 string. SQLiteXM writes the value with the invariant round-trip format (`o`), which keeps all seven fractional digits.
+
+| `DateTimeKind` | Text written | Example |
+|---|---|---|
+| `Utc` | Ends in `Z` | `2024-05-01T13:45:00.0000000Z` |
+| `Local` | Ends in the offset in effect when saved | `2024-05-01T13:45:00.0000000+02:00` |
+| `Unspecified` | No suffix | `2024-05-01T13:45:00.0000000` |
+
+On read, the text is parsed with `DateTimeStyles.RoundtripKind`, so the original `DateTimeKind` is restored. A `Local` value is returned as the same instant, converted to the reader's local time zone. The time zone name is not stored, so it cannot be recovered.
+
+> ⚠️ **Text sorting and range queries.** Text compares character by character. For `DateTime` values, `ORDER BY`, `>`, `<`, and `BETWEEN` give correct results only when every row was saved with the same offset. Store values as `Utc` when you need reliable SQL-side sorting or filtering.
 
 ```csharp
 [Column(DataType = SQLiteXM.DataType.Text)]
@@ -241,7 +255,7 @@ public DateTime CreatedOn { get; set; }
 ### DateTimeOffset
 
 `DateTimeOffset` values are stored as `INTEGER` by default using UTC .NET ticks. This preserves the instant represented by the value, 
-but does not preserve the original offset.
+On read, the value is returned with a `+00:00` offset. Ticks outside the `DateTimeOffset` range raise an `ArgumentOutOfRangeException` rather than being silently changed.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -251,8 +265,11 @@ public class Event : SxmEntity
 }
 ```
 
-You can override the `DateTimeOffset` storage type and store it as TEXT using the ISO 8601 round-trip format. 
-This preserves both the instant and the original offset.
+You can override the `DateTimeOffset` storage type and store it as TEXT using the ISO 8601 round-trip format (`o`). This preserves both the instant and the original offset, unlike the INTEGER default, which stores UTC ticks and returns a `+00:00` offset.
+
+Example value: `2024-05-01T13:45:00.0000000+02:00`
+
+Values with different offsets can sort in the wrong order. Convert values with `ToUniversalTime()` before saving when you need reliable SQL-side sorting or filtering.
 
 ```csharp
 [Column(DataType = SQLiteXM.DataType.Text)]
@@ -271,7 +288,7 @@ public class Holiday : SxmEntity
 }
 ```
 
-You can override `DateOnly` to `TEXT`.
+You can override `DateOnly` to `TEXT`. The text is stored in the invariant `yyyy-MM-dd` format.
 
 ```csharp
 [Column(DataType = SQLiteXM.DataType.Text)]
@@ -280,8 +297,8 @@ public DateOnly Date { get; set; }
 
 ### TimeOnly
 
-`TimeOnly` values are stored as `INTEGER` by default. SQLiteXM stores them as the number of .NET ticks since midnight, 
-preserving the full 100-nanosecond precision of TimeOnly.
+`TimeOnly` values are stored as `INTEGER` by default. SQLiteXM stores them as the number of ticks since midnight, 
+preserving full precision.  Use the `TEXT` override if you prefer human readable format.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -291,7 +308,7 @@ public class ScheduleItem : SxmEntity
 }
 ```
 
-You can override `TimeOnly` to `TEXT`.
+You can override `TimeOnly` to `TEXT`. The text is stored in the invariant `HH:mm:ss.fffffff` format, which keeps all seven fractional digits.
 
 ```csharp
 [Column(DataType = SQLiteXM.DataType.Text)]
@@ -300,7 +317,8 @@ public TimeOnly StartsAt { get; set; }
 
 ### TimeSpan
 
-`TimeSpan` values are stored as `INTEGER` by default. SQLiteXM stores them as the total number of ticks.
+`TimeSpan` values are stored as `INTEGER` by default. SQLiteXM stores them as the total number of ticks. 
+Use the `TEXT` override if you prefer human readable format.
 
 ```csharp
 [Table(IsColumnAttributeRequired = false)]
@@ -310,7 +328,15 @@ public class TaskRun : SxmEntity
 }
 ```
 
-You can override `TimeSpan` to `TEXT`.
+You can override `TimeSpan` to `TEXT`. The text uses .NET's invariant constant (`c`) format, for example `1.02:03:04.5000000`.
+
+The `c` format has these characteristics:
+
+- The day part is omitted when it is zero. For example, `01:00:00` is one hour, and `1.00:00:00` is one day.
+- Negative values start with `-`, for example `-01:00:00`.
+- The fractional part keeps all seven digits, so precision is preserved.
+
+> ⚠️ **Text sorting and range queries do not match duration order.** Because the day part is optional and negative values start with `-`, `ORDER BY`, `>`, `<`, and `BETWEEN` on this column give incorrect results. Use the default INTEGER storage if you need SQL-side sorting or filtering, or filter in memory.
 
 ```csharp
 [Column(DataType = SQLiteXM.DataType.Text)]

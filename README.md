@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 600+ tests |
+| Automated Test Coverage | 690+ tests |
 
 ---
 
@@ -249,7 +249,7 @@ parameters rather than concatenating them into the SQL text
 
 ## 🧪 Testing
 
-SQLiteXM includes a comprehensive test suite with **602 tests** covering real-world scenarios.
+SQLiteXM includes a comprehensive test suite with over **690 tests**, run against both **.NET 8** and **.NET 10** (1,380+ test executions)
 
 ### Performance Benchmarks (from test suite)
 
@@ -265,51 +265,51 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-The `SQLiteXM.Tests` project contains **602 tests**, run against both **.NET 8** and **.NET 10** (1,204 test executions), all passing.
-
 <details>
 
-<summary>📋 <strong>View the Full Test Coverage Breakdown (602 tests)</strong></summary>
+<summary>📋 <strong>View the Full Test Coverage Breakdown</strong></summary>
 
 <p> </p>   
 
-| Area | What is covered | Test class | Tests |
-|------|-----------------|------------|------:|
-| **Schema & Initialization** | Entity registration, table creation, `[Table]` / `[Column]` options | `EntityInitializationTests` | 13 |
-| | Property-to-column mapping and type handling | `EntityMappingTests` | 4 |
-| | Fail-fast validation of invalid entity definitions | `FailFastTests` | 5 |
-| | `StartInitialization` / `EnsureReadyAsync` idempotency, concurrency, and failure propagation | `InitializationPatternTests` | 11 |
-| | Initialization of a 75-table × 50-column schema (timing) | `LargeSchemaInitializationBenchmarkTests` | 1 |
-| **Schema Evolution** | Add column, index and trigger creation, foreign keys, system columns | `EntityMigrationTests` | 17 |
-| | Single- and multi-step `[Rename]` column renames | `ColumnRenameTests` | 10 |
-| | Drop column; add / remove / modify indexes and triggers; combined changes; unsupported changes; failed-migration state and retry | `SchemaEvolutionTests` | 24 |
-| | `[DropTable]` / explicit table drops | `DropTableTests` | 24 |
-| **Entity DML & Bulk Insert** | `SaveAsync` / `DeleteAsync` insert, update, delete | `EntityCrudTests` | 9 |
-| | `SxmSql.BulkInsertAsync`, `SxmTransaction.BulkInsertAsync`, and LINQ `BulkInsertAsync` — id/synchId population, batch sizes, validation, rollback, unique-index violations | `BulkInsertTests` | 70 |
-| **Null Handling** | Null properties stored as SQL `NULL` (verified with raw SQL) across insert, update, bulk insert, bulk LINQ update, and read-back; null vs. empty string / empty blob / default value; LINQ null filtering; `[RequiredNotNull]` schema and constraint behavior | `NullHandlingTests` | 28 |
-| **LINQ** | `GetTable<T>()`, `Where`, `OrderBy`, `Select`, `First`, `Count` | `LinqContextTests` | 7 |
-| | Joins, grouping, aggregation, paging, async materialization | `AdvancedLinqTests` | 12 |
-| | LINQ inside `SxmTransaction` — commit and rollback | `LinqTransactionTests` | 6 |
-| | Bulk `Set(...).UpdateAsync()` and `DeleteAsync()` | `BulkLinqOperationsTests` | 12 |
-| | Every example in [LINQ Queries](./Docs/linq-queries.md), executed as a test | `LinqQueryDocumentationTests` | 49 |
-| | `SxmUpdateSet<T>` edge cases — duplicate column assignment, null assignment, expression setters, builder immutability | `UpdateSetTests` | 10 |
-| **Raw SQL** | `RunStatementAsync` overloads — no parameters, named (`Dictionary`) parameters, positional (`List`) parameters, typed and raw result shapes, and parameterization safety against injection payloads | `RunStatementTests` | 18 |
-| | Named statements resolved from `SqlStatements.json` — named vs. positional binding, name-before-SQL resolution order, unknown and invalid statement names | `NamedStatementTests` | 15 |
-| **Transactions** | Commit, rollback, atomicity, ambient transaction enlistment and nesting | `TransactionTests` | 7 |
-| | Mixed LINQ + entity DML + SQL in one transaction; fault behavior; recovery; multiple commits | `TransactionPatternTests` | 14 |
-| | Mixed unit-of-work commit / rollback and faulted-context write skipping | `MixedUnitOfWorkTests` | 5 |
-| **Multi-Database** | Entities and SQL across multiple named databases | `MultiDatabaseTests` | 11 |
-| | LINQ across multiple named databases | `MultiDatabaseLinqTests` | 18 |
-| | Cross-database performance and isolation; update-path correctness, transaction-batching speedup, and throughput reporting | `MultiDatabasePerformanceTests` | 12 |
-| **Connections & Concurrency** | Shared-connection locking, contention, and timeouts | `SharedConnectionTests` | 7 |
-| | `RunWorkersAsync` concurrent connection workers | `ConnectionManagerWorkerTests` | 7 |
-| **Database Options** | Every rule in `SxmDatabaseOptionsValidator` — errors vs. warnings, defaults accepted as valid, all errors reported together | `DatabaseOptionsValidatorTests` | 78 |
-| | Options actually taking effect — `journal_mode`, `synchronous`, `foreign_keys`, `temp_store`, `cache_size`, `busy_timeout`, `wal_autocheckpoint` PRAGMA round-trips, plus `OnConnectionOpened` / `OnConnectionClosed` interceptor invocation and ordering | `DatabaseOptionsEffectTests` | 22 |
-| **Error Handling** | `SxmException` contract — `ErrorCode`, `Data["sxmErrorCode"]`, `Context`, exception filters, wrapped vs. direct throws | `SxmExceptionContractTests` | 9 |
-| **Related Data** | `LoadWith` eager loading — chained calls, nested paths, argument validation, filtering and projection over navigation properties | `LoadWithTests` | 35 |
-| | Rejection of entities with multiple foreign keys to the same target table, and confirmation that valid entities are unaffected | `DualForeignKeyNavigationTests` | 18 |
-| **Data Types** | `decimal` stored as TEXT — which SQL operations are numerically correct and which are text-ordered | `DecimalComparisonTests` | 14 |
-| | **Total** | | **602** |
+| Test  | Count | Focus |
+|------------|------:|------------|-------|
+| `AdvancedLinqTests` | 12 | GroupBy, joins, set operations, deferred execution, projections |
+| `BulkInsertTests` | 70 | Three bulk-insert entry points (`SxmSql`, `SxmTransaction`, LINQ extension) across shared behavior theories plus per-API transaction semantics |
+| `BulkLinqOperationsTests` | 12 | LINQ bulk update/delete, predicates, transaction scoping, chaining |
+| `ColumnRenameTests` | 10 | `[Rename]` processing, multi-step rename chains, data preservation |
+| `ConcurrencyTests` | 11 |  Concurrent entity and data access scenarios |
+| `ConcurrencyMultiDatabaseTests` | 2 |  Concurrent access across multiple databases |
+| `ConnectionManagerWorkerTests` | 7 | `RunWorkersAsync` concurrent connection workers: shared-connection locking, lock hand-off, and wait timeouts |
+| `DatabaseOptionsValidatorTests` | 78 | `SxmDatabaseOptions` validation rules: numeric ranges, undefined enum values, folder-override paths, configuration-combination warnings, and the `ValidationResult` contract. Pure in-memory - no database required. Resets the shared `EnableConnectionPooling` / `EnableLogging` / `DefaultTimeout` statics around each test |
+| `DatabaseOptionsEffectTests` | 22 | Proves the configured options actually reach SQLite: `journal_mode`, `synchronous`, `foreign_keys`, `temp_store`, `cache_size` (negative-KB encoding), `busy_timeout` and `wal_autocheckpoint` PRAGMA round-trips, plus `OnConnectionOpened` / `OnConnectionClosed` interceptor invocation and ordering. Most PRAGMAs are per-connection, so they are read from inside an interceptor on the very connection SQLiteXM configured; WAL is additionally verified from an independent connection because it is persisted in the database file. Re-initializes SQLiteXM per test and restores the standard test configuration afterwards |
+| `DecimalComparisonTests` | 14 | Decimal value comparison behavior in queries |
+| `DropTableTests` | 24 | `SxmSql.DropTableAsync`: non-existent and repeated drops, refusal when dependent tables exist (naming the blocking table), child-first drops, and null/whitespace identifier validation |
+| `DualForeignKeyNavigationTests` | 18 | Navigation across two foreign keys on the same entity |
+| `EntityCrudTests` | 9 | `SaveAsync` insert and update, `DeleteAsync`, ID population and uniqueness, and round-trips of all supported data types |
+| `EntityInitializationTests` | 13 | Table creation, type mapping, indexes, FKs, triggers, thread safety |
+| `EntityMappingTests` | 4 | `MapProperties`, `MapAndSaveAsync`, null/mismatch handling |
+| `EntityMigrationTests` | 17 | Adding columns (nullable, defaulted, NOT NULL), sequential and concurrent migrations |
+| `FailFastTests` | 5 | Early validation on registration and entity construction |
+| `InitializationPatternTests` | 11 | `SxmDatabase.StartInitialization` + `EnsureReadyAsync`, idempotency, failure propagation |
+| `LargeSchemaInitializationBenchmarkTests` | 1 | Wall-clock measurement of first-run and migration-run initialization over a 75 x 50 schema (no pass/fail threshold) |
+| `LinqContextTests` | 7 | Where, OrderBy, Select, FirstOrDefault, Count |
+| `LinqQueryDocumentationTests` | 49 | Every LINQ example in the documentation, executed against seeded customer and order data |
+| `LinqTransactionTests` | 6 | LINQ visibility across commit/rollback, deferred operations, isolation |
+| `LoadWithTests` | 35 | Eager loading via `LoadWith` navigation paths |
+| `MixedUnitOfWorkTests` | 5 | Entity writes, LINQ inserts, and raw SQL sharing one transaction: commit on dispose, rollback, joining an ambient transaction, and skipping writes after a fault |
+| `MultiDatabaseLinqTests` | 18 | Per-database query contexts, aggregates, joins, projections |
+| `MultiDatabasePerformanceTests` | 12 | Bulk, scale, and concurrency benchmarks; update-path correctness, transaction-batching speedup ratio, and throughput reporting |
+| `MultiDatabaseTests` | 11 | Multiple databases in `statements.json`, entity routing, per-database transactions |
+| `NamedStatementTests` | 41 | Statements resolved from `statements.json`: named vs. positional parameters, select/insert/update/delete, triggers, and unknown or invalid statement names |
+| `NullHandlingTests` | 28 | Null properties stored as SQL `NULL` across insert, update, bulk insert, and read-back; null vs. empty string, empty blob, and default value |
+| `RunStatementTests` | 18 | The `RunStatementAsync` overload matrix |
+| `SchemaEvolutionTests` | 24 | Index add, remove, and change; trigger add, remove, and modify; dropping columns, including indexed and trigger-referenced columns |
+| `SharedConnectionTests` | 7 | Shared connection locking, timeouts, multi-caller safety |
+| `SupportedDataTypesStorageTests` | 50 | Storage of every supported data type and its round-trip behavior |
+| `SxmExceptionContractTests` | 9 | `SxmException` contract: `ErrorCode` and `Data["sxmErrorCode"]`, `Context`, exception filters, and wrapped vs. direct throws |
+| `TransactionPatternTests` | 14 | The five transaction patterns from `Docs/application-lifecycle.md`: mixed operations, fault behavior, fault recovery, multiple commits, all-operation-type conformance |
+| `TransactionTests` | 7 | Commit/rollback, atomicity, ambient transactions, nested-create rejection |
+| `UpdateSetTests` | 10 | `SxmUpdateSet<T>` edge cases behind `Set().UpdateAsync()`: same column set twice, null assignment, multiple distinct columns, no-match predicates, expression-valued setters, mixed value/expression chains, and builder immutability. Several are characterization tests that record current behavior rather than a pre-specified contract |
 
 </details>
 

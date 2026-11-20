@@ -1,4 +1,4 @@
-name: 602 Test (.NET 8 & 10)
+name: 696 Test (.NET 8 & 10)
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
         run: dotnet restore SQLiteXM.Tests/SQLiteXM.Tests.csproj
 
       - name: Build & Run 602 Tests (${{ matrix.target-framework }})
-        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj --framework ${{ matrix.target-framework }} -m:1 --configuration Release --verbosity normal --blame-hang-timeout 20m --logger "console;verbosity=detailed"
+        run: dotnet test SQLiteXM.Tests/SQLiteXM.Tests.csproj --framework ${{ matrix.target-framework }} -m:1 --configuration Release --verbosity normal --blame-hang-timeout 25m --logger "console;verbosity=detailed"
 
       - name: Upload Test Results & Hang Dumps
         if: failure()
