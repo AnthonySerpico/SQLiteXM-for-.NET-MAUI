@@ -40,7 +40,7 @@
 		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
 		<PackageReadmeFile>NUGET-README.md</PackageReadmeFile>
 		<PackageIcon>icon.png</PackageIcon>
-		<PackageDescription>High-performance, AOT and IL trimming-safe SQLite ORM designed specifically for .NET MAUI. Supports LINQ, raw SQL, automatic schema evolution, transactions, and INotifyPropertyChanged UI Binding.</PackageDescription>
+		<PackageDescription>Entity-first SQLite ORM designed specifically for .NET MAUI, featuring LINQ, raw SQL, automatic schema evolution, and binding-ready entities. AOT and trimmer safe.</PackageDescription>
 
 		<!-- Debugging support: ship a symbol package (.snupkg) alongside the .nupkg.
 			 Source is embedded directly in the PDB so consumers can step into SQLiteXM
