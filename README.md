@@ -272,7 +272,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 <p> </p>   
 
 | Test  | Count | Focus |
-|------------|------:|------------|-------|
+|------------|------:|------------|
 | `AdvancedLinqTests` | 12 | GroupBy, joins, set operations, deferred execution, projections |
 | `BulkInsertTests` | 70 | Three bulk-insert entry points (`SxmSql`, `SxmTransaction`, LINQ extension) across shared behavior theories plus per-API transaction semantics |
 | `BulkLinqOperationsTests` | 12 | LINQ bulk update/delete, predicates, transaction scoping, chaining |
