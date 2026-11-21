@@ -56,21 +56,43 @@ See the **[Documentation Guide](https://github.com/AnthonySerpico/SQLiteXM-for-.
 📥 **Want to see SQLiteXM in action?** Download the pre-built **[Query Gallery Demo](https://querygallerydemo.s3.us-east-1.amazonaws.com/QueryGalleryDemo_Windows.zip)** application. This is a ready-to-run MAUI Windows application that showcases SQLiteXM through working query examples organized into 13 categories. This demo runs completely self-contained. Simply extract the ZIP file on Windows and run `QueryGalleryDemo.exe` to explore.
 
 **Features:**
-- ✅ 125+ working query examples across 13 categories - LINQ, SQL, LoadWith eager loading, Bulk Insert, Benchmarks, and more.
+- ✅ 125+ working query examples across 13 categories - LINQ, SQL, Bulk Insert, Benchmarks, and more.
 - ✅ Live code execution with performance metrics
-- ✅ Realistic music database (~25,000 records)
+- ✅ Realistic music database (~25,000 records) 
+
 
 <details>
+
 <summary>🖼️ <strong>Preview Query Gallery Screenshot</strong></summary>
 
 <p align="center">
-  <a href="Docs/images/query-gallery-categories.png">
-    <img src="Docs/images/query-gallery-categories.png" alt="SQLiteXM Query Gallery Categories" width="550" />
+  <a href="https://raw.githubusercontent.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/master/Docs/images/query-gallery-categories.png">
+    <img src="https://raw.githubusercontent.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/master/Docs/images/query-gallery-categories.png" alt="SQLiteXM Query Gallery Categories" width="550" />
   </a>
   <br />
   <sub><em>Click the image to view full size</em></sub>
 </p>
+
 </details>
+
+<details>
+<summary>📖 <strong>Query Gallery Categories</strong></summary>
+
+- ✅ Basic Queries 10 - simple select, where, order by
+- 🔗 Relationships 8 - join queries, navigation
+- 📊 Aggregations 10 - count, sum, group by, avg
+- 📦 Advanced LINQ 11 - complex queries, paging
+- 🎯 Raw SQL 15 - direct SQL execution
+- 📈 Performance 9 - large data sets, benchmarks
+- 🔄 Many-to-Many 8 - junction tables, relationships
+- 💾 Transactions 6 - atomic operations, rollback
+- ⚡ Parameterized Queries 6 - prevent SQL injection
+- 💾 Data modification 8 - insert, update, delete examples
+- 🧩 Mixed Context 10 - LINQ, named SQL, embedded SQL and entity DML in one transaction
+- ⏱️ Benchmarks 11 - side-by-side timing of competing data-access strategies
+- 🔗 LoadWith Eager Loading 15 - demonstrate eager loading of related entities
+</details>
+
 
 Want more details? See the [Query Gallery Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/Docs/querygallery-demo.md)
 
@@ -312,47 +334,6 @@ Benchmark results are environment-dependent and are provided as indicative resul
 | `UpdateSetTests` | 10 | `SxmUpdateSet<T>` edge cases behind `Set().UpdateAsync()`: same column set twice, null assignment, multiple distinct columns, no-match predicates, expression-valued setters, mixed value/expression chains, and builder immutability. Several are characterization tests that record current behavior rather than a pre-specified contract |
 
 </details>
-
----
-
-## 📚 Sample Applications
-
-SQLiteXM includes **three sample applications** to help you learn:
-
-### 1. QueryGalleryDemo (Comprehensive) ⭐
-An **interactive query explorer** with 125+ examples across 13 categories. 
-**Features**: Runnable examples, per-example explanations, execution timing, result visualization. Example code is extracted from the executing methods by a source generator, so what you see is exactly what runs. 
-
-<details>
-<summary>📖 Query Gallery Details</summary>
-
-- ✅ Basic Queries 10 - simple select, where, order by
-- 🔗 Relationships 8 - join queries, navigation
-- 📊 Aggregations 10 - count, sum, group by, avg
-- 📦 Advanced LINQ 11 - complex queries, paging
-- 🎯 Raw SQL 15 - direct SQL execution
-- 📈 Performance 9 - large data sets, benchmarks
-- 🔄 Many-to-Many 8 - junction tables, relationships
-- 💾 Transactions 6 - atomic operations, rollback
-- ⚡ Parameterized Queries 6 - prevent SQL injection
-- 💾 Data modification 8 - insert, update, delete examples
-- 🧩 Mixed Context 10 - LINQ, named SQL, embedded SQL and entity DML in one transaction
-- ⏱️ Benchmarks 11 - side-by-side timing of competing data-access strategies
-</details>
-
-📂 **[View Query Gallery Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/QueryGalleryDemo/)**
-
-
-### 2. RegistrationDemo (Simple)
-Basic user registration showing entity definition, save/query, and data binding.
-
-📂 **[View Registration Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/RegistrationDemo)**
-
-### 3. DirectBindingDemo (Simple)
-CollectionView binding with CRUD operations and UI updates.
-
-📂 **[View Direct Binding Demo](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/tree/master/Samples/DirectBindingDemo)**
-
 
 ---
 

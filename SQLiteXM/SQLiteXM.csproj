@@ -38,7 +38,7 @@
 		<PackageTags>maui;dotnet-maui;sqlite;orm;database;linq;aot;trimming;ios;android;windows;macos</PackageTags>
 		<PackageReleaseNotes>Release notes for every version are published at https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/releases</PackageReleaseNotes>
 		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReadmeFile>NUGET-README.md</PackageReadmeFile>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageDescription>High-performance, AOT and IL trimming-safe SQLite ORM designed specifically for .NET MAUI. Supports LINQ, raw SQL, automatic schema evolution, transactions, and INotifyPropertyChanged UI Binding.</PackageDescription>
 
@@ -71,8 +71,8 @@
 	<ItemGroup>
 		<None Include="SqlStatements\ExampleSqlStatements.json" Pack="true" PackagePath="contentFiles\any\any\SqlStatements\ExampleSqlStatements.json" />
 
-		<!-- Include README.md in the NuGet package -->
-		<None Include="..\README.md" Pack="true" PackagePath="\" />
+		<!-- Include NUGET-README.md in the NuGet package -->
+		<None Include="..\NUGET-README.md" Pack="true" PackagePath="\" />
 
 		<!-- Include LICENSE.txt in the NuGet package -->
 		<None Include="..\LICENSE.txt" Pack="true" PackagePath="\" />
