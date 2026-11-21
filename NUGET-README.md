@@ -18,7 +18,7 @@ The result is SQLiteXM.
 | Capability | SQLiteXM |
 |------------|----------|
 | Designed specifically for .NET MAUI + SQLite | ✅ |
-| AOT/IL Trimming Safe — works with MAUI's default Release trimming, no linker configuration needed ([details](#aot-trimming)) | ✅ |
+| AOT/IL Trimming Safe — works with MAUI's default Release trimming, no linker configuration needed | ✅ |
 | Thread-safe, idempotent database startup, callable from any entry point | ✅ |
 | LINQ query support | ✅ |
 | Raw SQL Support | ✅ |
@@ -265,29 +265,6 @@ SQLiteXM is verified by **690+ automated tests** across 37 test suites covering 
 - .NET MAUI Project
 
 **Platforms:** iOS, Android, macOS, Windows (any .NET MAUI supported platform)
-
----
-
-<a id="aot-trimming"></a>
-## ✂️ AOT and IL Trimming Safe — Out of the Box
-
-.NET MAUI trims your app in Release builds, and AOT-compiles it on iOS and Mac Catalyst. Reflection-based ORMs 
-often break here: entity properties are trimmed away and mappings fail at runtime — but only on a device, never 
-in Debug. The usual fix is to sprinkle `[Preserve]` or `[DynamicDependency]` attributes on your entities, add a 
-`TrimmerRootDescriptor.xml`, or turn trimming off. That work lands on you.
-
-SQLiteXM removes that burden:
-
-- **Zero trim/AOT analyzer warnings.** SQLiteXM is built with `IsTrimmable` and `IsAotCompatible` and compiles 
-  cleanly under the .NET trim and AOT analyzers.
-- **Your entities are preserved automatically.** Every SQLiteXM API that accepts an entity type is annotated with 
-  `DynamicallyAccessedMembers`, so the trimmer keeps your entity classes intact without any attributes, linker 
-  files, or project changes on your side.
-- **Works with MAUI's defaults.** Create a MAUI project, add SQLiteXM, define your entities, build in Release. 
-  Nothing to configure. Verified against MAUI's default Release trimming on .NET 8 and .NET 10.
-
-As with any MAUI project, run your Release build on a device or emulator before shipping — Debug builds do not 
-trim, so that is the only place trimming behavior can be observed.
 
 ---
 
