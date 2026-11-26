@@ -254,7 +254,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-SQLiteXM is verified by **760+ automated tests** across 41 test suites covering LINQ queries, bulk operations, schema migrations, concurrency, multi-database routing, transactions, and data types—executed against both **.NET 8** and **.NET 10** (1,380+ total test executions).
+SQLiteXM is verified by **760+ automated tests** across 41 test suites covering LINQ queries, bulk operations, schema migrations, concurrency, multi-database routing, transactions, and data types—executed against both **.NET 8** and **.NET 10** (1,500+ total test executions).
 
 📋 **[View the Full Test Coverage Breakdown on GitHub](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/SQLiteXM.Tests/README.md)**
 
