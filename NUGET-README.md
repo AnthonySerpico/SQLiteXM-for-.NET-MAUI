@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 690+ tests |
+| Automated Test Coverage | 760+ tests |
 
 ---
 
@@ -254,7 +254,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 
 ### Test Coverage
 
-SQLiteXM is verified by **690+ automated tests** across 37 test suites covering LINQ queries, bulk operations, schema migrations, concurrency, multi-database routing, transactions, and data types—executed against both **.NET 8** and **.NET 10** (1,380+ total test executions).
+SQLiteXM is verified by **760+ automated tests** across 41 test suites covering LINQ queries, bulk operations, schema migrations, concurrency, multi-database routing, transactions, and data types—executed against both **.NET 8** and **.NET 10** (1,380+ total test executions).
 
 📋 **[View the Full Test Coverage Breakdown on GitHub](https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/blob/master/SQLiteXM.Tests/README.md)**
 
