@@ -157,31 +157,13 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Convert a nullable <see cref="Guid"/> to its 16-byte RFC 4122 representation (big-endian network byte order).
-        /// Returns <c>null</c> when <paramref name="g"/> is <c>null</c>.
-        /// </summary>
-        /// <remarks>
-        /// RFC 4122 format stores all Guid components in big-endian (network) byte order, providing
-        /// cross-platform compatibility with Java, Python, PostgreSQL UUID, and other systems.
-        /// Use this when interoperability or standards compliance is required.
-        /// For .NET-only scenarios with LINQ-to-DB queries, use <see cref="GuidToNativeBytes"/> instead.
-        /// </remarks>
-        /// <param name="g">The nullable <see cref="Guid"/> to convert.</param>
-        /// <returns>16-byte RFC 4122 representation of <paramref name="g"/>, or <c>null</c>.</returns>
-        internal static byte[]? GuidToRfc4122Bytes(Guid? g)
-        {
-            return g.HasValue ? GuidStorageHelpers.ToRfc4122Bytes(g.Value) : null;
-        }
-
-        /// <summary>
         /// Convert a nullable <see cref="Guid"/> to its 16-byte native .NET representation (mixed-endian).
         /// Returns <c>null</c> when <paramref name="g"/> is <c>null</c>.
         /// </summary>
         /// <remarks>
         /// Native .NET format uses Guid.ToByteArray() which stores the first 3 components in little-endian
         /// and the last component in big-endian. This is the default format expected by LINQ-to-DB and provides
-        /// best performance for .NET-only applications. For cross-platform UUID compatibility, use
-        /// <see cref="GuidToRfc4122Bytes"/> instead.
+        /// best performance for .NET-only applications. 
         /// </remarks>
         /// <param name="g">The nullable <see cref="Guid"/> to convert.</param>
         /// <returns>16-byte native .NET representation of <paramref name="g"/>, or <c>null</c>.</returns>
@@ -357,26 +339,6 @@ namespace SQLiteXM
             return guidString is null ? (Guid?)null : Guid.Parse(guidString);
         }
 
-        /// <summary>
-        /// Parse a <see cref="Guid"/> from its 16-byte RFC 4122 representation (big-endian network byte order).
-        /// Returns <c>null</c> when <paramref name="byteArray"/> is <c>null</c>.
-        /// When non-<c>null</c> the array must be 16 bytes or an <see cref="ArgumentException"/> is thrown.
-        /// </summary>
-        /// <remarks>
-        /// RFC 4122 format stores all Guid components in big-endian (network) byte order, providing
-        /// cross-platform compatibility with Java, Python, PostgreSQL UUID, and other systems.
-        /// Use this when interoperability or standards compliance is required.
-        /// For .NET-only scenarios with LINQ-to-DB queries, use <see cref="GuidFromNativeBytes"/> instead.
-        /// </remarks>
-        /// <param name="byteArray">16-byte RFC 4122 byte array, or <c>null</c>.</param>
-        /// <returns>Parsed <see cref="Guid"/> or <c>null</c>.</returns>
-        /// <exception cref="ArgumentException">Thrown if <paramref name="byteArray"/> is not 16 bytes long when non-<c>null</c>.</exception>
-        internal static Guid? GuidFromRfc4122Bytes(byte[]? byteArray)
-        {
-            if (byteArray is null) return null;
-            if (byteArray.Length != 16) throw new ArgumentException("RFC 4122 GUID byte array must be 16 bytes long.", nameof(byteArray));
-            return GuidStorageHelpers.FromRfc4122Bytes(byteArray);
-        }
 
         /// <summary>
         /// Parse a <see cref="Guid"/> from its 16-byte native .NET representation (mixed-endian).
@@ -387,7 +349,6 @@ namespace SQLiteXM
         /// Native .NET format uses the byte array produced by Guid.ToByteArray() which stores the first
         /// 3 components in little-endian and the last component in big-endian. This is the default format
         /// expected by LINQ-to-DB and provides best performance for .NET-only applications.
-        /// For cross-platform UUID compatibility, use <see cref="GuidFromRfc4122Bytes"/> instead.
         /// </remarks>
         /// <param name="byteArray">16-byte native .NET byte array, or <c>null</c>.</param>
         /// <returns>Parsed <see cref="Guid"/> or <c>null</c>.</returns>

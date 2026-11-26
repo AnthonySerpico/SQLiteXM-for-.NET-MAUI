@@ -82,7 +82,7 @@ internal sealed class Trans1Example : IQueryExampleRunner
 - 'await using' ensures proper cleanup
 - All operations undone if ANY fails
 - Database remains consistent
-- No explicit RollbackAsync() needed
+- No explicit RollbackTransactionAsync() needed
 """)]
 internal sealed class Trans2Example : IQueryExampleRunner
 {

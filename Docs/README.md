@@ -86,6 +86,13 @@ are safe, which are unsafe, and how to structure your code for concurrent operat
 **Read this when:** You need to perform database operations concurrently using
 `Task.WhenAll`, parallel tasks, or background threads.
 
+### [Advanced Transaction Processing](advanced-transaction-processing.md)
+
+Learn exactly how transactions behave. Detailed explanations of when a transaction commits or rolls back, including after failures,
+cancellations, and nested transactions.
+
+**Read this when:** You need precise control over transaction processing.
+
 ### [Error Handling](error-handling.md)
 
 Learn which exception types SQLiteXM reports, why SQLite's own exceptions are not
@@ -226,6 +233,7 @@ After the basics, explore the topics relevant to your application:
 
 - **[Supported Data Types](supported-data-types.md)** — when defining properties
 - **[Loading Related Data](loading-related-data.md)** — when entities reference each other
+- **[Advanced Transaction Processing](advanced-transaction-processing.md)** — when you need precise control over transaction processing
 - **[Concurrency](concurrency.md)** — when performing concurrent operations
 - **[Error Handling](error-handling.md)** — when writing recovery logic around failures
 - **[Applying Database Options](database-configuration-options.md)** — when applying options to your database
@@ -253,9 +261,10 @@ When your application begins evolving:
 | [Basic Initialization](basic-initialization.md) | Database startup for the normal UI launch path | Right after Getting Started, before building your app |
 | [Defining Entities](defining-entities.md) | Entity and schema definition | When designing your data model |
 | [Working with Data](working-with-data.md) | Querying and modifying data | When building data access |
-| [LINQ Queries](linq-queries.md) | LINQ query guide | When using LINQ or bulk operations |
+| [LINQ Queries](linq-queries.md) |
 | [Loading Related Data](loading-related-data.md) | Navigation properties and `LoadWith` | When loading related entities |
 | [Concurrency](concurrency.md) | Concurrent operations guide | When performing concurrent operations |
+| [Advanced Transaction Processing](advanced-transaction-processing.md) | Commit/rollback rules, failures, cancellation, nesting | When you need precise control over transaction processing |
 | [Error Handling](error-handling.md) | Exception types and recovery guidance | When writing `try`/`catch` around database calls |
 | [Supported Data Types](supported-data-types.md) | C# → SQLite type reference | When choosing entity property types |
 | [Applying Database Options](database-configuration-options.md) | Database options and configuration | When configuring initialization |

@@ -28,7 +28,7 @@
 		<!-- NuGet Package Metadata -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>SQLiteXM</PackageId>
-		<Version>2.1.1</Version>
+		<Version>2.2.0</Version>
 		<Authors>Anthony Serpico</Authors>
 		<Title>SQLiteXM - MAUI + SQLite ORM / Database Abstraction Layer</Title>
 		<Description>High-performance, entity-first ORM for SQLite designed specifically for .NET MAUI applications.</Description>
@@ -37,10 +37,10 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>maui;dotnet-maui;sqlite;orm;database;linq;aot;trimming;ios;android;windows;macos</PackageTags>
 		<PackageReleaseNotes>Release notes for every version are published at https://github.com/AnthonySerpico/SQLiteXM-for-.NET-MAUI/releases</PackageReleaseNotes>
-		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>NUGET-README.md</PackageReadmeFile>
 		<PackageIcon>icon.png</PackageIcon>
-		<PackageDescription>Entity-first SQLite ORM designed specifically for .NET MAUI, featuring LINQ, raw SQL, automatic schema evolution, and binding-ready entities. AOT and trimmer safe.</PackageDescription>
+		<PackageDescription>SQLiteXM is an object-database mapper for SQLite designed specifically for .NET MAUI; supporting LINQ queries, raw SQL, automatic schema evolution, and binding-ready entities. </PackageDescription>
 
 		<!-- Debugging support: ship a symbol package (.snupkg) alongside the .nupkg.
 			 Source is embedded directly in the PDB so consumers can step into SQLiteXM

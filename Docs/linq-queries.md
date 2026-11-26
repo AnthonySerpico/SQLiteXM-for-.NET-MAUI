@@ -102,7 +102,7 @@ await using (SxmTransaction ctx = new SxmTransaction())
 
 The `ctx.GetTable<T>()` method returns an `SxmTable<T>` instance that represents the table and implements `IQueryable<T>`. This allows you to use standard LINQ query operators.
 
-> 💡 The transaction automatically commits when disposed if all operations succeed, or rolls back if an exception occurs.
+> 💡 The transaction automatically commits when disposed if all SQLiteXM operations succeed, or rolls back if any of them fail.
 
 ---
 

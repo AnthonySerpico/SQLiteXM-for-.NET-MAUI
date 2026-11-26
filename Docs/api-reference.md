@@ -346,8 +346,9 @@ await using (SxmTransaction ctx = new SxmTransaction())
 | `SxmTransaction(string? databaseName = null)` | Opens a transaction on the named database, or the default database if `null`. If an ambient transaction already exists on the current async flow, this instance joins it instead of creating a new one. Throws `InvalidOperationException` if an ambient transaction exists for a *different* database. |
 | `SxmTable<T> GetTable<T>()` where `T : class` | Returns the LINQ-queryable table for entity type `T`, bound to this transaction. |
 | `Task<int> BulkInsertAsync<T>(IReadOnlyList<T> entities, int statementCount = 20, CancellationToken cancellationToken = default)` where `T : SxmEntity` | Inserts many new entities using multi-row `INSERT` statements inside this transaction. All entities must have `id == 0`. Returns the number of rows inserted. |
+a SQLiteXM operation in the transaction failed or was cancelled. While faulted, writes are skipped, `CommitTransactionAsync` throws, and disposal rolls back. Exceptions from your own code do not set it. Reset to `false` by `RollbackTransactionAsync`. Nested transactions share the same value. See [Advanced Transaction Processing](./advanced-transaction-processing.md). |
 | `Task CommitTransactionAsync()` | Optionally commits early while keeping the connection. Subsequent writes start a new transaction. Throws `InvalidOperationException` if a previous operation on this context failed — call `RollbackTransactionAsync` instead. |
-| `Task RollbackTransactionAsync()` | Discards uncommitted work and clears the faulted state so the context can be reused. |
+| `Task RollbackTransactionAsync()` | Discards uncommitted work and clears the faulted state (`IsFaulted` becomes `false`) so the context can be reused. |
 | `ValueTask DisposeAsync()` | Commits or rolls back (see above), then releases the connection. Preferred over `Dispose()`. |
 | `void Dispose()` | Synchronous equivalent of `DisposeAsync`. |
 

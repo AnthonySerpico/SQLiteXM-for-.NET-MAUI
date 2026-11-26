@@ -283,19 +283,29 @@ namespace SQLiteXM
         /// </summary>
         internal async Task<List<TResult>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TResult>(string sqlOrStatementName, T userObjectParameters) where TResult : class, new()
         {
-            SqlStatementDetails statementDetails = new();
-
-            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
-            if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+            try
             {
-                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
+                SqlStatementDetails statementDetails = new();
+
+                statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
+                if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+                {
+                    statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
+                }
+
+                Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlOrStatementName, statementDetails.SqlStatementType).ConfigureFalse();
+                Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
+                List<Dictionary<string, object?>> select = await RunStatementAsync(sqlOrStatementName, selectParameterValues).ConfigureFalse();
+
+                return SxmHelpers.PopulateUserRecord<TResult>(select);
             }
-
-            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlOrStatementName, statementDetails.SqlStatementType).ConfigureFalse();
-            Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
-            List<Dictionary<string, object?>> select = await RunStatementAsync(sqlOrStatementName, selectParameterValues).ConfigureFalse();
-
-            return SxmHelpers.PopulateUserRecord<TResult>(select);
+            catch
+            {
+                // Failures before the core runner (statement lookup, column lookup, parameter mapping)
+                // must also fault the transaction. Logging is left to the code that raised the error.
+                _encounteredError = true;
+                throw;
+            }
         }
 
         /// <summary>
@@ -312,18 +322,28 @@ namespace SQLiteXM
         /// </summary>
         internal async Task<List<Dictionary<string, object?>>> RunStatementAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] T>(string sqlOrStatementName, T userObjectParameters)
         {
-            SqlStatementDetails statementDetails = new();
-
-            statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
-            if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+            try
             {
-                statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
+                SqlStatementDetails statementDetails = new();
+
+                statementDetails.SqlStatementType = SxmHelpers.GetDatabaseStatementTypeFromName(sqlOrStatementName);
+                if (statementDetails.SqlStatementType == SqlStatementType.Unknown)
+                {
+                    statementDetails = SxmHelpers.GetDatabaseStatementTypeFromSql(sqlOrStatementName, this._databaseName);
+                }
+
+                Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlOrStatementName, statementDetails.SqlStatementType).ConfigureFalse();
+                Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
+
+                return await RunStatementAsync(sqlOrStatementName, selectParameterValues).ConfigureFalse();
             }
-
-            Dictionary<string, string> columnNames = await SxmDatabase.GetTableColumnNamesAsync(_databaseName, sqlOrStatementName, statementDetails.SqlStatementType).ConfigureFalse();
-            Dictionary<string, object?> selectParameterValues = SxmHelpers.LoadParameterValues(columnNames, userObjectParameters!);
-
-            return await RunStatementAsync(sqlOrStatementName, selectParameterValues).ConfigureFalse();
+            catch
+            {
+                // Failures before the core runner (statement lookup, column lookup, parameter mapping)
+                // must also fault the transaction. Logging is left to the code that raised the error.
+                _encounteredError = true;
+                throw;
+            }
         }
 
         /// <summary>

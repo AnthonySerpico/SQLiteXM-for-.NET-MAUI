@@ -550,31 +550,41 @@ namespace SQLiteXM
             if (sxmTrans != null && sxmTrans.EncounteredError)
                 return;
 
-            string tableName = this.GetType().Name;
-
-            if (!await DoesRecordExistAsync(sxmTrans).ConfigureFalse())
+            try
             {
-                BuildSaveSql();
+                string tableName = this.GetType().Name;
 
-                if (!_insertGuidDict.TryGetValue(tableName, out string? insertStatementName) || string.IsNullOrEmpty(insertStatementName))
-                    throw new InvalidOperationException($"Insert statement not found for '{tableName}'.");
+                if (!await DoesRecordExistAsync(sxmTrans).ConfigureFalse())
+                {
+                    BuildSaveSql();
 
-                if (sxmTrans == null)
-                    await InsertAsync(insertStatementName).ConfigureFalse();
+                    if (!_insertGuidDict.TryGetValue(tableName, out string? insertStatementName) || string.IsNullOrEmpty(insertStatementName))
+                        throw new InvalidOperationException($"Insert statement not found for '{tableName}'.");
+
+                    if (sxmTrans == null)
+                        await InsertAsync(insertStatementName).ConfigureFalse();
+                    else
+                        await InsertAsync(insertStatementName, sxmTrans).ConfigureFalse();
+                }
                 else
-                    await InsertAsync(insertStatementName, sxmTrans).ConfigureFalse();
+                {
+                    BuildUpdateSql();
+
+                    if (!_updateGuidDict.TryGetValue(tableName, out string? updateStatementName) || string.IsNullOrEmpty(updateStatementName))
+                        throw new InvalidOperationException($"Update statement not found for '{tableName}'.");
+
+                    if (sxmTrans == null)
+                        await UpdateAsync(updateStatementName).ConfigureFalse();
+                    else
+                        await UpdateAsync(updateStatementName, sxmTrans).ConfigureFalse();
+                }
             }
-            else
+            catch when (sxmTrans != null)
             {
-                BuildUpdateSql();
-
-                if (!_updateGuidDict.TryGetValue(tableName, out string? updateStatementName) || string.IsNullOrEmpty(updateStatementName))
-                    throw new InvalidOperationException($"Update statement not found for '{tableName}'.");
-
-                if (sxmTrans == null)
-                    await UpdateAsync(updateStatementName).ConfigureFalse();
-                else
-                    await UpdateAsync(updateStatementName, sxmTrans).ConfigureFalse();
+                // Any failure inside a transaction, including those before the SQL runs
+                // (existence check, SQL building), marks the transaction for rollback.
+                sxmTrans.EncounteredError = true;
+                throw;
             }
         }
 
@@ -623,22 +633,32 @@ namespace SQLiteXM
             if (sxmTrans != null && sxmTrans.EncounteredError)
                 return;
 
-            // If a transaction/connection is provided, check existence using that connection
-            // so we see uncommitted rows that live in the same transaction.
-            if (!await DoesRecordExistAsync(sxmTrans).ConfigureFalse())
-                return;
+            try
+            {
+                // If a transaction/connection is provided, check existence using that connection
+                // so we see uncommitted rows that live in the same transaction.
+                if (!await DoesRecordExistAsync(sxmTrans).ConfigureFalse())
+                    return;
 
-            BuildDeleteSql();
-            string tableName = this.GetType().Name;
+                BuildDeleteSql();
+                string tableName = this.GetType().Name;
 
-            if (!_deleteGuidDict.TryGetValue(tableName, out string? deleteStatementName) || string.IsNullOrEmpty(deleteStatementName))
-                throw new InvalidOperationException($"Delete statement not found for '{tableName}'.");
+                if (!_deleteGuidDict.TryGetValue(tableName, out string? deleteStatementName) || string.IsNullOrEmpty(deleteStatementName))
+                    throw new InvalidOperationException($"Delete statement not found for '{tableName}'.");
 
-            // If no transaction supplied, perform non-transactional delete; otherwise use the provided transaction.
-            if (sxmTrans == null)
-                await DeleteAsync(deleteStatementName).ConfigureFalse();
-            else
-                await DeleteAsync(deleteStatementName, sxmTrans).ConfigureFalse();
+                // If no transaction supplied, perform non-transactional delete; otherwise use the provided transaction.
+                if (sxmTrans == null)
+                    await DeleteAsync(deleteStatementName).ConfigureFalse();
+                else
+                    await DeleteAsync(deleteStatementName, sxmTrans).ConfigureFalse();
+            }
+            catch when (sxmTrans != null)
+            {
+                // Any failure inside a transaction, including those before the SQL runs
+                // (existence check, SQL building), marks the transaction for rollback.
+                sxmTrans.EncounteredError = true;
+                throw;
+            }
         }
 
         // Delete statements.

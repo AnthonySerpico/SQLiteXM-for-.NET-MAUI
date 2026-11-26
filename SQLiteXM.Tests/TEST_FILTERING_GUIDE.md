@@ -1,6 +1,6 @@
 # SQLiteXM Test Filtering Guide
 
-The suite currently discovers **696 tests per target framework** (`net8.0` and `net10.0`, so 1,392 executions in a full run) across 37 test classes.
+**768 tests per target framework** (`net8.0` and `net10.0`, so 1,536 executions in a full run) across 40 test classes.
 
 - `[Trait("Category", "Performance")]` on `MultiDatabasePerformanceTests` (12 tests)
 
@@ -14,7 +14,7 @@ Everything else is untagged, so `Category!=Performance` is the practical "fast s
 ```powershell
 dotnet test --configuration Debug
 ```
-Runs 696 tests on `net8.0` and again on `net10.0` (1,392 executions), including the 12 performance tests.
+Runs 768 tests on `net8.0` and again on `net10.0` (1,536 executions)
 
 ### 2. Run everything EXCEPT performance tests
 ```powershell
@@ -65,11 +65,11 @@ dotnet test --configuration Debug -t
 dotnet test --configuration Debug --filter "Category!=Performance&FullyQualifiedName!~LargeSchemaInitializationBenchmark"
 ```
 
-### Functional tests (683 per target framework)
+### Functional tests (755 per target framework)
 
-That is 696 minus the 12 trait-tagged performance tests and the 1 untagged benchmark. If you filter only on `Category!=Performance`, you get 684 per target framework because the benchmark is not trait-tagged.
+That is 768 minus the 12 trait-tagged performance tests and the 1 untagged benchmark. If you filter only on `Category!=Performance`, you get 756 per target framework
 
-Functional coverage spans: entity initialization and CRUD, null handling, schema migration and evolution, column rename, table drop, transactions and transaction patterns, mixed unit of work, LINQ (basic, advanced, documented patterns, bulk operations, `LoadWith`), bulk insert, connection management, concurrency, decimal comparison, dual foreign-key navigation, supported data type storage, exception contract, initialization pattern, database options (validation and runtime PRAGMA effects), raw SQL `RunStatementAsync` and named statements, `SxmUpdateSet` edge cases, and multi-database functional/LINQ tests.
+transactions and transaction patterns, transaction fault/cancellation/nesting behavior, failed LINQ reads, `Guid` byte-order consistency, mixed unit of work,
 
 Per-class counts are listed in [README.md](README.md).
 

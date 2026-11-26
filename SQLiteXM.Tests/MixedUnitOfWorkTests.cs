@@ -165,7 +165,7 @@ public class MixedUnitOfWorkTests : TestBase
             Func<Task> act = async () => await ctx.InsertAsync(orphan);
             await act.Should().ThrowAsync<Exception>();
 
-            ctx.Faulted.Should().BeTrue();
+            ctx.IsFaulted.Should().BeTrue();
 
             // Subsequent writes are skipped (returning 0), consistent with SxmSqlTransaction
             int skipped = await ctx.InsertAsync(new SimpleEntity { Name = $"Fault_{uniquePrefix}_Skipped", Age = 72 });

@@ -342,7 +342,7 @@ Always create a transaction with `await using` so that disposal — and therefor
 await using (SxmTransaction ctx = new SxmTransaction())
 {
     // ... statements ...
-}   // <- auto-commit here (auto-rollback if an exception occurred)
+}   // <- auto-commit here (auto-rollback if any SQLiteXM operation fails)
 ```
 
 The database targeted by the transaction is fixed at construction. The example above starts a transaction on the default database. 
@@ -360,25 +360,17 @@ An `SxmTransaction`:
 
 - Opens a single connection and a single SQLite transaction that live for the duration of the block.
 - Registers itself as the **ambient** transaction, so any `entity.SaveAsync()` / `entity.DeleteAsync()` call inside the block enlists automatically.
-- **Auto-commits** the transaction on clean disposal.
-- **Marks** the transaction for rollback if any database operation throws.
+- **Auto-commits** the transaction on disposal if all SQLiteXM operations succeed.
+- **Rolls back** the transaction on disposal if any SQLiteXM operation throws or is cancelled. The transaction is *marked for rollback* as soon as the operation fails.
 
-When an `SxmTransaction` is disposed, it commits if every database operation in the block completed successfully. If any database operation throws an exception, the transaction is marked for rollback. The transaction remains marked for rollback even if the exception is caught by the application.
+The transaction remains marked for rollback even if the exception is caught by the application. You can check this with the transaction's `IsFaulted` property; see [Advanced Transaction Processing](./advanced-transaction-processing.md).
 
 ```csharp
 await using (SxmTransaction ctx = new SxmTransaction())
 {
-    await customer.SaveAsync();
-    await order.SaveAsync();
-} // commit
-
-
-await using (SxmTransaction ctx = new SxmTransaction())
-{
-    await customer.SaveAsync();
-
     try
     {
+        await customer.SaveAsync();
         await order.SaveAsync(); // throws
     }
     catch
@@ -389,7 +381,9 @@ await using (SxmTransaction ctx = new SxmTransaction())
 } // rollback
 ```
 
-Because commit and rollback are automatic, most code never calls `CommitTransactionAsync` or `RollbackTransactionAsync` explicitly, however they are available for the cases that need finer control.
+Because commit and rollback are automatic, most code never calls `CommitTransactionAsync` or `RollbackTransactionAsync` explicitly; however, they are available for the cases that need finer control.
+
+> ⚠️ Exceptions thrown by your own code do not mark a transaction for rollback. Catch your exception and call `RollbackTransactionAsync()` if you want the transaction rolled back. See [Exceptions From Your Own Code](./advanced-transaction-processing.md#exceptions-from-your-own-code).
 
 ### Entity DML inside a transaction
 

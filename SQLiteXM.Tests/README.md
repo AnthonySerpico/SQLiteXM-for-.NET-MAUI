@@ -9,9 +9,9 @@ See the **[Test Filtering Guide](https://github.com/AnthonySerpico/SQLiteXM-for-
 
 ## Test Statistics (Current)
 
-- **Test classes**: 37
-- **Tests**: 696 per target framework
-- **Target frameworks**: `net8.0` and `net10.0` (the suite is multi-targeted, so a full run executes 1392 test cases)
+- **Test classes**: 40
+- **Tests**: 768 per target framework
+- **Target frameworks**: `net8.0` and `net10.0` (the suite is multi-targeted, so a full run executes 1536 test cases)
 - **Skipped tests**: 0
 - **Performance-tagged tests**: 12 (`[Trait("Category", "Performance")]`)
 
@@ -62,7 +62,9 @@ Auto-generated schema-scale fixtures: 75 entities (`BenchEntity01`-`BenchEntity7
 | `Sequential` | No | Default for data-sensitive tests; `SequentialTestFixture` clears table data before the collection runs |
 | `MultiDatabase` | No | Multi-database scenarios that call `ResetForTestingAsync()` |
 | `InitializationPattern` | No | `StartInitialization` / `EnsureReadyAsync` tests that reset process-wide state |
-| `SQLiteXM Tests` | No | Legacy marker collection, effectively unused |
+| `DatabaseOptionsEffect` | No | `DatabaseOptionsEffectTests`; reinitializes SQLiteXM with different options per test |
+| `NamedStatement` | No | `NamedStatementTests`; reinitializes SQLiteXM with its own `statements.json` |
+| `Concurrency` | No | `ConcurrencyTests`, `ConcurrencyMultiDatabaseTests`; ordered last by `ConcurrencyLastCollectionOrderer` |
 
 ## Test Coverage by Class
 
@@ -74,34 +76,37 @@ Auto-generated schema-scale fixtures: 75 entities (`BenchEntity01`-`BenchEntity7
 | `ColumnRenameTests` | 10 | Sequential | `[Rename]` processing, multi-step rename chains, data preservation |
 | `ConcurrencyTests` | 11 | Concurrency (custom collection orderer) | Concurrent entity and data access scenarios |
 | `ConcurrencyMultiDatabaseTests` | 2 | Concurrency (custom collection orderer) | Concurrent access across multiple databases |
-| `ConnectionManagerWorkerTests` | 7 |
+| `ConnectionManagerWorkerTests` | 7 | Sequential | `SxmConnectionManager.RunWorkersAsync`: concurrent workers on a shared connection, lease management, deterministic cleanup |
 | `DatabaseOptionsValidatorTests` | 78 | Sequential | `SxmDatabaseOptions` validation rules: numeric ranges, undefined enum values, folder-override paths, configuration-combination warnings, and the `ValidationResult` contract. Pure in-memory - no database required. Resets the shared `EnableConnectionPooling` / `EnableLogging` / `DefaultTimeout` statics around each test |
 | `DatabaseOptionsEffectTests` | 22 | DatabaseOptionsEffect | Proves the configured options actually reach SQLite: `journal_mode`, `synchronous`, `foreign_keys`, `temp_store`, `cache_size` (negative-KB encoding), `busy_timeout` and `wal_autocheckpoint` PRAGMA round-trips, plus `OnConnectionOpened` / `OnConnectionClosed` interceptor invocation and ordering. Most PRAGMAs are per-connection, so they are read from inside an interceptor on the very connection SQLiteXM configured; WAL is additionally verified from an independent connection because it is persisted in the database file. Re-initializes SQLiteXM per test and restores the standard test configuration afterwards |
 | `DecimalComparisonTests` | 14 | Sequential | Decimal value comparison behavior in queries |
-| `DropTableTests` | 24 | Sequential |
+| `DropTableTests` | 24 | Sequential | `SxmSql.DropTableAsync`: dropping tables, foreign-key dependency refusal, drop ordering, recreate |
 | `DualForeignKeyNavigationTests` | 18 | Sequential | Navigation across two foreign keys on the same entity |
-| `EntityCrudTests` | 9 |
+| `EntityCrudTests` | 9 | Sequential | Entity create, read, update and delete |
 | `EntityInitializationTests` | 13 | Sequential | Table creation, type mapping, indexes, FKs, triggers, thread safety |
 | `EntityMappingTests` | 4 | Sequential | `MapProperties`, `MapAndSaveAsync`, null/mismatch handling |
 | `EntityMigrationTests` | 17 | Sequential | Adding columns (nullable, defaulted, NOT NULL), sequential and concurrent migrations |
 | `FailFastTests` | 5 | Sequential | Early validation on registration and entity construction |
+| `GuidConsistencyTests` | 33 | Sequential | `Guid` byte order is identical on every write and read path (entity, LINQ, bulk insert, direct SQL), nullable `Guid`, `synchId`, LINQ filters, the `TEXT` override, and raw SQL parameter conversion |
 | `InitializationPatternTests` | 11 | InitializationPattern | `SxmDatabase.StartInitialization` + `EnsureReadyAsync`, idempotency, failure propagation |
 | `LargeSchemaInitializationBenchmarkTests` | 1 | InitializationPattern | Wall-clock measurement of first-run and migration-run initialization over a 75 x 50 schema (no pass/fail threshold) |
 | `LinqContextTests` | 7 | Sequential | Where, OrderBy, Select, FirstOrDefault, Count |
-| `LinqQueryDocumentationTests` | 49 |
+| `LinqQueryDocumentationTests` | 49 | Sequential | Every LINQ example in `Docs/linq-queries.md` works as documented |
+| `LinqReadFailureTests` | 9 | Sequential | A failed LINQ read marks the transaction as faulted: earlier writes roll back, later writes are skipped, commit throws, rollback resets, and joined transactions share the failure |
 | `LinqTransactionTests` | 6 | Sequential | LINQ visibility across commit/rollback, deferred operations, isolation |
 | `LoadWithTests` | 35 | Sequential | Eager loading via `LoadWith` navigation paths |
-| `MixedUnitOfWorkTests` | 5 |
+| `MixedUnitOfWorkTests` | 5 | Sequential | Entity writes, embedded SQL and LINQ share one unit of work; owning vs. joined ambient transactions; skipped writes after a fault |
 | `MultiDatabaseLinqTests` | 18 | MultiDatabase | Per-database query contexts, aggregates, joins, projections |
 | `MultiDatabasePerformanceTests` | 12 | MultiDatabase, `Category=Performance` | Bulk, scale, and concurrency benchmarks; update-path correctness, transaction-batching speedup ratio, and throughput reporting |
 | `MultiDatabaseTests` | 11 | MultiDatabase | Multiple databases in `statements.json`, entity routing, per-database transactions |
-| `NamedStatementTests` | 41 |
-| `NullHandlingTests` | 28 | Sequential |
+| `NamedStatementTests` | 41 | NamedStatement | Executing statements by name from `statements.json`: name resolution before inline SQL, named vs. positional binding, unknown/null/empty names. Each test builds its own database and restores the standard configuration on dispose |
+| `NullHandlingTests` | 28 | Sequential | Real SQL `NULL` verified via `typeof(column)` for every storage class on insert, update, bulk insert, LINQ bulk update and read; empty string/blob must not become `NULL` |
 | `RunStatementTests` | 18 | Sequential | The `RunStatementAsync` overload matrix for *inline* SQL: no parameters, `Dictionary<string, object?>` named parameters, and `List<object>` positional parameters, in both the typed `TResult` and raw dictionary result forms. Includes parameterization-safety tests that pass a `DROP TABLE` payload as a value and assert it is never executed. Note that dictionary keys are bare column names - the library prepends the `@` itself |
-| `SchemaEvolutionTests` | 24 | Sequential |
+| `SchemaEvolutionTests` | 29 | Sequential | Behaviors from `Docs/schema-evolution.md`: index and trigger changes, column drops, and the unsupported-change contract |
 | `SharedConnectionTests` | 7 | Sequential | Shared connection locking, timeouts, multi-caller safety |
 | `SupportedDataTypesStorageTests` | 50 | Sequential | Storage of every supported data type and its round-trip behavior |
-| `SxmExceptionContractTests` | 9 | (default) |
+| `SxmExceptionContractTests` | 9 | (default) | Public `SxmException` metadata contract: error codes, `Data["sxmErrorCode"]`, context, exception filters |
+| `SxmTransactionBehaviorTests` | 30 | Sequential | Validates `Docs/advanced-transaction-processing.md`: commit/rollback on dispose, `IsFaulted`, your own exceptions vs. SQLiteXM failures, set-up failures before the SQL runs, cancelled reads and writes, failed LINQ update/delete and bulk insert, skipped writes returning 0, staged commits, nested and different-database transactions, uncommitted-work visibility and isolation, and use after disposal |
 | `TransactionPatternTests` | 14 | Sequential | The five transaction patterns from `Docs/application-lifecycle.md`: mixed operations, fault behavior, fault recovery, multiple commits, all-operation-type conformance |
 | `TransactionTests` | 7 | Sequential | Commit/rollback, atomicity, ambient transactions, nested-create rejection |
 | `UpdateSetTests` | 10 | Sequential | `SxmUpdateSet<T>` edge cases behind `Set().UpdateAsync()`: same column set twice, null assignment, multiple distinct columns, no-match predicates, expression-valued setters, mixed value/expression chains, and builder immutability. Several are characterization tests that record current behavior rather than a pre-specified contract |
@@ -150,7 +155,7 @@ This table describes the **scope** of what each area exercises — the behaviour
 | Indexes | Definition, evolution, and constraint enforcement | Single, composite, unique; add/remove/modify; uniqueness actually enforced on insert and bulk insert; unique-index-over-duplicate-data failure and retry. Query-plan/performance impact not asserted |
 | Foreign keys | Schema and drop ordering | Constraint creation, drop-order enforcement, three-level parent chains. `ON DELETE CASCADE` row behaviour not exercised |
 | Triggers | Schema lifecycle only | Creation, removal, body modification. Trigger *execution* / firing behaviour is not verified |
-| Transactions | All documented patterns | Commit, rollback, ambient, fault + recovery, multi-commit |
+| Transactions | All documented patterns | Commit, rollback, ambient, fault + recovery, multi-commit, `IsFaulted`, cancellation, set-up failures, staged commits, nesting, isolation |
 | Mixed unit of work | Combined operation types | Entity DML + SQL + LINQ sharing one transaction |
 | Basic LINQ queries | Core operators | Where, OrderBy, Select, Count, First/Single |
 | Advanced LINQ | Composite queries | GroupBy, joins, set operations, aggregates, paging, deferred execution |

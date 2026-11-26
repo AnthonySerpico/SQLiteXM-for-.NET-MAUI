@@ -501,7 +501,7 @@ public class BulkInsertTests : TestBase
             // Fault the context with a failing statement on the shared transaction.
             Func<Task> bad = () => ctx.RunStatementAsync<SimpleEntity>("SELECT * FROM NoSuchTable_" + prefix);
             await bad.Should().ThrowAsync<Exception>();
-            ctx.Faulted.Should().BeTrue();
+            ctx.IsFaulted.Should().BeTrue();
 
             int inserted = await ctx.BulkInsertAsync(entities);
 
@@ -611,7 +611,7 @@ public class BulkInsertTests : TestBase
             Func<Task> act = () => ctx.BulkInsertAsync(bad);
             await act.Should().ThrowAsync<Exception>();
 
-            ctx.Faulted.Should().BeTrue();
+            ctx.IsFaulted.Should().BeTrue();
             (await ctx.BulkInsertAsync(BuildEntities(prefix + "_after", 2))).Should().Be(0, "subsequent writes are skipped on a faulted context");
         }
 

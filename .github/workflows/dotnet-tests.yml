@@ -1,4 +1,4 @@
-name: 696 Test (.NET 8 & 10)
+name: 760+ Tests (.NET 8 & 10)
 
 on:
   push:

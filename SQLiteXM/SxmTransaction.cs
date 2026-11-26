@@ -271,7 +271,8 @@ namespace SQLiteXM
 
             var dc = new DataConnection(new DataOptions()
                         .UseMappingSchema(SxmMapping.Schema)
-                        .UseTransaction(SQLiteTools.GetDataProvider(SQLiteProvider.Microsoft), tx));
+                        .UseTransaction(SQLiteTools.GetDataProvider(SQLiteProvider.Microsoft), tx)
+                        .UseInterceptor(new FaultOnExceptionInterceptor(this)));
 
             _enlistedTransaction = tx;
             _contextRegistry[dc] = new WeakReference<SxmTransaction>(this);
@@ -297,11 +298,59 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// True when a write operation executed through this context has thrown.
-        /// While faulted, subsequent write operations are skipped and disposal rolls back the transaction.
-        /// Call <see cref="RollbackTransactionAsync"/> to discard the failed transaction and reset the context.
+        /// Marks the owning context as faulted when any LinqToDB command fails, including reads,
+        /// so a failed LINQ query rolls the transaction back on dispose. The exception is not
+        /// handled here and still reaches the caller unchanged.
         /// </summary>
-        internal bool Faulted => _sqlTransaction.EncounteredError;
+        private sealed class FaultOnExceptionInterceptor : LinqToDB.Interceptors.ExceptionInterceptor
+        {
+            private readonly SxmTransaction _owner;
+
+            public FaultOnExceptionInterceptor(SxmTransaction owner) => _owner = owner;
+
+            public override void ProcessException(LinqToDB.Interceptors.ExceptionEventData eventData, System.Exception exception)
+            {
+                _owner._sqlTransaction.EncounteredError = true;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the transaction is faulted (marked for rollback).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A transaction becomes faulted when a SQLiteXM operation executed in it fails or is cancelled,
+        /// including writes, SQL statements, and LINQ reads. Exceptions thrown only by your own code are
+        /// not visible to SQLiteXM and do not fault the transaction.
+        /// </para>
+        /// <para>
+        /// While faulted, subsequent write operations are skipped, <see cref="CommitTransactionAsync"/> throws,
+        /// and disposal rolls back the transaction. Call <see cref="RollbackTransactionAsync"/> to discard the
+        /// failed work and reset this value to <see langword="false"/>.
+        /// </para>
+        /// <para>
+        /// Nested <see cref="SxmTransaction"/> instances join the same underlying transaction and therefore
+        /// report the same value.
+        /// </para>
+        /// </remarks>
+        public bool IsFaulted => _sqlTransaction.EncounteredError;
+
+        /// <summary>
+        /// Gets a value indicating whether this instance joined a transaction that was already open,
+        /// rather than starting its own.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A joined transaction does not commit or roll back when disposed; the transaction that started
+        /// the work decides. Explicit calls to <see cref="CommitTransactionAsync"/> and
+        /// <see cref="RollbackTransactionAsync"/> still act on the whole shared transaction.
+        /// </para>
+        /// <para>
+        /// Reusable code can check this value to leave the decision to the caller, for example by
+        /// rethrowing an exception instead of rolling back when <see langword="true"/>.
+        /// </para>
+        /// </remarks>
+        private bool IsJoined => !_ownsTransaction;
 
         /// <summary>
         /// True when a transaction is currently open on the shared connection.
@@ -506,7 +555,7 @@ namespace SQLiteXM
         /// Mirrors <see cref="SxmSqlTransaction"/> semantics: once any operation has thrown (via LINQ,
         /// entity writes or named SQL on the shared transaction), subsequent operations are skipped
         /// (returning 0) and the transaction rolls back on dispose.
-        /// The first failure is logged, marks the context as <see cref="Faulted"/>, and is rethrown.
+        /// The first failure is logged, marks the context as <see cref="IsFaulted"/>, and is rethrown.
         /// </summary>
         /// <param name="operation">The delegate performing the write and returning affected row count.</param>
         /// <returns>The number of rows affected, or 0 when the operation was skipped because the context is faulted.</returns>
@@ -550,7 +599,7 @@ namespace SQLiteXM
             if (_sqlTransaction.EncounteredError)
                 throw new InvalidOperationException(
                     "Cannot commit: a previous operation on this context failed. " +
-                    "Call RollbackAsync() to discard the transaction and reset the context.");
+                    "Call RollbackTransactionAsync() to discard the transaction and reset the context.");
 
             if (_sxmConnection.CurrentTransaction == null) return;
 
@@ -714,7 +763,7 @@ namespace SQLiteXM
 
         /// <summary>
         /// Asynchronously disposes the context. When a transaction is open:
-        /// commits it when no operation failed; rolls it back when the context is <see cref="Faulted"/>.
+        /// commits it when no operation failed; rolls it back when the context is <see cref="IsFaulted"/>.
         /// Commit failures are logged and rethrown after a best-effort rollback.
         /// </summary>
         public async ValueTask DisposeAsync()

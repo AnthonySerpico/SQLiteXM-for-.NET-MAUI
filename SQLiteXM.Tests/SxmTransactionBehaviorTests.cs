@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using SQLiteXM;
 
 namespace SQLiteXM.Tests;
@@ -10,6 +10,94 @@ namespace SQLiteXM.Tests;
 public class SxmTransactionBehaviorTests : TestBase
 {
     private static string NewPrefix() => Guid.NewGuid().ToString("N").Substring(0, 8);
+
+    // Renames the SimpleEntity table inside the transaction so the existence check that
+    // SaveAsync/DeleteAsync run before their own SQL fails. The rename is rolled back with the transaction.
+    private static Task HideSimpleEntityTableAsync(SxmTransaction ctx) =>
+        ctx.RunStatementAsync("ALTER TABLE SimpleEntity RENAME TO SimpleEntity_Hidden");
+
+    // Early failure: SaveAsync's existence check fails before the INSERT runs.
+    [Fact]
+    public async Task EarlySaveAsyncFailure_Caught_FaultsAndRollsBack()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"EarlySaveCaught_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+            await HideSimpleEntityTableAsync(ctx);
+
+            Func<Task> act = () => new SimpleEntity { Name = $"{prefix}_Failed", Age = 2 }.SaveAsync();
+            await act.Should().ThrowAsync<Exception>();
+
+            ctx.IsFaulted.Should().BeTrue();
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // Early failure that escapes the block uncaught must still roll back.
+    [Fact]
+    public async Task EarlySaveAsyncFailure_Uncaught_RollsBack()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"EarlySaveUncaught_{NewPrefix()}";
+
+        Func<Task> act = async () =>
+        {
+            await using SxmTransaction ctx = new SxmTransaction(TestDatabaseName);
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+            await HideSimpleEntityTableAsync(ctx);
+            await new SimpleEntity { Name = $"{prefix}_Failed", Age = 2 }.SaveAsync();
+        };
+
+        await act.Should().ThrowAsync<Exception>();
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // Early failure: DeleteAsync's existence check fails before the DELETE runs.
+    [Fact]
+    public async Task EarlyDeleteAsyncFailure_Caught_FaultsAndRollsBack()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"EarlyDeleteCaught_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            SimpleEntity saved = new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 };
+            await saved.SaveAsync();
+            await HideSimpleEntityTableAsync(ctx);
+
+            Func<Task> act = () => saved.DeleteAsync();
+            await act.Should().ThrowAsync<Exception>();
+
+            ctx.IsFaulted.Should().BeTrue();
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // Early failure: the parameter-object overload fails during preparation, before the SQL runs.
+    [Fact]
+    public async Task EarlyRunStatementWithObjectFailure_Caught_FaultsAndRollsBack()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"EarlyRunStmt_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+
+            Func<Task> act = () => ctx.RunStatementAsync<MissingTableEntity, MissingTableEntity>(
+                "SELECT * FROM NoSuchTable_LinqReadFailure WHERE Name = @Name", new MissingTableEntity { Name = "x" });
+            await act.Should().ThrowAsync<Exception>();
+
+            ctx.IsFaulted.Should().BeTrue();
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
 
     private static async Task<List<SimpleEntity>> FindAsync(string prefix)
     {
@@ -32,7 +120,7 @@ public class SxmTransactionBehaviorTests : TestBase
             SimpleEntity entity = new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 };
             await entity.SaveAsync();
 
-            ctx.Faulted.Should().BeFalse();
+            ctx.IsFaulted.Should().BeFalse();
 
             throw new InvalidOperationException("Exception thrown by user code.");
         };
@@ -55,7 +143,7 @@ public class SxmTransactionBehaviorTests : TestBase
             SimpleEntity entity = new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 };
             await entity.SaveAsync();
 
-            ctx.Faulted.Should().BeFalse();
+            ctx.IsFaulted.Should().BeFalse();
 
             try
             {
@@ -65,7 +153,7 @@ public class SxmTransactionBehaviorTests : TestBase
             {
             }
 
-            ctx.Faulted.Should().BeTrue();
+            ctx.IsFaulted.Should().BeTrue();
         }
 
         List<SimpleEntity> found = await FindAsync(prefix);
@@ -95,7 +183,7 @@ public class SxmTransactionBehaviorTests : TestBase
                 await ctx.RollbackTransactionAsync();
             }
 
-            ctx.Faulted.Should().BeFalse();
+            ctx.IsFaulted.Should().BeFalse();
 
             SimpleEntity second = new SimpleEntity { Name = secondName, Age = 2 };
             await second.SaveAsync();
@@ -134,7 +222,7 @@ public class SxmTransactionBehaviorTests : TestBase
                 await ctx.RollbackTransactionAsync();
             }
 
-            ctx.Faulted.Should().BeFalse();
+            ctx.IsFaulted.Should().BeFalse();
         }
 
         List<SimpleEntity> found = await FindAsync(prefix);
@@ -164,7 +252,7 @@ public class SxmTransactionBehaviorTests : TestBase
             {
             }
 
-            outer.Faulted.Should().BeFalse();
+            outer.IsFaulted.Should().BeFalse();
         }
 
         List<SimpleEntity> found = await FindAsync(prefix);
@@ -243,7 +331,7 @@ public class SxmTransactionBehaviorTests : TestBase
             await ctx.CommitTransactionAsync();
             await ctx.RollbackTransactionAsync();
 
-            ctx.Faulted.Should().BeFalse();
+            ctx.IsFaulted.Should().BeFalse();
         }
 
         List<SimpleEntity> found = await FindAsync(prefix);
@@ -305,7 +393,7 @@ public class SxmTransactionBehaviorTests : TestBase
             {
             }
 
-            ctx.Faulted.Should().BeTrue();
+            ctx.IsFaulted.Should().BeTrue();
         }
 
         List<SimpleEntity> found = await FindAsync(prefix);
@@ -313,6 +401,43 @@ public class SxmTransactionBehaviorTests : TestBase
     }
 
     // 6
+    [Fact]
+    public async Task IsFaulted_ResetByRollback_AndSharedByNestedTransaction()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"IsFaultedReset_{NewPrefix()}";
+
+        await using (SxmTransaction outer = new SxmTransaction(TestDatabaseName))
+        {
+            outer.IsFaulted.Should().BeFalse();
+            await new SimpleEntity { Name = $"{prefix}_Discarded", Age = 1 }.SaveAsync();
+
+            await using (SxmTransaction inner = new SxmTransaction(TestDatabaseName))
+            {
+                try
+                {
+                    await inner.RunStatementAsync("INVALID SQL STATEMENT");
+                }
+                catch (Exception)
+                {
+                }
+
+                inner.IsFaulted.Should().BeTrue();
+            }
+
+            outer.IsFaulted.Should().BeTrue("the inner transaction shares the outer transaction's state");
+
+            await outer.RollbackTransactionAsync();
+            outer.IsFaulted.Should().BeFalse("rollback resets the faulted state");
+
+            await new SimpleEntity { Name = $"{prefix}_Kept", Age = 2 }.SaveAsync();
+        }
+
+        List<SimpleEntity> found = await FindAsync(prefix);
+        found.Select(e => e.Name).Should().BeEquivalentTo(new[] { $"{prefix}_Kept" });
+    }
+
+    // 7
     [Fact]
     public async Task RepeatedCommitSaveRollbackCycles_KeepOnlyCommittedEntities()
     {
@@ -330,7 +455,7 @@ public class SxmTransactionBehaviorTests : TestBase
                 await new SimpleEntity { Name = $"{prefix}_Discarded{i}", Age = i }.SaveAsync();
                 await ctx.RollbackTransactionAsync();
 
-                ctx.Faulted.Should().BeFalse();
+                ctx.IsFaulted.Should().BeFalse();
             }
         }
 
@@ -381,7 +506,7 @@ public class SxmTransactionBehaviorTests : TestBase
             {
             }
 
-            ctx.Faulted.Should().BeTrue();
+            ctx.IsFaulted.Should().BeTrue();
         }
 
         List<SimpleEntity> found = await FindAsync(prefix);
@@ -405,7 +530,7 @@ public class SxmTransactionBehaviorTests : TestBase
             Func<Task> act = async () => await ctx.GetTable<SimpleEntity>().ToListAsync(cts.Token);
             await act.Should().ThrowAsync<OperationCanceledException>();
 
-            ctx.Faulted.Should().BeTrue("a cancelled operation is an interrupted operation, so the transaction is faulted");
+            ctx.IsFaulted.Should().BeTrue("a cancelled operation is an interrupted operation, so the transaction is faulted");
         }
 
         List<SimpleEntity> found = await FindAsync(prefix);
@@ -424,6 +549,272 @@ public class SxmTransactionBehaviorTests : TestBase
 
         act.Should().Throw<Exception>()
             .Where(e => e.Message.Contains("ambient transaction") || (e.InnerException != null && e.InnerException.Message.Contains("ambient transaction")));
-        outer.Faulted.Should().BeFalse();
+        outer.IsFaulted.Should().BeFalse();
+    }
+
+    // 10
+    [Fact]
+    public async Task NestedTransaction_ForDifferentDatabase_CaughtWithoutRollback_OuterWorkCommits()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"DiffDbNoRb_{NewPrefix()}";
+
+        await using (SxmTransaction outer = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Order", Age = 1 }.SaveAsync();
+
+            try
+            {
+                await using SxmTransaction inner = new SxmTransaction("some_other_database");
+                await new SimpleEntity { Name = $"{prefix}_Payment", Age = 2 }.SaveAsync();
+            }
+            catch (Exception)
+            {
+            }
+
+            outer.IsFaulted.Should().BeFalse("the constructor failure happens before any SQLiteXM operation runs");
+        }
+
+        List<SimpleEntity> found = await FindAsync(prefix);
+        found.Select(e => e.Name).Should().BeEquivalentTo(new[] { $"{prefix}_Order" });
+        await CleanupAsync(found);
+    }
+
+    // 10
+    [Fact]
+    public async Task NestedTransaction_ForDifferentDatabase_CaughtWithRollback_DiscardsOuterWork()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"DiffDbRb_{NewPrefix()}";
+
+        await using (SxmTransaction outer = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Order", Age = 1 }.SaveAsync();
+
+            try
+            {
+                await using SxmTransaction inner = new SxmTransaction("some_other_database");
+                await new SimpleEntity { Name = $"{prefix}_Payment", Age = 2 }.SaveAsync();
+            }
+            catch (Exception)
+            {
+                await outer.RollbackTransactionAsync();
+            }
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // 11
+    [Fact]
+    public async Task CancelledLinqWrite_FaultsTransaction_AndRollsBackOnDispose()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"CancelledWrite_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+
+            using CancellationTokenSource cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            Func<Task> act = () => ctx.GetTable<SimpleEntity>()
+                .Where(e => e.Name!.StartsWith(prefix))
+                .Set(e => e.Age, 99)
+                .UpdateAsync(cts.Token);
+            await act.Should().ThrowAsync<OperationCanceledException>();
+
+            ctx.IsFaulted.Should().BeTrue();
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // 12
+    [Fact]
+    public async Task FailedLinqUpdate_FaultsTransaction_AndRollsBackOnDispose()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"FailedUpdate_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+            await HideSimpleEntityTableAsync(ctx);
+
+            Func<Task> act = () => ctx.GetTable<SimpleEntity>()
+                .Where(e => e.Name!.StartsWith(prefix))
+                .Set(e => e.Age, 99)
+                .UpdateAsync();
+            await act.Should().ThrowAsync<Exception>();
+
+            ctx.IsFaulted.Should().BeTrue();
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // 12
+    [Fact]
+    public async Task FailedLinqDelete_FaultsTransaction_AndRollsBackOnDispose()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"FailedDelete_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+            await HideSimpleEntityTableAsync(ctx);
+
+            Func<Task> act = () => ctx.GetTable<SimpleEntity>()
+                .Where(e => e.Name!.StartsWith(prefix))
+                .DeleteAsync();
+            await act.Should().ThrowAsync<Exception>();
+
+            ctx.IsFaulted.Should().BeTrue();
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // 12
+    [Fact]
+    public async Task FailedBulkInsert_FaultsTransaction_AndRollsBackOnDispose()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"FailedBulk_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+            await HideSimpleEntityTableAsync(ctx);
+
+            List<SimpleEntity> batch = new List<SimpleEntity>
+            {
+                new SimpleEntity { Name = $"{prefix}_Bulk1", Age = 2 },
+                new SimpleEntity { Name = $"{prefix}_Bulk2", Age = 3 }
+            };
+            Func<Task> act = () => ctx.BulkInsertAsync(batch);
+            await act.Should().ThrowAsync<Exception>();
+
+            ctx.IsFaulted.Should().BeTrue();
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // 13
+    [Fact]
+    public async Task FaultedTransaction_SkipsLinqWrites_AndReturnsZero()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"SkippedWrites_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Saved", Age = 1 }.SaveAsync();
+
+            Func<Task> fail = () => new ChildEntity { ChildName = $"{prefix}_Orphan", ParentId = long.MaxValue }.SaveAsync();
+            await fail.Should().ThrowAsync<Exception>();
+            ctx.IsFaulted.Should().BeTrue();
+
+            int updated = await ctx.GetTable<SimpleEntity>()
+                .Where(e => e.Name!.StartsWith(prefix))
+                .Set(e => e.Age, 99)
+                .UpdateAsync();
+            int deleted = await ctx.GetTable<SimpleEntity>()
+                .Where(e => e.Name!.StartsWith(prefix))
+                .DeleteAsync();
+            int inserted = await ctx.BulkInsertAsync(new List<SimpleEntity>
+            {
+                new SimpleEntity { Name = $"{prefix}_Bulk", Age = 2 }
+            });
+
+            updated.Should().Be(0);
+            deleted.Should().Be(0);
+            inserted.Should().Be(0);
+
+            ctx.GetTable<SimpleEntity>().Where(e => e.Name!.StartsWith(prefix)).ToList()
+                .Should().ContainSingle(e => e.Age == 1, "skipped writes change nothing");
+        }
+
+        (await FindAsync(prefix)).Should().BeEmpty();
+    }
+
+    // 14
+    [Fact]
+    public async Task UncommittedSave_IsNotVisibleToSeparateTransaction()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"SeparateTx_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Pending", Age = 1 }.SaveAsync();
+
+            Task<List<SimpleEntity>> otherTask;
+            using (ExecutionContext.SuppressFlow())
+            {
+                otherTask = Task.Run(async () =>
+                {
+                    await using SxmTransaction other = new SxmTransaction(TestDatabaseName);
+                    return other.GetTable<SimpleEntity>().Where(e => e.Name!.StartsWith(prefix)).ToList();
+                });
+            }
+
+            // Depending on journal mode the other reader either sees only committed data or is blocked.
+            try
+            {
+                List<SimpleEntity> seenByOther = await otherTask;
+                seenByOther.Should().BeEmpty("a separate transaction only sees committed data");
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 5)
+            {
+            }
+
+            await ctx.RollbackTransactionAsync();
+        }
+    }
+
+    // 15
+    [Fact]
+    public async Task StagedBatches_FailedBatchRolledBack_LaterBatchesStillCommit()
+    {
+        await InitializeSqliteXMAsync();
+        string prefix = $"Staged_{NewPrefix()}";
+
+        await using (SxmTransaction ctx = new SxmTransaction(TestDatabaseName))
+        {
+            await new SimpleEntity { Name = $"{prefix}_Batch1", Age = 1 }.SaveAsync();
+            await ctx.CommitTransactionAsync();
+
+            try
+            {
+                await new SimpleEntity { Name = $"{prefix}_Batch2", Age = 2 }.SaveAsync();
+                await new ChildEntity { ChildName = $"{prefix}_Orphan", ParentId = long.MaxValue }.SaveAsync();
+                await ctx.CommitTransactionAsync();
+            }
+            catch (Exception)
+            {
+                ctx.IsFaulted.Should().BeTrue();
+                await ctx.RollbackTransactionAsync();
+            }
+
+            ctx.IsFaulted.Should().BeFalse();
+
+            await new SimpleEntity { Name = $"{prefix}_Batch3", Age = 3 }.SaveAsync();
+            await ctx.CommitTransactionAsync();
+        }
+
+        List<SimpleEntity> found = await FindAsync(prefix);
+        found.Select(e => e.Name).Should().BeEquivalentTo(new[] { $"{prefix}_Batch1", $"{prefix}_Batch3" });
+        await CleanupAsync(found);
+    }
+
+    private static async Task CleanupAsync(List<SimpleEntity> entities)
+    {
+        foreach (SimpleEntity entity in entities)
+            await entity.DeleteAsync();
     }
 }

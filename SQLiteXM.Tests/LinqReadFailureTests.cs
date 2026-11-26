@@ -42,7 +42,7 @@ public class LinqReadFailureTests : TestBase
         Action act = () => ctx.GetTable<MissingTableEntity>().ToList();
 
         act.Should().Throw<Exception>();
-        ctx.Faulted.Should().BeTrue();
+        ctx.IsFaulted.Should().BeTrue();
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class LinqReadFailureTests : TestBase
         Func<Task> act = async () => await ctx.GetTable<MissingTableEntity>().CountAsync();
 
         await act.Should().ThrowAsync<Exception>();
-        ctx.Faulted.Should().BeTrue();
+        ctx.IsFaulted.Should().BeTrue();
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class LinqReadFailureTests : TestBase
 
         _ = ctx.GetTable<SimpleEntity>().Where(e => e.Name == NewPrefix()).ToList();
 
-        ctx.Faulted.Should().BeFalse();
+        ctx.IsFaulted.Should().BeFalse();
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class LinqReadFailureTests : TestBase
                 // Swallowed by the caller; the transaction is still faulted.
             }
 
-            ctx.Faulted.Should().BeTrue();
+            ctx.IsFaulted.Should().BeTrue();
         }
 
         (await FindAsync(prefix)).Should().BeEmpty();
@@ -163,7 +163,7 @@ public class LinqReadFailureTests : TestBase
             act.Should().Throw<Exception>();
 
             await ctx.RollbackTransactionAsync();
-            ctx.Faulted.Should().BeFalse();
+            ctx.IsFaulted.Should().BeFalse();
 
             int inserted = await ctx.InsertAsync(new SimpleEntity { Name = $"{prefix}_Kept", Age = 2 });
             inserted.Should().Be(1);

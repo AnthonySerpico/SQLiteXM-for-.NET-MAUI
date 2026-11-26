@@ -694,7 +694,7 @@ namespace SQLiteXM
             if (targetType == typeof(Guid))
             {
                 if (value is byte[] bytes)
-                    return SxmColumnDataConverters.GuidFromRfc4122Bytes(bytes);
+                    return SxmColumnDataConverters.GuidFromNativeBytes(bytes);
 
                 if (value is string s)
                     return SxmColumnDataConverters.GuidFromString(s);
@@ -1342,66 +1342,6 @@ namespace SQLiteXM
                 throw new InvalidOperationException($"Insert statement '{sqlOrStatementName}' did not return any rows. Ensure the SQL statement returns a row (e.g. use RETURNING) or call a non-returning insert API.");
 
             return list[0];
-        }
-    }
-
-    /// <summary>
-    /// Helpers for converting GUIDs to/from RFC-4122 (network) byte order suitable for storing as BLOBs.
-    /// </summary>
-    internal static class GuidStorageHelpers
-    {
-        /// <summary>
-        /// Convert Guid -> 16 bytes in RFC-4122 (network) order.
-        /// </summary>
-        /// <param name="g">Source Guid.</param>
-        /// <returns>16-byte array in RFC-4122 order.</returns>
-        internal static byte[] ToRfc4122Bytes(this Guid g)
-        {
-            Span<byte> b = stackalloc byte[16];
-            g.TryWriteBytes(b); // CLR layout
-            // Reverse the three little-endian fields -> network order
-            Swap(b, 0, 3); Swap(b, 1, 2);
-            Swap(b, 4, 5);
-            Swap(b, 6, 7);
-            return b.ToArray();
-        }
-
-        /// <summary>
-        /// Convert RFC-4122 16 bytes -> Guid (CLR layout for .NET Guid ctor).
-        /// </summary>
-        /// <param name="bytes">Span containing 16 RFC-4122 bytes.</param>
-        /// <returns>Guid represented by the RFC-4122 bytes.</returns>
-        /// <exception cref="ArgumentException">If <paramref name="bytes"/> does not contain exactly 16 bytes.</exception>
-        internal static Guid FromRfc4122Bytes(ReadOnlySpan<byte> bytes)
-        {
-            if (bytes.Length != 16) throw new ArgumentException("GUID must be 16 bytes.", nameof(bytes));
-            Span<byte> b = stackalloc byte[16];
-            bytes.CopyTo(b);
-            // Reverse back to CLR layout
-            Swap(b, 0, 3); Swap(b, 1, 2);
-            Swap(b, 4, 5);
-            Swap(b, 6, 7);
-            return new Guid(b.ToArray());
-        }
-
-        /// <summary>
-        /// Convert RFC-4122 16 bytes (array) -> Guid.
-        /// </summary>
-        /// <param name="bytes">16-byte RFC-4122 byte array.</param>
-        /// <returns>Guid constructed from the bytes.</returns>
-        internal static Guid FromRfc4122Bytes(byte[] bytes) => FromRfc4122Bytes((ReadOnlySpan<byte>)bytes);
-
-        /// <summary>
-        /// Swap two bytes inside a span.
-        /// </summary>
-        /// <param name="b">Target span.</param>
-        /// <param name="i">Index of first byte.</param>
-        /// <param name="j">Index of second byte.</param>
-        private static void Swap(Span<byte> b, int i, int j)
-        {
-            byte t = b[i];
-            b[i] = b[j];
-            b[j] = t;
         }
     }
 
