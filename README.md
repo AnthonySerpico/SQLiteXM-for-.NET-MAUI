@@ -31,7 +31,7 @@ The result is SQLiteXM.
 | Entities are MAUI binding-ready with INotifyPropertyChanged support | ✅ |
 | Async-first design — supports non-blocking UI patterns | ✅ |
 | Minimal configuration — no migration files, no DbContext setup | ✅ |
-| Automated Test Coverage | 760+ tests |
+| Automated Test Coverage | 990+ tests |
 
 ---
 
@@ -271,7 +271,7 @@ parameters rather than concatenating them into the SQL text
 
 ## 🧪 Testing
 
-over **760 tests**, run against both **.NET 8** and **.NET 10** (1,530+ test executions)
+over **990 tests**, run against both **.NET 8** and **.NET 10** (1,990+ test executions)
 
 ### Performance Benchmarks (from test suite)
 
@@ -315,6 +315,7 @@ Benchmark results are environment-dependent and are provided as indicative resul
 | `GuidConsistencyTests` | 33 | `Guid` values stored and read back identically through every path (entities, LINQ, bulk insert, direct SQL), including nullable `Guid`, `synchId`, LINQ filters, the `TEXT` override, and raw SQL parameters |
 | `InitializationPatternTests` | 11 | `SxmDatabase.StartInitialization` + `EnsureReadyAsync`, idempotency, failure propagation |
 | `LargeSchemaInitializationBenchmarkTests` | 1 | Wall-clock measurement of first-run and migration-run initialization over a 75 x 50 schema (no pass/fail threshold) |
+| `LinqAggregateAndPredicateTests` | 16 | LINQ aggregates (`CountAsync`, `SumAsync`, `MinAsync`, `MaxAsync` and similar) and translation of filter conditions to SQL |
 | `LinqContextTests` | 7 | Where, OrderBy, Select, FirstOrDefault, Count |
 | `LinqQueryDocumentationTests` | 49 | Every LINQ example in the documentation, executed against seeded customer and order data |
 | `LinqReadFailureTests` | 9 | A failed LINQ read rolls back the transaction: earlier writes discarded, later writes skipped, commit refused, rollback resets, and nested transactions share the failure |
@@ -329,9 +330,17 @@ Benchmark results are environment-dependent and are provided as indicative resul
 | `RunStatementTests` | 18 | The `RunStatementAsync` overload matrix |
 | `SchemaEvolutionTests` | 29 |
 | `SharedConnectionTests` | 7 | Shared connection locking, timeouts, multi-caller safety |
+| `SqlTransactionAmbientTests` | 11 | Ambient transaction stack: push, pop and removal of a transaction that is not the most recent one, including across async flows |
 | `SupportedDataTypesStorageTests` | 50 | Storage of every supported data type and its round-trip behavior |
+| `SxmConnectionTests` | 21 | Connection creation, opening, closing and destruction, connection strings, and use after disposal |
+| `SxmDatabaseHelperTests` | 10 | Internal database helpers: reading and resetting the database version number, table existence, the column-name cache, and reading triggers |
+| `SxmDatabaseInitializationTests` | 12 | Initialization guard rails: use before initialization, entity registration overloads, null/unreadable/second statements stream, and initialization from a statements file |
 | `SxmExceptionContractTests` | 9 | `SxmException` contract: `ErrorCode` and `Data["sxmErrorCode"]`, `Context`, exception filters, and wrapped vs. direct throws |
+| `SxmHelpersTests` | 99 | Internal helper and value conversion methods |
+| `SxmLoggingAndSerializationTests` | 20 | Logging and JSON serialization helpers |
 | `SxmTransactionBehaviorTests` | 30 | Every behavior in the Advanced Transaction Processing guide: commit or rollback on dispose, `IsFaulted`, your own exceptions vs. SQLiteXM failures, set-up failures, cancelled reads and writes, skipped writes, staged commits, nested and different-database transactions, uncommitted-work visibility, and use after disposal |
+| `SxmUTransactionTests` | 24 | Internal unit-of-work transaction: creation, commit, rollback, disposal, inserts, updates, deletes and their error paths |
+| `TransactionFailureCleanupTests` | 16 | Failed and cancelled operations mark the transaction as failed; cleanup releases connections and leaves no partial work |
 | `TransactionPatternTests` | 14 | The five transaction patterns from `Docs/application-lifecycle.md`: mixed operations, fault behavior, fault recovery, multiple commits, all-operation-type conformance |
 | `TransactionTests` | 7 | Commit/rollback, atomicity, ambient transactions, nested-create rejection |
 | `UpdateSetTests` | 10 | `SxmUpdateSet<T>` edge cases behind `Set().UpdateAsync()`: same column set twice, null assignment, multiple distinct columns, no-match predicates, expression-valued setters, mixed value/expression chains, and builder immutability. Several are characterization tests that record current behavior rather than a pre-specified contract |

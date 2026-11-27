@@ -134,11 +134,14 @@ namespace SQLiteXM
             // Best-effort remove: rebuild stack without the target.
             try
             {
-                var temp = new Stack<SxmSqlTransaction>();
+                // Rebuild in place on the existing stack instance. The stack object is shared with the
+                // caller's logical context, whereas assigning _slot.Value here would only affect the
+                // current (possibly child) context and never flow back to the caller.
+                Stack<SxmSqlTransaction> temp = new Stack<SxmSqlTransaction>();
                 bool removed = false;
                 while (stack.Count > 0)
                 {
-                    var item = stack.Pop();
+                    SxmSqlTransaction item = stack.Pop();
                     if (!removed && ReferenceEquals(item, tx))
                     {
                         removed = true;
@@ -147,11 +150,9 @@ namespace SQLiteXM
                     temp.Push(item);
                 }
 
-                var rebuilt = new Stack<SxmSqlTransaction>();
                 while (temp.Count > 0)
-                    rebuilt.Push(temp.Pop());
+                    stack.Push(temp.Pop());
 
-                _slot.Value = rebuilt.Count > 0 ? rebuilt : null;
                 return removed;
             }
             catch

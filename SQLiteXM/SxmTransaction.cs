@@ -1,4 +1,4 @@
-﻿using LinqToDB;
+using LinqToDB;
 using LinqToDB.Data;
 using LinqToDB.DataProvider.SQLite;
 using Microsoft.Data.Sqlite;
@@ -480,13 +480,25 @@ namespace SQLiteXM
         }
 
         /// <summary>
-        /// Inserts or replaces the entity (by primary key) immediately inside the context transaction (started lazily).
+        /// Inserts or updates the entity immediately inside the context transaction (started lazily)
+        /// by delegating to <see cref="SxmEntity.SaveAsync()"/>. Existing rows are updated in place
+        /// rather than deleted and reinserted, and a new row receives a database-generated <c>id</c>.
         /// </summary>
+        /// <remarks>
+        /// linq2db's InsertOrReplace cannot be used because it rejects identity columns, and every
+        /// <see cref="SxmEntity"/> has an identity <c>id</c>. Cancellation is checked before the save starts;
+        /// a cancelled call faults the context so the transaction rolls back on dispose.
+        /// </remarks>
         /// <returns>The number of rows affected (0 when the context is faulted and the operation was skipped).</returns>
         internal Task<int> InsertOrReplaceAsync<T>(T entity, CancellationToken cancellationToken = default) where T : SxmEntity
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-            return ExecuteWriteAsync(() => _linqToDbDataConnection.InsertOrReplaceAsync(entity, token: cancellationToken));
+            return ExecuteWriteAsync(async () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await entity.SaveAsync().ConfigureFalse();
+                return 1;
+            });
         }
 
         /// <summary>

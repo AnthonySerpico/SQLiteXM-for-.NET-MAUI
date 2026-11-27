@@ -272,28 +272,8 @@ namespace SQLiteXM
 
         /********************* INSERT / UPDATE / DELETE wrappers (async implementations) ************************/
 
-        internal async Task<Dictionary<string, object?>> ExecuteInsertDirectAsync(string insertSql, List<object> parameterValues, CancellationToken cancellationToken = default)
-        {
-            string commandName = Guid.NewGuid().ToString();
-            InsertDefinition id = new InsertDefinition(commandName, insertSql);
-
-            Dictionary<string, object?> insertResponse;
-            try
-            {
-                SxmSqlStatements.InsertStatements.TryAdd(commandName, id);
-                insertResponse = await ExecuteInsertAsync(commandName, parameterValues, cancellationToken).ConfigureFalse();
-            }
-            finally
-            {
-                SxmSqlStatements.InsertStatements.TryRemove(commandName, out _);
-            }
-
-            return insertResponse;
-        }
-
-
         /// <summary>
-        /// Execute an insert statement by command key and return the generated id and synchId.
+        /// Execute an insert statement by command key
         /// The method will run the insert inside a transaction and then update the record's synchId
         /// and the system cloud synchronization table as required by the library.
         /// </summary>

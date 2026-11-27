@@ -1,6 +1,6 @@
 # SQLiteXM Test Filtering Guide
 
-**768 tests per target framework** (`net8.0` and `net10.0`, so 1,536 executions in a full run) across 40 test classes.
+**997 tests per target framework** (`net8.0` and `net10.0`, so 1,994 executions in a full run) across 49 test classes.
 
 - `[Trait("Category", "Performance")]` on `MultiDatabasePerformanceTests` (12 tests)
 
@@ -14,7 +14,7 @@ Everything else is untagged, so `Category!=Performance` is the practical "fast s
 ```powershell
 dotnet test --configuration Debug
 ```
-Runs 768 tests on `net8.0` and again on `net10.0` (1,536 executions)
+Runs 997 tests on `net8.0` and again on `net10.0` (1,994 executions)
 
 ### 2. Run everything EXCEPT performance tests
 ```powershell
@@ -65,11 +65,11 @@ dotnet test --configuration Debug -t
 dotnet test --configuration Debug --filter "Category!=Performance&FullyQualifiedName!~LargeSchemaInitializationBenchmark"
 ```
 
-### Functional tests (755 per target framework)
+### Functional tests (984 per target framework)
 
-That is 768 minus the 12 trait-tagged performance tests and the 1 untagged benchmark. If you filter only on `Category!=Performance`, you get 756 per target framework
+That is 997 minus the 12 trait-tagged performance tests and the 1 untagged benchmark. If you filter only on `Category!=Performance`, you get 985 per target framework
 
-transactions and transaction patterns, transaction fault/cancellation/nesting behavior, failed LINQ reads, `Guid` byte-order consistency, mixed unit of work,
+transactions and transaction patterns, transaction fault/cancellation/nesting behavior, failed LINQ reads, `Guid` byte-order consistency, mixed unit of work, LINQ aggregates and predicates, and direct tests of internal components (connections, the internal unit-of-work transaction, the ambient transaction stack, transaction failure cleanup, database initialization and helpers, helper/conversion methods, logging and serialization).
 
 Per-class counts are listed in [README.md](README.md).
 
@@ -110,6 +110,11 @@ dotnet test --configuration Debug --filter "FullyQualifiedName~SchemaEvolution|F
 dotnet test --configuration Debug --filter "FullyQualifiedName~DatabaseOptions"
 ```
 
+### Internal component tests
+```powershell
+dotnet test --configuration Debug --filter "FullyQualifiedName~SxmConnectionTests|FullyQualifiedName~SxmUTransactionTests|FullyQualifiedName~SqlTransactionAmbientTests|FullyQualifiedName~TransactionFailureCleanupTests|FullyQualifiedName~SxmDatabaseHelperTests|FullyQualifiedName~SxmDatabaseInitializationTests|FullyQualifiedName~SxmHelpersTests|FullyQualifiedName~SxmLoggingAndSerializationTests"
+```
+
 ### Raw SQL and named statements
 ```powershell
 dotnet test --configuration Debug --filter "FullyQualifiedName~RunStatementTests|FullyQualifiedName~NamedStatementTests"
@@ -129,7 +134,7 @@ Parallelization is disabled **assembly-wide** by `[assembly: CollectionBehavior(
 |------------|---------|-----------|
 | `Sequential` | Most classes | No |
 | `MultiDatabase` | `MultiDatabaseTests`, `MultiDatabaseLinqTests`, `MultiDatabasePerformanceTests` | No |
-| `InitializationPattern` | `InitializationPatternTests`, `LargeSchemaInitializationBenchmarkTests` | No |
+| `InitializationPattern` | `InitializationPatternTests`, `LargeSchemaInitializationBenchmarkTests`, `SxmDatabaseInitializationTests` | No |
 | `DatabaseOptionsEffect` | `DatabaseOptionsEffectTests` | No |
 | `NamedStatement` | `NamedStatementTests` | No |
 | `Concurrency` | `ConcurrencyTests`, `ConcurrencyMultiDatabaseTests` | No (ordered last by `ConcurrencyLastCollectionOrderer`) |
